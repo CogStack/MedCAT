@@ -1,0 +1,110 @@
+import hunspell
+import re
+from collections import Counter
+from spacy.tokens import Span
+
+CONTAINS_NUMBER = re.compile('[0-9]+')
+
+class SpellChecker(object):
+    """ Spellchecks words using hunspell
+
+    words:  Additional words to load apart from the en dict
+    """
+    def __init__(self, words=[]):
+        self.spellchecker = hunspell.HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff')
+
+        # Add words to hunspell
+        for word in words:
+            self.spellchecker.add(word)
+
+
+    def __contains__(self, word):
+        return self.spellchecker.spell(word)
+
+
+    def fix(self, word):
+        sugg = self.spellchecker.suggest(word)
+        if sugg:
+            return sugg[0]
+        else:
+            return None
+
+
+class CustomSpellChecker(object):
+    def __init__(self, words, big_vocab=None):
+        self.vocab = words
+        if big_vocab is None:
+            self.big_vocab = self.vocab
+        else:
+            self.big_vocab = big_vocab
+
+    def P(self, word):
+        "Probability of `word`."
+	# use inverse of rank as proxy
+	# returns 0 if the word isn't in the dictionary
+        cnt = self.vocab.get(word, 0)
+        if cnt != 0:
+            return -1 / cnt
+        else:
+            return 0
+
+    def __contains__(self, word):
+        return word in self.big_vocab
+
+    def fix(self, word):
+        "Most probable spelling correction for word."
+        fix = max(self.candidates(word), key=self.P)
+        if fix != word:
+            return fix
+        else:
+            return None
+
+    def candidates(self, word):
+        "Generate possible spelling corrections for word."
+        # or self.known(self.edits2(word))
+        return (self.known([word]) or self.known(self.edits1(word))  or [word])
+
+
+    def known(self, words):
+        "The subset of `words` that appear in the dictionary of WORDS."
+        return set(w for w in words if w in self.vocab)
+
+
+    def edits1(self, word):
+        "All edits that are one edit away from `word`."
+        letters    = 'abcdefghijklmnopqrstuvwxyz'
+        splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
+        deletes    = [L + R[1:]               for L, R in splits if R]
+        transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
+        replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
+        inserts    = [L + c + R               for L, R in splits for c in letters]
+        return set(deletes + transposes + replaces + inserts)
+
+
+    def edits2(self, word):
+        "All edits that are two edits away from `word`."
+        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
+
+
+class SpacySpellChecker(object):
+    def __init__(self, spell_checker):
+        self.spell_checker = spell_checker
+
+
+    def __call__(self, doc):
+        for token in doc:
+            if not token._.is_punct and not CONTAINS_NUMBER.search(token.lower_):
+                # Check is it in the vocab
+                if len(token.lower_) > 4 and token.lower_ not in self.spell_checker:
+                    fix = self.spell_checker.fix(token.lower_)
+                    if fix is not None:
+                        token._.verified = True
+                        token._.norm = fix
+                    else:
+                        token._.norm = token.lower_
+                else:
+                    token._.norm = token.lower_
+            else:
+                token._.norm = token.lower_
+
+        return doc

@@ -1,0 +1,26 @@
+#Directories to be ignored fully
+/books/
+/articles/
+/other/
+/data/
+/output/
+/graphics/
+tmp/
+*_tmp/
+
+#tmp and similar files
+.nfs*
+*.pyc
+*.out
+*.swp
+*.swn
+tmp_*
+t_*
+tmp_*
+*_tmp
+*.swo
+*.lyx.emergency
+*.lyx#
+*~
+*hidden*
+nohup.out
