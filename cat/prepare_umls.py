@@ -35,11 +35,14 @@ class PrepareUMLS(object):
             for ind in range(len(df)):
                 if ind % 10000 == 0:
                     print("Done: {}".format(ind))
-
                 name = clean_umls(str(df.iloc[ind]['str']))
                 # Clean and preprocess the name
                 doc = self.nlp(name)
                 tokens = [t.lower_ for t in doc if not t._.is_punct and not t._.to_skip]
+                isupper = False
+                if len(doc) == 1:
+                    if doc[0].is_upper and len(doc[0]) > 1:
+                        isupper = True
                 name = SEPARATOR.join(tokens)
                 _name = "".join(tokens)
                 length_one = [True if len(x) < 2 else False for x in tokens]
@@ -54,7 +57,25 @@ class PrepareUMLS(object):
                     sname = sname + token.lower_ + SEPARATOR
                     snames.append(sname.strip())
 
-                onto = df.iloc[ind]['sab']
+                # Check is prefered name, it is if the column "TTY" equals PN
+                is_pref_name = False
+                if 'tty' in df.columns:
+                    _tmp = str(df.iloc[ind]['tty'])
+                    if _tmp.lower().strip() == 'pn':
+                        is_pref_name = True
+
+                sab = 'default'
+                if 'sab' in df.columns:
+                    # Get the ontology 
+                    onto = df.iloc[ind]['sab']
+
+                # Get the cui
                 cui = df.iloc[ind]['cui']
 
-                self.umls.add_concept(cui, name, onto, tokens, snames)
+                # Get the tui 
+                tui = None
+                if 'tui' in df.columns:
+                    tui = str(df.iloc[ind]['tui'])
+
+                self.umls.add_concept(cui, name, onto, tokens, snames, isupper=isupper,
+                        is_pref_name=is_pref_name, tui=tui)
