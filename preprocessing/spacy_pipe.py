@@ -1,5 +1,5 @@
 from preprocessing.cleaners import spacy_tag_punct, clean_umls
-from spacy.tokens import Token, Doc
+from spacy.tokens import Token, Doc, Span
 from preprocessing.spelling import SpacySpellChecker
 import spacy
 
@@ -32,7 +32,7 @@ class SpacyPipe(object):
 
         # Add custom fields needed for this usecase
         Doc.set_extension('ents', default=None, force=True)
-        print("UGABUGA")
+        Span.set_extension('acc', default=-1, force=True)
 
 
     def __call__(self, text):

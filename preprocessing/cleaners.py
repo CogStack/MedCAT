@@ -73,17 +73,25 @@ def clean_text(text):
     return text.strip().lower()
 
 
-def clean_umls(text):
-    # Remove everything that is inside of []
-    text = re.sub("\[[^\]]*\]", "", text)
+BR_U4 = re.compile("\[[^\]]{0,3}\]")
+CB = re.compile("(^|\s)\([^\)]*\)($|\s)")
+BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
+PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 
-    # Remove things inside of () if spaces are around it and if the length of the 
+
+def clean_umls(text):
+    # Remove [] if < 4 letters inside
+    text = BR_U4.sub(" ", text)
+
+    # Remove things inside of () or [] if spaces are around it and if the length of the 
     #remaining text is > 15 characters. Stupid approach but works
-    tmp = re.sub("(^|\s)\([^\)]*\)($|\s)", " ", text)
-    if tmp != text and len(tmp) > 15:
-        print(tmp)
-        print(text)
-        text = tmp
+    #tmp = CB.sub(" ", text)
+    #tmp = BR.sub(" ", tmp)
+    #if tmp != text and len(tmp) > 15:
+    #    text = tmp
+
+    # Remove specific things from parentheses
+    text = PH_RM.sub(" ", text)
 
     # Remove multi spaces
     text = re.sub("[ ]+", " ", text).strip()
