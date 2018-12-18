@@ -21,12 +21,12 @@ class CAT(object):
         self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
 
         # Add spell checker pipe
-        spell_checker = CustomSpellChecker(words=umls.vocab, big_vocab=vocab)
-        self.nlp.add_spell_checker(spell_checker=spell_checker)
+        self.spell_checker = CustomSpellChecker(words=umls.vocab, big_vocab=vocab)
+        self.nlp.add_spell_checker(spell_checker=self.spell_checker)
 
         # Add cat
-        spacy_cat = SpacyCat(umls=umls)
-        self.nlp.add_cat(spacy_cat=spacy_cat)
+        self.spacy_cat = SpacyCat(umls=umls, vocab=vocab)
+        self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
 
     def __call__(self, text):
