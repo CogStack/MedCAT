@@ -55,7 +55,7 @@ for doc in iter_data:
 
 class iterator(object):
     def __iter__(self):
-        data = open("/home/ubuntu/data/mimic/preprocessed/emb_noteevents2.txt", 'r')
+        data = open("/home/ubuntu/data/mimic/preprocessed/emb_noteevents.txt", 'r')
 
         for row in data:
             row = row.strip().split(" ")

@@ -11,4 +11,3 @@ vocab.add_words_nvec('/home/ubuntu/data/other/dicts/wiki-umls.txt')
 
 
 vocab.save("/home/ubuntu/data/other/dicts/umls-wiki-emb.dat")
-

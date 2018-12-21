@@ -22,7 +22,7 @@ class Vocab(object):
             self.vocab[parts[0]] = item
 
 
-    def add_words_nvec(self, path, reset_cnt=True):
+    def add_words_nvec(self, path, reset_cnt=False):
         f = open(path)
 
         for line in f:
@@ -51,7 +51,7 @@ class Vocab(object):
 
         for i, word in enumerate(self.vec_index2word):
             p = freqs[i] / sm
-            self.unigram_table.extend([i] * int(p * 100000000))
+            self.unigram_table.extend([i] * int(p * 1000000))
 
         self.unigram_table = np.array(self.unigram_table)
 
