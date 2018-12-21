@@ -57,23 +57,25 @@ class CatAnn(object):
                     #print(tkns)
                     acc = self.softmax(scores.values())
                     if len(name) < 6:
-                       if not name_case or self.umls.name_isupper[name] == name_case:
+                        if self.umls.name_isupper[name] == name_case or (not name_case and len(name) > 3):
                             # Means match is upper in both cases, tag if acc > 0.6
-                            if acc > 0.5:
+                            if acc > 0.6:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
                                 self._add_ann(cui, doc, tkns, acc=acc)
                             else:
                                 to_disamb.append((list(tkns), name))
+                        else:
+                            to_disamb.append((list(tkns), name))
                     else:
                         # We can be almost sure that everything is fine, threshold of 0.2
-                        if acc > 0.2:
+                        if acc > 0.3:
                             cui = max(scores.items(), key=operator.itemgetter(1))[0]
                             self._add_ann(cui, doc, tkns, acc=acc)
                         else:
                             to_disamb.append((list(tkns), name))
                     #print("*"*150)
             else:
-                if one_tkn_upper and name not in self.umls.stopwords:
+                if name not in self.umls.stopwords: # and one_tkn_upper:
                     # Only if abreviation and not in stopwords
                     to_disamb.append((list(tkns), name))
 
