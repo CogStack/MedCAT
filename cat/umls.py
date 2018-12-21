@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 from scipy.sparse import dok_matrix
 from gensim.matutils import unitvec
+from utils.attr_dict import AttrDict
 
 class UMLS(object):
     """ Holds all the UMLS data required for annotation
@@ -20,6 +21,7 @@ class UMLS(object):
         self.cui_count = {}
         self.cui2names = {}
         self.cui2tui = {}
+        self.tui2cuis = {}
         self.cui2pref_name = {}
         self.sname2name = set()
         self.cui2words = {}
@@ -61,6 +63,11 @@ class UMLS(object):
 
         if tui is not None:
             self.cui2tui[cui] = tui
+
+            if tui in self.tui2cuis:
+                self.tui2cuis[tui].add(cui)
+            else:
+                self.tui2cuis[tui] = set([cui])
 
         # Add name to cnt
         if name not in self.name2cnt:
@@ -153,21 +160,46 @@ class UMLS(object):
 
         # TODO: Missing negative context, try noise contrasite estimate, even though
         #this already works really nicely - without a test set hard to tell is negative needed
+
+        # Word2vec approach
+        """
+        sim = 0
+        if cui in self.cui2context_vec:
+            for cv in context_vec:
+                cv = cv / 100
+                sim = np.dot(unitvec(cv), unitvec(self.cui2context_vec[cui]))
+
+                if negative:
+                    b = max(0, sim)
+                    self.cui2context_vec[cui] = self.cui2context_vec[cui] - cv*b
+                else:
+                    b = (1 - max(0, sim))
+                    self.cui2context_vec[cui] = self.cui2context_vec[cui] + cv*b
+            else:
+                self.cui2context_vec[cui] = cv / 100
+        """
+
         sim = 0
         cv = context_vec
         if cui in self.cui2context_vec:
             sim = np.dot(unitvec(cv), unitvec(self.cui2context_vec[cui]))
 
             if negative:
-                b = min((1 / self.cui_count[cui]), 0.1)  * max(0, sim)
+                b = max((0.1 / self.cui_count[cui]), 0.000001)  * max(0, sim)
                 self.cui2context_vec[cui] = self.cui2context_vec[cui]*(1-b) - cv*b
             else:
-                c = 0.1
-                if sim < 0.2:
-                    b = max((1 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                if sim < 0.8 and sim > 0.1:
+                    c = 0.00001
+                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                    self.cui2context_vec[cui] = self.cui2context_vec[cui]*(1-b) + cv*b
+                elif sim < 0.1:
+                    c = 0.0001
+                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                     self.cui2context_vec[cui] = self.cui2context_vec[cui]*(1-b) + cv*b
         else:
             self.cui2context_vec[cui] = cv
+
+        return sim
 
         """
         # Second option, once a test set is there - try booth
@@ -264,7 +296,124 @@ class UMLS(object):
 
         umls:  To be merged with this one
         """
-        pass
+
+        # Just an extension
+        self.index2cui.extend(umls.index2cui)
+
+        # cui2index has to be rebuilt
+        self.cui2index = {}
+        for ind, word in enumerate(self.index2cui):
+            self.cui2index[word] = ind
+
+        # Just extend
+        self.stopwords.extend(umls.stopwords)
+
+        # name2cui - new names should be added and old extended
+        for key in umls.name2cui.keys():
+            if key in self.name2cui:
+                self.name2cui[key].update(umls.name2cui[key])
+            else:
+                self.name2cui[key] = umls.name2cui[key]
+
+        # name2cnt - old rewriten by new
+        self.name2cnt.update(umls.name2cnt)
+        # name_isupper - update dict
+        self.name_isupper.update(umls.name_isupper)
+
+        # cui2names - new names should be added and old extended
+        for key in umls.cui2names.keys():
+            if key in self.cui2names:
+                self.cui2names[key].update(umls.cui2names[key])
+            else:
+                self.cui2names[key] = umls.cui2names[key]
+
+        # Just update the dictionaries
+        self.cui2tui.update(umls.cui2tui)
+        self.cui2pref_name.update(umls.cui2pref_name)
+        # Update the set
+        self.sname2name.update(umls.sname2name)
+
+        # cui2words - new words should be added
+        for key in umls.cui2words.keys():
+            if key in self.cui2words:
+                self.cui2words[key].update(umls.cui2words[key])
+            else:
+                self.cui2words[key] = umls.cui2words[key]
+
+        # onto2cuis - new words should be added
+        for key in umls.onto2cuis.keys():
+            if key in self.onto2cuis:
+                self.onto2cuis[key].update(umls.onto2cuis[key])
+            else:
+                self.onto2cuis[key] = umls.onto2cuis[key]
+
+        # Just update vocab
+        self.vocab.update(umls.vocab)
+        # Remove coo_matrix if it exists
+        self._coo_matrix = None
+        # Merge tui2cuis, if they exist
+        if hasattr(umls, 'tui2cuis'):
+            self.tui2cuis.update(umls.tui2cuis)
+
+        # Merge the training part
+        self.merge_train(umls)
+
+    def get_train_dict(self):
+        return {'cui2context_vec': self.cui2context_vec,
+                'cui2context_words': self.cui2context_words,
+                'cui_count': self.cui_count,
+                'coo_dict': self.coo_dict,
+                'cui2ncontext_vec': self.cui2ncontext_vec}
+
+    def merge_train_dict(self, t_dict):
+        attr_dict = AttrDict()
+        attr_dict.update(t_dict)
+        self.merge_train(attr_dict)
+
+
+    def merge_train(self, umls):
+        # To be merged: cui2context_vec, cui2context_words, cui_count, coo_dict
+        #cui2ncontext_vec
+
+        # Merge cui2context_vec
+        for key in umls.cui2context_vec.keys():
+            if key in self.cui2context_vec:
+                self.cui2context_vec[key] = (self.cui2context_vec[key] + umls.cui2context_vec[key]) / 2
+            else:
+                self.cui2context_vec[key] = umls.cui2context_vec[key]
+
+        # Merge cui2context_vec
+        for key in umls.cui2ncontext_vec.keys():
+            if key in self.cui2ncontext_vec:
+                self.cui2ncontext_vec[key] = (self.cui2ncontext_vec[key] + umls.cui2ncontext_vec[key]) / 2
+            else:
+                self.cui2ncontext_vec[key] = umls.cui2ncontext_vec[key]
+
+        # Merge cui2context_words
+        for cui in umls.cui2context_words.keys():
+            if cui in self.cui2context_words:
+                for word in umls.cui2context_words[cui]:
+                    if word in self.cui2context_words[cui]:
+                        self.cui2context_words[cui][word] += umls.cui2context_words[cui][word]
+                    else:
+                        self.cui2context_words[cui][word] = umls.cui2context_words[cui][word]
+            else:
+                self.cui2context_words[cui] = umls.cui2context_words[cui]
+
+        # Merge coo_dict
+        for key in umls.coo_dict.keys():
+            if key in self.coo_dict:
+                self.coo_dict[key] += umls.coo_dict[key]
+            else:
+                self.coo_dict[key] = umls.coo_dict[key]
+
+
+        # Merge cui_count
+        for key in umls.cui_count.keys():
+            if key in self.cui_count:
+                self.cui_count[key] += umls.cui_count[key]
+            else:
+                self.cui_count[key] = umls.cui_count[key]
 
 
     def save(self, path):
@@ -277,3 +426,12 @@ class UMLS(object):
         with open(path, 'rb') as f:
             return pickle.load(f)
 
+
+    def save_dict(self, path):
+        with open(path, 'wb') as f:
+            pickle.dump(self.__dict__, f)
+
+
+    def load_dict(self, path):
+        with open(path, 'rb') as f:
+            self.__dict__ = pickle.load(f)
