@@ -4,19 +4,20 @@ import numpy as np
 import operator
 from gensim.matutils import unitvec
 
-CNTX_SPAN = 3
+CNTX_SPAN = 5
 NUM = "NUMNUM"
 
 class SpacyCat(object):
     """
 
     """
-    def __init__(self, umls, vocab=None, train=False, adv_disambig=False):
+    def __init__(self, umls, vocab=None, train=False, adv_disambig=False, pretty_ann=False):
         self.umls = umls
         self.vocab = vocab
         self.train = train
         self.adv_disambig = adv_disambig
         self.cat_ann = CatAnn(self.umls, self._add_ann)
+        self.pretty_ann = pretty_ann
 
         self.ndone = 0
 
@@ -56,11 +57,6 @@ class SpacyCat(object):
         return words
 
     def _calc_acc(self, cui, doc, tkns):
-        #start = max(0, tkns[0].i - CNTX_SPAN)
-        #stop = min(len(doc), tkns[-1].i + CNTX_SPAN + 1)
-
-        # Start from left until we find enough words or reach 0, or double the cntx_span
-
         cntx = None
         cnt = 0
         words = self._get_doc_words(doc, tkns)
@@ -77,48 +73,16 @@ class SpacyCat(object):
         else:
             return -1
 
-        """
-        for word in self.doc_words[start:stop]:
-            if word.isnumeric() or word == 'numnum':
-                word = NUM
-            elif word not in self.vocab or self.vocab.vec(word) is None:
-                # Skip if word is not in vocab
-                continue
-
-            if cntx is not None:
-                cntx = cntx + self.vocab.vec(word)
-            else:
-                cntx = self.vocab.vec(word)
-
-            cnt += 1
-
-        if cui in self.umls.cui2context_vec and cnt >= (CNTX_SPAN - 1):
-            print(self.doc_words[start:stop])
-            return np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
-        else:
-            return -1
-        """
     def _add_cntx_vec(self, cui, doc, tkns):
-        #start = max(0, tkns[0].i - CNTX_SPAN)
-        #stop = min(len(doc), tkns[-1].i + CNTX_SPAN + 1)
         words = self._get_doc_words(doc, tkns)
         # Add cntx words
         if self.train:
-            #self.umls.add_context_words(cui, self.doc_words[start:stop])
             self.umls.add_context_words(cui, words)
 
         cntx_vecs = []
         for word in words:
             cntx_vecs.append(self.vocab.vec(word))
-        """
-        for word in self.doc_words[start:stop]:
-            if word.isnumeric() or word == 'numnum':
-                word = NUM
-            elif word not in self.vocab or self.vocab.vec(word) is None:
-                # Skip if word is not in vocab or no vector present
-                continue
-            cntx_vecs.append(self.vocab.vec(word))
-        """
+
         cntx = np.average(cntx_vecs, axis=0)
         if cui in self.umls.cui2context_vec and len(cntx_vecs) >= (CNTX_SPAN - 1):
             if np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui])) < 0.01:
@@ -141,7 +105,10 @@ class SpacyCat(object):
 
 
     def _add_ann(self, cui, doc, tkns, acc=-1):
-        lbl = doc.vocab.strings.add(cui)
+        if self.pretty_ann:
+            lbl = doc.vocab.strings.add(self.umls.cui2pretty_name[cui])
+        else:
+            lbl = doc.vocab.strings.add(cui)
         ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
 
         # If accuracy was not calculated, do it now
@@ -218,7 +185,8 @@ class SpacyCat(object):
 
 
         #TODO: Disambiguate
-        if False or self.adv_disambig:
+        if True or self.adv_disambig:
+            print("TO DISAMB")
             print(len(to_disamb))
             print(to_disamb)
             for t in to_disamb:
@@ -226,9 +194,6 @@ class SpacyCat(object):
                 name = t[1]
                 tr = [tr.lower_ for tr in tkns]
                 cuis = list(self.umls.name2cui[name])
-
-                if name == "po":
-                    continue
 
                 accs = []
                 cnts = []
