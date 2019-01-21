@@ -26,10 +26,12 @@ class CatAnn(object):
                     if len(name) < 6:
                         # Case must agree or first can be lower_case
                         if not name_case or self.umls.name_isupper[name] == name_case:
+                            """ Try not using this, disambiguate everything
                             if name_case:
                                 # Means match is upper in both cases, we can tag
                                 self._add_ann(cui, doc, tkns, acc=1)
-                            elif len(name) > 3:
+                            """
+                            if len(name) > 3 and not name_case or (len(name) > 4):
                                 # Means name is not upper, disambiguation is needed
                                 n_words, words_cnt = self._n_words_appearing(name, doc, doc_words)
                                 d = self.umls.cui2words[cui]
@@ -42,6 +44,8 @@ class CatAnn(object):
                                     self._add_ann(cui, doc, tkns, acc=1)
                                 else:
                                     to_disamb.append((list(tkns), name))
+                            else:
+                                to_disamb.append((list(tkns), name))
                         else:
                             # Case dosn't match add to to_disamb
                             to_disamb.append((list(tkns), name))
