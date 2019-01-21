@@ -35,6 +35,7 @@ class PrepareUMLS(object):
             for ind in range(len(df)):
                 if ind % 10000 == 0:
                     print("Done: {}".format(ind))
+                pretty_name = str(df.iloc[ind]['str'])
                 name = clean_umls(str(df.iloc[ind]['str']))
                 # Clean and preprocess the name
                 doc = self.nlp(name)
@@ -78,4 +79,4 @@ class PrepareUMLS(object):
                     tui = str(df.iloc[ind]['tui'])
 
                 self.umls.add_concept(cui, name, onto, tokens, snames, isupper=isupper,
-                        is_pref_name=is_pref_name, tui=tui)
+                        is_pref_name=is_pref_name, tui=tui, pretty_name=pretty_name)
