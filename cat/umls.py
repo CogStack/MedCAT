@@ -22,7 +22,9 @@ class UMLS(object):
         self.cui2names = {}
         self.cui2tui = {}
         self.tui2cuis = {}
+        self.tui2name = {}
         self.cui2pref_name = {}
+        self.cui2pretty_name = {}
         self.sname2name = set()
         self.cui2words = {}
         self.onto2cuis = {}
@@ -34,12 +36,9 @@ class UMLS(object):
         self._coo_matrix = None
         self.coo_dict = {}
 
-        # Think about this for big sets and vocabs
-        #self.stringstore = StringStore()
-
         self.CONTEXT_WORDS_LIMIT = 80
 
-    def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None):
+    def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name=''):
         """ Add a concept to internal UMLS representation
 
         cui:  Identifier
@@ -60,6 +59,10 @@ class UMLS(object):
 
         if is_pref_name:
             self.cui2pref_name[cui] = name
+            self.cui2pretty_name[cui] = pretty_name
+
+        if cui not in self.cui2pretty_name:
+            self.cui2pretty_name[cui] = pretty_name
 
         if tui is not None:
             self.cui2tui[cui] = tui
@@ -126,29 +129,14 @@ class UMLS(object):
                     self.cui2words[cui][token] = 1
 
 
-    def _add_scores(self, cui, v1, v2):
-        vec_sim = np.dot(unitvec(v1), unitvec(v2))
+    def add_tui_names(self, d):
+        """ Fills the tui2name dict
 
-        if cui not in self.cui2scores:
-            self.cui2scores[cui] = {}
-
-        if 'vec' not in self.cui2scores[cui]:
-            self.cui2scores[cui]['vec'] = {}
-            self.cui2scores[cui]['vec']['min'] = 1
-            self.cui2scores[cui]['vec']['max'] = 0
-            self.cui2scores[cui]['vec']['avg'] = 1
-        else:
-            _min = self.cui2scores[cui]['vec']['min']
-            _max = self.cui2scores[cui]['vec']['max']
-            _avg = self.cui2scores[cui]['vec']['avg']
-
-            if vec_sim < _min:
-                self.cui2scores[cui]['vec']['min'] = vec_sim
-            if vec_sim > _max:
-                self.cui2scores[cui]['vec']['max'] = vec_sim
-
-            # Add average
-            self.cui2scores[cui]['vec']['avg'] = (_avg + vec_sim) / 2
+        d:  map from "tui" to "tui_name"
+        """
+        for key in d.keys():
+            if key not in self.tui2name:
+                self.tui2name[key] = d[key]
 
 
     def add_context_vec(self, cui, context_vec, negative=False):
@@ -201,20 +189,6 @@ class UMLS(object):
 
         return sim
 
-        """
-        # Second option, once a test set is there - try booth
-        sim = 0
-        if cui in self.cui2context_vec:
-            sim = max(0, np.dot(unitvec(context_vec), unitvec(self.cui2context_vec[cui])))
-        if sim < 0.2:
-            if cui in self.cui2context_vec:
-                self._add_scores(cui, context_vec, self.cui2context_vec[cui])
-                self.cui2context_vec[cui] = self.cui2context_vec[cui]*0.95 + context_vec*0.05
-            else:
-                self._add_scores(cui, context_vec, context_vec)
-                self.cui2context_vec[cui] = context_vec
-            #print(self.cui2context_vec[cui])
-        """
 
     def add_ncontext_vec(self, cui, ncontext_vec):
         """ Add the vector representation of a context for this CUI
@@ -259,11 +233,16 @@ class UMLS(object):
             for key in keys:
                 del vcb[key]
 
+            # For the rest reset the counter, most frequent word has len(vcb) / 2 
+            #and the rest is in descending order
+            pos = 0
+            for key, value in sorted(vcb.items(), key=lambda kv: kv[1], reverse=True):
+                vcb[key] = max(len(vcb.keys()) - pos, 4) // 2
+                pos += 1
+
 
     def add_coo(self, cui1, cui2):
-        key = [self.cui2index[cui1], self.cui2index[cui2]]
-        key.sort()
-        key = tuple(key)
+        key = (self.cui2index[cui1], self.cui2index[cui2])
 
         if key in self.coo_dict:
             self.coo_dict[key] += 1
@@ -273,9 +252,11 @@ class UMLS(object):
     def add_coos(self, cuis):
         cnt = 0
         for i, cui1 in enumerate(cuis):
-            for cui2 in cuis[i:]:
+            for cui2 in cuis[i+1:]:
                 cnt += 1
                 self.add_coo(cui1, cui2)
+                self.add_coo(cui2, cui1)
+
 
     @property
     def coo_matrix(self):
@@ -286,9 +267,13 @@ class UMLS(object):
         self._coo_matrix._update(self.coo_dict)
         return self._coo_matrix
 
+
     @coo_matrix.setter
     def coo_matrix(self, val):
         raise AttributeError("Can not set attribute coo_matrix")
+
+    def reset_coo_matrix(self):
+        self._coo_matrix = None
 
 
     def merge(self, umls):
@@ -358,12 +343,14 @@ class UMLS(object):
         # Merge the training part
         self.merge_train(umls)
 
+
     def get_train_dict(self):
         return {'cui2context_vec': self.cui2context_vec,
                 'cui2context_words': self.cui2context_words,
                 'cui_count': self.cui_count,
                 'coo_dict': self.coo_dict,
                 'cui2ncontext_vec': self.cui2ncontext_vec}
+
 
     def merge_train_dict(self, t_dict):
         attr_dict = AttrDict()
