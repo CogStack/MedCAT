@@ -1,10 +1,10 @@
 """ Embedding training
 """
-from preprocessing.tokenizers import spacy_split_all
-from preprocessing.cleaners import spacy_tag_punct
-from preprocessing.spelling import CustomSpellChecker, SpacySpellChecker
-from preprocessing.spacy_pipe import SpacyPipe
-from preprocessing.iterators import EmbMimicCSV
+from cat.preprocessing.tokenizers import spacy_split_all
+from cat.preprocessing.cleaners import spacy_tag_punct
+from cat.preprocessing.spelling import CustomSpellChecker, SpacySpellChecker
+from cat.preprocessing.spacy_pipe import SpacyPipe
+from cat.preprocessing.iterators import EmbMimicCSV
 from gensim.models import Word2Vec
 import logging
 

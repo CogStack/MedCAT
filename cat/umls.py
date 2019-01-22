@@ -4,7 +4,7 @@ import pickle
 import numpy as np
 from scipy.sparse import dok_matrix
 from gensim.matutils import unitvec
-from utils.attr_dict import AttrDict
+from cat.utils.attr_dict import AttrDict
 
 class UMLS(object):
     """ Holds all the UMLS data required for annotation

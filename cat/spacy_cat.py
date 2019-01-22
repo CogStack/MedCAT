@@ -4,7 +4,7 @@ import numpy as np
 import operator
 from gensim.matutils import unitvec
 
-CNTX_SPAN = 5
+CNTX_SPAN = 7
 NUM = "NUMNUM"
 
 class SpacyCat(object):
@@ -185,7 +185,7 @@ class SpacyCat(object):
 
 
         #TODO: Disambiguate
-        if True or self.adv_disambig:
+        if False or self.adv_disambig:
             print("TO DISAMB")
             print(len(to_disamb))
             print(to_disamb)

@@ -5,10 +5,10 @@ import pandas
 import spacy
 from spacy.tokenizer import Tokenizer
 from cat.umls import UMLS
-from preprocessing.tokenizers import spacy_split_all
-from preprocessing.cleaners import spacy_tag_punct, clean_umls
+from cat.preprocessing.tokenizers import spacy_split_all
+from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls
 from spacy.tokens import Token
-from preprocessing.spacy_pipe import SpacyPipe
+from cat.preprocessing.spacy_pipe import SpacyPipe
 
 SEPARATOR = ""
 

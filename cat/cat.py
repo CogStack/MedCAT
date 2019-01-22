@@ -3,12 +3,12 @@ import spacy
 from spacy.tokenizer import Tokenizer
 from cat.umls import UMLS
 from cat.spacy_cat import SpacyCat
-from preprocessing.tokenizers import spacy_split_all
-from preprocessing.cleaners import spacy_tag_punct, clean_umls
+from cat.preprocessing.tokenizers import spacy_split_all
+from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls
 from spacy.tokens import Token
-from preprocessing.spelling import CustomSpellChecker, SpacySpellChecker
-from preprocessing.spacy_pipe import SpacyPipe
-from preprocessing.iterators import EmbMimicCSV
+from cat.preprocessing.spelling import CustomSpellChecker, SpacySpellChecker
+from cat.preprocessing.spacy_pipe import SpacyPipe
+from cat.preprocessing.iterators import EmbMimicCSV
 from gensim.models import FastText
 from multiprocessing import Process, Manager, Queue, Pool, Array
 from time import sleep
