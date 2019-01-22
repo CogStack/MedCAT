@@ -17,10 +17,9 @@ umls.load_dict('<path to the umls file>')
 
 cat = CAT(umls=umls, vocab=vocab)
 
+# A simple test
 text = "A 14 mm Hemashield tube graft was selected and sewn end-to-end fashion to the proximal aorta using a semi continuous 3-0 Prolene suture."
-
 doc = cat(text)
-
 # All the extracted entites are now in, each one is a spacy Entity:
 doc._.ents
 ```
