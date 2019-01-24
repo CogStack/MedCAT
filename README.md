@@ -3,6 +3,10 @@
 A simple tool for concept annotation from UMLS or any other source, similar to BioYODIE or SemEHR.
 
 ## How to use
+First export the path to the `cat` repo:
+`export PYTHONPATH=/home/user/cat/`
+
+
 Given that you already have a Vocab and the UMLS class prebuilt you only need to do the following:
 ```
 from cat.cat import CAT
@@ -22,6 +26,13 @@ text = "A 14 mm Hemashield tube graft was selected and sewn end-to-end fashion t
 doc = cat(text)
 # All the extracted entites are now in, each one is a spacy Entity:
 doc._.ents
+# Each entity has an accuracy assigned to it, e.g.
+doc._.ents[0]._.acc
+
+# To have a look at the results you can do:
+from spacy import displacy
+# Note that this will not show all entites, but only the important ones
+displacy.serve(doc, style='ent')
 ```
 
 
