@@ -3,8 +3,10 @@ from cat.cat_ann import CatAnn
 import numpy as np
 import operator
 from gensim.matutils import unitvec
+from pytorch_pretrained_bert import BertTokenizer
 
-CNTX_SPAN = 7
+CNTX_SPAN = 6
+CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
 
 class SpacyCat(object):
@@ -24,8 +26,10 @@ class SpacyCat(object):
         if self.vocab is None:
             self.vocab = self.umls.vocab
 
+        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-    def _get_doc_words(self, doc, tkns):
+
+    def _get_doc_words2(self, doc, tkns):
         words = []
         ind = tkns[0].i
         for i in range(2*CNTX_SPAN):
@@ -56,46 +60,102 @@ class SpacyCat(object):
 
         return words
 
+
+    def _get_doc_words(self, doc, tkns):
+        words = []
+        ind = tkns[0].i
+        for word in doc[max(0, ind-CNTX_SPAN):min(len(doc), ind+CNTX_SPAN+len(tkns))]:
+            words = words + self.tokenizer.tokenize(word.text)
+
+        return words
+
+    def _get_doc_words_short(self, doc, tkns):
+        words = []
+        ind = tkns[0].i
+        for word in doc[max(0, ind-CNTX_SPAN_SHORT):min(len(doc),
+                        ind+CNTX_SPAN_SHORT+len(tkns))]:
+            if word not in tkns:
+                words = words + self.tokenizer.tokenize(word.text)
+
+        return words
+
+
     def _calc_acc(self, cui, doc, tkns):
         cntx = None
         cnt = 0
         words = self._get_doc_words(doc, tkns)
-        for word in words:
-            if cntx is not None:
-                cntx = cntx + self.vocab.vec(word)
-            else:
-                cntx = self.vocab.vec(word)
-            cnt += 1
+        words_short = self._get_doc_words_short(doc, tkns)
 
-        if cui in self.umls.cui2context_vec and cnt >= (CNTX_SPAN - 1):
+        cntx_vecs = []
+        for word in words:
+            if word in self.vocab and self.vocab.vec(word) is not None:
+                cntx_vecs.append(self.vocab.vec(word))
+
+        cntx_vecs_short = []
+        for word in words_short:
+            if word in self.vocab and self.vocab.vec(word) is not None:
+                cntx_vecs_short.append(self.vocab.vec(word))
+
+        cntx_short = np.average(cntx_vecs_short, axis=0)
+        cntx = np.average(cntx_vecs, axis=0)
+        if cui in self.umls.cui2context_vec:
             print(words)
-            return np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
+            sim1 = np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
+            sim2 = np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui]))
+            print("SIMS: {} _ {}".format(sim1, sim2))
+
+            return (sim1 + sim2) / 2
         else:
             return -1
 
     def _add_cntx_vec(self, cui, doc, tkns):
         words = self._get_doc_words(doc, tkns)
+        words_short = self._get_doc_words_short(doc, tkns)
+
         # Add cntx words
+        """
         if self.train:
             self.umls.add_context_words(cui, words)
+        """
 
         cntx_vecs = []
         for word in words:
-            cntx_vecs.append(self.vocab.vec(word))
+            if word in self.vocab and self.vocab.vec(word) is not None:
+                cntx_vecs.append(self.vocab.vec(word))
+
+        cntx_vecs_short = []
+        for word in words_short:
+            if word in self.vocab and self.vocab.vec(word) is not None:
+                cntx_vecs_short.append(self.vocab.vec(word))
+
 
         cntx = np.average(cntx_vecs, axis=0)
+        cntx_short = np.average(cntx_vecs_short, axis=0)
+
         if cui in self.umls.cui2context_vec and len(cntx_vecs) >= (CNTX_SPAN - 1):
             if np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui])) < 0.01:
                 print("SIMILARITY::::::::::::::::::::")
-                #print(self.doc_words[start:stop])
                 print(words)
                 print(cui)
                 print(tkns)
                 print(np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui])))
                 print("UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\n")
 
+        if cui in self.umls.cui2context_vec_short and len(cntx_vecs_short) > 0:
+            if np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui])) < 0.01:
+                print("SIMILARITY SHORT::::::::::::::::::::")
+                print(words_short)
+                print(cui)
+                print(tkns)
+                print(np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui])))
+                print("SHORT UUUUUUUUUUUUUUUUUUUUUUUUUUUUUU\n")
+
         if len(cntx_vecs) >= (CNTX_SPAN - 1):
             sim = self.umls.add_context_vec(cui, cntx)
+            # TODO
+            if len(cntx_vecs_short) > 0:
+                self.umls.add_context_vec_short(cui, cntx_short)
+
             n = len(cntx_vecs)
 
             negs = self.vocab.get_negative_samples(n=2)
@@ -125,8 +185,10 @@ class SpacyCat(object):
             self.umls.cui_count[cui] = 1
 
         if self.train:
-            self._add_cntx_vec(cui, doc, tkns)
-            self._cuis.append(cui)
+            #TODO:
+            if self.umls.cui_count[cui] < 5000:
+                self._add_cntx_vec(cui, doc, tkns)
+                self._cuis.append(cui)
 
 
     def create_main_ann(self, doc):
@@ -185,7 +247,7 @@ class SpacyCat(object):
 
 
         #TODO: Disambiguate
-        if False or self.adv_disambig:
+        if True or self.adv_disambig:
             print("TO DISAMB")
             print(len(to_disamb))
             print(to_disamb)
@@ -210,17 +272,18 @@ class SpacyCat(object):
 
                     accs.append(acc)
                     cnts.append(self.umls.cui_count.get(cui, 0))
+                """
                 if self.train:
                     self.train = False
                     accs = [self._calc_acc(cui, tkns[0].doc, tkns) for cui in cuis]
                     self.train = True
-
-                if any([x > 100 for x in cnts]):
+                """
+                if any([x > 50 for x in cnts]):
                     # Remove accs where cnt < 100
                     for i in range(len(accs)):
-                        if cnts[i] < 100:
+                        if cnts[i] < 50:
                             accs[i] = -1
-                elif all([x < 100 for x in cnts]):
+                elif all([x < 50 for x in cnts]):
                     continue
 
                 ind = np.argmax(accs)
@@ -237,7 +300,7 @@ class SpacyCat(object):
                         self._add_ann(cui, tkns[0].doc, tkns, acc)
 
         # Add coocurances always
-        self.umls.add_coos(self._cuis)
+        #self.umls.add_coos(self._cuis)
 
         self.create_main_ann(doc)
         self.ndone += 1

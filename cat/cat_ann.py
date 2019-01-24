@@ -19,7 +19,7 @@ class CatAnn(object):
         # Don't allow concatenation of tokens if len(name) < 5
         if not(len(name) < 5 and len(tkns) > 1):
             # Name must have > 2, if not disambiguation is a must
-            if len(name) > 2:
+            if len(name) > 3:
                 if len(self.umls.name2cui[name]) == 1:
                     cui = list(self.umls.name2cui[name])[0]
                     # Disambiguation needed if length of string < 6
@@ -31,7 +31,7 @@ class CatAnn(object):
                                 # Means match is upper in both cases, we can tag
                                 self._add_ann(cui, doc, tkns, acc=1)
                             """
-                            if len(name) > 3 and not name_case or (len(name) > 4):
+                            if not name_case or (len(name) > 4):
                                 # Means name is not upper, disambiguation is needed
                                 n_words, words_cnt = self._n_words_appearing(name, doc, doc_words)
                                 d = self.umls.cui2words[cui]

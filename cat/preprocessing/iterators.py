@@ -41,6 +41,37 @@ class EmbMimicCSV(object):
                     yield data
 
 
+class BertEmbMimicCSV(object):
+    """ Iterate over MIMIC data in CSV format
+
+    csv_paths:  paths to csv files containing the mimic data
+    """
+    def __init__(self, csv_paths, tokenizer):
+        from pytorch_pretrained_bert import BertTokenizer
+
+        self.csv_paths = csv_paths
+        self.tokenizer = tokenizer
+        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    def __iter__(self):
+        chunksize = 10 ** 8
+        for csv_path in self.csv_paths:
+            for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
+                for _, row in chunk.iterrows():
+                    doc = self.tokenizer(row['text'])
+                    data = []
+                    for token in doc:
+                        if hasattr(token._, 'norm'):
+                            tkn = token._.norm
+                        else:
+                            tkn = token.lower_
+
+                        for tkn in self.bert_tokenizer.tokenize(tkn):
+                            data.append(tkn)
+                    yield data
+
+
+
 class RawCSV(object):
     """ Iterate over MIMIC data in CSV format
 

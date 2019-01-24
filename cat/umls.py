@@ -29,6 +29,7 @@ class UMLS(object):
         self.cui2words = {}
         self.onto2cuis = {}
         self.cui2context_vec = {}
+        self.cui2context_vec_short = {}
         self.cui2ncontext_vec = {}
         self.cui2context_words = {}
         self.vocab = {}
@@ -139,32 +140,42 @@ class UMLS(object):
                 self.tui2name[key] = d[key]
 
 
-    def add_context_vec(self, cui, context_vec, negative=False):
+    def add_context_vec_short(self, cui, context_vec, negative=False):
         """ Add the vector representation of a context for this CUI
 
         cui:  The concept in question
         context_vec:  Vector represenation of the context
         """
 
-        # TODO: Missing negative context, try noise contrasite estimate, even though
-        #this already works really nicely - without a test set hard to tell is negative needed
-
-        # Word2vec approach
-        """
         sim = 0
-        if cui in self.cui2context_vec:
-            for cv in context_vec:
-                cv = cv / 100
-                sim = np.dot(unitvec(cv), unitvec(self.cui2context_vec[cui]))
+        cv = context_vec
+        if cui in self.cui2context_vec_short:
+            sim = np.dot(unitvec(cv), unitvec(self.cui2context_vec_short[cui]))
 
-                if negative:
-                    b = max(0, sim)
-                    self.cui2context_vec[cui] = self.cui2context_vec[cui] - cv*b
-                else:
-                    b = (1 - max(0, sim))
-                    self.cui2context_vec[cui] = self.cui2context_vec[cui] + cv*b
+            if negative:
+                b = max((0.1 / self.cui_count[cui]), 0.000001)  * max(0, sim)
+                self.cui2context_vec_short[cui] = self.cui2context_vec_short[cui]*(1-b) - cv*b
             else:
-                self.cui2context_vec[cui] = cv / 100
+                if sim < 0.8 and sim > 0.1:
+                    c = 0.00001
+                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                    self.cui2context_vec_short[cui] = self.cui2context_vec_short[cui]*(1-b) + cv*b
+                elif sim < 0.1:
+                    c = 0.0001
+                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                    self.cui2context_vec_short[cui] = self.cui2context_vec_short[cui]*(1-b) + cv*b
+        else:
+            self.cui2context_vec_short[cui] = cv
+
+        return sim
+
+
+
+    def add_context_vec(self, cui, context_vec, negative=False):
+        """ Add the vector representation of a context for this CUI
+
+        cui:  The concept in question
+        context_vec:  Vector represenation of the context
         """
 
         sim = 0
