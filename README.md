@@ -2,8 +2,11 @@
 
 A simple tool for concept annotation from UMLS or any other source, similar to BioYODIE or SemEHR.
 
+### This is still experimental, it may not work all the time and code is not nicely organized and difficult to read.
+
 ## How to use
 First export the path to the `cat` repo:
+
 `export PYTHONPATH=/home/user/cat/`
 
 
