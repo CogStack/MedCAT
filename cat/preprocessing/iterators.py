@@ -61,10 +61,7 @@ class BertEmbMimicCSV(object):
                     doc = self.tokenizer(row['text'])
                     data = []
                     for token in doc:
-                        if hasattr(token._, 'norm'):
-                            tkn = token._.norm
-                        else:
-                            tkn = token.lower_
+                        tkn = token._.lower
 
                         for tkn in self.bert_tokenizer.tokenize(tkn):
                             data.append(tkn)

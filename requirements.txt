@@ -3,3 +3,4 @@ spacy==2.0.16
 gensim==3.6.0
 scipy==1.1.0
 pytorch-pretrained-bert==0.3.0
+Flask==1.0.2

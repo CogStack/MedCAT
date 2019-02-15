@@ -77,9 +77,10 @@ BR_U4 = re.compile("\[[^\]]{0,3}\]")
 CB = re.compile("(^|\s)\([^\)]*\)($|\s)")
 BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
+SKIP_CHARS = re.compile("[\[\]\*]+")
 
 
-def clean_umls(text):
+def clean_umls(text, stopwords=None):
     # Remove [] if < 4 letters inside
     text = BR_U4.sub(" ", text)
 
@@ -96,6 +97,14 @@ def clean_umls(text):
     # Remove multi spaces
     text = re.sub("[ ]+", " ", text).strip()
 
+    # Remove stopwords if requested and <= 5 words in total in the name
+    if stopwords:
+        new_text = ""
+        for word in text.split(" "):
+            if word not in stopwords:
+                new_text += word + " "
+        text = new_text.strip()
+
     return text
 
 def spacy_tag_punct(doc):
@@ -104,6 +113,13 @@ def spacy_tag_punct(doc):
             # There can't be punct in a token
             #if it also has text
             token._.is_punct = True
+
+        # Skip if specific strings
         if TO_SKIP.match(token.lower_):
             token._.to_skip = True
+
+        # Skip if stopword
+        if token.is_stop:
+            token._.to_skip = True
+
     return doc

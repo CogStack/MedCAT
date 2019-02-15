@@ -6,13 +6,14 @@ from cat.spacy_cat import SpacyCat
 from cat.preprocessing.tokenizers import spacy_split_all
 from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls
 from spacy.tokens import Token
-from cat.preprocessing.spelling import CustomSpellChecker, SpacySpellChecker
-from cat.preprocessing.spacy_pipe import SpacyPipe
+from cat.utils.spelling import CustomSpellChecker, SpacySpellChecker
+from cat.utils.spacy_pipe import SpacyPipe
 from cat.preprocessing.iterators import EmbMimicCSV
 from gensim.models import FastText
 from multiprocessing import Process, Manager, Queue, Pool, Array
 from time import sleep
 import copy
+import json
 
 class CAT(object):
     """ Annotate a dataset
@@ -34,6 +35,28 @@ class CAT(object):
 
     def __call__(self, text):
         return self.nlp(text)
+
+
+    def get_json(self, text):
+        doc = self(text)
+        out = []
+
+        out_ent = {}
+        for ent in doc._.ents:
+            out_ent['start'] = ent.start_char
+            out_ent['end'] = ent.end_char
+            out_ent['label'] = self.umls.cui2pretty_name[ent.label_]
+            out_ent['source_value'] = ent.text
+            out_ent['acc'] = ent._.acc
+            out_ent['cui'] = ent.label_
+            out_ent['tui'] = self.umls.cui2tui[ent.label_]
+            out_ent['type'] = self.umls.tui2name[out_ent['tui']]
+
+            out.append(dict(out_ent))
+
+        out = {'entities': out, 'text': text}
+
+        return json.dumps(out)
 
 
     def _mp_cons(self, in_q, out_dict, pid=0):

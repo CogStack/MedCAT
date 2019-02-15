@@ -8,7 +8,7 @@ from cat.umls import UMLS
 from cat.preprocessing.tokenizers import spacy_split_all
 from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls
 from spacy.tokens import Token
-from cat.preprocessing.spacy_pipe import SpacyPipe
+from cat.utils.spacy_pipe import SpacyPipe
 
 SEPARATOR = ""
 
@@ -21,8 +21,7 @@ class PrepareUMLS(object):
         self.nlp = SpacyPipe(spacy_split_all)
         self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
 
-        stopwords = spacy.lang.en.stop_words.STOP_WORDS
-        self.umls = UMLS(stopwords=stopwords)
+        self.umls = UMLS()
 
     def prepare_csvs(self, csv_paths):
         """ Prepare one or multiple csvs
@@ -47,6 +46,7 @@ class PrepareUMLS(object):
                 name = SEPARATOR.join(tokens)
                 _name = "".join(tokens)
                 length_one = [True if len(x) < 2 else False for x in tokens]
+
                 # Skip concepts are digits or each token is a single letter
                 if _name.isdigit() or all(length_one):
                     continue
@@ -80,3 +80,5 @@ class PrepareUMLS(object):
 
                 self.umls.add_concept(cui, name, onto, tokens, snames, isupper=isupper,
                         is_pref_name=is_pref_name, tui=tui, pretty_name=pretty_name)
+
+        return self.umls

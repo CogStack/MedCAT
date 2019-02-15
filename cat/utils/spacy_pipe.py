@@ -1,11 +1,11 @@
 from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls
 from spacy.tokens import Token, Doc, Span
-from cat.preprocessing.spelling import SpacySpellChecker
+from cat.utils.spelling import SpacySpellChecker
 import spacy
 
 class SpacyPipe(object):
     def __init__(self, tokenizer, lng='en'):
-        self.nlp = spacy.load(lng, disable=['ner', 'tagger', 'parser'])
+        self.nlp = spacy.load(lng, disable=['ner', 'parser'])
         self.nlp.tokenizer = tokenizer(self.nlp)
 
 
@@ -25,6 +25,7 @@ class SpacyPipe(object):
         # Add custom fields needed for this usecase
         Token.set_extension('verified', default=False, force=True)
         Token.set_extension('norm', default=None, force=True)
+        Token.set_extension('lower', default=None, force=True)
 
 
     def add_cat(self, spacy_cat):

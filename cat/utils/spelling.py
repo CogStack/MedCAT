@@ -2,6 +2,7 @@ import hunspell
 import re
 from collections import Counter
 from spacy.tokens import Span
+import spacy
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
 
@@ -89,22 +90,24 @@ class CustomSpellChecker(object):
 class SpacySpellChecker(object):
     def __init__(self, spell_checker):
         self.spell_checker = spell_checker
-
+        self.nlp = spacy.load('en', disable=['ner', 'parser'])
 
     def __call__(self, doc):
         for token in doc:
+            if token.lemma_ == '-PRON-' or len(token.lower_) < 3:
+                token._.norm = token.lower_
+            else:
+                token._.norm = token.lemma_.lower()
+            token._.lower = token.lower_
+
+            # Fix the token if necessary
             if not token._.is_punct and not CONTAINS_NUMBER.search(token.lower_):
                 # Check is it in the vocab
                 if len(token.lower_) > 4 and token.lower_ not in self.spell_checker:
                     fix = self.spell_checker.fix(token.lower_)
                     if fix is not None:
                         token._.verified = True
-                        token._.norm = fix
-                    else:
-                        token._.norm = token.lower_
-                else:
-                    token._.norm = token.lower_
-            else:
-                token._.norm = token.lower_
-
+                        tmp = self.nlp(fix)[0]
+                        token._.norm = tmp.lemma_.lower()
+                        token._.lower = tmp.lower_
         return doc

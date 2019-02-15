@@ -5,16 +5,19 @@ import numpy as np
 from scipy.sparse import dok_matrix
 from gensim.matutils import unitvec
 from cat.utils.attr_dict import AttrDict
+from cat.utils.loggers import basic_logger
+
+log = basic_logger("umls")
+MAX_COO_DICT_SIZE = 10000000
+MIN_COO_COUNT = 10
 
 class UMLS(object):
     """ Holds all the UMLS data required for annotation
 
-    stopwords:  Words to skip for cui vocab
     """
-    def __init__(self, stopwords=[]):
+    def __init__(self):
         self.index2cui = []
         self.cui2index = {}
-        self.stopwords = stopwords
         self.name2cui = {}
         self.name2cnt = {}
         self.name_isupper = {}
@@ -123,7 +126,7 @@ class UMLS(object):
         if cui not in self.cui2words:
             self.cui2words[cui] = {}
         for token in tokens:
-            if token not in self.stopwords and not token.isdigit() and len(token) > 1:
+            if not token.isdigit() and len(token) > 1:
                 if token in self.cui2words[cui]:
                     self.cui2words[cui][token] += 1
                 else:
@@ -131,7 +134,7 @@ class UMLS(object):
 
 
     def add_tui_names(self, d):
-        """ Fills the tui2name dict
+        """ Fils the tui2name dict
 
         d:  map from "tui" to "tui_name"
         """
@@ -140,63 +143,37 @@ class UMLS(object):
                 self.tui2name[key] = d[key]
 
 
-    def add_context_vec_short(self, cui, context_vec, negative=False):
+    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG'):
         """ Add the vector representation of a context for this CUI
 
         cui:  The concept in question
         context_vec:  Vector represenation of the context
         """
 
+        if cntx_type == 'LONG':
+            cui2context_vec = self.cui2context_vec
+        elif cntx_type == 'SHORT':
+            cui2context_vec = self.cui2context_vec_short
+
         sim = 0
         cv = context_vec
-        if cui in self.cui2context_vec_short:
-            sim = np.dot(unitvec(cv), unitvec(self.cui2context_vec_short[cui]))
+        if cui in cui2context_vec:
+            sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
 
             if negative:
                 b = max((0.1 / self.cui_count[cui]), 0.000001)  * max(0, sim)
-                self.cui2context_vec_short[cui] = self.cui2context_vec_short[cui]*(1-b) - cv*b
+                cui2context_vec[cui] = cui2context_vec[cui]*(1-b) - cv*b
             else:
                 if sim < 0.8 and sim > 0.1:
                     c = 0.00001
                     b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                    self.cui2context_vec_short[cui] = self.cui2context_vec_short[cui]*(1-b) + cv*b
+                    cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
                 elif sim < 0.1:
                     c = 0.0001
                     b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                    self.cui2context_vec_short[cui] = self.cui2context_vec_short[cui]*(1-b) + cv*b
+                    cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
         else:
-            self.cui2context_vec_short[cui] = cv
-
-        return sim
-
-
-
-    def add_context_vec(self, cui, context_vec, negative=False):
-        """ Add the vector representation of a context for this CUI
-
-        cui:  The concept in question
-        context_vec:  Vector represenation of the context
-        """
-
-        sim = 0
-        cv = context_vec
-        if cui in self.cui2context_vec:
-            sim = np.dot(unitvec(cv), unitvec(self.cui2context_vec[cui]))
-
-            if negative:
-                b = max((0.1 / self.cui_count[cui]), 0.000001)  * max(0, sim)
-                self.cui2context_vec[cui] = self.cui2context_vec[cui]*(1-b) - cv*b
-            else:
-                if sim < 0.8 and sim > 0.1:
-                    c = 0.00001
-                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                    self.cui2context_vec[cui] = self.cui2context_vec[cui]*(1-b) + cv*b
-                elif sim < 0.1:
-                    c = 0.0001
-                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                    self.cui2context_vec[cui] = self.cui2context_vec[cui]*(1-b) + cv*b
-        else:
-            self.cui2context_vec[cui] = cv
+            cui2context_vec[cui] = cv
 
         return sim
 
@@ -268,6 +245,24 @@ class UMLS(object):
                 self.add_coo(cui1, cui2)
                 self.add_coo(cui2, cui1)
 
+        if len(self.coo_dict) > MAX_COO_DICT_SIZE:
+            log.info("Starting the clean of COO_DICT, parameters are\n \
+                      MAX_COO_DICT_SIZE: {}\n \
+                      MIN_COO_COUNT: {}".format(MAX_COO_DICT_SIZE, MIN_COO_COUNT))
+
+            # Remove entries from coo_dict if too many
+            old_size = len(self.coo_dict)
+            to_del = []
+            for key in self.coo_dict.keys():
+                if self.coo_dict[key] < MIN_COO_COUNT:
+                    to_del.append(key)
+
+            for key in to_del:
+                del self.coo_dict[key]
+
+            new_size = len(self.coo_dict)
+            log.info("COO_DICT cleaned, size was: {} and now is {}. In total \
+                      {} items were removed".format(old_size, new_size, old_size-new_size))
 
     @property
     def coo_matrix(self):
@@ -300,9 +295,6 @@ class UMLS(object):
         self.cui2index = {}
         for ind, word in enumerate(self.index2cui):
             self.cui2index[word] = ind
-
-        # Just extend
-        self.stopwords.extend(umls.stopwords)
 
         # name2cui - new names should be added and old extended
         for key in umls.name2cui.keys():
