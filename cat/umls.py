@@ -21,6 +21,7 @@ class UMLS(object):
         self.name2cui = {}
         self.name2cnt = {}
         self.name_isupper = {}
+        self.cui2desc = {}
         self.cui_count = {}
         self.cui2names = {}
         self.cui2tui = {}
@@ -42,7 +43,8 @@ class UMLS(object):
 
         self.CONTEXT_WORDS_LIMIT = 80
 
-    def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name=''):
+    def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name='',
+                    desc=None):
         """ Add a concept to internal UMLS representation
 
         cui:  Identifier
@@ -83,6 +85,11 @@ class UMLS(object):
             self.name2cnt[name][cui] += 1
         else:
             self.name2cnt[name][cui] = 1
+
+        # Add description
+        if desc is not None:
+            if cui not in self.cui2desc:
+                self.cui2desc[cui] = desc
 
         # Add cui to a list of cuis
         if cui not in self.index2cui:
@@ -185,9 +192,9 @@ class UMLS(object):
         ncontext_vec:  Vector represenation of the context
         """
         if cui in self.cui2ncontext_vec:
-            self.cui2context_vec[cui] = (self.cui2context_vec[cui] + context_vec) / 2
+            self.cui2ncontext_vec[cui] = (self.cui2ncontext_vec[cui] + ncontext_vec) / 2
         else:
-            self.cui2context_vec[cui] = context_vec
+            self.cui2ncontext_vec[cui] = ncontext_vec
 
 
     def add_context_words(self, cui, context_words):

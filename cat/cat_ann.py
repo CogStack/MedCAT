@@ -2,14 +2,15 @@ import numpy as np
 import operator
 
 class CatAnn(object):
-    def __init__(self, umls, _add_ann):
+    def __init__(self, umls, spacy_cat):
         self.umls = umls
-        self._add_ann = _add_ann
+        self._cat = spacy_cat
 
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
         one_tkn_upper = False
         name_case = True
+
         if len(tkns) == 1 and tkns[0].is_upper:
             one_tkn_upper = True
         for tkn in tkns:
@@ -22,15 +23,19 @@ class CatAnn(object):
             if len(name) > 3:
                 if len(self.umls.name2cui[name]) == 1:
                     cui = list(self.umls.name2cui[name])[0]
-                    # Disambiguation needed if length of string < 6
-                    if len(name) < 6:
+                    cntx_acc = self._cat._calc_acc(cui, doc, tkns)
+                    if cntx_acc < -0.05 and cntx_acc != -1:
+                        #print(cntx_acc)
+                        #print(name)
+                        #print(cui)
+                        #print(doc[max(0, tkns[0].i - 14):min(len(doc), tkns[0].i + 14)])
+                        #print("-"*100)
+                        # If acc too low just skip
+                        to_disamb.append((list(tkns), name))
+                    elif len(name) < 6:
+                        # Disambiguation needed if length of string < 6
                         # Case must agree or first can be lower_case
                         if not name_case or self.umls.name_isupper[name] == name_case:
-                            """ Try not using this, disambiguate everything
-                            if name_case:
-                                # Means match is upper in both cases, we can tag
-                                self._add_ann(cui, doc, tkns, acc=1)
-                            """
                             if not name_case or (len(name) > 4):
                                 # Means name is not upper, disambiguation is needed
                                 n_words, words_cnt = self._n_words_appearing(name, doc, doc_words)
@@ -41,10 +46,11 @@ class CatAnn(object):
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
                                 if (n_words > len(tkns) and words_cnt > 5) or (perc > 0.2 or cnt > 5):
-                                    self._add_ann(cui, doc, tkns, acc=1)
+                                    self._cat._add_ann(cui, doc, tkns, acc=cntx_acc, name=name)
                                 else:
                                     to_disamb.append((list(tkns), name))
                             else:
+                                # Was lowercase and shorther than 5 characters
                                 to_disamb.append((list(tkns), name))
                         else:
                             # Case dosn't match add to to_disamb
@@ -52,20 +58,17 @@ class CatAnn(object):
                     else:
                         # Longer than 5 letters, just add concept
                         cui = list(self.umls.name2cui[name])[0]
-                        self._add_ann(cui, doc, tkns, acc=1)
+                        self._cat._add_ann(cui, doc, tkns, acc=cntx_acc, name=name)
                 else:
                     # Means we have more than one cui for this name
-                    scores = self._scores_words(name, doc, doc_words)
-                    #print("-"*150)
-                    #print(scores)
-                    #print(tkns)
+                    scores = self._scores_words(name, doc, doc_words, tkns)
                     acc = self.softmax(scores.values())
                     if len(name) < 6:
                         if self.umls.name_isupper[name] == name_case or (not name_case and len(name) > 3):
                             # Means match is upper in both cases, tag if acc > 0.6
-                            if acc > 0.6:
+                            if acc > 0.5:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
-                                self._add_ann(cui, doc, tkns, acc=acc)
+                                self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
                             else:
                                 to_disamb.append((list(tkns), name))
                         else:
@@ -74,14 +77,11 @@ class CatAnn(object):
                         # We can be almost sure that everything is fine, threshold of 0.2
                         if acc > 0.3:
                             cui = max(scores.items(), key=operator.itemgetter(1))[0]
-                            self._add_ann(cui, doc, tkns, acc=acc)
+                            self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
                         else:
                             to_disamb.append((list(tkns), name))
-                    #print("*"*150)
             else:
-                if name not in self.umls.stopwords: # and one_tkn_upper:
-                    # Only if abreviation and not in stopwords
-                    to_disamb.append((list(tkns), name))
+                to_disamb.append((list(tkns), name))
 
 
     def softmax(self, x):
@@ -94,7 +94,7 @@ class CatAnn(object):
         return max(e_x / e_x.sum())
 
 
-    def _scores_words(self, name, doc, doc_words):
+    def _scores_words(self, name, doc, doc_words, tkns):
         scores = {}
 
         name_cnt = self.umls.name2cnt[name]
@@ -118,7 +118,9 @@ class CatAnn(object):
                 if cui in self.umls.cui2pref_name:
                     if name == self.umls.cui2pref_name[cui]:
                         score = score * 2
-            scores[cui] = score
+
+            cntx_score = self._cat._calc_acc(cui, doc, tkns)
+            scores[cui] = (score + cntx_score) / 2
         return scores
 
 

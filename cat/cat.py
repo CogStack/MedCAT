@@ -49,8 +49,8 @@ class CAT(object):
             out_ent['source_value'] = ent.text
             out_ent['acc'] = ent._.acc
             out_ent['cui'] = ent.label_
-            out_ent['tui'] = self.umls.cui2tui[ent.label_]
-            out_ent['type'] = self.umls.tui2name[out_ent['tui']]
+            out_ent['tui'] = self.umls.cui2tui.get(ent.label_, 0)
+            out_ent['type'] = self.umls.tui2name.get(out_ent['tui'], '')
 
             out.append(dict(out_ent))
 

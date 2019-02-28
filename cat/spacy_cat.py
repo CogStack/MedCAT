@@ -10,7 +10,7 @@ DEBUG = True
 CNTX_SPAN = 6
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
-MIN_CUI_COUNT = 50
+MIN_CUI_COUNT = 5
 MIN_ACC = 0.2
 MAX_CUI_TRAIN_COUNT = 5000
 
@@ -29,7 +29,7 @@ class SpacyCat(object):
         self.umls = umls
         self.vocab = vocab
         self.train = train
-        self.cat_ann = CatAnn(self.umls, self._add_ann)
+        self.cat_ann = CatAnn(self.umls, self)
 
         if self.vocab is None:
             self.vocab = self.umls.vocab
@@ -37,7 +37,7 @@ class SpacyCat(object):
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
 
-    def _get_doc_words(self, doc, tkns, span, skip_current=False):
+    def _get_doc_words(self, doc, tkns, span, skip_current=False, skip_words=False):
         """ Get words around a certain token
 
         doc:  spacy document
@@ -49,7 +49,11 @@ class SpacyCat(object):
         ind = tkns[0].i
         for word in doc[max(0, ind-span):min(len(doc), ind+span+len(tkns))]:
             if not skip_current:
-                words = words + self.tokenizer.tokenize(word._.lower)
+                if skip_words:
+                    if not word._.to_skip:
+                        words = words + self.tokenizer.tokenize(word._.lower)
+                else:
+                    words = words + self.tokenizer.tokenize(word._.lower)
             elif word not in tkns:
                 words = words + self.tokenizer.tokenize(word._.lower)
 
@@ -65,7 +69,7 @@ class SpacyCat(object):
         """
         cntx = None
         cnt = 0
-        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN)
+        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True)
         words_short = self._get_doc_words(doc, tkns, span=CNTX_SPAN_SHORT, skip_current=True)
 
         cntx_vecs = []
@@ -78,7 +82,10 @@ class SpacyCat(object):
             if word in self.vocab and self.vocab.vec(word) is not None:
                 cntx_vecs_short.append(self.vocab.vec(word))
 
-        cntx_short = np.average(cntx_vecs_short, axis=0)
+        if len(cntx_vecs_short) > 0:
+            cntx_short = np.average(cntx_vecs_short, axis=0)
+        else:
+            cntx_short = []
         cntx = np.average(cntx_vecs, axis=0)
 
         #### DEBUG ONLY ####
@@ -102,13 +109,37 @@ class SpacyCat(object):
                 log.debug(":::::::::::::::::::::::::::::::::::\n")
         #### END OF DEBUG ####
 
-        if cui in self.umls.cui2context_vec and cui in self.umls.cui2context_vec_short:
-            sim1 = np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
-            sim2 = np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui]))
+        if cui in self.umls.cui2context_vec and len(cntx_vecs) > 0:
+            sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
+            if cui in self.umls.cui2context_vec_short and len(cntx_short) > 0:
+                sim2 = np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui]))
+                sim = (sim + sim2) / 2
 
-            return (sim1 + sim2) / 2
+            if cui in self.umls.cui2ncontext_vec:
+                neg_sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2ncontext_vec[cui]))
+                log.debug("+++++++++++++++++++++++++: " + str(neg_sim))
+                if neg_sim >= sim:
+                    sim = -1
+                else:
+                    sim = sim - neg_sim
+
+            return sim
         else:
             return -1
+
+
+    def add_ncntx_vec(self, cui, words):
+        cntx_vecs = []
+        for word in words:
+            tmp = self.tokenizer.tokenize(word.lower())
+            for w in tmp:
+                if w in self.vocab and self.vocab.vec(w) is not None:
+                    cntx_vecs.append(self.vocab.vec(w))
+
+        cntx = np.average(cntx_vecs, axis=0)
+
+        self.umls.add_ncontext_vec(cui, cntx)
+
 
     def _add_cntx_vec(self, cui, doc, tkns):
         """ Add context vectors for this CUI
@@ -170,7 +201,7 @@ class SpacyCat(object):
                     log.debug(":::::::::::::::::::::::::::::::::::\n")
 
 
-    def _add_ann(self, cui, doc, tkns, acc=-1):
+    def _add_ann(self, cui, doc, tkns, acc=-1, name=None):
         """ Add annotation to a document
 
         cui:  concept id
@@ -221,16 +252,16 @@ class SpacyCat(object):
         """
         self._cuis = []
         doc._.ents = []
+        self.to_disamb_train = []
         # Get the words in this document that should not be skipped
         doc_words = [t._.norm for t in doc if not t._.to_skip]
 
         _doc = []
         for token in doc:
             if not token._.is_punct:
-                if token._.norm in self.umls.vocab or token._.norm in self.umls.sname2name:
-                    _doc.append(token)
+                _doc.append(token)
 
-        to_disamb = []
+        self.to_disamb = []
         for i in range(len(_doc)):
             # Go through all the tokens in this document and annotate them
             if _doc[i]._.to_skip:
@@ -240,7 +271,8 @@ class SpacyCat(object):
 
             if name in self.umls.name2cui:
                 # Add annotation
-                self.cat_ann.add_ann(name, tkns, doc, to_disamb, doc_words)
+                self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                #self.to_disamb.append((list(tkns), name))
 
             for j in range(i+1, len(_doc)):
                 if _doc[j]._.to_skip:
@@ -254,35 +286,15 @@ class SpacyCat(object):
                     break
                 else:
                     if name in self.umls.name2cui:
-                        self.cat_ann.add_ann(name, tkns, doc, to_disamb, doc_words)
+                        self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                        #self.to_disamb.append((list(tkns), name))
+
 
         if not self.train:
-            # Do vector disambiguation only if not training
-            log.debug("There are {} concepts to be disambiguated.".format(len(to_disamb)))
-            log.debug("The concepts are: " + str(to_disamb))
+            self.disambiguate(self.to_disamb)
 
-            for concept in to_disamb:
-                # Loop over all concepts to be disambiguated
-                tkns = concept[0]
-                name = concept[1]
-                cuis = list(self.umls.name2cui[name])
-
-                accs = []
-                for cui in cuis:
-                    # Each concept can have one or more cuis assigned
-                    if self.umls.cui_count.get(cui, 0) > MIN_CUI_COUNT:
-                        # If this cui appeared enough times
-                        accs.append(self._calc_acc(cui, tkns[0].doc, tkns))
-                    else:
-                        # If not just set the accuracy to -1
-                        accs.append(-1)
-
-                ind = np.argmax(accs)
-                cui = cuis[ind]
-                acc = accs[ind]
-                # Add only if acc > MIN_ACC 
-                if acc > MIN_ACC:
-                    self._add_ann(cui, tkns[0].doc, tkns, acc)
+        # Always disambiguate the train parts
+        self.disambiguate(self.to_disamb_train)
 
         # Add coocurances always
         self.umls.add_coos(self._cuis)
@@ -291,3 +303,40 @@ class SpacyCat(object):
             self._create_main_ann(doc)
 
         return doc
+
+
+    def disambiguate(self, to_disamb):
+        # Do vector disambiguation only if not training
+        log.debug("There are {} concepts to be disambiguated.".format(len(to_disamb)))
+        log.debug("The concepts are: " + str(to_disamb))
+
+        for concept in to_disamb:
+            # Loop over all concepts to be disambiguated
+            tkns = concept[0]
+            name = concept[1]
+            cuis = list(self.umls.name2cui[name])
+
+            accs = []
+            for cui in cuis:
+                # Each concept can have one or more cuis assigned
+                if self.umls.cui_count.get(cui, 0) > MIN_CUI_COUNT:
+                    # If this cui appeared enough times
+                    accs.append(self._calc_acc(cui, tkns[0].doc, tkns))
+                else:
+                    # If not just set the accuracy to -1
+                    accs.append(-1)
+
+            ind = np.argmax(accs)
+            cui = cuis[ind]
+            acc = accs[ind]
+            # Add only if acc > MIN_ACC 
+            if acc > MIN_ACC:
+                self._add_ann(cui, tkns[0].doc, tkns, acc)
+
+            # Add all where acc above 0.1
+            for i, cui in enumerate(cuis):
+                if i == ind:
+                    continue
+
+                if accs[i] > 0.3:
+                    self._add_ann(cui, tkns[0].doc, tkns, accs[i])

@@ -107,12 +107,24 @@ def clean_umls(text, stopwords=None):
 
     return text
 
+def clean_def(text):
+    # Remove things inside of () or [] 
+    text = re.sub("\([^\)]*\)", " ", text)
+    text = re.sub("\[[^\]]*\]", " ", text)
+
+    # Remove multi spaces
+    text = re.sub("[ ]+", " ", text).strip()
+
+    return text
+
+
 def spacy_tag_punct(doc):
     for token in doc:
         if IS_PUNCT.match(token.text):
             # There can't be punct in a token
             #if it also has text
             token._.is_punct = True
+            token._.to_skip = True
 
         # Skip if specific strings
         if TO_SKIP.match(token.lower_):
