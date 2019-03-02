@@ -8,6 +8,7 @@ class CatAnn(object):
 
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
+        print(name)
         one_tkn_upper = False
         name_case = True
 
@@ -66,7 +67,7 @@ class CatAnn(object):
                     if len(name) < 6:
                         if self.umls.name_isupper[name] == name_case or (not name_case and len(name) > 3):
                             # Means match is upper in both cases, tag if acc > 0.6
-                            if acc > 0.5:
+                            if acc > 0.3:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
                                 self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
                             else:
@@ -75,7 +76,7 @@ class CatAnn(object):
                             to_disamb.append((list(tkns), name))
                     else:
                         # We can be almost sure that everything is fine, threshold of 0.2
-                        if acc > 0.3:
+                        if acc > 0.1:
                             cui = max(scores.items(), key=operator.itemgetter(1))[0]
                             self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
                         else:

@@ -9,7 +9,7 @@ from cat.utils.loggers import basic_logger
 
 log = basic_logger("umls")
 MAX_COO_DICT_SIZE = 10000000
-MIN_COO_COUNT = 10
+MIN_COO_COUNT = 100
 
 class UMLS(object):
     """ Holds all the UMLS data required for annotation

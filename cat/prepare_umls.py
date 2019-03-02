@@ -20,7 +20,7 @@ class PrepareUMLS(object):
     """
     def __init__(self, vocab=None):
         # Build the required spacy pipeline
-        self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser', 'tagger'])
+        self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser'])
         self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
 
         self.umls = UMLS()

@@ -10,8 +10,8 @@ DEBUG = True
 CNTX_SPAN = 6
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
-MIN_CUI_COUNT = 5
-MIN_ACC = 0.2
+MIN_CUI_COUNT = 4
+MIN_ACC = 0.1
 MAX_CUI_TRAIN_COUNT = 5000
 
 log = basic_logger("spacycat")
@@ -90,7 +90,7 @@ class SpacyCat(object):
 
         #### DEBUG ONLY ####
         if DEBUG:
-            if cui in self.umls.cui2context_vec and len(cntx_vecs) >= (CNTX_SPAN - 1):
+            if cui in self.umls.cui2context_vec and len(cntx_vecs) > 0:
                 log.debug("SIMILARITY LONG::::::::::::::::::::")
                 log.debug(words)
                 log.debug(cui)
@@ -113,7 +113,8 @@ class SpacyCat(object):
             sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
             if cui in self.umls.cui2context_vec_short and len(cntx_short) > 0:
                 sim2 = np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui]))
-                sim = (sim + sim2) / 2
+                if sim2 > sim:
+                    sim = (sim + sim2) / 2
 
             if cui in self.umls.cui2ncontext_vec:
                 neg_sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2ncontext_vec[cui]))
@@ -307,6 +308,7 @@ class SpacyCat(object):
 
     def disambiguate(self, to_disamb):
         # Do vector disambiguation only if not training
+        log.debug("?"*150)
         log.debug("There are {} concepts to be disambiguated.".format(len(to_disamb)))
         log.debug("The concepts are: " + str(to_disamb))
 
@@ -338,5 +340,5 @@ class SpacyCat(object):
                 if i == ind:
                     continue
 
-                if accs[i] > 0.3:
+                if accs[i] > 0.8:
                     self._add_ann(cui, tkns[0].doc, tkns, accs[i])
