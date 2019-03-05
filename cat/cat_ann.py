@@ -1,3 +1,7 @@
+""" I would just ignore this whole class, it's just a lot of rules that work nicely for UMLS
+once the software is trained the main thing are the context vectors.
+"""
+
 import numpy as np
 import operator
 
@@ -8,7 +12,6 @@ class CatAnn(object):
 
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
-        print(name)
         one_tkn_upper = False
         name_case = True
 
@@ -26,12 +29,7 @@ class CatAnn(object):
                     cui = list(self.umls.name2cui[name])[0]
                     cntx_acc = self._cat._calc_acc(cui, doc, tkns)
                     if cntx_acc < -0.05 and cntx_acc != -1:
-                        #print(cntx_acc)
-                        #print(name)
-                        #print(cui)
-                        #print(doc[max(0, tkns[0].i - 14):min(len(doc), tkns[0].i + 14)])
-                        #print("-"*100)
-                        # If acc too low just skip
+                        # Afer some training this is the main thing
                         to_disamb.append((list(tkns), name))
                     elif len(name) < 6:
                         # Disambiguation needed if length of string < 6
