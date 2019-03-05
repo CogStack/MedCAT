@@ -19,8 +19,8 @@ from cat.utils.vocab import Vocab
 vocab = Vocab()
 umls = UMLS()
 
-vocab.load_dict('<path to the vocab file>') # Use the existing vocab in models
-umls.load_dict('<path to the umls file>') # Pretrained models available in models
+vocab.load_dict('<path to the vocab file>')
+umls.load_dict('<path to the umls file>') 
 
 cat = CAT(umls=umls, vocab=vocab)
 # Disable the training

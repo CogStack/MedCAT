@@ -5,6 +5,7 @@
 /data/
 /output/
 /graphics/
+/models/
 tmp/
 *_tmp/
 
