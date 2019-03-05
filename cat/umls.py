@@ -13,35 +13,31 @@ MIN_COO_COUNT = 100
 
 class UMLS(object):
     """ Holds all the UMLS data required for annotation
-
     """
     def __init__(self):
-        self.index2cui = []
-        self.cui2index = {}
-        self.name2cui = {}
-        self.name2cnt = {}
-        self.name_isupper = {}
-        self.cui2desc = {}
-        self.cui_count = {}
-        self.cui2names = {}
-        self.cui2tui = {}
-        self.tui2cuis = {}
-        self.tui2name = {}
-        self.cui2pref_name = {}
-        self.cui2pretty_name = {}
-        self.sname2name = set()
-        self.cui2words = {}
-        self.onto2cuis = {}
-        self.cui2context_vec = {}
-        self.cui2context_vec_short = {}
-        self.cui2ncontext_vec = {}
-        self.cui2context_words = {}
-        self.vocab = {}
-        self.cui2scores = {}
-        self._coo_matrix = None
-        self.coo_dict = {}
+        self.index2cui = [] # A list containing all CUIs 
+        self.cui2index = {} # Map from cui to index in the index2cui list
+        self.name2cui = {} # Converts a normalized concept name to a cui
+        self.name2cnt = {} # Converts a normalized concept name to a count
+        self.name_isupper = {} # Checks was this name all upper case in UMLS
+        self.cui2desc = {} # Map between a CUI and its umls description
+        self.cui_count = {} # How many times this this CUI appear until now while running CAT
+        self.cui2names = {} # CUI to all the different names it can have
+        self.cui2tui = {} # CUI to the semantic type ID
+        self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
+        self.tui2name = {} # Semnatic tpye id to its name
+        self.cui2pref_name = {} # Get the prefered name for a CUI - taken from UMLS
+        self.cui2pretty_name = {} # Get the pretty name for a CUI - taken from UMLS
+        self.sname2name = set() # Internal - subnames to nam
+        self.cui2words = {} # CUI to all the words that can describe it
+        self.onto2cuis = {} # Ontology to all the CUIs contained in it
+        self.cui2context_vec = {} # CUI to context vector
+        self.cui2context_vec_short = {} # CUI to context vector - short
+        self.cui2ncontext_vec = {} # CUI to negative context vector
+        self.vocab = {} # Vocabulary of all words ever, hopefully 
+        self._coo_matrix = None # cooccurrence matrix - scikit
+        self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
 
-        self.CONTEXT_WORDS_LIMIT = 80
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name='',
                     desc=None):
@@ -56,6 +52,8 @@ class UMLS(object):
         isupper:  If name in the original ontology is upper_cased
         is_pref_name:  If this is the prefered name for this CUI
         tui:  Semantic type
+        pretty_name:  Pretty name for this concept
+        desc:  Description of this concept - can take a lot of space
         """
         # Add is name upper
         if name in self.name_isupper:
@@ -63,6 +61,7 @@ class UMLS(object):
         else:
             self.name_isupper[name] = isupper
 
+        # Add prefered name 
         if is_pref_name:
             self.cui2pref_name[cui] = name
             self.cui2pretty_name[cui] = pretty_name
@@ -155,6 +154,9 @@ class UMLS(object):
 
         cui:  The concept in question
         context_vec:  Vector represenation of the context
+        negative:  Is this negative context of positive
+        cntx_type:  Currently only two supported LONG and SHORT
+                     pretty much just based on the window size
         """
 
         if cntx_type == 'LONG':
@@ -197,46 +199,12 @@ class UMLS(object):
             self.cui2ncontext_vec[cui] = ncontext_vec
 
 
-    def add_context_words(self, cui, context_words):
-        """ Add words that appear in the context of this CUI
-
-        cui:  The concept in question
-        context_words:  Array of words that appeard in the context
-        """
-        if cui in self.cui2context_words:
-            vcb = self.cui2context_words[cui]
-
-            for word in context_words:
-                if word in vcb:
-                    vcb[word] += 1
-                else:
-                    vcb[word] = 1
-        else:
-            self.cui2context_words[cui] = {}
-            vcb = self.cui2context_words[cui]
-
-            for word in context_words:
-                if word in vcb:
-                    vcb[word] += 1
-                else:
-                    vcb[word] = 1
-
-        if len(vcb) > self.CONTEXT_WORDS_LIMIT:
-            # Remove 1/3 of the words with lowest frequency
-            remove_from = int(self.CONTEXT_WORDS_LIMIT / 3 * 2)
-            keys = [k for k in sorted(vcb, key=vcb.get, reverse=True)][remove_from:]
-            for key in keys:
-                del vcb[key]
-
-            # For the rest reset the counter, most frequent word has len(vcb) / 2 
-            #and the rest is in descending order
-            pos = 0
-            for key, value in sorted(vcb.items(), key=lambda kv: kv[1], reverse=True):
-                vcb[key] = max(len(vcb.keys()) - pos, 4) // 2
-                pos += 1
-
-
     def add_coo(self, cui1, cui2):
+        """ Add one cooccurrence
+
+        cui1:  Base CUI
+        cui2:  Coocured with CUI
+        """
         key = (self.cui2index[cui1], self.cui2index[cui2])
 
         if key in self.coo_dict:
@@ -245,6 +213,11 @@ class UMLS(object):
             self.coo_dict[key] = 1
 
     def add_coos(self, cuis):
+        """ Given a list of CUIs it will add them to the coo matrix
+        saying that each CUI cooccurred with each one
+
+        cuis:  List of CUIs
+        """
         cnt = 0
         for i, cui1 in enumerate(cuis):
             for cui2 in cuis[i+1:]:
@@ -273,6 +246,8 @@ class UMLS(object):
 
     @property
     def coo_matrix(self):
+        """ Get the COO Matrix as scikit dok_matrix
+        """
         if self._coo_matrix is None:
             s = len(self.cui2index)
             self._coo_matrix = dok_matrix((s, s), dtype=np.uint32)
@@ -283,9 +258,13 @@ class UMLS(object):
 
     @coo_matrix.setter
     def coo_matrix(self, val):
+        """ Imposible to set, it is built internally
+        """
         raise AttributeError("Can not set attribute coo_matrix")
 
     def reset_coo_matrix(self):
+        """ Remove the COO-Matrix
+        """
         self._coo_matrix = None
 
 
@@ -356,7 +335,6 @@ class UMLS(object):
 
     def get_train_dict(self):
         return {'cui2context_vec': self.cui2context_vec,
-                'cui2context_words': self.cui2context_words,
                 'cui_count': self.cui_count,
                 'coo_dict': self.coo_dict,
                 'cui2ncontext_vec': self.cui2ncontext_vec}
@@ -369,7 +347,7 @@ class UMLS(object):
 
 
     def merge_train(self, umls):
-        # To be merged: cui2context_vec, cui2context_words, cui_count, coo_dict
+        # To be merged: cui2context_vec, cui_count, coo_dict
         #cui2ncontext_vec
 
         # Merge cui2context_vec
@@ -385,17 +363,6 @@ class UMLS(object):
                 self.cui2ncontext_vec[key] = (self.cui2ncontext_vec[key] + umls.cui2ncontext_vec[key]) / 2
             else:
                 self.cui2ncontext_vec[key] = umls.cui2ncontext_vec[key]
-
-        # Merge cui2context_words
-        for cui in umls.cui2context_words.keys():
-            if cui in self.cui2context_words:
-                for word in umls.cui2context_words[cui]:
-                    if word in self.cui2context_words[cui]:
-                        self.cui2context_words[cui][word] += umls.cui2context_words[cui][word]
-                    else:
-                        self.cui2context_words[cui][word] = umls.cui2context_words[cui][word]
-            else:
-                self.cui2context_words[cui] = umls.cui2context_words[cui]
 
         # Merge coo_dict
         for key in umls.coo_dict.keys():
@@ -425,10 +392,109 @@ class UMLS(object):
 
 
     def save_dict(self, path):
+        """ Saves variables of this object
+        """
         with open(path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
 
     def load_dict(self, path):
+        """ Loads variables of this object
+        """
         with open(path, 'rb') as f:
             self.__dict__ = pickle.load(f)
+
+
+    def filter(self, tuis=[], cuis=[]):
+        """ A fairly simple function that is limiting the UMLS to only certain cuis or tuis
+
+        tuis:  List of tuis to filter by
+        cuis:  List of cuis to filter by
+        """
+        # TODO: This one has to be fixed, but not so easy, for now this is good enough
+        # self.sname2name = set()
+
+        # Just reset the co-matrix and the coo_dict
+        self._coo_matrix = None
+        self.coo_dict = {}
+
+        _cuis = set(cuis)
+        if len(tuis) > 0:
+            for tui in tuis:
+                _cuis.update(self.tui2cuis[tui])
+
+        # Remove everything but the cuis in _cuis from everywhere 
+        tmp = self.index2cui
+        self.index2cui = []
+        self.cui2index = {}
+        # cui_count
+        tmp_cui_count = self.cui_count
+        self.cui_count = {}
+        # cui2desc
+        tmp_cui2desc = self.cui2desc
+        self.cui2desc = {}
+        # cui2tui
+        tmp_cui2tui = self.cui2tui
+        self.cui2tui = {}
+        # cui2pref_name
+        tmp_cui2pref_name = self.cui2pref_name
+        self.cui2pref_name = {}
+        # cui2pretty_name = {}
+        tmp_cui2pretty_name = self.cui2pretty_name
+        self.cui2pretty_name = {}
+        # cui2words
+        tmp_cui2words = self.cui2words
+        self.cui2words = {}
+        # cui2context_vec 
+        tmp_cui2context_vec = self.cui2context_vec
+        self.cui2context_vec = {}
+        # cui2context_vec_short
+        tmp_cui2context_vec_short = self.cui2context_vec_short
+        self.cui2context_vec_short = {}
+        # cui2ncontext_vec
+        tmp_cui2ncontext_vec = self.cui2ncontext_vec
+        self.cui2ncontext_vec = {}
+        tmp_cui2names = self.cui2names
+        self.cui2names = {}
+        for cui in tmp:
+            if cui in _cuis:
+                self.index2cui.append(cui)
+                self.cui2index[cui] = len(self.index2cui) - 1
+                if cui in tmp_cui2desc:
+                    self.cui2desc[cui] = tmp_cui2desc[cui]
+                if cui in tmp_cui_count:
+                    self.cui_count[cui] = tmp_cui_count[cui]
+                if cui in tmp_cui2tui:
+                    self.cui2tui[cui] = tmp_cui2tui[cui]
+                if cui in tmp_cui2pref_name:
+                    self.cui2pref_name[cui] = tmp_cui2pref_name[cui]
+                self.cui2pretty_name[cui] = tmp_cui2pretty_name[cui]
+                self.cui2words[cui] = tmp_cui2words[cui]
+                if cui in tmp_cui2context_vec:
+                    self.cui2context_vec[cui] = tmp_cui2context_vec[cui]
+                if cui in tmp_cui2context_vec_short:
+                    self.cui2context_vec_short[cui] = tmp_cui2context_vec_short[cui]
+                if cui in tmp_cui2ncontext_vec:
+                    self.cui2ncontext_vec[cui] = tmp_cui2ncontext_vec[cui]
+                self.cui2names[cui] = tmp_cui2names[cui]
+
+        # The main one name2cui
+        tmp = self.name2cui
+        self.name2cui = {}
+        # name2cnt
+        tmp_name2cnt = self.name2cnt
+        self.name2cnt = {}
+        # name_isupper
+        tmp_name_isupper = self.name_isupper
+        self.name_isupper = {}
+        for name, cuis in tmp.items():
+            for cui in cuis:
+                if cui in _cuis:
+                    if cui in self.name2cui:
+                        self.name2cui[name].add(cui)
+                    else:
+                        self.name2cui[name] = set([cui])
+                    # name2cnt
+                    self.name2cnt[name] = tmp_name2cnt[name]
+                    # name_isupper
+                    self.name_isupper[name] = tmp_name_isupper[name]

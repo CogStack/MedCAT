@@ -47,15 +47,23 @@ class SpacyCat(object):
         """
         words = []
         ind = tkns[0].i
-        for word in doc[max(0, ind-span):min(len(doc), ind+span+len(tkns))]:
+        i = max(0, ind-span-1)
+        n = 0
+
+        while(n < span * 2 + len(tkns) and i < len(doc)):
+            word = doc[i]
             if not skip_current:
                 if skip_words:
-                    if not word._.to_skip:
+                    if not word._.to_skip and not word.is_digit:
                         words = words + self.tokenizer.tokenize(word._.lower)
+                        n += 1
                 else:
                     words = words + self.tokenizer.tokenize(word._.lower)
+                    n += 1
             elif word not in tkns:
                 words = words + self.tokenizer.tokenize(word._.lower)
+                n += 1
+            i += 1
 
         return words
 
