@@ -160,6 +160,9 @@ class UMLS(object):
                      pretty much just based on the window size
         """
 
+        if cui not in self.cui_count:
+            self.increase_cui_count(cui)
+
         if cntx_type == 'LONG':
             cui2context_vec = self.cui2context_vec
         elif cntx_type == 'SHORT':
@@ -178,15 +181,28 @@ class UMLS(object):
                     c = 0.00001
                     b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
+
+                    # Increase cui count
+                    self.increase_cui_count(cui)
                 elif sim < 0.1:
                     c = 0.0001
                     b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
+
+                    # Increase cui count
+                    self.increase_cui_count(cui)
+
         else:
             cui2context_vec[cui] = cv
+            self.increase_cui_count(cui)
 
         return sim
 
+    def increase_cui_count(self, cui):
+        if cui in self.cui_count:
+            self.cui_count[cui] += 1
+        else:
+            self.cui_count[cui] = 1
 
     def add_ncontext_vec(self, cui, ncontext_vec):
         """ Add the vector representation of a context for this CUI

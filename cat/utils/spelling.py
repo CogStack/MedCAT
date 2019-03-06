@@ -1,4 +1,4 @@
-import hunspell
+#import hunspell
 import re
 from collections import Counter
 from spacy.tokens import Span

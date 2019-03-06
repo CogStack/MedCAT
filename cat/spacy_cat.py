@@ -11,8 +11,10 @@ CNTX_SPAN = 6
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
 MIN_CUI_COUNT = 100
+MIN_CUI_COUNT_STRICT = 0
 MIN_ACC = 0.1
 MAX_CUI_TRAIN_COUNT = 5000
+MIN_CONCEPT_LENGTH = 0
 
 log = basic_logger("spacycat")
 
@@ -30,6 +32,7 @@ class SpacyCat(object):
         self.vocab = vocab
         self.train = train
         self.cat_ann = CatAnn(self.umls, self)
+        self._train_skip_names = {}
 
         if self.vocab is None:
             self.vocab = self.umls.vocab
@@ -223,23 +226,16 @@ class SpacyCat(object):
         ent._.acc = acc
         doc._.ents.append(ent)
 
-        # Now for cui_count_ext
+        # Increase counter for cui_count_ext
         if cui in self.umls.cui_count_ext:
             self.umls.cui_count_ext[cui] += 1
         else:
             self.umls.cui_count_ext[cui] = 1
 
 
-        if self.train and self.umls.cui_count[cui] < MAX_CUI_TRAIN_COUNT:
+        if self.train:
             self._add_cntx_vec(cui, doc, tkns)
             self._cuis.append(cui)
-
-            # Increase cui count for training
-            if cui in self.umls.cui_count:
-                self.umls.cui_count[cui] += 1
-            else:
-                self.umls.cui_count[cui] = 1
-
 
 
     def _create_main_ann(self, doc):
@@ -286,10 +282,10 @@ class SpacyCat(object):
             tkns = [_doc[i]]
             name = _doc[i]._.norm
 
-            if name in self.umls.name2cui:
+            if name in self.umls.name2cui and len(name) > MIN_CONCEPT_LENGTH:
                 # Add annotation
-                self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
-                #self.to_disamb.append((list(tkns), name))
+                if not self.train or not self._train_skip(name):
+                    self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
             for j in range(i+1, len(_doc)):
                 if _doc[j]._.to_skip:
@@ -302,9 +298,9 @@ class SpacyCat(object):
                     # There is not one entity containing this words
                     break
                 else:
-                    if name in self.umls.name2cui:
-                        self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
-                        #self.to_disamb.append((list(tkns), name))
+                    if name in self.umls.name2cui and len(name) > MIN_CONCEPT_LENGTH:
+                        if not self.train or not self._train_skip(name):
+                            self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
 
         if not self.train:
@@ -321,6 +317,22 @@ class SpacyCat(object):
 
         return doc
 
+    def _train_skip(self, name):
+        if name in self._train_skip_names:
+            self._train_skip_names[name] += 1
+        else:
+            self._train_skip_names[name] = 1
+
+        cnt = self._train_skip_names[name]
+        if cnt < MIN_CUI_COUNT:
+            return False
+
+        prob = 1 / (cnt / 10)
+        if np.random.rand() < prob:
+            return False
+        else:
+            return True
+
 
     def disambiguate(self, to_disamb):
         # Do vector disambiguation only if not training
@@ -335,9 +347,13 @@ class SpacyCat(object):
             cuis = list(self.umls.name2cui[name])
 
             accs = []
+            MIN_COUNT = MIN_CUI_COUNT_STRICT
+            for cui in cuis:
+                if self.umls.cui_count.get(cui, 0) > MIN_CUI_COUNT:
+                    MIN_COUNT = MIN_CUI_COUNT
             for cui in cuis:
                 # Each concept can have one or more cuis assigned
-                if self.umls.cui_count.get(cui, 0) > MIN_CUI_COUNT:
+                if self.umls.cui_count.get(cui, 0) > MIN_COUNT:
                     # If this cui appeared enough times
                     accs.append(self._calc_acc(cui, tkns[0].doc, tkns))
                 else:

@@ -22,13 +22,13 @@ class CatAnn(object):
                 name_case = False
 
         # Don't allow concatenation of tokens if len(name) < 5
-        if not(len(name) < 5 and len(tkns) > 1):
+        if not(len(name) < 6 and len(tkns) > 1):
             # Name must have > 2, if not disambiguation is a must
             if len(name) > 3:
                 if len(self.umls.name2cui[name]) == 1:
                     cui = list(self.umls.name2cui[name])[0]
                     cntx_acc = self._cat._calc_acc(cui, doc, tkns)
-                    if cntx_acc < -0.05 and cntx_acc != -1:
+                    if cntx_acc < 0 and cntx_acc != -1 and self.umls.cui_count[cui] > 10:
                         # Afer some training this is the main thing
                         to_disamb.append((list(tkns), name))
                     elif len(name) < 6:
@@ -64,8 +64,8 @@ class CatAnn(object):
                     acc = self.softmax(scores.values())
                     if len(name) < 6:
                         if self.umls.name_isupper[name] == name_case or (not name_case and len(name) > 3):
-                            # Means match is upper in both cases, tag if acc > 0.6
-                            if acc > 0.3:
+                            # Means match is upper in both cases, tag if acc > 0.5
+                            if acc > 0.6:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
                                 self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
                             else:
@@ -73,7 +73,7 @@ class CatAnn(object):
                         else:
                             to_disamb.append((list(tkns), name))
                     else:
-                        # We can be almost sure that everything is fine, threshold of 0.2
+                        # We can be almost sure that everything is fine, threshold of 0.1
                         if acc > 0.1:
                             cui = max(scores.items(), key=operator.itemgetter(1))[0]
                             self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
