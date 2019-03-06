@@ -61,65 +61,76 @@ class CAT(object):
 
     def _mp_cons(self, in_q, out_dict, pid=0):
         cnt = 0
+        out = []
         while True:
             if not in_q.empty():
                 data = in_q.get()
                 if data is None:
-                    out_dict['pid: {}'.format(pid)] = self.umls.get_train_dict()
+                    print("DONE " + str(pid))
+                    out_dict['pid: {}'.format(pid)] = (self.umls.coo_dict,
+                            self.umls.cui_count_ext, out)
                     break
 
-                for text in data:
-                    self.nlp(text)
+                for id, text in data:
+                    doc = json.loads(self.get_json(text))
+                    out.append({'id': id, 'entities': doc['entities']})
 
             sleep(1)
 
 
-    def multi_processing(self, data_iter, nproc=8, batch_size=4000):
+    def multi_processing(self, in_data, nproc=8, batch_size=100, coo=False):
+        """ Run multiprocessing NOT FOR TRAINING
+        data:  A list of dictionaries, this dict will be returned with one additional
+                key - <entities>: [<list of entities>]
+        nproc:  number of processors
+
+        return:  data dict
+        """
+
         # Make a copy of umls training part
-        _umls_train = copy.deepcopy(self.umls.get_train_dict())
+        cui_count_ext = copy.deepcopy(self.umls.cui_count_ext)
+        coo_dict = copy.deepcopy(self.umls.coo_dict)
 
-        # Reset tr data, needed because of the final merge
-        self.umls.cui_count = {}
-        self.umls.cui2context_vec = {}
-        self.umls.cui2context_words = {}
+        # Reset the cui_count_ext and coo_dict
+        self.umls.cui_count_ext = {}
         self.umls.coo_dict = {}
-        self.umls.cui2ncontext_vec
 
-        in_q = Queue(maxsize=16)
+        # Create the input output for MP
+        in_q = Queue(maxsize=4*nproc)
         manager = Manager()
         out_dict = manager.dict()
+        out_dict['processed'] = []
 
+        # Create processes
         procs = []
-
         for i in range(nproc):
             p = Process(target=self._mp_cons, args=(in_q, out_dict, i))
             p.start()
             procs.append(p)
 
-        cnt = 0
         data = []
-        for text in data_iter:
-            data.append(text)
+        for id, text in in_data:
+            data.append((id, text))
             if len(data) == batch_size:
                 in_q.put(data)
                 data = []
-                cnt += 1
-                if cnt == 8:
-                    break
-
+        print(len(data))
         for _ in range(nproc):  # tell workers we're done
             in_q.put(None)
 
         for p in procs:
             p.join()
 
-        # Get old data
-        self.umls.merge_train_dict(_umls_train)
-
-        # Merge all the new UMLS versions
+        # Add the saved counts
+        self.umls.merge_run_only(coo_dict=coo_dict, cui_count_ext=cui_count_ext)
+        # Merge all the new UMLS versions and get the output
+        out = []
         for key in out_dict.keys():
-            data = out_dict[key]
-            print("Merging training data for proc: " + str(key))
-            self.umls.merge_train_dict(data)
-            print(sum(self.umls.cui_count.values()))
-            print(len(self.umls.cui_count))
+            if 'pid' in key:
+                data = out_dict[key]
+                print("Merging training data for proc: " + str(key))
+                print(sum(self.umls.cui_count_ext.values()))
+                self.umls.merge_run_only(coo_dict=data[0], cui_count_ext=data[1])
+                print(sum(self.umls.cui_count_ext.values()))
+                out.extend(data[2])
+        return out

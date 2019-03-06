@@ -10,7 +10,7 @@ DEBUG = True
 CNTX_SPAN = 6
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
-MIN_CUI_COUNT = 4
+MIN_CUI_COUNT = 100
 MIN_ACC = 0.1
 MAX_CUI_TRAIN_COUNT = 5000
 
@@ -223,15 +223,23 @@ class SpacyCat(object):
         ent._.acc = acc
         doc._.ents.append(ent)
 
-        # Increase cui count for this one
-        if cui in self.umls.cui_count:
-            self.umls.cui_count[cui] += 1
+        # Now for cui_count_ext
+        if cui in self.umls.cui_count_ext:
+            self.umls.cui_count_ext[cui] += 1
         else:
-            self.umls.cui_count[cui] = 1
+            self.umls.cui_count_ext[cui] = 1
+
 
         if self.train and self.umls.cui_count[cui] < MAX_CUI_TRAIN_COUNT:
             self._add_cntx_vec(cui, doc, tkns)
             self._cuis.append(cui)
+
+            # Increase cui count for training
+            if cui in self.umls.cui_count:
+                self.umls.cui_count[cui] += 1
+            else:
+                self.umls.cui_count[cui] = 1
+
 
 
     def _create_main_ann(self, doc):

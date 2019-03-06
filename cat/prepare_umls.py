@@ -13,25 +13,31 @@ from pytorch_pretrained_bert import BertTokenizer
 import numpy as np
 
 SEPARATOR = ""
+CONCEPT_LENGTH_LIMIT = 6
 
 class PrepareUMLS(object):
     """ Prepares UMLS data in csv format for annotations,
     after everything is done the result is in the umls field.
     """
-    def __init__(self, vocab=None):
+    def __init__(self, vocab=None, pretrained_umls=None):
+        self.vocab = vocab
+        if pretrained_umls is None:
+            self.umls = UMLS()
+        else:
+            self.umls = pretrained_umls
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser'])
         self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
-
-        self.umls = UMLS()
+        # Get the tokenizer
         self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-        self.vocab = vocab
-
-    def prepare_csvs(self, csv_paths, sep=',', concept_length_limit=6):
-        """ Prepare one or multiple csvs
+    def prepare_csvs(self, csv_paths, sep=','):
+        """ Compile one or multiple CSVs into an internal UMLS class
 
         csv_paths:  an array of paths to the csv files that should be processed
+        sep:  if necessarya a custom separator for the csv files
+
+        return:  Compiled UMLS class
         """
         for csv_path in csv_paths:
             df = pandas.read_csv(csv_path, sep=sep)
@@ -47,7 +53,7 @@ class PrepareUMLS(object):
                     tokens = [str(t.lemma_).lower() for t in doc if not t._.is_punct and not t._.to_skip]
 
                     # Don't allow concept names to be above concept_length_limit
-                    if len(tokens) > concept_length_limit:
+                    if len(tokens) > CONCEPT_LENGTH_LIMIT:
                         continue
 
                     isupper = False

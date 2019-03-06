@@ -21,7 +21,8 @@ class UMLS(object):
         self.name2cnt = {} # Converts a normalized concept name to a count
         self.name_isupper = {} # Checks was this name all upper case in UMLS
         self.cui2desc = {} # Map between a CUI and its umls description
-        self.cui_count = {} # How many times this this CUI appear until now while running CAT
+        self.cui_count = {} # TRAINING - How many times this this CUI appear until now
+        self.cui_count_ext = {} # Always - counter for cuis that can be reset, destroyed..
         self.cui2names = {} # CUI to all the different names it can have
         self.cui2tui = {} # CUI to the semantic type ID
         self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
@@ -268,116 +269,26 @@ class UMLS(object):
         self._coo_matrix = None
 
 
-    def merge(self, umls):
-        """ Merges another umls instance into this one
-
-        umls:  To be merged with this one
+    def merge_run_only(self, coo_dict, cui_count_ext):
+        """ Merges only the coo matrix and cui_count_ext
         """
-
-        # Just an extension
-        self.index2cui.extend(umls.index2cui)
-
-        # cui2index has to be rebuilt
-        self.cui2index = {}
-        for ind, word in enumerate(self.index2cui):
-            self.cui2index[word] = ind
-
-        # name2cui - new names should be added and old extended
-        for key in umls.name2cui.keys():
-            if key in self.name2cui:
-                self.name2cui[key].update(umls.name2cui[key])
-            else:
-                self.name2cui[key] = umls.name2cui[key]
-
-        # name2cnt - old rewriten by new
-        self.name2cnt.update(umls.name2cnt)
-        # name_isupper - update dict
-        self.name_isupper.update(umls.name_isupper)
-
-        # cui2names - new names should be added and old extended
-        for key in umls.cui2names.keys():
-            if key in self.cui2names:
-                self.cui2names[key].update(umls.cui2names[key])
-            else:
-                self.cui2names[key] = umls.cui2names[key]
-
-        # Just update the dictionaries
-        self.cui2tui.update(umls.cui2tui)
-        self.cui2pref_name.update(umls.cui2pref_name)
-        # Update the set
-        self.sname2name.update(umls.sname2name)
-
-        # cui2words - new words should be added
-        for key in umls.cui2words.keys():
-            if key in self.cui2words:
-                self.cui2words[key].update(umls.cui2words[key])
-            else:
-                self.cui2words[key] = umls.cui2words[key]
-
-        # onto2cuis - new words should be added
-        for key in umls.onto2cuis.keys():
-            if key in self.onto2cuis:
-                self.onto2cuis[key].update(umls.onto2cuis[key])
-            else:
-                self.onto2cuis[key] = umls.onto2cuis[key]
-
-        # Just update vocab
-        self.vocab.update(umls.vocab)
-        # Remove coo_matrix if it exists
-        self._coo_matrix = None
-        # Merge tui2cuis, if they exist
-        if hasattr(umls, 'tui2cuis'):
-            self.tui2cuis.update(umls.tui2cuis)
-
-        # Merge the training part
-        self.merge_train(umls)
-
-
-    def get_train_dict(self):
-        return {'cui2context_vec': self.cui2context_vec,
-                'cui_count': self.cui_count,
-                'coo_dict': self.coo_dict,
-                'cui2ncontext_vec': self.cui2ncontext_vec}
-
-
-    def merge_train_dict(self, t_dict):
-        attr_dict = AttrDict()
-        attr_dict.update(t_dict)
-        self.merge_train(attr_dict)
-
-
-    def merge_train(self, umls):
-        # To be merged: cui2context_vec, cui_count, coo_dict
-        #cui2ncontext_vec
-
-        # Merge cui2context_vec
-        for key in umls.cui2context_vec.keys():
-            if key in self.cui2context_vec:
-                self.cui2context_vec[key] = (self.cui2context_vec[key] + umls.cui2context_vec[key]) / 2
-            else:
-                self.cui2context_vec[key] = umls.cui2context_vec[key]
-
-        # Merge cui2context_vec
-        for key in umls.cui2ncontext_vec.keys():
-            if key in self.cui2ncontext_vec:
-                self.cui2ncontext_vec[key] = (self.cui2ncontext_vec[key] + umls.cui2ncontext_vec[key]) / 2
-            else:
-                self.cui2ncontext_vec[key] = umls.cui2ncontext_vec[key]
+        # Reset the coo matrix as it is not valid anymore
+        self.reset_coo_matrix()
 
         # Merge coo_dict
-        for key in umls.coo_dict.keys():
+        for key in coo_dict.keys():
             if key in self.coo_dict:
-                self.coo_dict[key] += umls.coo_dict[key]
+                self.coo_dict[key] += coo_dict[key]
             else:
-                self.coo_dict[key] = umls.coo_dict[key]
+                self.coo_dict[key] = coo_dict[key]
 
 
-        # Merge cui_count
-        for key in umls.cui_count.keys():
-            if key in self.cui_count:
-                self.cui_count[key] += umls.cui_count[key]
+        # Merge cui_count_ext
+        for key in cui_count_ext.keys():
+            if key in self.cui_count_ext:
+                self.cui_count_ext[key] += cui_count_ext[key]
             else:
-                self.cui_count[key] = umls.cui_count[key]
+                self.cui_count_ext[key] = cui_count_ext[key]
 
 
     def save(self, path):
@@ -498,3 +409,13 @@ class UMLS(object):
                     self.name2cnt[name] = tmp_name2cnt[name]
                     # name_isupper
                     self.name_isupper[name] = tmp_name_isupper[name]
+
+
+    def reset_training(self):
+        self.cui_count = {}
+        self.cui2context_vec = {}
+        self.cui2ncontext_vec = {}
+        self.cui2context_vec_short = {}
+        self.coo_dict = {}
+        self.cui2ncontext_vec = {}
+        self.reset_coo_matrix()
