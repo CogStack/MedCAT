@@ -4,7 +4,7 @@ import numpy as np
 import operator
 from cat.utils.loggers import basic_logger
 from gensim.matutils import unitvec
-from pytorch_pretrained_bert import BertTokenizer
+#from pytorch_pretrained_bert import BertTokenizer
 
 DEBUG = False
 CNTX_SPAN = 5

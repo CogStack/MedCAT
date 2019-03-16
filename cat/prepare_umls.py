@@ -9,7 +9,7 @@ from cat.preprocessing.tokenizers import spacy_split_all
 from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls, clean_def
 from spacy.tokens import Token
 from cat.utils.spacy_pipe import SpacyPipe
-from pytorch_pretrained_bert import BertTokenizer
+#from pytorch_pretrained_bert import BertTokenizer
 import numpy as np
 
 SEPARATOR = ""
@@ -19,7 +19,7 @@ class PrepareUMLS(object):
     """ Prepares UMLS data in csv format for annotations,
     after everything is done the result is in the umls field.
     """
-    def __init__(self, vocab=None, pretrained_umls=None):
+    def __init__(self, vocab=None, pretrained_umls=None, tokenizer=None):
         self.vocab = vocab
         if pretrained_umls is None:
             self.umls = UMLS()
@@ -29,7 +29,14 @@ class PrepareUMLS(object):
         self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser'])
         self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
         # Get the tokenizer
-        self.tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+        if tokenizer is not None:
+            self.tokenizer = tokenizer
+        else:
+            self.tokenizer = self._tok #BertTokenizer.from_pretrained('bert-base-uncased')
+
+
+    def _tok(self, text):
+        return [text]
 
     def prepare_csvs(self, csv_paths, sep=','):
         """ Compile one or multiple CSVs into an internal UMLS class
@@ -113,7 +120,7 @@ class PrepareUMLS(object):
                         cntx = []
                         for word in doc:
                             if not word._.to_skip:
-                                for w in self.tokenizer.tokenize(word.lower_):
+                                for w in self.tokenizer(word.lower_):
                                     if w in self.vocab and self.vocab.vec(w) is not None:
                                         cntx.append(self.vocab.vec(w))
                         if len(cntx) > 1:
