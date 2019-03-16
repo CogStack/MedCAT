@@ -150,7 +150,7 @@ class UMLS(object):
                 self.tui2name[key] = d[key]
 
 
-    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG'):
+    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True):
         """ Add the vector representation of a context for this CUI
 
         cui:  The concept in question
@@ -158,10 +158,8 @@ class UMLS(object):
         negative:  Is this negative context of positive
         cntx_type:  Currently only two supported LONG and SHORT
                      pretty much just based on the window size
+        inc_cui_count:  should this be counted
         """
-
-        if cui not in self.cui_count:
-            self.increase_cui_count(cui)
 
         if cntx_type == 'LONG':
             cui2context_vec = self.cui2context_vec
@@ -171,38 +169,40 @@ class UMLS(object):
         sim = 0
         cv = context_vec
         if cui in cui2context_vec:
+            # Just in case cui_count was not set
+            if cui not in self.cui_count:
+                self.increase_cui_count(cui, True)
+
             sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
 
             if negative:
-                b = max((0.1 / self.cui_count[cui]), 0.000001)  * max(0, sim)
+                b = max((0.2 / self.cui_count[cui]), 0.0001)  * max(0, sim)
                 cui2context_vec[cui] = cui2context_vec[cui]*(1-b) - cv*b
+                #cui2context_vec[cui] = cui2context_vec[cui] - cv*b
+
             else:
-                if sim < 0.8 and sim > 0.1:
-                    c = 0.00001
-                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                if sim < 0.5:
+                    c = 0.001
+                    b = max((0.3 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
+                    #cui2context_vec[cui] = cui2context_vec[cui] + cv*b
 
                     # Increase cui count
-                    self.increase_cui_count(cui)
-                elif sim < 0.1:
-                    c = 0.0001
-                    b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                    cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
-
-                    # Increase cui count
-                    self.increase_cui_count(cui)
-
+                    self.increase_cui_count(cui, inc_cui_count)
         else:
             cui2context_vec[cui] = cv
-            self.increase_cui_count(cui)
+            self.increase_cui_count(cui, inc_cui_count)
 
         return sim
 
-    def increase_cui_count(self, cui):
-        if cui in self.cui_count:
-            self.cui_count[cui] += 1
-        else:
-            self.cui_count[cui] = 1
+
+    def increase_cui_count(self, cui, inc_cui_count):
+        if inc_cui_count:
+            if cui in self.cui_count:
+                self.cui_count[cui] += 1
+            else:
+                self.cui_count[cui] = 1
+
 
     def add_ncontext_vec(self, cui, ncontext_vec):
         """ Add the vector representation of a context for this CUI
@@ -210,10 +210,19 @@ class UMLS(object):
         cui:  The concept in question
         ncontext_vec:  Vector represenation of the context
         """
-        if cui in self.cui2ncontext_vec:
-            self.cui2ncontext_vec[cui] = (self.cui2ncontext_vec[cui] + ncontext_vec) / 2
-        else:
-            self.cui2ncontext_vec[cui] = ncontext_vec
+
+        sim = 0
+        cv = ncontext_vec
+        cui2context_vec = self.cui2ncontext_vec
+
+        if cui in self.cui_count:
+            if cui in cui2context_vec:
+                sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
+                c = 0.001
+                b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
+            else:
+                cui2context_vec[cui] = cv
 
 
     def add_coo(self, cui1, cui2):
@@ -228,6 +237,7 @@ class UMLS(object):
             self.coo_dict[key] += 1
         else:
             self.coo_dict[key] = 1
+
 
     def add_coos(self, cuis):
         """ Given a list of CUIs it will add them to the coo matrix
