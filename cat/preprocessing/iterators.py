@@ -68,6 +68,44 @@ class BertEmbMimicCSV(object):
                     yield data
 
 
+class BaseEmbMimicCSV(object):
+    """ Iterate over MIMIC data in CSV format
+
+    csv_paths:  paths to csv files containing the mimic data
+    """
+    def __init__(self, csv_paths, tokenizer):
+        from pytorch_pretrained_bert import BertTokenizer
+
+        self.csv_paths = csv_paths
+        self.tokenizer = tokenizer
+        self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
+
+    def __iter__(self):
+        chunksize = 10 ** 8
+        for csv_path in self.csv_paths:
+            for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
+                for _, row in chunk.iterrows():
+                    text = row['text']
+                    text = re.sub("\[\*[^\]]*\*\]", " ", text)
+                    doc = self.tokenizer(text)
+                    data1 = []
+                    data2 = []
+                    data3 = []
+
+                    # Remove [] from text
+
+                    for token in doc:
+                        if not token._.to_skip and not token.is_digit or token._.norm == 'skipskip':
+                            if len(token._.norm) > 1:
+                                tkn1 = token._.norm
+                                tkn2 = token._.lower
+
+                                data1.append(tkn1)
+                                data2.append(tkn2)
+                        data3.append(token._.norm)
+                    yield (data1, data2, data3)
+
+
 
 class RawCSV(object):
     """ Iterate over MIMIC data in CSV format
