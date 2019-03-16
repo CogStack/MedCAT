@@ -95,7 +95,11 @@ class SpacySpellChecker(object):
     def __call__(self, doc):
         for token in doc:
             if token.lemma_ == '-PRON-' or len(token.lower_) < 3:
-                token._.norm = token.lower_
+                if token.lemma_ == '-PRON-':
+                    token._.norm = 'skipskip'
+                    token._.to_skip = True
+                else:
+                    token._.norm = token.lower_
             else:
                 token._.norm = token.lemma_.lower()
             token._.lower = token.lower_

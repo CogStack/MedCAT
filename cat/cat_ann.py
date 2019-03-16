@@ -23,15 +23,12 @@ class CatAnn(object):
 
         # Don't allow concatenation of tokens if len(name) < 5
         if not(len(name) < 6 and len(tkns) > 1):
-            # Name must have > 2, if not disambiguation is a must
+            # Name must have > 3, if not disambiguation is a must
             if len(name) > 3:
                 if len(self.umls.name2cui[name]) == 1:
                     cui = list(self.umls.name2cui[name])[0]
-                    cntx_acc = self._cat._calc_acc(cui, doc, tkns)
-                    if cntx_acc < 0 and cntx_acc != -1 and self.umls.cui_count[cui] > 10:
-                        # Afer some training this is the main thing
-                        to_disamb.append((list(tkns), name))
-                    elif len(name) < 6:
+
+                    if len(name) < 6:
                         # Disambiguation needed if length of string < 6
                         # Case must agree or first can be lower_case
                         if not name_case or self.umls.name_isupper[name] == name_case:
@@ -45,7 +42,7 @@ class CatAnn(object):
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
                                 if (n_words > len(tkns) and words_cnt > 5) or (perc > 0.2 or cnt > 5):
-                                    self._cat._add_ann(cui, doc, tkns, acc=cntx_acc, name=name)
+                                    self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
                                 else:
                                     to_disamb.append((list(tkns), name))
                             else:
@@ -57,7 +54,7 @@ class CatAnn(object):
                     else:
                         # Longer than 5 letters, just add concept
                         cui = list(self.umls.name2cui[name])[0]
-                        self._cat._add_ann(cui, doc, tkns, acc=cntx_acc, name=name)
+                        self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
                 else:
                     # Means we have more than one cui for this name
                     scores = self._scores_words(name, doc, doc_words, tkns)
@@ -65,7 +62,7 @@ class CatAnn(object):
                     if len(name) < 6:
                         if self.umls.name_isupper[name] == name_case or (not name_case and len(name) > 3):
                             # Means match is upper in both cases, tag if acc > 0.5
-                            if acc > 0.6:
+                            if acc > 0.5:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
                                 self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
                             else:
@@ -88,8 +85,13 @@ class CatAnn(object):
         x = list(x)
         if not any(x):
             return 0
+        al = True
+        for i in x:
+            if i > 0:
+                al = False
+        if al:
+            return 0
         e_x = np.exp(x / np.max(x))
-        #print(e_x / e_x.sum())
         return max(e_x / e_x.sum())
 
 
@@ -102,24 +104,39 @@ class CatAnn(object):
         for cui in self.umls.name2cui[name]:
             score = 0
             n = 0
-            for word in self.umls.cui2words[cui].keys():
-                if word in doc_words:
-                    n += 1
-                    score += self.umls.cui2words[cui][word] / self.umls.vocab[word]
-            if n > 0:
-                score = score / n
+            flag = False
 
-            # Add proportion for name count
-            score = (score + (name_cnt[cui] / sm)) / 2
-
-            # Check is this the prefered name for this concept
-            if len(name) > 3:
+            if len(tkns) == 1 and len(name) > 3:
+                # Only prefered names are taken into account
                 if cui in self.umls.cui2pref_name:
-                    if name == self.umls.cui2pref_name[cui]:
-                        score = score * 2
+                    if name != self.umls.cui2pref_name[cui]:
+                        flag = True
 
-            cntx_score = self._cat._calc_acc(cui, doc, tkns)
-            scores[cui] = (score + cntx_score) / 2
+            if not flag:
+                for word in self.umls.cui2words[cui].keys():
+                    if word in doc_words:
+                        n += 1
+                        score += self.umls.cui2words[cui][word] / self.umls.vocab[word]
+                if n > 0:
+                    score = score / n
+
+                # Add proportion for name count
+                score = (score + (name_cnt[cui] / sm)) / 2
+
+                # Check is this the prefered name for this concept
+                if len(name) > 3:
+                    if cui in self.umls.cui2pref_name:
+                        if name == self.umls.cui2pref_name[cui]:
+                            score = score + 1
+
+                """ This improves the acc by around 1% but reduces the speed by 50%
+                if len(name) < 6:
+                    #cntx_score = self._cat._calc_acc(cui, doc, tkns)
+                    #if cntx_score != -1:
+                    #    score = (score + cntx_score) / 2
+                    pass
+                """
+            scores[cui] = score
         return scores
 
 
