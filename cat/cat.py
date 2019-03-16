@@ -72,8 +72,11 @@ class CAT(object):
                     break
 
                 for id, text in data:
-                    doc = json.loads(self.get_json(text))
-                    out.append({'id': id, 'entities': doc['entities']})
+                    try:
+                        doc = json.loads(self.get_json(text))
+                        out.append({'id': id, 'entities': doc['entities']})
+                    except Exception as e:
+                        print(e)
 
             sleep(1)
 
@@ -114,7 +117,10 @@ class CAT(object):
             if len(data) == batch_size:
                 in_q.put(data)
                 data = []
-        print(len(data))
+        # Put the last batch if it exists
+        if len(data) > 0:
+            in_q.put(data)
+
         for _ in range(nproc):  # tell workers we're done
             in_q.put(None)
 
