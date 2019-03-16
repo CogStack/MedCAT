@@ -15,4 +15,4 @@ class WordEmbedding(object):
 
 
     def make_vectors(self, iter_data):
-        self.model = Word2Vec(iter_data, window=10, min_count=1, workers=8, size=300, iter=2)
+        self.model = Word2Vec(iter_data, window=10, min_count=10, workers=8, size=300, iter=2)
