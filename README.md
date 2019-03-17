@@ -1,4 +1,4 @@
-# ![alt text](https://github.com/w-is-h/cat/media/cat-logo.png "CAT") Concept Annotation Tool
+# ![CAT](https://github.com/w-is-h/cat/blob/master/media/cat-logo.png "CAT") Concept Annotation Tool
 
 A simple tool for concept annotation from UMLS or any other source, similar to BioYODIE or SemEHR.
 
