@@ -3,14 +3,15 @@ from cat.cat_ann import CatAnn
 import numpy as np
 import operator
 from cat.utils.loggers import basic_logger
-from gensim.matutils import unitvec
+#from gensim.matutils import unitvec
+from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 
-DEBUG = False
+DEBUG = True
 CNTX_SPAN = 5
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
-MIN_CUI_COUNT = 50
+MIN_CUI_COUNT = 10 #500
 MIN_CUI_COUNT_STRICT = 1
 MIN_ACC = 0.1
 MIN_CONCEPT_LENGTH = 0
@@ -331,9 +332,9 @@ class SpacyCat(object):
             self.disambiguate(self.to_disamb)
 
         # Add coocurances
-        #self.umls.add_coos(self._cuis)
+        self.umls.add_coos(self._cuis)
 
-        if DEBUG:
+        if DEBUG or True:
             self._create_main_ann(doc)
 
         return doc

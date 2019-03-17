@@ -3,7 +3,8 @@
 import pickle
 import numpy as np
 from scipy.sparse import dok_matrix
-from gensim.matutils import unitvec
+#from gensim.matutils import unitvec
+from cat.utils.matutils import unitvec
 from cat.utils.attr_dict import AttrDict
 from cat.utils.loggers import basic_logger
 
