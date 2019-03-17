@@ -79,6 +79,7 @@ A basic trained model is made public. It is trained for the 35K entities availab
 so the performance might not be the best.
 
 Vocabulary [Download](https://drive.google.com/file/d/1OJ6UTcm6JrJBN8Rx0Ykjg1uWuS17DPr3/view?usp=sharing)
+
 Trained UMLS [Download](https://drive.google.com/file/d/1KPUdFFTTiD8Wp2xHr9QX-tTwnZ143twd/view?usp=sharing)
 
 
