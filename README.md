@@ -35,6 +35,13 @@ doc._.ents[0]._.acc
 from spacy import displacy
 # Note that this will not show all entites, but only the longest ones
 displacy.serve(doc, style='ent')
+
+# To get JSON output do
+doc_json = cat.get_json(text)
+
+# To run cat on a large number of documents
+data = [(<doc_id>, <text>), (<doc_id>, <text>), ...]
+docs = cat.multi_processing(data)
 ```
 
 ### Training and Fine-tuning
