@@ -7,7 +7,7 @@ from cat.utils.loggers import basic_logger
 from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 
-DEBUG = True
+DEBUG = False
 CNTX_SPAN = 5
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"

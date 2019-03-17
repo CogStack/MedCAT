@@ -77,6 +77,11 @@ class CAT(object):
 
 
     def get_json(self, text):
+        """ Get output in json format
+
+        text:  text to be annotated
+        return:  json with fields {'entites': <>, 'text': text}
+        """
         doc = self(text)
         out = []
 
@@ -98,36 +103,15 @@ class CAT(object):
         return json.dumps(out)
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0):
-        cnt = 0
-        out = []
-        while True:
-            if not in_q.empty():
-                data = in_q.get()
-                if data is None:
-                    print("DONE " + str(pid))
-                    out_dict['pid: {}'.format(pid)] = (self.umls.coo_dict,
-                            self.umls.cui_count_ext, out)
-                    break
-
-                for id, text in data:
-                    try:
-                        doc = json.loads(self.get_json(text))
-                        out.append({'id': id, 'entities': doc['entities']})
-                    except Exception as e:
-                        print(e)
-
-            sleep(1)
-
-
     def multi_processing(self, in_data, nproc=8, batch_size=100, coo=False):
         """ Run multiprocessing NOT FOR TRAINING
-        data:  A list of dictionaries, this dict will be returned with one additional
-                key - <entities>: [<list of entities>]
+        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
 
-        return:  data dict
+        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
+
+        # TODO: reorganize a abit, quite a mess here
 
         # Make a copy of umls training part
         cui_count_ext = copy.deepcopy(self.umls.cui_count_ext)
@@ -179,3 +163,27 @@ class CAT(object):
                 print(sum(self.umls.cui_count_ext.values()))
                 out.extend(data[2])
         return out
+
+
+    def _mp_cons(self, in_q, out_dict, pid=0):
+        cnt = 0
+        out = []
+        while True:
+            if not in_q.empty():
+                data = in_q.get()
+                if data is None:
+                    print("DONE " + str(pid))
+                    out_dict['pid: {}'.format(pid)] = (self.umls.coo_dict,
+                            self.umls.cui_count_ext, out)
+                    break
+
+                for id, text in data:
+                    try:
+                        doc = json.loads(self.get_json(text))
+                        out.append((id, doc))
+                    except Exception as e:
+                        print(e)
+
+            sleep(1)
+
+
