@@ -7,11 +7,11 @@ from cat.utils.loggers import basic_logger
 from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 
-DEBUG = False
+DEBUG = True
 CNTX_SPAN = 5
 CNTX_SPAN_SHORT = 2
 NUM = "NUMNUM"
-MIN_CUI_COUNT = 500
+MIN_CUI_COUNT = 50
 MIN_CUI_COUNT_STRICT = 1
 MIN_ACC = 0.1
 MIN_CONCEPT_LENGTH = 0

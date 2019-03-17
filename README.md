@@ -19,6 +19,7 @@ from cat.utils.vocab import Vocab
 vocab = Vocab()
 umls = UMLS()
 
+# Models available for download, look bellow
 vocab.load_dict('<path to the vocab file>')
 umls.load_dict('<path to the umls file>') 
 cat = CAT(umls=umls, vocab=vocab)
