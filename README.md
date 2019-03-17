@@ -11,7 +11,7 @@ First export the path to the `cat` repo:
 
 
 Given that you already have a Vocab and the UMLS class prebuilt you only need to do the following:
-```
+```python
 from cat.cat import CAT
 from cat.umls import UMLS
 from cat.utils.vocab import Vocab
@@ -21,10 +21,7 @@ umls = UMLS()
 
 vocab.load_dict('<path to the vocab file>')
 umls.load_dict('<path to the umls file>') 
-
 cat = CAT(umls=umls, vocab=vocab)
-# Disable the training
-cat.spacy_cat.train = False
 
 # A simple test
 text = "A 14 mm Hemashield tube graft was selected and sewn end-to-end fashion to the proximal aorta using a semi continuous 3-0 Prolene suture."
@@ -38,6 +35,27 @@ doc._.ents[0]._.acc
 from spacy import displacy
 # Note that this will not show all entites, but only the longest ones
 displacy.serve(doc, style='ent')
+```
+
+### Training and Fine-tuning
+
+To fine-tune or train everything from the ground up (excluding word-vectors), you can use the following:
+```python
+from cat.cat import CAT
+from cat.umls import UMLS
+from cat.utils.vocab import Vocab
+
+vocab = Vocab()
+umls = UMLS()
+
+vocab.load_dict('<path to the vocab file>')
+umls.load_dict('<path to the umls file>')
+cat = CAT(umls=umls, vocab=vocab)
+
+# To run the training do
+f = open("<some file with a lot of medical text>", 'r')
+# If you want fine tune set it to True, old training will be preserved
+cat.run_training(f, fine_tune=False)
 ```
 
 
@@ -54,6 +72,14 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 
 ## Results
 Preliminary results show an accuracy of 78% on the MedMentions dataset.
+
+
+## Models
+A basic trained model is made public. It is trained for the 35K entities available in `MedMentions`. It is quite limited
+so the performance might not be the best.
+
+Vocabulary [Download](https://drive.google.com/file/d/1OJ6UTcm6JrJBN8Rx0Ykjg1uWuS17DPr3/view?usp=sharing)
+Trained UMLS [Download](https://drive.google.com/file/d/1KPUdFFTTiD8Wp2xHr9QX-tTwnZ143twd/view?usp=sharing)
 
 
 

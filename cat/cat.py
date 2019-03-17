@@ -37,6 +37,45 @@ class CAT(object):
         return self.nlp(text)
 
 
+    @property
+    def train(self):
+        return self.spacy_cat.train
+
+
+    @train.setter
+    def train(self, val):
+        self.spacy_cat.train = val
+
+
+    def run_training(self, data_iterator, fine_tune=False):
+        """ Runs training on the data
+
+        data_iterator:  Simple iterator over sentences/documents, e.g. a open file
+                         or an array or anything else that we can use in a for loop.
+        fine_tune:  If False old training will be removed
+        """
+        self.train = True
+        cnt = 0
+
+        if not fine_tune:
+            print("Removing old training data, please make sure this is what you want")
+            self.umls.reset_training()
+            self.umls.coo_dict = {}
+            self.spacy_cat._train_skip_names = {}
+
+        for line in data_iterator:
+            if line is not None:
+                try:
+                    _ = self(line)
+                except Exception as e:
+                    # TODO: make nice
+                    print(e)
+                if cnt % 1000 == 0:
+                    print("DONE: " + str(cnt))
+                cnt += 1
+        self.train = False
+
+
     def get_json(self, text):
         doc = self(text)
         out = []
