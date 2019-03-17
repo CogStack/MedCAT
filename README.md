@@ -80,6 +80,12 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 ## Results
 Preliminary results show an accuracy of 78% on the MedMentions dataset.
 
+| Dataset | Soft-F1 | Description |
+| --- | :---: | --- |
+| MedMentions | 0.798 | The whole MedMentions dataset without any modifications or supervised training |
+| MedMentions | 0.786 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
+| MedMentions | 0.92 | Medmentions filterd by TUI to only concepts that are a disease |
+
 
 ## Models
 A basic trained model is made public. It is trained for the 35K entities available in `MedMentions`. It is quite limited
