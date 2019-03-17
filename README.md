@@ -1,8 +1,9 @@
 # <img src="https://github.com/w-is-h/cat/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
-A simple tool for concept annotation from UMLS or any other source, similar to BioYODIE or SemEHR.
+A simple tool for concept annotation from UMLS or any other source.
 
-### This is still experimental, it may not work all the time and code is not nicely organized and difficult to read.
+### This is still experimental
+
 
 ## How to use
 First export the path to the `cat` repo:
