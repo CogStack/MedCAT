@@ -127,7 +127,7 @@ class CatAnn(object):
                 if len(name) > 3:
                     if cui in self.umls.cui2pref_name:
                         if name == self.umls.cui2pref_name[cui]:
-                            score = score + 1
+                            score = score + 0.6
 
                 """ This improves the acc by around 1% but reduces the speed by 50%
                 if len(name) < 6:

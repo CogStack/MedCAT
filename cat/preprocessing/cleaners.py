@@ -118,7 +118,7 @@ def clean_def(text):
     return text
 
 
-def spacy_tag_punct(doc):
+def spacy_tag_punct(doc, skip_stopwords=True):
     for token in doc:
         if IS_PUNCT.match(token.text):
             # There can't be punct in a token
@@ -131,7 +131,7 @@ def spacy_tag_punct(doc):
             token._.to_skip = True
 
         # Skip if stopword
-        if token.is_stop:
+        if skip_stopwords and token.is_stop:
             token._.to_skip = True
 
     return doc
