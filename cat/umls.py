@@ -7,10 +7,11 @@ from scipy.sparse import dok_matrix
 from cat.utils.matutils import unitvec
 from cat.utils.attr_dict import AttrDict
 from cat.utils.loggers import basic_logger
+import os
 
 log = basic_logger("umls")
-MAX_COO_DICT_SIZE = 10000000
-MIN_COO_COUNT = 100
+MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
+MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
 
 class UMLS(object):
     """ Holds all the UMLS data required for annotation

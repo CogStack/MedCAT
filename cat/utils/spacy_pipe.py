@@ -4,7 +4,7 @@ from cat.utils.spelling import SpacySpellChecker
 import spacy
 
 class SpacyPipe(object):
-    def __init__(self, tokenizer, lng='en', disable=['ner', 'parser']):
+    def __init__(self, tokenizer, lng='en_core_web_sm', disable=['ner', 'parser']):
         self.nlp = spacy.load(lng, disable=disable)
         self.nlp.tokenizer = tokenizer(self.nlp)
 

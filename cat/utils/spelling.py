@@ -90,7 +90,7 @@ class CustomSpellChecker(object):
 class SpacySpellChecker(object):
     def __init__(self, spell_checker):
         self.spell_checker = spell_checker
-        self.nlp = spacy.load('en', disable=['ner', 'parser'])
+        self.nlp = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
 
     def __call__(self, doc):
         for token in doc:

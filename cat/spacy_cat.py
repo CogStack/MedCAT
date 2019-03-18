@@ -6,15 +6,16 @@ from cat.utils.loggers import basic_logger
 #from gensim.matutils import unitvec
 from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
+import os
 
-DEBUG = True
-CNTX_SPAN = 5
-CNTX_SPAN_SHORT = 2
-NUM = "NUMNUM"
-MIN_CUI_COUNT = 50
-MIN_CUI_COUNT_STRICT = 1
-MIN_ACC = 0.1
-MIN_CONCEPT_LENGTH = 0
+DEBUG = os.getenv('DEBUG', "False").lower() == 'true'
+CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
+CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 500))
+MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
+MIN_ACC = float(os.getenv('MIN_ACC', 0.10))
+MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
+NEG_PROB = float(os.getenv('NEG_PROB', 0))
 
 log = basic_logger("spacycat")
 
@@ -155,9 +156,9 @@ class SpacyCat(object):
             if name is not None:
                 if cui in self.umls.cui2pref_name:
                     if name == self.umls.cui2pref_name[cui]:
-                        sim = sim + 0.2
+                        sim = sim + 0.3
 
-            """ Just in case, it works better when there is a lot of data
+            """ Sometimes needed
             if cui in self.umls.cui2ncontext_vec and self.umls.cui_count[cui] > 20:
                 neg_sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2ncontext_vec[cui]))
                 log.debug("++++++NEG_SIM+++++++++++++++++++: " + str(neg_sim))
@@ -214,6 +215,13 @@ class SpacyCat(object):
         if len(cntx_vecs_short) > 0:
             # Add context vectors only if we have some
             self.umls.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False)
+
+        if np.random.rand() < NEG_PROB:
+            negs = self.vocab.get_negative_samples(n=6)
+            neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
+            neg_cntx = np.average(neg_cntx_vecs, axis=0)
+            self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
+                                      inc_cui_count=False)
 
         #### DEBUG ONLY ####
         if DEBUG:
