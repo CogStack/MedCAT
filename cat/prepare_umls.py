@@ -11,6 +11,7 @@ from spacy.tokens import Token
 from cat.utils.spacy_pipe import SpacyPipe
 #from pytorch_pretrained_bert import BertTokenizer
 import numpy as np
+from functools import partial
 
 SEPARATOR = ""
 CONCEPT_LENGTH_LIMIT = 6
@@ -27,7 +28,7 @@ class PrepareUMLS(object):
             self.umls = pretrained_umls
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser'])
-        self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
+        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=False))
         # Get the tokenizer
         if tokenizer is not None:
             self.tokenizer = tokenizer
