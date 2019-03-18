@@ -95,7 +95,7 @@ cat.run_training(f, fine_tune=False)
 `python >= 3.5` [tested with 3.7, but most likely works with 3+]
 
 Get the spacy `en` model
-`python -m spacy download en`
+`python -m spacy download en_core_web_sm`
 
 All the rest can be instaled using `pip` from the requirements.txt file, by running:
 
