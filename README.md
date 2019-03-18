@@ -11,6 +11,7 @@ There are a few ways to run CAT, simplest one being docker.
 ### Docker
 Download the models awailable bellow and place them in the models folder inside the `cat` repo. After
 that run:
+
 `docker build --network=host -t cat -f Dockerfile.MedMen .`
 
 Once the container is built start it using:
