@@ -9,8 +9,7 @@ A simple tool for concept annotation from UMLS or any other source.
 There are a few ways to run CAT, simplest one being docker.
 
 ### Docker
-Download the models awailable bellow and place them in the models folder inside the `cat` repo. After
-that run:
+If using docker the appropriate models will be automatically downloaded, you only need to run:
 
 `docker build --network=host -t cat -f Dockerfile.MedMen .`
 
@@ -115,9 +114,10 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 A basic trained model is made public. It is trained for the 35K entities available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
-Vocabulary [Download](https://drive.google.com/file/d/1OJ6UTcm6JrJBN8Rx0Ykjg1uWuS17DPr3/view?usp=sharing)
+Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
 
-Trained UMLS [Download](https://drive.google.com/file/d/1KPUdFFTTiD8Wp2xHr9QX-tTwnZ143twd/view?usp=sharing)
+Trained UMLS [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm.dat)
+
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
 
