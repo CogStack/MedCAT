@@ -9,8 +9,8 @@ import os
 vocab = Vocab()
 umls = UMLS()
 
-umls.load_dict('')
-vocab.load_dict(path="")
+umls.load_dict(os.getenv("UMLS_MODEL"))
+vocab.load_dict(path=os.getenv("VOCAB_MODEL"))
 cat = CAT(umls, vocab=vocab)
 cat.spacy_cat.train = False
 
@@ -44,3 +44,7 @@ def get_file(filename):  # pragma: no cover
 
 def root_dir():  # pragma: no cover
     return os.path.abspath(os.path.dirname(__file__))
+
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')

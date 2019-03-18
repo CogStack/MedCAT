@@ -1,0 +1,16 @@
+FROM python:3.7
+
+COPY . /cat
+# Set the pythonpath
+ENV PYTHONPATH="/cat:${PYTHONPATH}"
+WORKDIR /cat
+
+RUN pip install -r requirements.txt
+
+# Get the spacy model
+RUN python -m spacy download en_core_web_sm
+
+# Now run the simple api
+WORKDIR /cat/api
+ENTRYPOINT ["python"]
+CMD ["api.py"]

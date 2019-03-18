@@ -1,0 +1,10 @@
+DEBUG=True 
+CNTX_SPAN=5 
+CNTX_SPAN_SHORT=2
+MIN_CUI_COUNT=100
+MIN_CUI_COUNT_STRICT=2
+MIN_ACC=0.1
+MIN_CONCEPT_LENGTH=0
+NEG_PROB=0
+UMLS_MODEL=/cat/models/med_ann_norm.dat
+VOCAB_MODEL=/cat/models/med_ann_norm_dict.dat
