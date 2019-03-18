@@ -19,6 +19,7 @@ Once the container is built start it using:
 `docker run --env-file=./envs/env_medann -p 5000:5000 cat`
 
 You can now access the API on
+
 `<YOUR_IP>:5000/api`
 
 OR a simple frontend
