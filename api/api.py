@@ -5,12 +5,13 @@ from cat.utils.vocab import Vocab
 from cat.cat import CAT
 from flask import request
 import os
+from spacy import displacy
 
 vocab = Vocab()
 umls = UMLS()
 
-umls.load_dict(os.getenv("UMLS_MODEL"))
-vocab.load_dict(path=os.getenv("VOCAB_MODEL"))
+umls.load_dict(os.getenv("UMLS_MODEL", '/cat/models/med_ann_norm.dat'))
+vocab.load_dict(path=os.getenv("VOCAB_MODEL", '/cat/models/med_ann_norm_dict.dat'))
 cat = CAT(umls, vocab=vocab)
 cat.spacy_cat.train = False
 
@@ -23,6 +24,11 @@ def api_test():
 
     content = get_file('api_test.html')
     return content
+
+@app.route('/doc', methods=['POST'])
+def show_annotated_document():
+    doc = cat(request.form.get('text'))
+    return displacy.render(doc, style='ent')
 
 
 @app.route('/api', methods=['POST'])

@@ -89,11 +89,11 @@ class CAT(object):
         for ent in doc._.ents:
             out_ent['start'] = ent.start_char
             out_ent['end'] = ent.end_char
-            out_ent['label'] = self.umls.cui2pretty_name[ent.label_]
+            out_ent['label'] = ent.label_
             out_ent['source_value'] = ent.text
             out_ent['acc'] = ent._.acc
-            out_ent['cui'] = ent.label_
-            out_ent['tui'] = self.umls.cui2tui.get(ent.label_, 0)
+            out_ent['cui'] = ent._.cui
+            out_ent['tui'] = ent._.tui
             out_ent['type'] = self.umls.tui2name.get(out_ent['tui'], '')
 
             out.append(dict(out_ent))

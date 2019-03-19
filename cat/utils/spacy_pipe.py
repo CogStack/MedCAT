@@ -34,6 +34,8 @@ class SpacyPipe(object):
         # Add custom fields needed for this usecase
         Doc.set_extension('ents', default=None, force=True)
         Span.set_extension('acc', default=-1, force=True)
+        Span.set_extension('cui', default=-1, force=True)
+        Span.set_extension('tui', default=-1, force=True)
 
 
     def __call__(self, text):
