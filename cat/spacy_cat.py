@@ -11,11 +11,12 @@ import os
 DEBUG = os.getenv('DEBUG', "False").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 500))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
 MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
 MIN_ACC = float(os.getenv('MIN_ACC', 0.10))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
-NEG_PROB = float(os.getenv('NEG_PROB', 0))
+NEG_PROB = float(os.getenv('NEG_PROB', 0.1))
+LBL_STYLE = os.getenv('LBL_STYLE', 'LONG').lower()
 
 log = basic_logger("spacycat")
 
@@ -255,12 +256,17 @@ class SpacyCat(object):
         acc:  accuracy for this annotation
         name:  concept name
         """
-        #lbl = "{} - {:.2} - {}".format(cui, float(acc), self.umls.cui2pretty_name.get(cui, ''))
-        lbl = cui
+        if LBL_STYLE == 'long':
+            lbl = "{} - {} - {} - {:.2}".format(cui, self.umls.cui2pretty_name.get(cui, ''),
+                    self.umls.cui2tui[cui], float(acc))
+        else:
+            lbl = cui
         lbl = doc.vocab.strings.add(lbl)
         ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
 
         ent._.acc = acc
+        ent._.cui = cui
+        ent._.tui = self.umls.cui2tui.get(cui, 'None')
         doc._.ents.append(ent)
 
         # Increase counter for cui_count_ext
