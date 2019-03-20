@@ -8,12 +8,12 @@ from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
 
-DEBUG = os.getenv('DEBUG', "False").lower() == 'true'
+DEBUG = os.getenv('DEBUG', "True").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 200))
-MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 2))
-MIN_ACC = float(os.getenv('MIN_ACC', 0.10))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
+MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 4))
+MIN_ACC = float(os.getenv('MIN_ACC', 0.15))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
 NEG_PROB = float(os.getenv('NEG_PROB', 0.15))
 LBL_STYLE = os.getenv('LBL_STYLE', 'LONG').lower()
@@ -152,8 +152,8 @@ class SpacyCat(object):
 
             if cui in self.umls.cui2context_vec_short and len(cntx_vecs_short) > 0:
                 sim2 = np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui]))
-                if sim2 > 0:
-                    sim = (sim + sim2) / 2
+                sim2 = max(0, sim2)
+                sim = (sim + sim2) / 2
             if name is not None:
                 if cui in self.umls.cui2pref_name:
                     if name == self.umls.cui2pref_name[cui]:

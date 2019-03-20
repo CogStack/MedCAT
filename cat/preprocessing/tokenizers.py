@@ -27,9 +27,9 @@ def spacy_extended(nlp):
 
 
 def spacy_split_all(nlp):
-    infix_re = re.compile(r'''[^A-Za-z0-9]''')
-    suffix_re = re.compile(r'''[^A-Za-z0-9]$''')
-    prefix_re = re.compile(r'''^[^A-Za-z0-9]''')
+    infix_re = re.compile(r'''[^A-Za-z0-9\@]''')
+    suffix_re = re.compile(r'''[^A-Za-z0-9\@]$''')
+    prefix_re = re.compile(r'''^[^A-Za-z0-9\@]''')
     return Tokenizer(nlp.vocab,
             rules={},
             token_match=None,

@@ -41,8 +41,8 @@ class CatAnn(object):
                                 if name in d:
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
-                                if (n_words > len(tkns) and words_cnt > 5) or (perc > 0.2 or cnt > 5):
-                                    self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
+                                if (n_words > len(tkns)*2 and words_cnt > 5) or (perc > 0.6 or cnt > 5):
+                                    self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name)
                                 else:
                                     to_disamb.append((list(tkns), name))
                             else:
@@ -54,7 +54,7 @@ class CatAnn(object):
                     else:
                         # Longer than 5 letters, just add concept
                         cui = list(self.umls.name2cui[name])[0]
-                        self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
+                        self._cat._add_ann(cui, doc, tkns, acc=0.5, name=name)
                 else:
                     # Means we have more than one cui for this name
                     scores = self._scores_words(name, doc, doc_words, tkns)
@@ -64,16 +64,16 @@ class CatAnn(object):
                             # Means match is upper in both cases, tag if acc > 0.5
                             if acc > 0.5:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
-                                self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
+                                self._cat._add_ann(cui, doc, tkns, acc=acc/2, name=name)
                             else:
                                 to_disamb.append((list(tkns), name))
                         else:
                             to_disamb.append((list(tkns), name))
                     else:
                         # We can be almost sure that everything is fine, threshold of 0.1
-                        if acc > 0.1:
+                        if acc > 0.2:
                             cui = max(scores.items(), key=operator.itemgetter(1))[0]
-                            self._cat._add_ann(cui, doc, tkns, acc=acc, name=name)
+                            self._cat._add_ann(cui, doc, tkns, acc=acc/1.5, name=name)
                         else:
                             to_disamb.append((list(tkns), name))
             else:
