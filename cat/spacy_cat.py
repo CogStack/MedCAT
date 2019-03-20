@@ -11,11 +11,11 @@ import os
 DEBUG = os.getenv('DEBUG', "False").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
-MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 200))
+MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 2))
 MIN_ACC = float(os.getenv('MIN_ACC', 0.10))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
-NEG_PROB = float(os.getenv('NEG_PROB', 0.1))
+NEG_PROB = float(os.getenv('NEG_PROB', 0.15))
 LBL_STYLE = os.getenv('LBL_STYLE', 'LONG').lower()
 
 log = basic_logger("spacycat")
