@@ -3,8 +3,10 @@ import re
 from collections import Counter
 from spacy.tokens import Span
 import spacy
+import os
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
+SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_sm')
 
 class SpellChecker(object):
     """ Spellchecks words using hunspell
@@ -90,7 +92,7 @@ class CustomSpellChecker(object):
 class SpacySpellChecker(object):
     def __init__(self, spell_checker):
         self.spell_checker = spell_checker
-        self.nlp = spacy.load('en_core_web_sm', disable=['ner', 'parser'])
+        self.nlp = spacy.load(SPACY_MODEL, disable=['ner', 'parser'])
 
     def __call__(self, doc):
         for token in doc:
