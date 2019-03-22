@@ -7,6 +7,7 @@ from cat.utils.loggers import basic_logger
 from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
+from allennlp.modules.elmo import Elmo, batch_to_ids
 
 DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
@@ -37,6 +38,9 @@ class SpacyCat(object):
         self.cat_ann = CatAnn(self.umls, self)
         self._train_skip_names = {}
         self.force_train = force_train
+        options_file = "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_options.json"
+        weight_file = "https://s3-us-west-2.amazonaws.com/allennlp/models/elmo/2x4096_512_2048cnn_2xhighway/elmo_2x4096_512_2048cnn_2xhighway_weights.hdf5"
+        self.elmo = Elmo(options_file, weight_file, 2, dropout=0)
 
         if self.vocab is None:
             self.vocab = self.umls.vocab
@@ -224,8 +228,9 @@ class SpacyCat(object):
         if len(cntx_vecs_short) > 0:
             # Add context vectors only if we have some
             self.umls.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False)
-
         if len(cntx_vecs_long) > 0:
+            self.umls.add_context_vec(cui, self.doc_emb[tkns[0].i].detach().numpy(), cntx_type='LONG', inc_cui_count=False)
+            """
             # Add context vectors only if we have some
             self.umls.add_context_vec(cui, cntx_long, cntx_type='LONG', inc_cui_count=False)
 
@@ -234,6 +239,7 @@ class SpacyCat(object):
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
                                       inc_cui_count=False)
+            """
 
 
         if np.random.rand() < NEG_PROB:
@@ -326,6 +332,9 @@ class SpacyCat(object):
         """
         self._cuis = []
         doc._.ents = []
+        c_ids = batch_to_ids([[t.text for t in doc]])
+        self.doc_emb = self.elmo(c_ids)['elmo_representations'][0][0]
+
         # Get the words in this document that should not be skipped
         doc_words = [t._.norm for t in doc if not t._.to_skip]
 
