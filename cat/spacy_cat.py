@@ -8,12 +8,13 @@ from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
 
-DEBUG = os.getenv('DEBUG', "True").lower() == 'true'
+DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
+CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 20))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 50))
 MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 4))
-MIN_ACC = float(os.getenv('MIN_ACC', 0.15))
+MIN_ACC = float(os.getenv('MIN_ACC', 0.18))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
 NEG_PROB = float(os.getenv('NEG_PROB', 0.15))
 LBL_STYLE = os.getenv('LBL_STYLE', 'LONG').lower()
@@ -195,6 +196,7 @@ class SpacyCat(object):
         # Get words around this concept
         words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True)
         words_short = self._get_doc_words(doc, tkns, span=CNTX_SPAN_SHORT, skip_current=True)
+        words_long = self._get_doc_words(doc, tkns, span=CNTX_SPAN_LONG, skip_current=True)
 
         cntx_vecs = []
         for word in words:
@@ -206,22 +208,39 @@ class SpacyCat(object):
             if word in self.vocab and self.vocab.vec(word) is not None:
                 cntx_vecs_short.append(self.vocab.vec(word))
 
+        cntx_vecs_long = []
+        for word in words_long:
+            if word in self.vocab and self.vocab.vec(word) is not None:
+                cntx_vecs_long.append(self.vocab.vec(word))
+
         cntx = np.average(cntx_vecs, axis=0)
         cntx_short = np.average(cntx_vecs_short, axis=0)
+        cntx_long = np.average(cntx_vecs_long, axis=0)
 
         if len(cntx_vecs) > 0:
             # Add context vectors only if we have some
-            self.umls.add_context_vec(cui, cntx, cntx_type='LONG')
+            self.umls.add_context_vec(cui, cntx, cntx_type='MED')
 
         if len(cntx_vecs_short) > 0:
             # Add context vectors only if we have some
             self.umls.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False)
 
+        if len(cntx_vecs_long) > 0:
+            # Add context vectors only if we have some
+            self.umls.add_context_vec(cui, cntx_long, cntx_type='LONG', inc_cui_count=False)
+
+            negs = self.vocab.get_negative_samples(n=10)
+            neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
+            neg_cntx = np.average(neg_cntx_vecs, axis=0)
+            self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
+                                      inc_cui_count=False)
+
+
         if np.random.rand() < NEG_PROB:
             negs = self.vocab.get_negative_samples(n=6)
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
-            self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
+            self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
                                       inc_cui_count=False)
 
         #### DEBUG ONLY ####
@@ -257,8 +276,8 @@ class SpacyCat(object):
         name:  concept name
         """
         if LBL_STYLE == 'long':
-            lbl = "{} - {} - {} - {:.2}".format(cui, self.umls.cui2pretty_name.get(cui, ''),
-                    self.umls.cui2tui[cui], float(acc))
+            lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.umls.cui2pretty_name.get(cui, ''),
+                    self.umls.cui2tui.get(cui, ''), self.umls.tui2name.get(self.umls.cui2tui.get(cui, ''), ''), float(acc))
         else:
             lbl = cui
         lbl = doc.vocab.strings.add(lbl)

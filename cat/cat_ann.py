@@ -27,6 +27,10 @@ class CatAnn(object):
             if len(name) > 3:
                 if len(self.umls.name2cui[name]) == 1:
                     cui = list(self.umls.name2cui[name])[0]
+                    pref_name = False
+                    if cui in self.umls.cui2pref_name:
+                        if name == self.umls.cui2pref_name[cui]:
+                            pref_name = True
 
                     if len(name) < 6:
                         # Disambiguation needed if length of string < 6
@@ -41,7 +45,7 @@ class CatAnn(object):
                                 if name in d:
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
-                                if (n_words > len(tkns)*2 and words_cnt > 5) or (perc > 0.6 or cnt > 5):
+                                if (n_words > len(tkns)*2 and words_cnt > 5) or (perc > 0.6 or cnt > 5) or pref_name:
                                     self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name)
                                 else:
                                     to_disamb.append((list(tkns), name))

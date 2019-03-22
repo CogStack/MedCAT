@@ -36,6 +36,7 @@ class UMLS(object):
         self.onto2cuis = {} # Ontology to all the CUIs contained in it
         self.cui2context_vec = {} # CUI to context vector
         self.cui2context_vec_short = {} # CUI to context vector - short
+        self.cui2context_vec_long = {} # CUI to context vector - long
         self.cui2ncontext_vec = {} # CUI to negative context vector
         self.vocab = {} # Vocabulary of all words ever, hopefully 
         self._coo_matrix = None # cooccurrence matrix - scikit
@@ -163,10 +164,13 @@ class UMLS(object):
         inc_cui_count:  should this be counted
         """
 
-        if cntx_type == 'LONG':
+        if cntx_type == 'MED':
             cui2context_vec = self.cui2context_vec
         elif cntx_type == 'SHORT':
             cui2context_vec = self.cui2context_vec_short
+        elif cntx_type == 'LONG':
+            cui2context_vec = self.cui2context_vec_long
+
 
         sim = 0
         cv = context_vec
@@ -444,6 +448,7 @@ class UMLS(object):
         self.cui2context_vec = {}
         self.cui2ncontext_vec = {}
         self.cui2context_vec_short = {}
+        self.cui2context_vec_long = {}
         self.coo_dict = {}
         self.cui2ncontext_vec = {}
         self.reset_coo_matrix()
