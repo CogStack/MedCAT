@@ -7,7 +7,7 @@ import os
 SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_sm')
 
 class SpacyPipe(object):
-    def __init__(self, tokenizer, lng=SPACY_MODEL, disable=['ner', 'parser']):
+    def __init__(self, tokenizer, lng=SPACY_MODEL, disable=['ner', 'parser', 'vectors', 'textcat']):
         self.nlp = spacy.load(lng, disable=disable)
         self.nlp.tokenizer = tokenizer(self.nlp)
 
