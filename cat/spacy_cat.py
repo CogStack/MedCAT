@@ -12,7 +12,7 @@ DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
 CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 0))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 500))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 50))
 MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 4))
 MIN_ACC = float(os.getenv('MIN_ACC', 0.18))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
