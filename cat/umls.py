@@ -163,13 +163,14 @@ class UMLS(object):
                      pretty much just based on the window size
         inc_cui_count:  should this be counted
         """
-
+        prob = 0.5
         if cntx_type == 'MED':
             cui2context_vec = self.cui2context_vec
         elif cntx_type == 'SHORT':
             cui2context_vec = self.cui2context_vec_short
         elif cntx_type == 'LONG':
             cui2context_vec = self.cui2context_vec_long
+            prob = 2
 
 
         sim = 0
@@ -187,7 +188,7 @@ class UMLS(object):
                 #cui2context_vec[cui] = cui2context_vec[cui] - cv*b
 
             else:
-                if sim < 0.5:
+                if sim < prob:
                     c = 0.001
                     b = max((0.3 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
