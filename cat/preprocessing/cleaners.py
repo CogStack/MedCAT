@@ -117,6 +117,18 @@ def clean_def(text):
 
     return text
 
+def clean_snt(text):
+    # Remove things inside of () or [] 
+    text = re.sub("\[\*[^\]]*\*\]", " ", text)
+
+    # Remove multi _-
+    text = re.sub("[_-]{2,}", " ", text)
+
+    # Remove multi spaces
+    text = re.sub("[ ]+", " ", text).strip()
+
+    return text
+
 
 def spacy_tag_punct(doc, skip_stopwords=True):
     for token in doc:
