@@ -1,4 +1,4 @@
-from cat.preprocessing.cleaners import spacy_tag_punct, clean_umls
+from cat.preprocessing.cleaners import spacy_tag_punct
 from spacy.tokens import Token, Doc, Span
 from cat.utils.spelling import SpacySpellChecker
 import spacy

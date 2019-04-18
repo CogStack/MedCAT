@@ -1,5 +1,6 @@
 from spacy.tokens import Span
-from cat.cat_ann import CatAnn
+#from cat.cat_ann import CatAnn
+from cat.basic_cat_ann import CatAnn
 import numpy as np
 import operator
 from cat.utils.loggers import basic_logger
@@ -8,38 +9,38 @@ from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
 
-DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
+DEBUG = os.getenv('DEBUG', "true").lower() == 'true'
 CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
 CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 0))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 50))
-MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 4))
-MIN_ACC = float(os.getenv('MIN_ACC', 0.18))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 10))
+MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
+MIN_ACC = float(os.getenv('MIN_ACC', 0.11))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
 NEG_PROB = float(os.getenv('NEG_PROB', 0.15))
-LBL_STYLE = os.getenv('LBL_STYLE', 'LONG').lower()
+LBL_STYLE = os.getenv('LBL_STYLE', 'def').lower()
 
 log = basic_logger("spacycat")
 
 class SpacyCat(object):
     """ A Spacy pipe module, can be easily added into a spacey pipline
 
-    umls:  the umls object of class cat.umls representing the concepts
+    cdb:  the cdb object of class cat.cdb representing the concepts
     vocab:  vocab object of class cat.utils.vocab with vector representations
     train:  should the training be performed or not, if training is False
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    def __init__(self, umls, vocab=None, train=False, force_train=False, tokenizer=None):
-        self.umls = umls
+    def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
+        self.cdb = cdb
         self.vocab = vocab
         self.train = train
-        self.cat_ann = CatAnn(self.umls, self)
+        self.cat_ann = CatAnn(self.cdb, self)
         self._train_skip_names = {}
         self.force_train = force_train
 
         if self.vocab is None:
-            self.vocab = self.umls.vocab
+            self.vocab = self.cdb.vocab
 
         if tokenizer is None:
             self.tokenizer = self._tok
@@ -129,40 +130,40 @@ class SpacyCat(object):
 
         #### DEBUG ONLY ####
         if DEBUG:
-            if cui in self.umls.cui2context_vec and len(cntx_vecs) > 0:
+            if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 log.debug("SIMILARITY LONG::::::::::::::::::::")
                 log.debug(words)
                 log.debug(cui)
                 log.debug(tkns)
                 log.debug(np.dot(unitvec(cntx),
-                          unitvec(self.umls.cui2context_vec[cui])))
+                          unitvec(self.cdb.cui2context_vec[cui])))
                 log.debug(":::::::::::::::::::::::::::::::::::\n")
 
-            if cui in self.umls.cui2context_vec_short and len(cntx_vecs_short) > 0:
+            if cui in self.cdb.cui2context_vec_short and len(cntx_vecs_short) > 0:
                 log.debug("SIMILARITY SHORT::::::::::::::::::::")
                 log.debug(words_short)
                 log.debug(cui)
                 log.debug(tkns)
                 log.debug(np.dot(unitvec(cntx_short),
-                          unitvec(self.umls.cui2context_vec_short[cui])))
+                          unitvec(self.cdb.cui2context_vec_short[cui])))
                 log.debug(":::::::::::::::::::::::::::::::::::\n")
         #### END OF DEBUG ####
 
-        if cui in self.umls.cui2context_vec and len(cntx_vecs) > 0:
-            sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui]))
+        if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
+            sim = np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui]))
 
-            if cui in self.umls.cui2context_vec_short and len(cntx_vecs_short) > 0:
-                sim2 = np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui]))
+            if cui in self.cdb.cui2context_vec_short and len(cntx_vecs_short) > 0:
+                sim2 = np.dot(unitvec(cntx_short), unitvec(self.cdb.cui2context_vec_short[cui]))
                 sim2 = max(0, sim2)
                 sim = (sim + sim2) / 2
             if name is not None:
-                if cui in self.umls.cui2pref_name:
-                    if name == self.umls.cui2pref_name[cui]:
+                if cui in self.cdb.cui2pref_name:
+                    if name == self.cdb.cui2pref_name[cui]:
                         sim = sim + 0.3
 
             """ Sometimes needed
-            if cui in self.umls.cui2ncontext_vec and self.umls.cui_count[cui] > 20:
-                neg_sim = np.dot(unitvec(cntx), unitvec(self.umls.cui2ncontext_vec[cui]))
+            if cui in self.cdb.cui2ncontext_vec and self.cdb.cui_count[cui] > 20:
+                neg_sim = np.dot(unitvec(cntx), unitvec(self.cdb.cui2ncontext_vec[cui]))
                 log.debug("++++++NEG_SIM+++++++++++++++++++: " + str(neg_sim))
                 if neg_sim > 0:
                     sim = sim - neg_sim / 2
@@ -183,7 +184,7 @@ class SpacyCat(object):
 
         cntx = np.average(cntx_vecs, axis=0)
 
-        self.umls.add_ncontext_vec(cui, cntx)
+        self.cdb.add_ncontext_vec(cui, cntx)
 
 
     def _add_cntx_vec(self, cui, doc, tkns):
@@ -217,23 +218,23 @@ class SpacyCat(object):
         if len(cntx_vecs) > 0:
             cntx = np.average(cntx_vecs, axis=0)
             # Add context vectors only if we have some
-            self.umls.add_context_vec(cui, cntx, cntx_type='MED')
+            self.cdb.add_context_vec(cui, cntx, cntx_type='MED')
 
         if len(cntx_vecs_short) > 0:
             cntx_short = np.average(cntx_vecs_short, axis=0)
             # Add context vectors only if we have some
-            self.umls.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False)
+            self.cdb.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False)
 
         if len(cntx_vecs_long) > 0:
             cntx_long = np.average(cntx_vecs_long, axis=0)
             # Add context vectors only if we have some
-            self.umls.add_context_vec(cui, cntx_long, cntx_type='LONG', inc_cui_count=False)
+            self.cdb.add_context_vec(cui, cntx_long, cntx_type='LONG', inc_cui_count=False)
 
             if np.random.rand() < NEG_PROB * 2:
                 negs = self.vocab.get_negative_samples(n=10)
                 neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
                 neg_cntx = np.average(neg_cntx_vecs, axis=0)
-                self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
+                self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
                                           inc_cui_count=False)
 
 
@@ -241,29 +242,29 @@ class SpacyCat(object):
             negs = self.vocab.get_negative_samples(n=6)
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
-            self.umls.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
+            self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
                                       inc_cui_count=False)
 
         #### DEBUG ONLY ####
         if DEBUG:
-            if cui in self.umls.cui2context_vec and len(cntx_vecs) >= (CNTX_SPAN - 1):
-                if np.dot(unitvec(cntx), unitvec(self.umls.cui2context_vec[cui])) < 0.01:
+            if cui in self.cdb.cui2context_vec and len(cntx_vecs) >= (CNTX_SPAN - 1):
+                if np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui])) < 0.01:
                     log.debug("SIMILARITY LONG::::::::::::::::::::")
                     log.debug(words)
                     log.debug(cui)
                     log.debug(tkns)
                     log.debug(np.dot(unitvec(cntx),
-                              unitvec(self.umls.cui2context_vec[cui])))
+                              unitvec(self.cdb.cui2context_vec[cui])))
                     log.debug(":::::::::::::::::::::::::::::::::::\n")
 
-            if cui in self.umls.cui2context_vec_short and len(cntx_vecs_short) > 0:
-                if np.dot(unitvec(cntx_short), unitvec(self.umls.cui2context_vec_short[cui])) < 0.01:
+            if cui in self.cdb.cui2context_vec_short and len(cntx_vecs_short) > 0:
+                if np.dot(unitvec(cntx_short), unitvec(self.cdb.cui2context_vec_short[cui])) < 0.01:
                     log.debug("SIMILARITY SHORT::::::::::::::::::::")
                     log.debug(words_short)
                     log.debug(cui)
                     log.debug(tkns)
                     log.debug(np.dot(unitvec(cntx_short),
-                              unitvec(self.umls.cui2context_vec[cui])))
+                              unitvec(self.cdb.cui2context_vec[cui])))
                     log.debug(":::::::::::::::::::::::::::::::::::\n")
 
 
@@ -277,8 +278,10 @@ class SpacyCat(object):
         name:  concept name
         """
         if LBL_STYLE == 'long':
-            lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.umls.cui2pretty_name.get(cui, ''),
-                    self.umls.cui2tui.get(cui, ''), self.umls.tui2name.get(self.umls.cui2tui.get(cui, ''), ''), float(acc))
+            lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.cdb.cui2pretty_name.get(cui, ''),
+                    self.cdb.cui2tui.get(cui, ''), self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
+        elif LBL_STYLE == 'ent':
+            lbl = "{} - {:.2}".format(self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
         else:
             lbl = cui
         lbl = doc.vocab.strings.add(lbl)
@@ -286,14 +289,14 @@ class SpacyCat(object):
 
         ent._.acc = acc
         ent._.cui = cui
-        ent._.tui = self.umls.cui2tui.get(cui, 'None')
+        ent._.tui = self.cdb.cui2tui.get(cui, 'None')
         doc._.ents.append(ent)
 
         # Increase counter for cui_count_ext
-        if cui in self.umls.cui_count_ext:
-            self.umls.cui_count_ext[cui] += 1
+        if cui in self.cdb.cui_count_ext:
+            self.cdb.cui_count_ext[cui] += 1
         else:
-            self.umls.cui_count_ext[cui] = 1
+            self.cdb.cui_count_ext[cui] = 1
 
         if self.train or self.force_train:
             self._add_cntx_vec(cui, doc, tkns)
@@ -341,7 +344,7 @@ class SpacyCat(object):
             tkns = [_doc[i]]
             name = _doc[i]._.norm
 
-            if name in self.umls.name2cui and len(name) > MIN_CONCEPT_LENGTH:
+            if name in self.cdb.name2cui and len(name) > MIN_CONCEPT_LENGTH:
                 # Add annotation
                 if not self.train or not self._train_skip(name) or self.force_train:
                     self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
@@ -353,11 +356,11 @@ class SpacyCat(object):
                 name = name + _doc[j]._.norm
                 tkns.append(_doc[j])
 
-                if name not in self.umls.sname2name:
+                if name not in self.cdb.sname2name:
                     # There is not one entity containing this words
                     break
                 else:
-                    if name in self.umls.name2cui and len(name) > MIN_CONCEPT_LENGTH:
+                    if name in self.cdb.name2cui and len(name) > MIN_CONCEPT_LENGTH:
                         if not self.train or not self._train_skip(name) or self.force_train:
                             self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
@@ -366,8 +369,9 @@ class SpacyCat(object):
             self.disambiguate(self.to_disamb)
 
         # Add coocurances
-        #self.umls.add_coos(self._cuis)
+        #self.cdb.add_coos(self._cuis)
 
+        #TODO
         if DEBUG or True:
             self._create_main_ann(doc)
 
@@ -405,16 +409,16 @@ class SpacyCat(object):
             # Loop over all concepts to be disambiguated
             tkns = concept[0]
             name = concept[1]
-            cuis = list(self.umls.name2cui[name])
+            cuis = list(self.cdb.name2cui[name])
 
             accs = []
             MIN_COUNT = MIN_CUI_COUNT_STRICT
             for cui in cuis:
-                if self.umls.cui_count.get(cui, 0) >= MIN_CUI_COUNT:
+                if self.cdb.cui_count.get(cui, 0) >= MIN_CUI_COUNT:
                     MIN_COUNT = MIN_CUI_COUNT
             for cui in cuis:
                 # Each concept can have one or more cuis assigned
-                if self.umls.cui_count.get(cui, 0) >= MIN_COUNT:
+                if self.cdb.cui_count.get(cui, 0) >= MIN_COUNT:
                     # If this cui appeared enough times
                     accs.append(self._calc_acc(cui, tkns[0].doc, tkns, name))
                 else:

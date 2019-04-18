@@ -1,4 +1,4 @@
-""" I would just ignore this whole class, it's just a lot of rules that work nicely for UMLS
+""" I would just ignore this whole class, it's just a lot of rules that work nicely for CDB 
 once the software is trained the main thing are the context vectors.
 """
 
@@ -6,8 +6,8 @@ import numpy as np
 import operator
 
 class CatAnn(object):
-    def __init__(self, umls, spacy_cat):
-        self.umls = umls
+    def __init__(self, cdb, spacy_cat):
+        self.cdb = cdb 
         self._cat = spacy_cat
 
 
@@ -25,21 +25,21 @@ class CatAnn(object):
         if not(len(name) < 6 and len(tkns) > 1):
             # Name must have > 3, if not disambiguation is a must
             if len(name) > 3:
-                if len(self.umls.name2cui[name]) == 1:
-                    cui = list(self.umls.name2cui[name])[0]
+                if len(self.cdb.name2cui[name]) == 1:
+                    cui = list(self.cdb.name2cui[name])[0]
                     pref_name = False
-                    if cui in self.umls.cui2pref_name:
-                        if name == self.umls.cui2pref_name[cui]:
+                    if cui in self.cdb.cui2pref_name:
+                        if name == self.cdb.cui2pref_name[cui]:
                             pref_name = True
 
                     if len(name) < 6:
                         # Disambiguation needed if length of string < 6
                         # Case must agree or first can be lower_case
-                        if not name_case or self.umls.name_isupper[name] == name_case:
+                        if not name_case or self.cdb.name_isupper[name] == name_case:
                             if not name_case or (len(name) > 4):
                                 # Means name is not upper, disambiguation is needed
                                 n_words, words_cnt = self._n_words_appearing(name, doc, doc_words)
-                                d = self.umls.cui2words[cui]
+                                d = self.cdb.cui2words[cui]
                                 perc =  0
                                 cnt = 0
                                 if name in d:
@@ -57,14 +57,14 @@ class CatAnn(object):
                             to_disamb.append((list(tkns), name))
                     else:
                         # Longer than 5 letters, just add concept
-                        cui = list(self.umls.name2cui[name])[0]
+                        cui = list(self.cdb.name2cui[name])[0]
                         self._cat._add_ann(cui, doc, tkns, acc=0.5, name=name)
                 else:
                     # Means we have more than one cui for this name
                     scores = self._scores_words(name, doc, doc_words, tkns)
                     acc = self.softmax(scores.values())
                     if len(name) < 6:
-                        if self.umls.name_isupper[name] == name_case or (not name_case and len(name) > 3):
+                        if self.cdb.name_isupper[name] == name_case or (not name_case and len(name) > 3):
                             # Means match is upper in both cases, tag if acc > 0.5
                             if acc > 0.5:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
@@ -102,25 +102,25 @@ class CatAnn(object):
     def _scores_words(self, name, doc, doc_words, tkns):
         scores = {}
 
-        name_cnt = self.umls.name2cnt[name]
+        name_cnt = self.cdb.name2cnt[name]
         sm = sum(name_cnt.values())
 
-        for cui in self.umls.name2cui[name]:
+        for cui in self.cdb.name2cui[name]:
             score = 0
             n = 0
             flag = False
 
             if len(tkns) == 1 and len(name) > 3:
                 # Only prefered names are taken into account
-                if cui in self.umls.cui2pref_name:
-                    if name != self.umls.cui2pref_name[cui]:
+                if cui in self.cdb.cui2pref_name:
+                    if name != self.cdb.cui2pref_name[cui]:
                         flag = True
 
             if not flag:
-                for word in self.umls.cui2words[cui].keys():
+                for word in self.cdb.cui2words[cui].keys():
                     if word in doc_words:
                         n += 1
-                        score += self.umls.cui2words[cui][word] / self.umls.vocab[word]
+                        score += self.cdb.cui2words[cui][word] / self.cdb.vocab[word]
                 if n > 0:
                     score = score / n
 
@@ -129,8 +129,8 @@ class CatAnn(object):
 
                 # Check is this the prefered name for this concept
                 if len(name) > 3:
-                    if cui in self.umls.cui2pref_name:
-                        if name == self.umls.cui2pref_name[cui]:
+                    if cui in self.cdb.cui2pref_name:
+                        if name == self.cdb.cui2pref_name[cui]:
                             score = score + 0.6
 
                 """ This improves the acc by around 1% but reduces the speed by 50%
@@ -145,11 +145,11 @@ class CatAnn(object):
 
 
     def _n_words_appearing(self, name, doc, doc_words):
-        cui = list(self.umls.name2cui[name])[0]
+        cui = list(self.cdb.name2cui[name])[0]
 
         n = 0
         cnt = 0
-        for word in self.umls.cui2words[cui].keys():
+        for word in self.cdb.cui2words[cui].keys():
             if word in doc_words:
                 n += 1
                 cnt += doc_words.count(word)

@@ -79,6 +79,13 @@ BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 SKIP_CHARS = re.compile("[\[\]\*]+")
 
+def clean_name(text, stopwords=None):
+    # Remove multi spaces
+    text = re.sub("[ ]+", " ", text).strip()
+
+    return text
+
+
 
 def clean_umls(text, stopwords=None):
     # Remove [] if < 4 letters inside
