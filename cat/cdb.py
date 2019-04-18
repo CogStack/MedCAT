@@ -1,36 +1,36 @@
-""" Representation class for UMLS data
+""" Representation class for CDB data
 """
 import pickle
 import numpy as np
 from scipy.sparse import dok_matrix
 #from gensim.matutils import unitvec
-from cat.utils.matutils import unitvec
+from cat.utils.matutils import unitvec, sigmoid
 from cat.utils.attr_dict import AttrDict
 from cat.utils.loggers import basic_logger
 import os
 
-log = basic_logger("umls")
+log = basic_logger("cdb")
 MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
 MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
 
-class UMLS(object):
-    """ Holds all the UMLS data required for annotation
+class CDB(object):
+    """ Holds all the CDB data required for annotation
     """
     def __init__(self):
         self.index2cui = [] # A list containing all CUIs 
         self.cui2index = {} # Map from cui to index in the index2cui list
         self.name2cui = {} # Converts a normalized concept name to a cui
         self.name2cnt = {} # Converts a normalized concept name to a count
-        self.name_isupper = {} # Checks was this name all upper case in UMLS
-        self.cui2desc = {} # Map between a CUI and its umls description
+        self.name_isupper = {} # Checks was this name all upper case in cdb 
+        self.cui2desc = {} # Map between a CUI and its cdb description
         self.cui_count = {} # TRAINING - How many times this this CUI appear until now
         self.cui_count_ext = {} # Always - counter for cuis that can be reset, destroyed..
         self.cui2names = {} # CUI to all the different names it can have
         self.cui2tui = {} # CUI to the semantic type ID
         self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
         self.tui2name = {} # Semnatic tpye id to its name
-        self.cui2pref_name = {} # Get the prefered name for a CUI - taken from UMLS
-        self.cui2pretty_name = {} # Get the pretty name for a CUI - taken from UMLS
+        self.cui2pref_name = {} # Get the prefered name for a CUI - taken from CDB 
+        self.cui2pretty_name = {} # Get the pretty name for a CUI - taken from CDB 
         self.sname2name = set() # Internal - subnames to nam
         self.cui2words = {} # CUI to all the words that can describe it
         self.onto2cuis = {} # Ontology to all the CUIs contained in it
@@ -45,7 +45,7 @@ class UMLS(object):
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name='',
                     desc=None):
-        """ Add a concept to internal UMLS representation
+        """ Add a concept to internal CDB representation
 
         cui:  Identifier
         name:  Concept name
@@ -181,6 +181,7 @@ class UMLS(object):
                 self.increase_cui_count(cui, True)
 
             sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
+            #sim = sigmoid(np.dot(cv, cui2context_vec[cui]))
 
             if negative:
                 b = max((0.2 / self.cui_count[cui]), 0.0001)  * max(0, sim)
@@ -350,7 +351,7 @@ class UMLS(object):
 
 
     def filter(self, tuis=[], cuis=[]):
-        """ A fairly simple function that is limiting the UMLS to only certain cuis or tuis
+        """ A fairly simple function that is limiting the CDB to only certain cuis or tuis
 
         tuis:  List of tuis to filter by
         cuis:  List of cuis to filter by

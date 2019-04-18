@@ -33,19 +33,19 @@ First export the path to the `cat` repo:
 `export PYTHONPATH=/home/user/cat/`
 
 
-Given that you already have a Vocab and the UMLS class prebuilt you only need to do the following:
+Given that you already have a Vocab and the CDB class prebuilt you only need to do the following:
 ```python
 from cat.cat import CAT
-from cat.umls import UMLS
+from cat.cdb import CDB 
 from cat.utils.vocab import Vocab
 
 vocab = Vocab()
-umls = UMLS()
+cdb = CDB()
 
 # Models available for download, look bellow
 vocab.load_dict('<path to the vocab file>')
-umls.load_dict('<path to the umls file>') 
-cat = CAT(umls=umls, vocab=vocab)
+cdb.load_dict('<path to the cdb file>') 
+cat = CAT(cdb=cdb, vocab=vocab)
 
 # A simple test
 text = "A 14 mm Hemashield tube graft was selected and sewn end-to-end fashion to the proximal aorta using a semi continuous 3-0 Prolene suture."
@@ -73,15 +73,15 @@ docs = cat.multi_processing(data)
 To fine-tune or train everything from the ground up (excluding word-vectors), you can use the following:
 ```python
 from cat.cat import CAT
-from cat.umls import UMLS
+from cat.cdb import CDB
 from cat.utils.vocab import Vocab
 
 vocab = Vocab()
-umls = UMLS()
+cdb = CDB()
 
 vocab.load_dict('<path to the vocab file>')
-umls.load_dict('<path to the umls file>')
-cat = CAT(umls=umls, vocab=vocab)
+cdb.load_dict('<path to the cdb file>')
+cat = CAT(cdb=cdb, vocab=vocab)
 
 # To run the training do
 f = open("<some file with a lot of medical text>", 'r')
@@ -116,7 +116,7 @@ so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
 
-Trained UMLS [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm.dat)
+Trained CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm.dat)
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
