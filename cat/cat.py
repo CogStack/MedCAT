@@ -89,18 +89,20 @@ class CAT(object):
 
         out_ent = {}
         #TODO: should we use .ents or ._.ents
-        for ent in doc.ents:
-            out_ent['start'] = ent.start_char
-            out_ent['end'] = ent.end_char
+        for ind, ent in enumerate(doc.ents):
+            out_ent['id'] = ind
+            out_ent['start_tkn'] = ent[0].i
+            out_ent['end_tkn'] = ent[-1].i
+            out_ent['start_ind'] = ent.start_char
+            out_ent['end_ind'] = ent.end_char
             out_ent['label'] = ent.label_
             out_ent['source_value'] = ent.text
-            out_ent['acc'] = ent._.acc
+            out_ent['acc'] = str(ent._.acc)
             out_ent['cui'] = ent._.cui
             out_ent['tui'] = ent._.tui
             out_ent['type'] = self.cdb.tui2name.get(out_ent['tui'], '')
 
             out.append(dict(out_ent))
-
         out = {'entities': out, 'text': text}
 
         return json.dumps(out)
