@@ -19,12 +19,12 @@ from cat.preprocessing.cleaners import spacy_tag_punct
 class CAT(object):
     """ Annotate a dataset
     """
-    def __init__(self, cdb, vocab=None):
+    def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)
         #self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
-        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=True))
+        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=skip_stopwords))
 
         # Add spell checker pipe
         self.spell_checker = CustomSpellChecker(words=cdb.vocab, big_vocab=vocab)
@@ -95,12 +95,12 @@ class CAT(object):
             out_ent['end_tkn'] = ent[-1].i
             out_ent['start_ind'] = ent.start_char
             out_ent['end_ind'] = ent.end_char
-            out_ent['label'] = ent.label_
-            out_ent['source_value'] = ent.text
+            out_ent['label'] = str(ent.label_)
+            out_ent['source_value'] = str(ent.text)
             out_ent['acc'] = str(ent._.acc)
-            out_ent['cui'] = ent._.cui
-            out_ent['tui'] = ent._.tui
-            out_ent['type'] = self.cdb.tui2name.get(out_ent['tui'], '')
+            out_ent['cui'] = str(ent._.cui)
+            out_ent['tui'] = str(ent._.tui)
+            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
 
             out.append(dict(out_ent))
         out = {'entities': out, 'text': text}

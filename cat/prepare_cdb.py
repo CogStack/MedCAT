@@ -18,8 +18,9 @@ class PrepareCDB(object):
     after everything is done the result is in the cdb field.
     """
     SEPARATOR = ""
-    NAME_SEPARATOR = "-|-"
+    NAME_SEPARATOR = "|"
     CONCEPT_LENGTH_LIMIT = 8
+    SKIP_STOPWORDS = True
 
     def __init__(self, vocab=None, pretrained_cdb=None, word_tokenizer=None):
         self.vocab = vocab
@@ -30,7 +31,7 @@ class PrepareCDB(object):
 
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser'])
-        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=False))
+        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=self.SKIP_STOPWORDS))
         # Get the tokenizer
         if word_tokenizer is not None:
             self.tokenizer = word_tokenizer
@@ -63,7 +64,7 @@ class PrepareCDB(object):
                     tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
 
                     # Don't allow concept names to be above concept_length_limit
-                    if len(tokens) > CONCEPT_LENGTH_LIMIT:
+                    if len(tokens) > self.CONCEPT_LENGTH_LIMIT:
                         continue
 
                     name = self.SEPARATOR.join(tokens)
@@ -81,12 +82,12 @@ class PrepareCDB(object):
                         sname = sname + token + self.SEPARATOR
                         snames.append(sname.strip())
 
-                    # Check is fullname
-                    fullname = False
-                    if 'fullname' in df.columns:
-                        _tmp = str(df.iloc[ind]['fullname']).strip()
-                        if _tmp.lower().strip() == '1':
-                            fullname = True
+                    # Check is unique 
+                    unique = True
+                    if 'unique' in df.columns:
+                        _tmp = str(df.iloc[ind]['unique']).strip()
+                        if _tmp.lower().strip() == '0':
+                            unique = False
 
                     onto = 'default'
                     if 'sab' in df.columns:
@@ -113,8 +114,8 @@ class PrepareCDB(object):
                                 examples.append(example)
 
                     self.cdb.add_concept(cui, name, onto, tokens, snames,
-                            is_pref_name=is_pref_name, tui=tui, pretty_name=pretty_name, desc=desc, 
-                            tokens_vocab=tokens_vocab)
+                            tui=tui, pretty_name=pretty_name,
+                            tokens_vocab=tokens_vocab, unique=unique)
 
                     # If we have examples
                     for example in examples:

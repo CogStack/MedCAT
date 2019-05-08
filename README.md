@@ -26,42 +26,57 @@ OR a simple frontend
 `<YOUR_IP>:5000/api_test`
 
 
-### From IPython/Jupyter/Python
+### Installation
+`pip install --upgrade medcat`
 
-First export the path to the `cat` repo:
+#### Please install the langauge models before running anything
+`python -m spacy download en_core_web_sm`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
 
-`export PYTHONPATH=/home/user/cat/`
 
+### Building a new Concept Database (.csv) or using an existing one
+First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat)
 
-Given that you already have a Vocab and the CDB class prebuilt you only need to do the following:
+Now in python3+ 
 ```python
 from cat.cat import CAT
-from cat.cdb import CDB 
 from cat.utils.vocab import Vocab
+from cat.prepare_cdb import PrepareCDB
+from cat.cdb import CDB 
 
 vocab = Vocab()
-cdb = CDB()
 
-# Models available for download, look bellow
+# Load the vocab model you just downloaded
 vocab.load_dict('<path to the vocab file>')
-cdb.load_dict('<path to the cdb file>') 
-cat = CAT(cdb=cdb, vocab=vocab)
 
-# A simple test
-text = "A 14 mm Hemashield tube graft was selected and sewn end-to-end fashion to the proximal aorta using a semi continuous 3-0 Prolene suture."
-doc = cat(text)
-# All the extracted entites are now in, each one is a spacy Entity:
-doc._.ents
-# Each entity has an accuracy assigned to it, e.g.
-doc._.ents[0]._.acc
+# If you have an existing CDB
+cdb = CDB()
+cdb.load_dict('<path to the cdb file>') 
+
+# If you need a special CDB you can build one from a .csv file
+preparator = PrepareCDB(vocab=vocab)
+csv_paths = ['<path to your csv_file>', '<another one>', ...] 
+# e.g.
+csv_paths = ['./examples/simple_cdb.csv']
+cdb = preparator.prepare_csvs(csv_paths)
+
+# Save the new CDB for later
+cdb.save_dict("<path to a file where it will be saved>")
+
+# To annotate documents we do
+doc = "My simple document with kidney failure"
+cat = CAT(cdb=cdb, vocab=vocab)
+cat.train = False
+doc_spacy = cat(doc)
+# Entities are in
+doc_spacy._.ents
+# Or to get a json
+doc_json = cat.get_json(doc)
 
 # To have a look at the results:
 from spacy import displacy
 # Note that this will not show all entites, but only the longest ones
-displacy.serve(doc, style='ent')
-
-# To get JSON output do
-doc_json = cat.get_json(text)
+displacy.serve(doc_spacy, style='ent')
 
 # To run cat on a large number of documents
 data = [(<doc_id>, <text>), (<doc_id>, <text>), ...]
@@ -69,19 +84,9 @@ docs = cat.multi_processing(data)
 ```
 
 ### Training and Fine-tuning
-
 To fine-tune or train everything from the ground up (excluding word-vectors), you can use the following:
 ```python
-from cat.cat import CAT
-from cat.cdb import CDB
-from cat.utils.vocab import Vocab
-
-vocab = Vocab()
-cdb = CDB()
-
-vocab.load_dict('<path to the vocab file>')
-cdb.load_dict('<path to the cdb file>')
-cat = CAT(cdb=cdb, vocab=vocab)
+# Loadinga CDB or creating a new one is as above.
 
 # To run the training do
 f = open("<some file with a lot of medical text>", 'r')
@@ -90,11 +95,8 @@ cat.run_training(f, fine_tune=False)
 ```
 
 
-## Requirements
+## If building from source, the requirements are
 `python >= 3.5` [tested with 3.7, but most likely works with 3+]
-
-Get the spacy `en` model
-`python -m spacy download en_core_web_sm`
 
 All the rest can be instaled using `pip` from the requirements.txt file, by running:
 
