@@ -5,14 +5,14 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="0.1.4",
+    version="0.1.8",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/w-is-h/cat",
-    packages=['cat'],
+    packages=['medcat', 'medcat.utils', 'medcat.preprocessing'],
     install_requires=[
         'numpy==1.15.4',
         'pandas==0.23.4',
