@@ -19,6 +19,7 @@ class CDB(object):
     def __init__(self):
         self.index2cui = [] # A list containing all CUIs 
         self.cui2index = {} # Map from cui to index in the index2cui list
+        self.is_unique = {} # Is a name unique
         self.name2cui = {} # Converts a normalized concept name to a cui
         self.name2cnt = {} # Converts a normalized concept name to a count
         self.name_isupper = {} # Checks was this name all upper case in cdb 
@@ -43,8 +44,8 @@ class CDB(object):
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
 
 
-    def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name='',
-                    desc=None, tokens_vocab=None):
+    def add_concept(self, cui, name, onto, tokens, snames, isupper=False, is_pref_name=False, tui=None, pretty_name='',
+                    desc=None, tokens_vocab=None, unique=True):
         """ Add a concept to internal CDB representation
 
         cui:  Identifier
