@@ -1,6 +1,6 @@
 from spacy.tokens import Span
-#from cat.cat_ann import CatAnn
-from cat.basic_cat_ann import CatAnn
+from cat.cat_ann import CatAnn
+#from cat.basic_cat_ann import CatAnn
 import numpy as np
 import operator
 from cat.utils.loggers import basic_logger
@@ -9,16 +9,19 @@ from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
 
-DEBUG = os.getenv('DEBUG', "true").lower() == 'true'
-CNTX_SPAN = int(os.getenv('CNTX_SPAN', 5))
+DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
+CNTX_SPAN = int(os.getenv('CNTX_SPAN', 6))
 CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
 CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 0))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 10))
-MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
-MIN_ACC = float(os.getenv('MIN_ACC', 0.11))
+MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
+MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 15))
+# Just to be sure
+MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
+
+MIN_ACC = float(os.getenv('MIN_ACC', 0.12))
 MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
-NEG_PROB = float(os.getenv('NEG_PROB', 0.15))
-LBL_STYLE = os.getenv('LBL_STYLE', 'def').lower()
+NEG_PROB = float(os.getenv('NEG_PROB', 0.20))
+LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
 
 log = basic_logger("spacycat")
 
@@ -109,7 +112,7 @@ class SpacyCat(object):
         """
         cntx = None
         cntx_short = None
-        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True)
+        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True, skip_current=False)
         words_short = self._get_doc_words(doc, tkns, span=CNTX_SPAN_SHORT, skip_current=True)
 
         cntx_vecs = []
@@ -195,7 +198,7 @@ class SpacyCat(object):
         tkns:  tokens that were found for this cui
         """
         # Get words around this concept
-        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True)
+        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True, skip_current=False)
         words_short = self._get_doc_words(doc, tkns, span=CNTX_SPAN_SHORT, skip_current=True)
         words_long = self._get_doc_words(doc, tkns, span=CNTX_SPAN_LONG, skip_current=True)
 
@@ -239,7 +242,7 @@ class SpacyCat(object):
 
 
         if np.random.rand() < NEG_PROB:
-            negs = self.vocab.get_negative_samples(n=6)
+            negs = self.vocab.get_negative_samples(n=CNTX_SPAN * 2)
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
@@ -247,7 +250,7 @@ class SpacyCat(object):
 
         #### DEBUG ONLY ####
         if DEBUG:
-            if cui in self.cdb.cui2context_vec and len(cntx_vecs) >= (CNTX_SPAN - 1):
+            if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 if np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui])) < 0.01:
                     log.debug("SIMILARITY LONG::::::::::::::::::::")
                     log.debug(words)
@@ -300,7 +303,8 @@ class SpacyCat(object):
 
         if self.train or self.force_train:
             self._add_cntx_vec(cui, doc, tkns)
-            self._cuis.append(cui)
+
+        self._cuis.append(cui)
 
 
     def _create_main_ann(self, doc):
@@ -369,7 +373,8 @@ class SpacyCat(object):
             self.disambiguate(self.to_disamb)
 
         # Add coocurances
-        #self.cdb.add_coos(self._cuis)
+        if not self.train:
+            self.cdb.add_coos(self._cuis)
 
         #TODO
         if DEBUG or True:

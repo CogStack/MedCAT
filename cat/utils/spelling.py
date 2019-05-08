@@ -6,7 +6,7 @@ import spacy
 import os
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
-SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_sm')
+SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
 
 class SpellChecker(object):
     """ Spellchecks words using hunspell

@@ -24,7 +24,7 @@ class CAT(object):
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)
         #self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
-        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=False))
+        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=True))
 
         # Add spell checker pipe
         self.spell_checker = CustomSpellChecker(words=cdb.vocab, big_vocab=vocab)
