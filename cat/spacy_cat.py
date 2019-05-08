@@ -9,20 +9,6 @@ from cat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
 
-DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
-CNTX_SPAN = int(os.getenv('CNTX_SPAN', 6))
-CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 0))
-MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
-MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 15))
-# Just to be sure
-MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
-
-MIN_ACC = float(os.getenv('MIN_ACC', 0.12))
-MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
-NEG_PROB = float(os.getenv('NEG_PROB', 0.20))
-LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
-
 log = basic_logger("spacycat")
 
 class SpacyCat(object):
@@ -34,6 +20,20 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
+    DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
+    CNTX_SPAN = int(os.getenv('CNTX_SPAN', 6))
+    CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
+    CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 0))
+    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
+    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 15))
+    # Just to be sure
+    MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
+
+    MIN_ACC = float(os.getenv('MIN_ACC', 0.12))
+    MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
+    NEG_PROB = float(os.getenv('NEG_PROB', 0.20))
+    LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
+
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
         self.vocab = vocab
@@ -112,8 +112,8 @@ class SpacyCat(object):
         """
         cntx = None
         cntx_short = None
-        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True, skip_current=False)
-        words_short = self._get_doc_words(doc, tkns, span=CNTX_SPAN_SHORT, skip_current=True)
+        words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
+        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
 
         cntx_vecs = []
         for word in words:
@@ -132,7 +132,7 @@ class SpacyCat(object):
             cntx = np.average(cntx_vecs, axis=0)
 
         #### DEBUG ONLY ####
-        if DEBUG:
+        if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 log.debug("SIMILARITY LONG::::::::::::::::::::")
                 log.debug(words)
@@ -198,9 +198,9 @@ class SpacyCat(object):
         tkns:  tokens that were found for this cui
         """
         # Get words around this concept
-        words = self._get_doc_words(doc, tkns, span=CNTX_SPAN, skip_words=True, skip_current=False)
-        words_short = self._get_doc_words(doc, tkns, span=CNTX_SPAN_SHORT, skip_current=True)
-        words_long = self._get_doc_words(doc, tkns, span=CNTX_SPAN_LONG, skip_current=True)
+        words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
+        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
+        words_long = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_LONG, skip_current=True)
 
         cntx_vecs = []
         for word in words:
@@ -233,7 +233,7 @@ class SpacyCat(object):
             # Add context vectors only if we have some
             self.cdb.add_context_vec(cui, cntx_long, cntx_type='LONG', inc_cui_count=False)
 
-            if np.random.rand() < NEG_PROB * 2:
+            if np.random.rand() < self.NEG_PROB * 2:
                 negs = self.vocab.get_negative_samples(n=10)
                 neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
                 neg_cntx = np.average(neg_cntx_vecs, axis=0)
@@ -241,15 +241,15 @@ class SpacyCat(object):
                                           inc_cui_count=False)
 
 
-        if np.random.rand() < NEG_PROB:
-            negs = self.vocab.get_negative_samples(n=CNTX_SPAN * 2)
+        if np.random.rand() < self.NEG_PROB:
+            negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2)
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
                                       inc_cui_count=False)
 
         #### DEBUG ONLY ####
-        if DEBUG:
+        if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 if np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui])) < 0.01:
                     log.debug("SIMILARITY LONG::::::::::::::::::::")
@@ -280,10 +280,10 @@ class SpacyCat(object):
         acc:  accuracy for this annotation
         name:  concept name
         """
-        if LBL_STYLE == 'long':
+        if self.LBL_STYLE == 'long':
             lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.cdb.cui2pretty_name.get(cui, ''),
                     self.cdb.cui2tui.get(cui, ''), self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
-        elif LBL_STYLE == 'ent':
+        elif self.LBL_STYLE == 'ent':
             lbl = "{} - {:.2}".format(self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
         else:
             lbl = cui
@@ -348,7 +348,7 @@ class SpacyCat(object):
             tkns = [_doc[i]]
             name = _doc[i]._.norm
 
-            if name in self.cdb.name2cui and len(name) > MIN_CONCEPT_LENGTH:
+            if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                 # Add annotation
                 if not self.train or not self._train_skip(name) or self.force_train:
                     self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
@@ -364,7 +364,7 @@ class SpacyCat(object):
                     # There is not one entity containing this words
                     break
                 else:
-                    if name in self.cdb.name2cui and len(name) > MIN_CONCEPT_LENGTH:
+                    if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                         if not self.train or not self._train_skip(name) or self.force_train:
                             self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
@@ -377,7 +377,7 @@ class SpacyCat(object):
             self.cdb.add_coos(self._cuis)
 
         #TODO
-        if DEBUG or True:
+        if self.DEBUG or True:
             self._create_main_ann(doc)
 
         return doc
@@ -390,7 +390,7 @@ class SpacyCat(object):
             self._train_skip_names[name] = 1
 
         cnt = self._train_skip_names[name]
-        if cnt < MIN_CUI_COUNT:
+        if cnt < self.MIN_CUI_COUNT:
             return False
 
         prob = 1 / (cnt / 10)
@@ -406,7 +406,7 @@ class SpacyCat(object):
         log.debug("There are {} concepts to be disambiguated.".format(len(to_disamb)))
         log.debug("The concepts are: " + str(to_disamb))
 
-        _min_acc = MIN_ACC
+        _min_acc = self.MIN_ACC
         if self.force_train:
             _min_acc = 0.4
 
@@ -417,13 +417,13 @@ class SpacyCat(object):
             cuis = list(self.cdb.name2cui[name])
 
             accs = []
-            MIN_COUNT = MIN_CUI_COUNT_STRICT
+            self.MIN_COUNT = self.MIN_CUI_COUNT_STRICT
             for cui in cuis:
-                if self.cdb.cui_count.get(cui, 0) >= MIN_CUI_COUNT:
-                    MIN_COUNT = MIN_CUI_COUNT
+                if self.cdb.cui_count.get(cui, 0) >= self.MIN_CUI_COUNT:
+                    self.MIN_COUNT = self.MIN_CUI_COUNT
             for cui in cuis:
                 # Each concept can have one or more cuis assigned
-                if self.cdb.cui_count.get(cui, 0) >= MIN_COUNT:
+                if self.cdb.cui_count.get(cui, 0) >= self.MIN_COUNT:
                     # If this cui appeared enough times
                     accs.append(self._calc_acc(cui, tkns[0].doc, tkns, name))
                 else:

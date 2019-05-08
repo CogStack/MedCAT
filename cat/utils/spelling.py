@@ -6,7 +6,6 @@ import spacy
 import os
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
-SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
 
 class SpellChecker(object):
     """ Spellchecks words using hunspell
@@ -36,10 +35,8 @@ class SpellChecker(object):
 class CustomSpellChecker(object):
     def __init__(self, words, big_vocab=None):
         self.vocab = words
-        if big_vocab is None:
-            self.big_vocab = self.vocab
-        else:
-            self.big_vocab = big_vocab
+        self.big_vocab = big_vocab
+
 
     def P(self, word):
         "Probability of `word`."
@@ -51,8 +48,15 @@ class CustomSpellChecker(object):
         else:
             return 0
 
+
     def __contains__(self, word):
-        return word in self.big_vocab
+        if word in self.vocab:
+            return True
+        elif self.big_vocab is not None and word in self.big_vocab:
+            return True
+        else:
+            return False
+
 
     def fix(self, word):
         "Most probable spelling correction for word."
@@ -90,9 +94,10 @@ class CustomSpellChecker(object):
 
 
 class SpacySpellChecker(object):
+    SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
     def __init__(self, spell_checker):
         self.spell_checker = spell_checker
-        self.nlp = spacy.load(SPACY_MODEL, disable=['ner', 'parser'])
+        self.nlp = spacy.load(self.SPACY_MODEL, disable=['ner', 'parser'])
 
     def __call__(self, doc):
         for token in doc:

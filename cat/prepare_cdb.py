@@ -13,13 +13,14 @@ from cat.utils.spacy_pipe import SpacyPipe
 import numpy as np
 from functools import partial
 
-SEPARATOR = ""
-CONCEPT_LENGTH_LIMIT = 6
-
 class PrepareCDB(object):
     """ Prepares CDB data in csv format for annotations,
     after everything is done the result is in the cdb field.
     """
+    SEPARATOR = ""
+    NAME_SEPARATOR = "-|-"
+    CONCEPT_LENGTH_LIMIT = 8
+
     def __init__(self, vocab=None, pretrained_cdb=None, word_tokenizer=None):
         self.vocab = vocab
         if pretrained_cdb is None:
@@ -50,7 +51,7 @@ class PrepareCDB(object):
         for csv_path in csv_paths:
             df = pandas.read_csv(csv_path, sep=sep)
             for ind in range(len(df)):
-                names = str(df.iloc[ind]['str']).split("||")
+                names = str(df.iloc[ind]['str']).split(self.NAME_SEPARATOR)
                 for _name in names:
                     if ind % 10000 == 0:
                         print("Done: {}".format(ind))
@@ -59,12 +60,13 @@ class PrepareCDB(object):
                     # Clean and preprocess the name
                     sc_name = self.nlp(name)
                     tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct and not t._.to_skip]
+                    tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
 
                     # Don't allow concept names to be above concept_length_limit
                     if len(tokens) > CONCEPT_LENGTH_LIMIT:
                         continue
 
-                    name = SEPARATOR.join(tokens)
+                    name = self.SEPARATOR.join(tokens)
                     _name = "".join(tokens)
                     length_one = [True if len(x) < 2 else False for x in tokens]
 
@@ -76,7 +78,7 @@ class PrepareCDB(object):
                     snames = []
                     sname = ""
                     for token in tokens:
-                        sname = sname + token + SEPARATOR
+                        sname = sname + token + self.SEPARATOR
                         snames.append(sname.strip())
 
                     # Check is fullname
@@ -111,7 +113,8 @@ class PrepareCDB(object):
                                 examples.append(example)
 
                     self.cdb.add_concept(cui, name, onto, tokens, snames,
-                            is_pref_name=is_pref_name, tui=tui, pretty_name=pretty_name, desc=desc)
+                            is_pref_name=is_pref_name, tui=tui, pretty_name=pretty_name, desc=desc, 
+                            tokens_vocab=tokens_vocab)
 
                     # If we have examples
                     for example in examples:

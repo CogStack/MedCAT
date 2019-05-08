@@ -6,8 +6,11 @@
 /output/
 /graphics/
 /models/*.dat
+dist/
 tmp/
 *_tmp/
+medcat.egg-info/
+build/
 
 #tmp and similar files
 .nfs*
