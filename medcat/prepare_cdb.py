@@ -107,7 +107,7 @@ class PrepareCDB(object):
 
                     examples = []
                     if 'examples' in df.columns:
-                        tmp = str(df.iloc[ind]['examples']).strip().split("||")
+                        tmp = str(df.iloc[ind]['examples']).strip().split(self.NAME_SEPARATOR)
                         for example in tmp:
                             example = example.strip()
                             if len(example) > 0:
@@ -128,6 +128,6 @@ class PrepareCDB(object):
                                         cntx.append(self.vocab.vec(w))
                         if len(cntx) > 1:
                             cntx = np.average(cntx, axis=0)
-                            self.cdb.add_context_vec(cui, cntx, cntx_type='LONG')
+                            self.cdb.add_context_vec(cui, cntx, cntx_type='MED')
 
         return self.cdb

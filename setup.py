@@ -1,18 +1,18 @@
 import setuptools
 
-with open("../README.md", "r") as fh:
+with open("./README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
     name="medcat",
-    version="0.1.2",
+    version="0.1.4",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/w-is-h/cat",
-    packages=setuptools.find_packages(),
+    packages=['cat'],
     install_requires=[
         'numpy==1.15.4',
         'pandas==0.23.4',

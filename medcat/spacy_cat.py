@@ -1,11 +1,11 @@
 from spacy.tokens import Span
-from cat.cat_ann import CatAnn
+from medcat.cat_ann import CatAnn
 #from cat.basic_cat_ann import CatAnn
 import numpy as np
 import operator
-from cat.utils.loggers import basic_logger
+from medcat.utils.loggers import basic_logger
 #from gensim.matutils import unitvec
-from cat.utils.matutils import unitvec
+from medcat.utils.matutils import unitvec
 #from pytorch_pretrained_bert import BertTokenizer
 import os
 

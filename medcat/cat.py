@@ -1,20 +1,20 @@
 import pandas
 import spacy
 from spacy.tokenizer import Tokenizer
-from cat.cdb import CDB
-from cat.spacy_cat import SpacyCat
-from cat.preprocessing.tokenizers import spacy_split_all
+from medcat.cdb import CDB
+from medcat.spacy_cat import SpacyCat
+from medcat.preprocessing.tokenizers import spacy_split_all
 from spacy.tokens import Token
-from cat.utils.spelling import CustomSpellChecker, SpacySpellChecker
-from cat.utils.spacy_pipe import SpacyPipe
-from cat.preprocessing.iterators import EmbMimicCSV
+from medcat.utils.spelling import CustomSpellChecker, SpacySpellChecker
+from medcat.utils.spacy_pipe import SpacyPipe
+from medcat.preprocessing.iterators import EmbMimicCSV
 from gensim.models import FastText
 from multiprocessing import Process, Manager, Queue, Pool, Array
 from time import sleep
 import copy
 import json
 from functools import partial
-from cat.preprocessing.cleaners import spacy_tag_punct
+from medcat.preprocessing.cleaners import spacy_tag_punct
 
 class CAT(object):
     """ Annotate a dataset
