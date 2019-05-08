@@ -4,11 +4,11 @@ from cat.utils.spelling import SpacySpellChecker
 import spacy
 import os
 
-SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_sm')
+SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
 
 class SpacyPipe(object):
-    def __init__(self, tokenizer, lng=SPACY_MODEL, disable=['ner', 'parser', 'vectors', 'textcat']):
-        self.nlp = spacy.load(lng, disable=disable)
+    def __init__(self, tokenizer, disable=['ner', 'parser', 'vectors', 'textcat']):
+        self.nlp = spacy.load(SPACY_MODEL, disable=disable)
         self.nlp.tokenizer = tokenizer(self.nlp)
 
 
