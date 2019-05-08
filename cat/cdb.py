@@ -10,12 +10,12 @@ from cat.utils.loggers import basic_logger
 import os
 
 log = basic_logger("cdb")
-MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
-MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
-
 class CDB(object):
     """ Holds all the CDB data required for annotation
     """
+    MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
+    MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
+
     def __init__(self):
         self.index2cui = [] # A list containing all CUIs 
         self.cui2index = {} # Map from cui to index in the index2cui list
@@ -44,7 +44,7 @@ class CDB(object):
 
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper, is_pref_name=False, tui=None, pretty_name='',
-                    desc=None):
+                    desc=None, tokens_vocab=None):
         """ Add a concept to internal CDB representation
 
         cui:  Identifier
@@ -58,6 +58,7 @@ class CDB(object):
         tui:  Semantic type
         pretty_name:  Pretty name for this concept
         desc:  Description of this concept - can take a lot of space
+        tokens_vocab:  Tokens that should be added to the vocabulary, usually not normalized
         """
         # Add is name upper
         if name in self.name_isupper:
@@ -105,6 +106,12 @@ class CDB(object):
                 self._coo_matrix.resize((s, s))
 
         # Add words to vocab
+        for token in tokens_vocab:
+            if token in self.vocab:
+                self.vocab[token] += 1
+            else:
+                self.vocab[token] = 1
+        # Add also the normalized tokens, why not
         for token in tokens:
             if token in self.vocab:
                 self.vocab[token] += 1
@@ -260,16 +267,16 @@ class CDB(object):
                 self.add_coo(cui1, cui2)
                 self.add_coo(cui2, cui1)
 
-        if len(self.coo_dict) > MAX_COO_DICT_SIZE:
+        if len(self.coo_dict) > self.MAX_COO_DICT_SIZE:
             log.info("Starting the clean of COO_DICT, parameters are\n \
                       MAX_COO_DICT_SIZE: {}\n \
-                      MIN_COO_COUNT: {}".format(MAX_COO_DICT_SIZE, MIN_COO_COUNT))
+                      MIN_COO_COUNT: {}".format(self.MAX_COO_DICT_SIZE, self.MIN_COO_COUNT))
 
             # Remove entries from coo_dict if too many
             old_size = len(self.coo_dict)
             to_del = []
             for key in self.coo_dict.keys():
-                if self.coo_dict[key] < MIN_COO_COUNT:
+                if self.coo_dict[key] < self.MIN_COO_COUNT:
                     to_del.append(key)
 
             for key in to_del:
