@@ -31,6 +31,7 @@ OR a simple frontend
 
 #### Please install the langauge models before running anything
 `python -m spacy download en_core_web_sm`
+
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
 
 
