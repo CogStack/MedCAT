@@ -1,6 +1,6 @@
-from cat.preprocessing.cleaners import spacy_tag_punct
+from medcat.preprocessing.cleaners import spacy_tag_punct
 from spacy.tokens import Token, Doc, Span
-from cat.utils.spelling import SpacySpellChecker
+from medcat.utils.spelling import SpacySpellChecker
 import spacy
 import os
 
