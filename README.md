@@ -40,10 +40,10 @@ First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.am
 
 Now in python3+ 
 ```python
-from cat.cat import CAT
-from cat.utils.vocab import Vocab
-from cat.prepare_cdb import PrepareCDB
-from cat.cdb import CDB 
+from medcat.cat import CAT
+from medcat.utils.vocab import Vocab
+from medcat.prepare_cdb import PrepareCDB
+from medcat.cdb import CDB 
 
 vocab = Vocab()
 
