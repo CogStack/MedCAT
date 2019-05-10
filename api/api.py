@@ -1,8 +1,8 @@
 from flask import Flask
-from cat.umls import UMLS
-from cat.utils.spacy_pipe import SpacyPipe
-from cat.utils.vocab import Vocab
-from cat.cat import CAT
+from medcat.umls import UMLS
+from medcat.utils.spacy_pipe import SpacyPipe
+from medcat.utils.vocab import Vocab
+from medcat.cat import CAT
 from flask import request
 import os
 from spacy import displacy
