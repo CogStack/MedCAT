@@ -1,6 +1,6 @@
 from spacy.tokens import Span
 #from medcat.cat_ann import CatAnn
-from cat.basic_cat_ann import CatAnn
+from medcat.basic_cat_ann import CatAnn
 import numpy as np
 import operator
 from medcat.utils.loggers import basic_logger

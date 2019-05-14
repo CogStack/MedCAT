@@ -119,7 +119,7 @@ so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
 
-Trained CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm.dat)
+Trained CDB - Temporarely unavailable
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
