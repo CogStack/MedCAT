@@ -1,5 +1,5 @@
 from flask import Flask
-from medcat.umls import UMLS
+from medcat.cdb import CDB
 from medcat.utils.spacy_pipe import SpacyPipe
 from medcat.utils.vocab import Vocab
 from medcat.cat import CAT
@@ -8,11 +8,11 @@ import os
 from spacy import displacy
 
 vocab = Vocab()
-umls = UMLS()
+cdb = CDB()
 
-umls.load_dict(os.getenv("UMLS_MODEL", '/cat/models/med_ann_norm.dat'))
+cdb.load_dict(os.getenv("UMLS_MODEL", '/cat/models/med_ann_norm.dat'))
 vocab.load_dict(path=os.getenv("VOCAB_MODEL", '/cat/models/med_ann_norm_dict.dat'))
-cat = CAT(umls, vocab=vocab)
+cat = CAT(cdb, vocab=vocab)
 cat.spacy_cat.train = False
 
 app = Flask(__name__)
