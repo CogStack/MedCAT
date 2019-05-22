@@ -68,7 +68,12 @@ class CustomSpellChecker(object):
 
     def candidates(self, word):
         "Generate possible spelling corrections for word."
-        # or self.known(self.edits2(word))
+        """
+        if len(word) > 5:
+            # Do two
+            print(self.known(self.edits2(word)))
+            return (self.known([word]) or self.known(self.edits1(word)) or self.known(self.edits2(word)) or [word])
+        """
         return (self.known([word]) or self.known(self.edits1(word))  or [word])
 
 

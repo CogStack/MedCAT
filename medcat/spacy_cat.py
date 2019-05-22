@@ -1,13 +1,17 @@
 from spacy.tokens import Span
-#from medcat.cat_ann import CatAnn
-from medcat.basic_cat_ann import CatAnn
 import numpy as np
 import operator
 from medcat.utils.loggers import basic_logger
-#from gensim.matutils import unitvec
 from medcat.utils.matutils import unitvec
-#from pytorch_pretrained_bert import BertTokenizer
 import os
+
+# Full UMLS works better with the specific annotatior
+if os.getenv('TYPE', 'default').lower() == 'umls':
+    print("IT IS UMLS")
+    from medcat.cat_ann import CatAnn
+else:
+    from medcat.basic_cat_ann import CatAnn
+
 
 log = basic_logger("spacycat")
 
@@ -390,7 +394,7 @@ class SpacyCat(object):
             self._train_skip_names[name] = 1
 
         cnt = self._train_skip_names[name]
-        if cnt < self.MIN_CUI_COUNT:
+        if cnt < self.MIN_CUI_COUNT * 2:
             return False
 
         prob = 1 / (cnt / 10)
