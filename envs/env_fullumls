@@ -1,6 +1,6 @@
 TYPE=UMLS
 DEBUG=False 
-CNTX_SPAN=5
+CNTX_SPAN=6
 CNTX_SPAN_SHORT=2
 MIN_CUI_COUNT=50
 MIN_CUI_COUNT_STRICT=5
@@ -9,8 +9,8 @@ MIN_CONCEPT_LENGTH=1
 NEG_PROB=0.15
 LBL_STYLE=LONG
 SPACY_MODEL=en_core_sci_md
-CDB_MODEL=/cat/models/trained_with_stopwords_all.dat
-VOCAB_MODEL=/cat/models/mimic_norm_dict.dat
+CDB_MODEL=/cat/models/cdb.dat
+VOCAB_MODEL=/cat/models/vocab.dat
 
 MKL_NUM_THREAD=1
 NUMEXPR_NUM_THREADS=1
