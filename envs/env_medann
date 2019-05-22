@@ -10,3 +10,7 @@ LBL_STYLE=LONG
 SPACY_MODEL=en_core_sci_md
 UMLS_MODEL=/cat/models/med_ann_norm.dat
 VOCAB_MODEL=/cat/models/med_ann_norm_dict.dat
+
+MKL_NUM_THREAD=1
+NUMEXPR_NUM_THREADS=1
+OMP_NUM_THREADS=1
