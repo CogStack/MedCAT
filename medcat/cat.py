@@ -78,11 +78,11 @@ class CAT(object):
         self.train = False
 
 
-    def get_json(self, text):
-        """ Get output in json format
+    def get_entities(self, text):
+        """ Get entities
 
         text:  text to be annotated
-        return:  json with fields {'entites': <>, 'text': text}
+        return:  entities
         """
         doc = self(text)
         out = []
@@ -103,7 +103,18 @@ class CAT(object):
             out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
 
             out.append(dict(out_ent))
-        out = {'entities': out, 'text': text}
+
+        return out
+
+
+    def get_json(self, text):
+        """ Get output in json format
+
+        text:  text to be annotated
+        return:  json with fields {'entities': <>, 'text': text}
+        """
+        ents = self.get_entities(text)
+        out = {'entities': ents, 'text': text}
 
         return json.dumps(out)
 
