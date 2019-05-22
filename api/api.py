@@ -5,12 +5,12 @@ from medcat.utils.vocab import Vocab
 from medcat.cat import CAT
 from flask import request
 import os
+import json
 from spacy import displacy
 
 vocab = Vocab()
 cdb = CDB()
-
-cdb.load_dict(os.getenv("UMLS_MODEL", '/cat/models/med_ann_norm.dat'))
+cdb.load_dict(os.getenv("CDB_MODEL", '/cat/models/med_ann_norm.dat'))
 vocab.load_dict(path=os.getenv("VOCAB_MODEL", '/cat/models/med_ann_norm_dict.dat'))
 cat = CAT(cdb, vocab=vocab)
 cat.spacy_cat.train = False
@@ -35,6 +35,16 @@ def show_annotated_document():
 def api():
     return cat.get_json(request.get_json(force=True)['text'])
 
+@app.route('/api_bulk', methods=['POST'])
+def api_bulk():
+    # Documents must have the following format:
+    #[(id, text), (id, text), ...]
+    docs = request.get_json(force=True)['documents']
+    nproc = int(os.getenv('NPROC', 8))
+    batch_size = min(300, int(len(docs) / (2*nproc)))
+    res = cat.multi_processing(docs, nproc=nproc, batch_size=batch_size)
+    res = json.dumps(res)
+    return res
 
 def get_file(filename):  # pragma: no cover
     try:
@@ -53,4 +63,4 @@ def root_dir():  # pragma: no cover
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', port=5000)
