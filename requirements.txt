@@ -1,7 +1,7 @@
 numpy==1.15.4
 pandas==0.23.4
-spacy==2.0.18
+spacy
 gensim==3.7.1
 scipy==1.1.0
-Flask==1.0.2
-scispacy==0.1.0
+Flask
+scispacy==0.2.0
