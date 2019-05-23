@@ -98,6 +98,12 @@ class CustomSpellChecker(object):
         return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
 
 
+    def edits3(self, word):
+        "All edits that are two edits away from `word`."
+        # Do d3 edits
+        pass
+
+
 class SpacySpellChecker(object):
     SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
     def __init__(self, spell_checker):
