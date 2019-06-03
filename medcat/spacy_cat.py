@@ -5,6 +5,12 @@ from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 import os
 
+# TMP
+from environs import Env
+env = Env()
+env.read_env("envs/env_fullumls_long", recurse=False)
+
+
 # Full UMLS works better with the specific annotatior
 if os.getenv('TYPE', 'default').lower() == 'umls':
     print("IT IS UMLS")
@@ -27,7 +33,6 @@ class SpacyCat(object):
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 6))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-    CNTX_SPAN_LONG = int(os.getenv('CNTX_SPAN_LONG', 0))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
     MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 15))
     # Just to be sure
@@ -138,7 +143,7 @@ class SpacyCat(object):
         #### DEBUG ONLY ####
         if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
-                log.debug("SIMILARITY LONG::::::::::::::::::::")
+                log.debug("SIMILARITY MED::::::::::::::::::::")
                 log.debug(words)
                 log.debug(cui)
                 log.debug(tkns)
@@ -161,21 +166,12 @@ class SpacyCat(object):
 
             if cui in self.cdb.cui2context_vec_short and len(cntx_vecs_short) > 0:
                 sim2 = np.dot(unitvec(cntx_short), unitvec(self.cdb.cui2context_vec_short[cui]))
-                sim2 = max(0, sim2)
-                sim = (sim + sim2) / 2
+                if sim2 > 0 and (sim - sim2) > 0.15:
+                    sim = (sim + sim2) / 2
             if name is not None:
                 if cui in self.cdb.cui2pref_name:
                     if name == self.cdb.cui2pref_name[cui]:
-                        sim = sim + 0.3
-
-            """ Sometimes needed
-            if cui in self.cdb.cui2ncontext_vec and self.cdb.cui_count[cui] > 20:
-                neg_sim = np.dot(unitvec(cntx), unitvec(self.cdb.cui2ncontext_vec[cui]))
-                log.debug("++++++NEG_SIM+++++++++++++++++++: " + str(neg_sim))
-                if neg_sim > 0:
-                    sim = sim - neg_sim / 2
-            """
-
+                        sim = min(1, sim + 0.3)
             return sim
         else:
             return -1
@@ -194,17 +190,19 @@ class SpacyCat(object):
         self.cdb.add_ncontext_vec(cui, cntx)
 
 
-    def _add_cntx_vec(self, cui, doc, tkns):
+    def _add_cntx_vec(self, cui, doc, tkns, manual=False, negative=False):
         """ Add context vectors for this CUI
 
         cui:  concept id
         doc:  spacy document where the cui was found
         tkns:  tokens that were found for this cui
         """
+        if negative:
+            self.cdb.cui2ncontext_vec[cui] = True
+
         # Get words around this concept
         words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
         words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
-        words_long = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_LONG, skip_current=True)
 
         cntx_vecs = []
         for word in words:
@@ -216,47 +214,29 @@ class SpacyCat(object):
             if word in self.vocab and self.vocab.vec(word) is not None:
                 cntx_vecs_short.append(self.vocab.vec(word))
 
-        cntx_vecs_long = []
-        for word in words_long:
-            if word in self.vocab and self.vocab.vec(word) is not None:
-                cntx_vecs_long.append(self.vocab.vec(word))
-
-
         if len(cntx_vecs) > 0:
             cntx = np.average(cntx_vecs, axis=0)
             # Add context vectors only if we have some
-            self.cdb.add_context_vec(cui, cntx, cntx_type='MED')
+            self.cdb.add_context_vec(cui, cntx, cntx_type='MED', manual=manual, negative=negative)
 
         if len(cntx_vecs_short) > 0:
             cntx_short = np.average(cntx_vecs_short, axis=0)
             # Add context vectors only if we have some
-            self.cdb.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False)
+            self.cdb.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False, manual=manual, negative=negative)
 
-        if len(cntx_vecs_long) > 0:
-            cntx_long = np.average(cntx_vecs_long, axis=0)
-            # Add context vectors only if we have some
-            self.cdb.add_context_vec(cui, cntx_long, cntx_type='LONG', inc_cui_count=False)
-
-            if np.random.rand() < self.NEG_PROB * 2:
-                negs = self.vocab.get_negative_samples(n=10)
-                neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
-                neg_cntx = np.average(neg_cntx_vecs, axis=0)
-                self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='LONG',
-                                          inc_cui_count=False)
-
-
-        if np.random.rand() < self.NEG_PROB:
+        if np.random.rand() < self.NEG_PROB and not negative:
+            # Add only if probability and 'not' negative input
             negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2)
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
-                                      inc_cui_count=False)
+                                      inc_cui_count=False, manual=False)
 
         #### DEBUG ONLY ####
         if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 if np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui])) < 0.01:
-                    log.debug("SIMILARITY LONG::::::::::::::::::::")
+                    log.debug("SIMILARITY MED::::::::::::::::::::")
                     log.debug(words)
                     log.debug(cui)
                     log.debug(tkns)
@@ -275,7 +255,7 @@ class SpacyCat(object):
                     log.debug(":::::::::::::::::::::::::::::::::::\n")
 
 
-    def _add_ann(self, cui, doc, tkns, acc=-1, name=None):
+    def _add_ann(self, cui, doc, tkns, acc=-1, name=None, is_disamb=False):
         """ Add annotation to a document
 
         cui:  concept id
@@ -284,31 +264,37 @@ class SpacyCat(object):
         acc:  accuracy for this annotation
         name:  concept name
         """
-        if self.LBL_STYLE == 'long':
-            lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.cdb.cui2pretty_name.get(cui, ''),
-                    self.cdb.cui2tui.get(cui, ''), self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
-        elif self.LBL_STYLE == 'ent':
-            lbl = "{} - {:.2}".format(self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
+        if not is_disamb and cui in self.cdb.cui2ncontext_vec:
+            self.to_disamb.append((list(tkns), name))
         else:
-            lbl = cui
-        lbl = doc.vocab.strings.add(lbl)
-        ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
+            if self.LBL_STYLE == 'long':
+                lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.cdb.cui2pretty_name.get(cui, ''),
+                        self.cdb.cui2tui.get(cui, ''), self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
+            elif self.LBL_STYLE == 'ent':
+                lbl = "{} - {:.2}".format(self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
+            else:
+                lbl = cui
 
-        ent._.acc = acc
-        ent._.cui = cui
-        ent._.tui = self.cdb.cui2tui.get(cui, 'None')
-        doc._.ents.append(ent)
+            lbl = doc.vocab.strings.add(lbl)
+            ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
 
-        # Increase counter for cui_count_ext
-        if cui in self.cdb.cui_count_ext:
-            self.cdb.cui_count_ext[cui] += 1
-        else:
-            self.cdb.cui_count_ext[cui] = 1
+            ent._.acc = acc
+            ent._.cui = cui
+            ent._.tui = self.cdb.cui2tui.get(cui, 'None')
+            ent._.id = self.ent_id
+            self.ent_id += 1
+            doc._.ents.append(ent)
 
-        if self.train or self.force_train:
-            self._add_cntx_vec(cui, doc, tkns)
+            # Increase counter for cui_count_ext
+            if cui in self.cdb.cui_count_ext:
+                self.cdb.cui_count_ext[cui] += 1
+            else:
+                self.cdb.cui_count_ext[cui] = 1
 
-        self._cuis.append(cui)
+            if self.train or self.force_train:
+                self._add_cntx_vec(cui, doc, tkns)
+
+            self._cuis.append(cui)
 
 
     def _create_main_ann(self, doc):
@@ -336,6 +322,7 @@ class SpacyCat(object):
 
         doc:  spacy document
         """
+        self.ent_id = 0
         self._cuis = []
         doc._.ents = []
         # Get the words in this document that should not be skipped
@@ -388,17 +375,21 @@ class SpacyCat(object):
 
 
     def _train_skip(self, name):
-        if name in self._train_skip_names:
-            self._train_skip_names[name] += 1
-        else:
+        # Down sampling of frequent terms
+        cnt_mult = 1
+        if name not in self._train_skip_names:
             self._train_skip_names[name] = 1
 
         cnt = self._train_skip_names[name]
-        if cnt < self.MIN_CUI_COUNT * 2:
+        if cnt < self.MIN_CUI_COUNT * cnt_mult:
+            self._train_skip_names[name] += 1
             return False
 
-        prob = 1 / (cnt / 10)
-        if np.random.rand() < prob:
+        cnt = cnt - (self.MIN_CUI_COUNT * cnt_mult) + 1
+        prob = 1 / cnt
+        p = np.random.rand()
+        if p < prob:
+            self._train_skip_names[name] += 1
             return False
         else:
             return True
@@ -439,4 +430,4 @@ class SpacyCat(object):
             acc = accs[ind]
             # Add only if acc > _min_acc 
             if acc > _min_acc:
-                self._add_ann(cui, tkns[0].doc, tkns, acc)
+                self._add_ann(cui, tkns[0].doc, tkns, acc, is_disamb=True)

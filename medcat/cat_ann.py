@@ -7,7 +7,7 @@ import operator
 
 class CatAnn(object):
     def __init__(self, cdb, spacy_cat):
-        self.cdb = cdb 
+        self.cdb = cdb
         self._cat = spacy_cat
 
 
@@ -22,7 +22,7 @@ class CatAnn(object):
                 name_case = False
 
         # Don't allow concatenation of tokens if len(name) < 5
-        if not(len(name) < 6 and len(tkns) > 1):
+        if not(len(name) < 5 and len(tkns) > 1):
             # Name must have > 3, if not disambiguation is a must
             if len(name) > 3:
                 if len(self.cdb.name2cui[name]) == 1:

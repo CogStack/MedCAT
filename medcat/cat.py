@@ -15,10 +15,12 @@ import copy
 import json
 from functools import partial
 from medcat.preprocessing.cleaners import spacy_tag_punct
+from medcat.utils.helpers import get_all_from_name
 
 class CAT(object):
     """ Annotate a dataset
     """
+    SEPARATOR = ""
     def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
         # Build the required spacy pipeline
@@ -37,6 +39,33 @@ class CAT(object):
 
     def __call__(self, text):
         return self.nlp(text)
+
+
+    def add_concept_cntx(self, cui, text, tkn_inds, negative=False):
+        doc = self(text)
+        tkns = [doc[ind] for ind in tkn_inds]
+        self.spacy_cat._add_cntx_vec(cui=cui, doc=doc, tkns=tkns, manual=True,
+                                     negative=negative)
+
+
+    def add_concept(self, concept, text=None, tkn_inds=None):
+        cui = concept['cui']
+        onto = concept.get('onto', 'user')
+        pretty_name = concept['name']
+        name, tokens, snames, tokens_vocab = get_all_from_name(pretty_name, self.nlp)
+        tui = concept.get('tui', 'None')
+        unique = True
+
+        print(cui, name, onto, tokens, snames, tokens_vocab, tui)
+
+        # Add the new concept
+        self.cdb.add_concept(cui, name, onto, tokens, snames,
+                             tui=tui, pretty_name=pretty_name, is_pref_name=True,
+                             tokens_vocab=tokens_vocab, unique=unique)
+
+        if tkn_inds and text:
+            # Add the context
+            self.add_concept_cntx(cui, text, tkn_inds)
 
 
     @property
@@ -90,18 +119,18 @@ class CAT(object):
         out_ent = {}
         #TODO: should we use .ents or ._.ents
         for ind, ent in enumerate(doc.ents):
-            out_ent['id'] = ind
+            out_ent['cui'] = str(ent._.cui)
+            out_ent['tui'] = str(ent._.tui)
+            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
+            out_ent['source_value'] = str(ent.text)
+            out_ent['acc'] = str(ent._.acc)
             out_ent['start_tkn'] = ent[0].i
             out_ent['end_tkn'] = ent[-1].i
             out_ent['start_ind'] = ent.start_char
             out_ent['end_ind'] = ent.end_char
             out_ent['label'] = str(ent.label_)
-            out_ent['source_value'] = str(ent.text)
-            out_ent['acc'] = str(ent._.acc)
-            out_ent['cui'] = str(ent._.cui)
-            out_ent['tui'] = str(ent._.tui)
-            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
-
+            out_ent['id'] = str(ent._.id)
+            out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(ent._.cui, '')
             out.append(dict(out_ent))
 
         return out
