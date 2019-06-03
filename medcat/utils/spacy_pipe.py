@@ -38,6 +38,8 @@ class SpacyPipe(object):
         Span.set_extension('acc', default=-1, force=True)
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('tui', default=-1, force=True)
+        Span.set_extension('id', default=0, force=True)
+
 
 
     def __call__(self, text):
