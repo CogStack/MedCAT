@@ -19,7 +19,7 @@ class CDB(object):
     def __init__(self):
         self.index2cui = [] # A list containing all CUIs 
         self.cui2index = {} # Map from cui to index in the index2cui list
-        self.is_unique = {} # Is a name unique
+        self.is_unique = {} # Is a name unique and should always be tagged
         self.name2cui = {} # Converts a normalized concept name to a cui
         self.name2cnt = {} # Converts a normalized concept name to a count
         self.name_isupper = {} # Checks was this name all upper case in cdb 
@@ -44,8 +44,9 @@ class CDB(object):
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
 
 
-    def add_concept(self, cui, name, onto, tokens, snames, isupper=False, is_pref_name=False, tui=None, pretty_name='',
-                    desc=None, tokens_vocab=None, unique=True):
+    def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
+                    is_pref_name=False, tui=None, pretty_name='',
+                    desc=None, tokens_vocab=None, unique=False):
         """ Add a concept to internal CDB representation
 
         cui:  Identifier
@@ -66,6 +67,9 @@ class CDB(object):
             self.name_isupper[name] = self.name_isupper[name] or isupper
         else:
             self.name_isupper[name] = isupper
+
+        # Add is the name unique and should always be tagged
+        #self.is_unique[name] = unique
 
         # Add prefered name 
         if is_pref_name:
@@ -161,7 +165,7 @@ class CDB(object):
                 self.tui2name[key] = d[key]
 
 
-    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True):
+    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True, manual=False):
         """ Add the vector representation of a context for this CUI
 
         cui:  The concept in question
@@ -171,53 +175,75 @@ class CDB(object):
                      pretty much just based on the window size
         inc_cui_count:  should this be counted
         """
-        prob = 0.5
+        if cui not in self.cui_count:
+            self.increase_cui_count(cui, True, manual=manual)
+
+        prob = 0.95
+        """
+        cnt = self.cui_count[cui]
+        if cnt < int(cui_limit_high / 2):
+            prob = 0.95
+        else:
+            div = 2*cui_limit_high
+            prob = max(0.5, 0.95 - (cnt / div))
+        """
+
+        # Set the right context
         if cntx_type == 'MED':
             cui2context_vec = self.cui2context_vec
         elif cntx_type == 'SHORT':
             cui2context_vec = self.cui2context_vec_short
         elif cntx_type == 'LONG':
             cui2context_vec = self.cui2context_vec_long
-            prob = 2
 
 
         sim = 0
         cv = context_vec
         if cui in cui2context_vec:
-            # Just in case cui_count was not set
-            if cui not in self.cui_count:
-                self.increase_cui_count(cui, True)
-
             sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
-            #sim = sigmoid(np.dot(cv, cui2context_vec[cui]))
 
             if negative:
-                b = max((0.2 / self.cui_count[cui]), 0.0001)  * max(0, sim)
+                if not manual:
+                    b = max((0.2 / self.cui_count[cui]), 0.0001)  * max(0, sim)
+                else:
+                    # Means someone manually annotated the example, use high learning rate
+                    b = 0.2 * max(0, sim)
                 cui2context_vec[cui] = cui2context_vec[cui]*(1-b) - cv*b
-                #cui2context_vec[cui] = cui2context_vec[cui] - cv*b
-
             else:
                 if sim < prob:
-                    c = 0.001
-                    b = max((0.3 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                    if not manual:
+                        # Annotation is from Unsupervised learning
+                        c = 0.001
+                        b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                    else:
+                        # Means someone manually annotated the example, use high learning rate
+                        b = 0.2 * (1 - max(0, sim))
+
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
-                    #cui2context_vec[cui] = cui2context_vec[cui] + cv*b
 
                     # Increase cui count
                     self.increase_cui_count(cui, inc_cui_count)
         else:
-            cui2context_vec[cui] = cv
-            self.increase_cui_count(cui, inc_cui_count)
+            if negative:
+                cui2context_vec[cui] = -cv
+            else:
+                cui2context_vec[cui] = cv
+
+            self.increase_cui_count(cui, inc_cui_count, manual)
 
         return sim
 
 
-    def increase_cui_count(self, cui, inc_cui_count):
+    def increase_cui_count(self, cui, inc_cui_count, manual=False):
         if inc_cui_count:
             if cui in self.cui_count:
                 self.cui_count[cui] += 1
             else:
-                self.cui_count[cui] = 1
+                if manual:
+                    self.cui_count[cui] = 30
+                else:
+                    self.cui_count[cui] = 1
+
 
 
     def add_ncontext_vec(self, cui, ncontext_vec):
@@ -235,7 +261,7 @@ class CDB(object):
             if cui in cui2context_vec:
                 sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
                 c = 0.001
-                b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
+                b = max((0.1 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                 cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
             else:
                 cui2context_vec[cui] = cv
