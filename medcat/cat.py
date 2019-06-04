@@ -29,7 +29,7 @@ class CAT(object):
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=skip_stopwords))
 
         # Add spell checker pipe
-        self.spell_checker = CustomSpellChecker(words=cdb.vocab, big_vocab=vocab)
+        self.spell_checker = CustomSpellChecker(cdb_vocab=cdb.vocab, data_vocab=vocab)
         self.nlp.add_spell_checker(spell_checker=self.spell_checker)
 
         # Add cat
@@ -118,7 +118,7 @@ class CAT(object):
 
         out_ent = {}
         #TODO: should we use .ents or ._.ents
-        for ind, ent in enumerate(doc.ents):
+        for ind, ent in enumerate(doc._.ents):
             out_ent['cui'] = str(ent._.cui)
             out_ent['tui'] = str(ent._.tui)
             out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
