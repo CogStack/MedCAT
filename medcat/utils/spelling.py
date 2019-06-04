@@ -33,9 +33,9 @@ class SpellChecker(object):
 
 
 class CustomSpellChecker(object):
-    def __init__(self, words, big_vocab=None):
-        self.vocab = words
-        self.big_vocab = big_vocab
+    def __init__(self, cdb_vocab, data_vocab=None):
+        self.vocab = cdb_vocab
+        self.data_vocab = data_vocab
 
 
     def P(self, word):
@@ -52,7 +52,7 @@ class CustomSpellChecker(object):
     def __contains__(self, word):
         if word in self.vocab:
             return True
-        elif self.big_vocab is not None and word in self.big_vocab:
+        elif self.data_vocab is not None and word in self.data_vocab:
             return True
         else:
             return False
