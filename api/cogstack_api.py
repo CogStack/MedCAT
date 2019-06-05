@@ -11,7 +11,7 @@ import os
 vocab = Vocab()
 cdb = CDB()
 
-cdb.load_dict(os.getenv("UMLS_MODEL", '/cat/models/med_ann_norm.dat'))
+cdb.load_dict(os.getenv("CDB_MODEL", '/cat/models/med_ann_norm.dat'))
 vocab.load_dict(path=os.getenv("VOCAB_MODEL", '/cat/models/med_ann_norm_dict.dat'))
 cat = CAT(cdb, vocab=vocab)
 
