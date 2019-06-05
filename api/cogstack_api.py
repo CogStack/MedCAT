@@ -96,13 +96,19 @@ def process_request_payload_bulk(payload):
 
     # prepare the payload
     content = payload['content']
-    documents = [(i, content[i]['text']) for i in range(len(content))]
+    documents = []
+
+    for i in range(len(content)):
+        # skip blank / empty documents
+        if 'text' in content[i] and len(content[i]) > 0:
+            documents.append((i, content[i]['text']))
 
     nproc = int(os.getenv('NPROC', 8))
     batch_size = min(300, int(len(documents) / (2 * nproc)))
     res_raw = cat.multi_processing(documents, nproc=nproc, batch_size=batch_size)
 
-    assert len(res_raw) == len(payload['content'])
+    #assert len(res_raw) == len(payload['content'])
+    assert len(res_raw) == len(documents)
 
     # parse the result -- need to sort by IDs as there's no guarantee
     # on the order of the docs processed
