@@ -71,7 +71,10 @@ def is_request_payload_valid(payload):
 
 def process_request_payload(payload):
     text = payload['content']['text']
-    entities = cat.get_entities(text)
+    if text is not None and len(text) > 0:
+        entities = cat.get_entities(text)
+    else:
+        entities = []
 
     # parse the result
     nlp_result = {'text': text,
@@ -100,7 +103,7 @@ def process_request_payload_bulk(payload):
 
     for i in range(len(content)):
         # skip blank / empty documents
-        if 'text' in content[i] and len(content[i]) > 0:
+        if 'text' in content[i] and content[i]['text'] is not None and len(content[i]['text']) > 0:
             documents.append((i, content[i]['text']))
 
     nproc = int(os.getenv('NPROC', 8))
