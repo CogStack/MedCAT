@@ -5,12 +5,6 @@ from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 import os
 
-# TMP
-from environs import Env
-env = Env()
-env.read_env("envs/env_fullumls_long", recurse=False)
-
-
 # Full UMLS works better with the specific annotatior
 if os.getenv('TYPE', 'default').lower() == 'umls':
     print("IT IS UMLS")
@@ -285,16 +279,17 @@ class SpacyCat(object):
             self.ent_id += 1
             doc._.ents.append(ent)
 
-            # Increase counter for cui_count_ext
-            if cui in self.cdb.cui_count_ext:
-                self.cdb.cui_count_ext[cui] += 1
-            else:
-                self.cdb.cui_count_ext[cui] = 1
+            # Increase counter for cui_count_ext if not already added
+            if cui not in self._cuis:
+                if cui in self.cdb.cui_count_ext:
+                    self.cdb.cui_count_ext[cui] += 1
+                else:
+                    self.cdb.cui_count_ext[cui] = 1
 
             if self.train or self.force_train:
                 self._add_cntx_vec(cui, doc, tkns)
 
-            self._cuis.append(cui)
+            self._cuis.add(cui)
 
 
     def _create_main_ann(self, doc):
@@ -323,7 +318,7 @@ class SpacyCat(object):
         doc:  spacy document
         """
         self.ent_id = 0
-        self._cuis = []
+        self._cuis = set()
         doc._.ents = []
         # Get the words in this document that should not be skipped
         doc_words = [t._.norm for t in doc if not t._.to_skip]
@@ -365,7 +360,7 @@ class SpacyCat(object):
 
         # Add coocurances
         if not self.train:
-            self.cdb.add_coos(self._cuis)
+            self.cdb.add_coos(list(self._cuis))
 
         #TODO
         if self.DEBUG or True:

@@ -28,8 +28,8 @@ def to_json_sumithra(docs, cdb):
     return d
 
 
-def get_all_from_name(name, nlp, SEP=""):
-    sc_name = nlp(name)
+def get_all_from_name(name, nlp, source_value, SEP=""):
+    sc_name = nlp(source_value)
     tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct and not t._.to_skip]
     tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
 
