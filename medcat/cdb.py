@@ -287,12 +287,21 @@ class CDB(object):
 
         cuis:  List of CUIs
         """
-        cnt = 0
+        # We use done to ignore multiple occ of same concept
+        d_cui1 = set()
+        pairs = set()
         for i, cui1 in enumerate(cuis):
-            for cui2 in cuis[i+1:]:
-                cnt += 1
-                self.add_coo(cui1, cui2)
-                self.add_coo(cui2, cui1)
+            if cui1 not in d_cui1:
+                for cui2 in cuis[i+1:]:
+                    t = cui1+cui2
+                    if t not in pairs:
+                        self.add_coo(cui1, cui2)
+                        pairs.add(t)
+                    t = cui2+cui1
+                    if t not in pairs:
+                        self.add_coo(cui2, cui1)
+                        pairs.add(t)
+                d_cui1.add(cui1)
 
         if len(self.coo_dict) > self.MAX_COO_DICT_SIZE:
             log.info("Starting the clean of COO_DICT, parameters are\n \
@@ -334,6 +343,8 @@ class CDB(object):
     def reset_coo_matrix(self):
         """ Remove the COO-Matrix
         """
+        self.cui_count_ext = {}
+        self.coo_dict = {}
         self._coo_matrix = None
 
 
