@@ -52,7 +52,8 @@ class CAT(object):
         cui = concept['cui']
         onto = concept.get('onto', 'user')
         pretty_name = concept['name']
-        name, tokens, snames, tokens_vocab = get_all_from_name(pretty_name, self.nlp)
+        source_value = concept['source_value']
+        name, tokens, snames, tokens_vocab = get_all_from_name(name=pretty_name, source_value=source_value, nlp=self.nlp)
         tui = concept.get('tui', 'None')
         unique = True
 
