@@ -1,4 +1,4 @@
-# <img src="https://github.com/w-is-h/cat/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
+# Medical  <img src="https://github.com/w-is-h/cat/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
 A simple tool for concept annotation from UMLS or any other source.
 
