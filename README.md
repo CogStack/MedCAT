@@ -6,27 +6,9 @@ A simple tool for concept annotation from UMLS or any other source.
 
 
 ## How to use
-There are a few ways to run CAT, simplest one being docker.
+There are a few ways to run CAT
 
-### Docker
-If using docker the appropriate models will be automatically downloaded, you only need to run:
-
-`docker build --network=host -t cat -f Dockerfile.MedMen .`
-
-Once the container is built start it using:
-
-`docker run --env-file=./envs/env_medann -p 5000:5000 cat`
-
-You can now access the API on
-
-`<YOUR_IP>:5000/api`
-
-OR a simple frontend
-
-`<YOUR_IP>:5000/api_test`
-
-
-### Installation
+### PIP Installation
 `pip install --upgrade medcat`
 
 #### Please install the langauge models before running anything
