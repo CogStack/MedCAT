@@ -11,6 +11,8 @@ tmp/
 *_tmp/
 medcat.egg-info/
 build/
+.idea
+venv
 
 #tmp and similar files
 .nfs*
@@ -29,3 +31,7 @@ tmp_*
 *hidden*
 nohup.out
 tmp.py
+.DS_Store
+
+# models files
+*.dat
