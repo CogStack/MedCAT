@@ -108,18 +108,16 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 
 | Dataset | SoftF1 | Description |
 | --- | :---: | --- |
-| MedMentions | 0.798 | The whole MedMentions dataset without any modifications or supervised training |
-| MedMentions | 0.786 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
-| MedMentions | 0.92 | Medmentions filterd by TUI to only concepts that are a disease |
+| MedMentions | 0.83 | The whole MedMentions dataset without any modifications or supervised training |
+| MedMentions | 0.828 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
+| MedMentions | 0.93 | Medmentions filterd by TUI to only concepts that are a disease |
 
 
 ## Models
-A basic trained model is made public. It is trained for the 35K entities available in `MedMentions`. It is quite limited
+A basic trained model is made public for the vocabulary. It is trained for the 35K entities available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
-
-Trained CDB - Temporarely unavailable
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
