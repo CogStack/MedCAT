@@ -58,7 +58,7 @@ def doc2html(doc):
             markup += escape_html(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span._.id, 'bg': "#ddd", 'text': escape_html(span.text)}
+        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.acc * span._.acc + 0.12), 'text': escape_html(span.text)}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
