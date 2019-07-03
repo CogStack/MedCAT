@@ -31,6 +31,7 @@ class SpacyCat(object):
     MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 15))
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
+    UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.12))
     MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
@@ -359,12 +360,11 @@ class SpacyCat(object):
             self.disambiguate(self.to_disamb)
 
         # Add coocurances
-        if not self.train:
+        if not self.train and self.UPDATE_COO:
             self.cdb.add_coos(list(self._cuis))
 
-        #TODO
-        if self.DEBUG or True:
-            self._create_main_ann(doc)
+        # Create main annotations
+        self._create_main_ann(doc)
 
         return doc
 
