@@ -46,7 +46,7 @@ class CatAnn(object):
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
                                 if (n_words > len(tkns)*2 and words_cnt > 5) or (perc > 0.6 or cnt > 5) or pref_name:
-                                    self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name)
+                                    self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name, acc_auto=True)
                                 else:
                                     to_disamb.append((list(tkns), name))
                             else:
