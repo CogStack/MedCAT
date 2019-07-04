@@ -207,7 +207,7 @@ class CDB(object):
                     b = max((0.2 / self.cui_count[cui]), 0.0001)  * max(0, sim)
                 else:
                     # Means someone manually annotated the example, use high learning rate
-                    b = 0.2 * max(0, sim)
+                    b = 0.1 * max(0, sim)
                 cui2context_vec[cui] = cui2context_vec[cui]*(1-b) - cv*b
             else:
                 if sim < prob:
@@ -217,7 +217,7 @@ class CDB(object):
                         b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
                     else:
                         # Means someone manually annotated the example, use high learning rate
-                        b = 0.2 * (1 - max(0, sim))
+                        b = 0.1 * (1 - max(0, sim))
 
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
 
@@ -240,7 +240,7 @@ class CDB(object):
                 self.cui_count[cui] += 1
             else:
                 if manual:
-                    self.cui_count[cui] = 30
+                    self.cui_count[cui] = 5
                 else:
                     self.cui_count[cui] = 1
 
