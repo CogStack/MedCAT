@@ -32,6 +32,7 @@ class SpacyCat(object):
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
+    ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.05))
     MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
@@ -273,6 +274,10 @@ class SpacyCat(object):
             lbl = doc.vocab.strings.add(lbl)
             ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
 
+
+            if self.ACC_ALWAYS:
+                acc = self._calc_acc(cui, doc, tkns, name)
+
             ent._.acc = acc
             ent._.cui = cui
             ent._.tui = self.cdb.cui2tui.get(cui, 'None')
@@ -348,7 +353,7 @@ class SpacyCat(object):
                 tkns.append(_doc[j])
 
                 if name not in self.cdb.sname2name:
-                    # There is not one entity containing this words
+                    # There is not one entity containing these words
                     break
                 else:
                     if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
