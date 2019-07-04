@@ -24,16 +24,16 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
+    DEBUG = os.getenv('DEBUG', "true").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 6))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
-    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 15))
+    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 3))
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
 
-    MIN_ACC = float(os.getenv('MIN_ACC', 0.12))
+    MIN_ACC = float(os.getenv('MIN_ACC', 0.05))
     MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
     NEG_PROB = float(os.getenv('NEG_PROB', 0.20))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
@@ -164,7 +164,7 @@ class SpacyCat(object):
                 if sim2 > 0 and (sim - sim2) > 0.15:
                     sim = (sim + sim2) / 2
             if name is not None:
-                if cui in self.cdb.cui2pref_name:
+                if cui in self.cdb.cui2pref_name and sim > self.MIN_ACC:
                     if name == self.cdb.cui2pref_name[cui]:
                         sim = min(1, sim + 0.3)
             return sim
