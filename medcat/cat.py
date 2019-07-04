@@ -43,7 +43,7 @@ class CAT(object):
 
     def add_concept_cntx(self, cui, text, tkn_inds, negative=False):
         doc = self(text)
-        tkns = [doc[ind] for ind in tkn_inds]
+        tkns = [doc[ind] for ind in range(tkn_inds[0], tkn_inds[-1] + 1)]
         self.spacy_cat._add_cntx_vec(cui=cui, doc=doc, tkns=tkns, manual=True,
                                      negative=negative)
 
