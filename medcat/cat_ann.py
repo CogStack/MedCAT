@@ -32,7 +32,7 @@ class CatAnn(object):
                         if name == self.cdb.cui2pref_name[cui]:
                             pref_name = True
 
-                    if len(name) < 6:
+                    if len(name) < 5:
                         # Disambiguation needed if length of string < 6
                         # Case must agree or first can be lower_case
                         if not name_case or self.cdb.name_isupper[name] == name_case:
@@ -46,7 +46,7 @@ class CatAnn(object):
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
                                 if (n_words > len(tkns)*2 and words_cnt > 5) or (perc > 0.6 or cnt > 5) or pref_name:
-                                    self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name, acc_auto=True)
+                                    self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name)
                                 else:
                                     to_disamb.append((list(tkns), name))
                             else:

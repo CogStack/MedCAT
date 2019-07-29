@@ -16,11 +16,13 @@ import json
 from functools import partial
 from medcat.preprocessing.cleaners import spacy_tag_punct
 from medcat.utils.helpers import get_all_from_name
+import os
 
 class CAT(object):
     """ Annotate a dataset
     """
     SEPARATOR = ""
+    NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
     def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
         # Build the required spacy pipeline
@@ -118,8 +120,12 @@ class CAT(object):
         out = []
 
         out_ent = {}
-        #TODO: should we use .ents or ._.ents
-        for ind, ent in enumerate(doc._.ents):
+        if self.NESTED_ENTITIES:
+            _ents = doc._.ents
+        else:
+            _ents = doc.ents
+
+        for ind, ent in enumerate(_ents):
             out_ent['cui'] = str(ent._.cui)
             out_ent['tui'] = str(ent._.tui)
             out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
@@ -137,35 +143,74 @@ class CAT(object):
         return out
 
 
+    def get_entities_all(self, text):
+        """ Get entities
+
+        text:  text to be annotated
+        return:  entities
+        """
+        doc = self(text)
+
+        _ents = doc._.ents
+        out = []
+        out_ent = {}
+        for ind, ent in enumerate(_ents):
+            out_ent['cui'] = str(ent._.cui)
+            out_ent['tui'] = str(ent._.tui)
+            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
+            out_ent['source_value'] = str(ent.text)
+            out_ent['acc'] = str(ent._.acc)
+            out_ent['start_tkn'] = ent[0].i
+            out_ent['end_tkn'] = ent[-1].i
+            out_ent['start_ind'] = ent.start_char
+            out_ent['end_ind'] = ent.end_char
+            out_ent['label'] = str(ent.label_)
+            out_ent['id'] = str(ent._.id)
+            out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(ent._.cui, '')
+            out.append(dict(out_ent))
+
+        _ents = doc.ents
+        out_ent = {}
+        out2 = []
+        for ind, ent in enumerate(_ents):
+            out_ent['cui'] = str(ent._.cui)
+            out_ent['tui'] = str(ent._.tui)
+            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
+            out_ent['source_value'] = str(ent.text)
+            out_ent['acc'] = str(ent._.acc)
+            out_ent['start_tkn'] = ent[0].i
+            out_ent['end_tkn'] = ent[-1].i
+            out_ent['start_ind'] = ent.start_char
+            out_ent['end_ind'] = ent.end_char
+            out_ent['label'] = str(ent.label_)
+            out_ent['id'] = str(ent._.id)
+            out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(ent._.cui, '')
+            out2.append(dict(out_ent))
+
+        n_out = (out, out2)
+        return n_out
+
+
     def get_json(self, text):
         """ Get output in json format
 
         text:  text to be annotated
         return:  json with fields {'entities': <>, 'text': text}
         """
+        # TODO:
+        #ents = self.get_entities_all(text)
         ents = self.get_entities(text)
         out = {'entities': ents, 'text': text}
 
         return json.dumps(out)
 
-
-    def multi_processing(self, in_data, nproc=8, batch_size=100, coo=False):
+    def multi_processing_simple(self, in_data, nproc=8, batch_size=100):
         """ Run multiprocessing NOT FOR TRAINING
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
-
-        # TODO: reorganize a abit, quite a mess here
-
-        # Make a copy of cdb training part
-        cui_count_ext = copy.deepcopy(self.cdb.cui_count_ext)
-        coo_dict = copy.deepcopy(self.cdb.coo_dict)
-
-        # Reset the cui_count_ext and coo_dict
-        self.cdb.cui_count_ext = {}
-        self.cdb.coo_dict = {}
 
         # Create the input output for MP
         in_q = Queue(maxsize=4*nproc)
@@ -196,17 +241,60 @@ class CAT(object):
         for p in procs:
             p.join()
 
-        # Add the saved counts
-        self.cdb.merge_run_only(coo_dict=coo_dict, cui_count_ext=cui_count_ext)
+        in_q.close()
+
+        out = []
+        for key in out_dict.keys():
+            if 'pid' in key:
+                data = out_dict[key]
+                print("Merging training data for proc: " + str(key))
+                out.extend(data[2])
+        return out
+
+
+    def multi_processing(self, in_data, nproc=8, batch_size=100, coo=False):
+        """ Run multiprocessing NOT FOR TRAINING
+        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
+        nproc:  number of processors
+
+        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
+        """
+
+        # Create the input output for MP
+        in_q = Queue(maxsize=4*nproc)
+        manager = Manager()
+        out_dict = manager.dict()
+        out_dict['processed'] = []
+
+        # Create processes
+        procs = []
+        for i in range(nproc):
+            p = Process(target=self._mp_cons, args=(in_q, out_dict, i))
+            p.start()
+            procs.append(p)
+
+        data = []
+        for id, text in in_data:
+            data.append((id, text))
+            if len(data) == batch_size:
+                in_q.put(data)
+                data = []
+        # Put the last batch if it exists
+        if len(data) > 0:
+            in_q.put(data)
+
+        for _ in range(nproc):  # tell workers we're done
+            in_q.put(None)
+
+        for p in procs:
+            p.join()
+
         # Merge all the new CDB versions and get the output
         out = []
         for key in out_dict.keys():
             if 'pid' in key:
                 data = out_dict[key]
                 print("Merging training data for proc: " + str(key))
-                print(sum(self.cdb.cui_count_ext.values()))
-                self.cdb.merge_run_only(coo_dict=data[0], cui_count_ext=data[1])
-                print(sum(self.cdb.cui_count_ext.values()))
                 out.extend(data[2])
         return out
 
