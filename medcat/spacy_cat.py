@@ -6,7 +6,7 @@ from medcat.utils.matutils import unitvec
 import os
 
 # Full UMLS works better with the specific annotatior
-if os.getenv('TYPE', 'default').lower() == 'umls':
+if os.getenv('TYPE', 'umls').lower() == 'umls':
     print("IT IS UMLS")
     from medcat.cat_ann import CatAnn
 else:
@@ -162,7 +162,7 @@ class SpacyCat(object):
 
             if cui in self.cdb.cui2context_vec_short and len(cntx_vecs_short) > 0:
                 sim2 = np.dot(unitvec(cntx_short), unitvec(self.cdb.cui2context_vec_short[cui]))
-                if sim2 > 0 and (sim - sim2) > 0.15:
+                if sim2 > 0 and abs(sim - sim2) > 0.1:
                     sim = (sim + sim2) / 2
             if name is not None:
                 if cui in self.cdb.cui2pref_name and sim > self.MIN_ACC:
@@ -343,7 +343,9 @@ class SpacyCat(object):
             if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                 # Add annotation
                 if not self.train or not self._train_skip(name) or self.force_train:
-                    self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                    if not _doc[i].is_stop:
+                        self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                        #self.to_disamb.append((list(tkns), name))
 
             for j in range(i+1, len(_doc)):
                 if _doc[j]._.to_skip:
@@ -359,6 +361,8 @@ class SpacyCat(object):
                     if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                         if not self.train or not self._train_skip(name) or self.force_train:
                             self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                            #self.to_disamb.append((list(tkns), name))
+
 
 
         if not self.train or self.force_train:
@@ -424,7 +428,6 @@ class SpacyCat(object):
                 else:
                     # If not just set the accuracy to -1
                     accs.append(-1)
-
             ind = np.argmax(accs)
             cui = cuis[ind]
             acc = accs[ind]
