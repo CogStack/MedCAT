@@ -19,13 +19,16 @@ class CDB(object):
     def __init__(self):
         self.index2cui = [] # A list containing all CUIs 
         self.cui2index = {} # Map from cui to index in the index2cui list
-        self.is_unique = {} # Is a name unique and should always be tagged
         self.name2cui = {} # Converts a normalized concept name to a cui
         self.name2cnt = {} # Converts a normalized concept name to a count
+        self.name_isunique = {} # Should this name be skipped
+        self.name2original_name = {} # Holds the two versions of a name
+        self.name2ntkns = {} # Number of tokens for this name
         self.name_isupper = {} # Checks was this name all upper case in cdb 
         self.cui2desc = {} # Map between a CUI and its cdb description
         self.cui_count = {} # TRAINING - How many times this this CUI appear until now
         self.cui_count_ext = {} # Always - counter for cuis that can be reset, destroyed..
+        self.cui2onto = {}
         self.cui2names = {} # CUI to all the different names it can have
         self.cui2tui = {} # CUI to the semantic type ID
         self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
@@ -43,10 +46,10 @@ class CDB(object):
         self._coo_matrix = None # cooccurrence matrix - scikit
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
 
-
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
                     is_pref_name=False, tui=None, pretty_name='',
-                    desc=None, tokens_vocab=None, unique=False):
+                    desc=None, tokens_vocab=None, original_name='',
+                    is_unique=None):
         """ Add a concept to internal CDB representation
 
         cui:  Identifier
@@ -61,15 +64,13 @@ class CDB(object):
         pretty_name:  Pretty name for this concept
         desc:  Description of this concept - can take a lot of space
         tokens_vocab:  Tokens that should be added to the vocabulary, usually not normalized
+        original_name: As in UMLS or any other vocab
         """
         # Add is name upper
         if name in self.name_isupper:
             self.name_isupper[name] = self.name_isupper[name] or isupper
         else:
             self.name_isupper[name] = isupper
-
-        # Add is the name unique and should always be tagged
-        #self.is_unique[name] = unique
 
         # Add prefered name 
         if is_pref_name:
@@ -87,6 +88,9 @@ class CDB(object):
             else:
                 self.tui2cuis[tui] = set([cui])
 
+        if is_unique is not None:
+            self.name_isunique[name] = is_unique
+
         # Add name to cnt
         if name not in self.name2cnt:
             self.name2cnt[name] = {}
@@ -97,7 +101,7 @@ class CDB(object):
 
         # Add description
         if desc is not None:
-            if cui not in self.cui2desc:
+            if cui not in self.cui2desc or is_pref_name:
                 self.cui2desc[cui] = desc
 
         # Add cui to a list of cuis
@@ -123,11 +127,23 @@ class CDB(object):
             else:
                 self.vocab[token] = 1
 
+        # Add number of tokens for this name
+        if name in self.name2ntkns:
+            self.name2ntkns[name].append(len(tokens))
+        else:
+            self.name2ntkns[name] = [len(tokens)]
+
+
         # Add mappings to onto2cuis
         if onto not in self.onto2cuis:
             self.onto2cuis[onto] = set([cui])
         else:
             self.onto2cuis[onto].add(cui)
+
+        if cui in self.cui2onto:
+            self.cui2onto.append(onto)
+        else:
+            self.cui2onto = [onto]
 
         # Add mappings to name2cui
         if name not in self.name2cui:

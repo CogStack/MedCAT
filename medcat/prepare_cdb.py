@@ -56,11 +56,19 @@ class PrepareCDB(object):
                 for _name in names:
                     if ind % 10000 == 0:
                         print("Done: {}".format(ind))
+
+                    # Get the cui
+                    cui = df.iloc[ind]['cui']
+
+                    # Save originals
                     pretty_name = _name
+                    original_name = _name
                     name = clean_name(_name)
+
                     # Clean and preprocess the name
                     sc_name = self.nlp(name)
-                    tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct and not t._.to_skip]
+                    tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct
+                              and not t._.to_skip]
                     tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
 
                     # Don't allow concept names to be above concept_length_limit
@@ -69,9 +77,15 @@ class PrepareCDB(object):
 
                     name = self.SEPARATOR.join(tokens)
                     _name = "".join(tokens)
-                    length_one = [True if len(x) < 2 else False for x in tokens]
+
+                    is_pref_name = False
+                    if 'tty' in df.columns:
+                        _tmp = str(df.iloc[ind]['tty'])
+                        if _tmp.lower().strip() == 'pn':
+                            is_pref_name = True
 
                     # Skip concepts are digits or each token is a single letter
+                    length_one = [True if len(x) < 2 else False for x in tokens]
                     if _name.isdigit() or all(length_one):
                         continue
 
@@ -83,19 +97,19 @@ class PrepareCDB(object):
                         snames.append(sname.strip())
 
                     # Check is unique 
-                    unique = True
-                    if 'unique' in df.columns:
-                        _tmp = str(df.iloc[ind]['unique']).strip()
+                    is_unique = None
+                    if 'is_unique' in df.columns:
+                        _tmp = str(df.iloc[ind]['is_unique']).strip()
                         if _tmp.lower().strip() == '0':
-                            unique = False
+                            is_unique = False
+                        elif _tmp.lower().strip() == '1':
+                            is_unique = True
 
+                    # Get the ontology: 'sab' in umls
                     onto = 'default'
-                    if 'sab' in df.columns:
+                    if 'onto' in df.columns:
                         # Get the ontology 
-                        onto = df.iloc[ind]['sab']
-
-                    # Get the cui
-                    cui = df.iloc[ind]['cui']
+                        onto = df.iloc[ind]['onto']
 
                     # Get the tui 
                     tui = None
@@ -105,6 +119,20 @@ class PrepareCDB(object):
                         if len(tui.split(',')) > 1:
                             tui = tui.split(',')[0]
 
+
+                    # Get the concept description
+                    desc = ""
+                    if 'desc' in df.columns:
+                        desc = str(df.iloc[ind]['desc']).strip()
+
+                    # Add the concept
+                    self.cdb.add_concept(cui, name, onto, tokens, snames,
+                            tui=tui, pretty_name=pretty_name,
+                            tokens_vocab=tokens_vocab, is_unique=is_unique,
+                            desc=desc, original_name=original_name,
+                            is_pref_name=is_pref_name)
+
+                    # Process examples if we have them
                     examples = []
                     if 'examples' in df.columns:
                         tmp = str(df.iloc[ind]['examples']).strip().split(self.NAME_SEPARATOR)
@@ -112,11 +140,6 @@ class PrepareCDB(object):
                             example = example.strip()
                             if len(example) > 0:
                                 examples.append(example)
-
-                    self.cdb.add_concept(cui, name, onto, tokens, snames,
-                            tui=tui, pretty_name=pretty_name,
-                            tokens_vocab=tokens_vocab, unique=unique)
-
                     # If we have examples
                     for example in examples:
                         doc = self.nlp(example)
@@ -129,5 +152,4 @@ class PrepareCDB(object):
                         if len(cntx) > 1:
                             cntx = np.average(cntx, axis=0)
                             self.cdb.add_context_vec(cui, cntx, cntx_type='MED')
-
         return self.cdb
