@@ -18,7 +18,7 @@ There are a few ways to run CAT
 
 
 ### Building a new Concept Database (.csv) or using an existing one
-First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat)
+First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat)
 
 Now in python3+ 
 ```python
@@ -99,7 +99,9 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 A basic trained model is made public for the vocabulary. It is trained for the 35K entities available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
-Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
+Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
+CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-clean.dat) - Built from MedMentions
+
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
