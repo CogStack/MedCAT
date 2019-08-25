@@ -2,8 +2,6 @@
 
 A simple tool for concept annotation from UMLS or any other source.
 
-### This is still experimental
-
 
 ## How to use
 There are a few ways to run CAT
@@ -11,9 +9,7 @@ There are a few ways to run CAT
 ### PIP Installation
 `pip install --upgrade medcat`
 
-#### Please install the langauge models before running anything
-`python -m spacy download en_core_web_sm`
-
+#### Please install the spacy langauge models before running anything
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
 
 
@@ -100,6 +96,7 @@ A basic trained model is made public for the vocabulary. It is trained for the 3
 so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
+
 CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-clean.dat) - Built from MedMentions
 
 
