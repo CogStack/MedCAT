@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% load staticfiles %}
+
+{% block style %} 
+<link rel="stylesheet" href="{% static 'css/home.css' %}">
+<link rel="stylesheet" href="{% static 'css/annotations.css' %}">
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.2/css/all.css" integrity="sha384-oS3vJWv+0UjzBfQzYUhtDYW+Pj2yciDJxpsK1OYPAYjqT085Qq/1cq5FLXAZQ7Ay" crossorigin="anonymous">
+{% endblock %}
+
+{% block body %}
+
+	{% if not doc_html %}
+        <div class='container-fluid'>
+            <form method='POST' class='textbox'>
+              {% csrf_token %}
+              <div class="form-group">
+                <label for="exampleFormControlTextarea1">Enter some text and click Annotate</label>
+                <textarea class="form-control" name="text" rows="15"></textarea>
+              </div>
+              <button type="submit" class="btn btn-primary">Annotate</button>
+            </form>
+        </div>
+	{% else %}
+        <div class='container-fluid train-annotations' id='train-annotations'>
+            <h6 v-show="elementVisible" class="posfed" v-text='msg'></h6>
+
+            <form method='POST' style='display: inline-block'>
+                {% csrf_token %}
+                <button type="submit" class="btn btn-outline-success btn-sm btns-a"> Rerun the Annotator </button>
+                <input type='hidden' name="text" value="{{text}}"></input>
+            </form>
+            <div class="row">
+                <div class='col-8 annotations'>
+                    {{ doc_html|safe }}
+                </div>
+                <div class='col-4 concept-info' id='info'>
+                    <div id='cinfo' v-if="!show && selected_concept">
+                        <div class='icons'>
+                            <i v-on:click='concept_feedback(0)' class="far green fa-check-circle"></i>
+                            <i v-on:click='concept_feedback(1)' class="far red fa-times-circle"></i>
+                        </div>
+                        <h5> [[selected_concept.pretty_name]] </h5>
+                        <table class="table table-hover info">
+                            <tbody v-for="(value, name) in selected_concept">
+                                <tr>
+                                    <td>
+                                        [[name]]
+                                    </td>
+                                    <td> 
+                                        [[value]]
+                                    </td>
+                                </tr>
+                        </table>
+                    </div>
+                    <div id='ccreate' v-if="show">
+                        <h5> Create a new Concept </h5>
+                        <table class="table table-hover info">
+                            <tbody>
+                                <tr>
+                                    <td class='first'>
+                                        Name
+                                    </td>
+                                    <td class='second'> 
+                                        <input class='w100' ref='cntx_name' name='name'></input>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class='first'>
+                                        CUI
+                                    </td>
+                                    <td class='second'> 
+                                        <input class='w100' ref='cui' name='cui'></input>
+                                    </td>
+                                </tr>
+                                 <tr>
+                                    <td class='first'>
+                                        TUI
+                                    </td>
+                                    <td class='second'> 
+                                        <input class='w100' ref='tui' name='tui'></input>
+                                    </td>
+                                </tr>
+                                  <tr>
+                                    <td class='first'>
+                                        Source Value 
+                                    </td>
+                                    <td class='second'> 
+                                        <input class='w100' ref='source_value' name='source_value'></input>
+                                    </td>
+                                </tr>
+                                  <tr>
+                                    <td class='first'>
+                                        Synonyms
+                                    </td>
+                                    <td class='second'> 
+                                        <input class='w100' ref='synonyms' name='synonyms'></input>
+                                    </td>
+                                </tr>
+ 
+                                 </tr>
+                                  <tr>
+                                    <td class='first'>
+                                        Context 
+                                    </td>
+                                    <td class='second'> 
+                                        <textarea class='w100' ref="cntx_text" name="text" rows="6"></textarea>
+                                    </td>
+                                </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+<!-- external js -->
+<script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue@2.6.10/dist/vue.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/vue-resource@1.5.1"></script>
+<script type="text/javascript">
+    function getData() {
+        let doc_json = {{doc_json | safe}};
+        console.log(doc_json);
+        return doc_json;
+    };
+</script>
+<script src="{% static 'js/anns.js' %}"></script>
+{% endblock %}

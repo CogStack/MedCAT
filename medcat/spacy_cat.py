@@ -6,7 +6,7 @@ from medcat.utils.matutils import unitvec
 import os
 
 # IF UMLS it includes specific rules that are only good for the Full UMLS version
-if os.getenv('TYPE', 'umls').lower() == 'umls':
+if os.getenv('TYPE', 'other').lower() == 'umls':
     print("IT IS UMLS")
     from medcat.cat_ann import CatAnn
 else:

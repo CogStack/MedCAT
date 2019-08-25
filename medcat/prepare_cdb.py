@@ -20,7 +20,7 @@ class PrepareCDB(object):
     SEPARATOR = ""
     NAME_SEPARATOR = "|"
     CONCEPT_LENGTH_LIMIT = 8
-    SKIP_STOPWORDS = True
+    SKIP_STOPWORDS = False
 
     def __init__(self, vocab=None, pretrained_cdb=None, word_tokenizer=None):
         self.vocab = vocab
