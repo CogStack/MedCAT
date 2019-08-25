@@ -23,6 +23,7 @@ class CAT(object):
     """
     SEPARATOR = ""
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
+
     def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
         # Build the required spacy pipeline
@@ -92,7 +93,7 @@ class CAT(object):
         cnt = 0
 
         if not fine_tune:
-            print("Removing old training data, please make sure this is what you want")
+            print("Removing old training data!\n")
             self.cdb.reset_training()
             self.cdb.coo_dict = {}
             self.spacy_cat._train_skip_names = {}
@@ -102,8 +103,8 @@ class CAT(object):
                 try:
                     _ = self(line)
                 except Exception as e:
-                    # TODO: make nice
-                    print(e)
+                    print("LINE: '{}' \t WAS SKIPPED".format(line))
+                    print("BECAUSE OF: " + str(e))
                 if cnt % 1000 == 0:
                     print("DONE: " + str(cnt))
                 cnt += 1
@@ -143,71 +144,22 @@ class CAT(object):
         return out
 
 
-    def get_entities_all(self, text):
-        """ Get entities
-
-        text:  text to be annotated
-        return:  entities
-        """
-        doc = self(text)
-
-        _ents = doc._.ents
-        out = []
-        out_ent = {}
-        for ind, ent in enumerate(_ents):
-            out_ent['cui'] = str(ent._.cui)
-            out_ent['tui'] = str(ent._.tui)
-            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
-            out_ent['source_value'] = str(ent.text)
-            out_ent['acc'] = str(ent._.acc)
-            out_ent['start_tkn'] = ent[0].i
-            out_ent['end_tkn'] = ent[-1].i
-            out_ent['start_ind'] = ent.start_char
-            out_ent['end_ind'] = ent.end_char
-            out_ent['label'] = str(ent.label_)
-            out_ent['id'] = str(ent._.id)
-            out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(ent._.cui, '')
-            out.append(dict(out_ent))
-
-        _ents = doc.ents
-        out_ent = {}
-        out2 = []
-        for ind, ent in enumerate(_ents):
-            out_ent['cui'] = str(ent._.cui)
-            out_ent['tui'] = str(ent._.tui)
-            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
-            out_ent['source_value'] = str(ent.text)
-            out_ent['acc'] = str(ent._.acc)
-            out_ent['start_tkn'] = ent[0].i
-            out_ent['end_tkn'] = ent[-1].i
-            out_ent['start_ind'] = ent.start_char
-            out_ent['end_ind'] = ent.end_char
-            out_ent['label'] = str(ent.label_)
-            out_ent['id'] = str(ent._.id)
-            out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(ent._.cui, '')
-            out2.append(dict(out_ent))
-
-        n_out = (out, out2)
-        return n_out
-
-
     def get_json(self, text):
         """ Get output in json format
 
         text:  text to be annotated
         return:  json with fields {'entities': <>, 'text': text}
         """
-        # TODO:
-        #ents = self.get_entities_all(text)
         ents = self.get_entities(text)
         out = {'entities': ents, 'text': text}
 
         return json.dumps(out)
 
-    def multi_processing_simple(self, in_data, nproc=8, batch_size=100):
+    def multi_processing(self, in_data, nproc=8, batch_size=100):
         """ Run multiprocessing NOT FOR TRAINING
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
+        batch_size:  obvious
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
@@ -241,6 +193,7 @@ class CAT(object):
         for p in procs:
             p.join()
 
+        # Close the queue as it can cause memory leaks
         in_q.close()
 
         out = []
@@ -249,10 +202,11 @@ class CAT(object):
                 data = out_dict[key]
                 print("Merging training data for proc: " + str(key))
                 out.extend(data[2])
+        print("Done processing {} documents\n".format(len(out)))
         return out
 
 
-    def multi_processing(self, in_data, nproc=8, batch_size=100, coo=False):
+    def multi_processing_coo(self, in_data, nproc=8, batch_size=100, coo=False):
         """ Run multiprocessing NOT FOR TRAINING
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
@@ -285,6 +239,8 @@ class CAT(object):
 
         for _ in range(nproc):  # tell workers we're done
             in_q.put(None)
+
+        in_q.close()
 
         for p in procs:
             p.join()

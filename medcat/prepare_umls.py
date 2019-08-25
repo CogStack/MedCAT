@@ -54,8 +54,11 @@ class PrepareUMLS(object):
                 for _name in names:
                     if ind % 10000 == 0:
                         print("Done: {}".format(ind))
+                    # Save originals
                     pretty_name = _name
+                    original_name = _name
                     name = clean_umls(_name)
+
                     # Clean and preprocess the name
                     doc = self.nlp(name)
                     tokens = [str(t.lemma_).lower() for t in doc if not t._.is_punct and not t._.to_skip]

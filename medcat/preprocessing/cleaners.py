@@ -79,9 +79,23 @@ BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 SKIP_CHARS = re.compile("[\[\]\*]+")
 
-def clean_name(text, stopwords=None):
+def clean_name(text, stopwords=None, umls=False):
     # Remove multi spaces
     text = re.sub("[ ]+", " ", text).strip()
+
+    # If UMLS
+    if umls:
+        # Remove specific things from parentheses
+        text = PH_RM.sub(" ", text)
+
+    # Remove stopwords if requested and <= 5 words in total in the name
+    if stopwords:
+        new_text = ""
+        for word in text.split(" "):
+            if word not in stopwords:
+                new_text += word + " "
+        text = new_text.strip()
+
 
     return text
 

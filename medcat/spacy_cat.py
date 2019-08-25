@@ -5,7 +5,7 @@ from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 import os
 
-# Full UMLS works better with the specific annotatior
+# IF UMLS it includes specific rules that are only good for the Full UMLS version
 if os.getenv('TYPE', 'umls').lower() == 'umls':
     print("IT IS UMLS")
     from medcat.cat_ann import CatAnn
@@ -24,8 +24,8 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    DEBUG = os.getenv('DEBUG', "true").lower() == 'true'
-    CNTX_SPAN = int(os.getenv('CNTX_SPAN', 6))
+    DEBUG = os.getenv('DEBUG', "true").lower() == 'false'
+    CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
     MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 3))
@@ -33,6 +33,7 @@ class SpacyCat(object):
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
+    DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.05))
     MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
@@ -344,8 +345,10 @@ class SpacyCat(object):
                 # Add annotation
                 if not self.train or not self._train_skip(name) or self.force_train:
                     if not _doc[i].is_stop:
-                        self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
-                        #self.to_disamb.append((list(tkns), name))
+                        if self.DISAMB_EVERYTHING:
+                            self.to_disamb.append((list(tkns), name))
+                        else:
+                            self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
             for j in range(i+1, len(_doc)):
                 if _doc[j]._.to_skip:
@@ -360,8 +363,10 @@ class SpacyCat(object):
                 else:
                     if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                         if not self.train or not self._train_skip(name) or self.force_train:
-                            self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
-                            #self.to_disamb.append((list(tkns), name))
+                            if self.DISAMB_EVERYTHING:
+                                self.to_disamb.append((list(tkns), name))
+                            else:
+                                self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
 
 
