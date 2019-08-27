@@ -2,50 +2,40 @@
 
 A simple tool for concept annotation from UMLS or any other source.
 
+## Demo
+A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
+and contains a very small portion of UMLS (<1%). 
+
 
 ## How to use
 There are a few ways to run CAT
 
 ### PIP Installation
-`pip install --upgrade medcat`
+1. Install MedCAT `pip install --upgrade medcat`
 
-#### Please install the spacy langauge models before running anything
+2. Now install the spacy models
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
 
-
-### Building a new Concept Database (.csv) or using an existing one
-First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat)
-
-Now in python3+ 
+3. Use it
 ```python
 from medcat.cat import CAT
 from medcat.utils.vocab import Vocab
-from medcat.prepare_cdb import PrepareCDB
 from medcat.cdb import CDB 
 
 vocab = Vocab()
-
-# Load the vocab model you just downloaded
+# Load the vocab model you downloaded
 vocab.load_dict('<path to the vocab file>')
 
-# If you have an existing CDB
+# Load the cdb model you downloaded
 cdb = CDB()
 cdb.load_dict('<path to the cdb file>') 
 
-# If you need a special CDB you can build one from a .csv file
-preparator = PrepareCDB(vocab=vocab)
-csv_paths = ['<path to your csv_file>', '<another one>', ...] 
-# e.g.
-csv_paths = ['./examples/simple_cdb.csv']
-cdb = preparator.prepare_csvs(csv_paths)
-
-# Save the new CDB for later
-cdb.save_dict("<path to a file where it will be saved>")
-
-# To annotate documents we do
-doc = "My simple document with kidney failure"
+# create cat
 cat = CAT(cdb=cdb, vocab=vocab)
 cat.train = False
+
+# Test it
+doc = "My simple document with kidney failure"
 doc_spacy = cat(doc)
 # Entities are in
 doc_spacy._.ents
@@ -57,25 +47,52 @@ from spacy import displacy
 # Note that this will not show all entites, but only the longest ones
 displacy.serve(doc_spacy, style='ent')
 
-# To run cat on a large number of documents
+# To train - unsupervised, set the train flag to True and run
+#documents through MedCAT
+cat.train = True
+
+# To run cat on a large number of documents, this will
+#also run trainnig as the flag is set to True.
 data = [(<doc_id>, <text>), (<doc_id>, <text>), ...]
 docs = cat.multi_processing(data)
-```
 
-### Training and Fine-tuning
-To fine-tune or train everything from the ground up (excluding word-vectors), you can use the following:
-```python
-# Loadinga CDB or creating a new one is as above.
-
-# To run the training do
+# To explicitly run trainnig you can do
 f = open("<some file with a lot of medical text>", 'r')
 # If you want fine tune set it to True, old training will be preserved
-cat.run_training(f, fine_tune=False)
+cat.run_training(f, fine_tune=True)
 ```
 
 
+### Building a new Concept Database
+First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat)
+
+```python
+from medcat.cat import CAT
+from medcat.utils.vocab import Vocab
+from medcat.cdb import CDB 
+
+vocab = Vocab()
+# Load the vocab model you downloaded
+vocab.load_dict('<path to the vocab file>')
+
+# If you have an existing CDB
+cdb = CDB()
+cdb.load_dict('<path to the cdb file>') 
+
+# You can now add concepts from a CSV file, examples of the files can be found in ./examples
+preparator = PrepareCDB(vocab=vocab)
+csv_paths = ['<path to your csv_file>', '<another one>', ...] 
+# e.g.
+csv_paths = ['./examples/simple_cdb.csv']
+cdb = preparator.prepare_csvs(csv_paths)
+
+# Save the new CDB for later
+cdb.save_dict("<path to a file where it will be saved>")
+# Done
+```
+
 ## If building from source, the requirements are
-`python >= 3.5` [tested with 3.7, but most likely works with 3+]
+`python >= 3.5`
 
 All the rest can be instaled using `pip` from the requirements.txt file, by running:
 
@@ -86,9 +103,9 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 
 | Dataset | SoftF1 | Description |
 | --- | :---: | --- |
-| MedMentions | 0.83 | The whole MedMentions dataset without any modifications or supervised training |
+| MedMentions | 0.84 | The whole MedMentions dataset without any modifications or supervised training |
 | MedMentions | 0.828 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
-| MedMentions | 0.93 | Medmentions filterd by TUI to only concepts that are a disease |
+| MedMentions | 0.97 | Medmentions filterd by TUI to only concepts that are a disease |
 
 
 ## Models
