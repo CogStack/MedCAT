@@ -27,17 +27,17 @@ class SpacyCat(object):
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
-    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 3))
+    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 1000))
+    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 20))
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
 
-    MIN_ACC = float(os.getenv('MIN_ACC', 0.05))
-    MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 0))
-    NEG_PROB = float(os.getenv('NEG_PROB', 0.20))
+    MIN_ACC = float(os.getenv('MIN_ACC', 0))
+    MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 1))
+    NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
