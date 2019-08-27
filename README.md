@@ -64,7 +64,6 @@ cat.run_training(f, fine_tune=True)
 
 
 ### Building a new Concept Database
-First download the vocabulary from Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat)
 
 ```python
 from medcat.cat import CAT
