@@ -24,7 +24,7 @@ class CAT(object):
     SEPARATOR = ""
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
 
-    def __init__(self, cdb, vocab=None, skip_stopwords=True):
+    def __init__(self, cdb, vocab=None, skip_stopwords=False):
         self.cdb = cdb
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)

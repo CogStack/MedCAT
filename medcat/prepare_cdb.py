@@ -49,16 +49,39 @@ class PrepareCDB(object):
 
         return:  Compiled CDB class
         """
+
         for csv_path in csv_paths:
             df = pandas.read_csv(csv_path, sep=sep)
+            cols = list(df.columns)
+            str_ind = cols.index('str')
+            cui_ind = cols.index('cui')
+            tui_ind = -1
+            if 'tui' in cols:
+                tui_ind = cols.index('tui')
+            tty_ind = -1
+            if 'tty' in cols:
+                tty_ind = cols.index('tty')
+            desc_ind = -1
+            if 'desc' in cols:
+                desc_ind = cols.index('desc')
+            onto_ind = -1
+            if 'onto' in cols:
+                onto_ind = cols.index('onto')
+            is_unique_ind = -1
+            if 'is_unique' in cols:
+                is_unique_ind = cols.index('is_unique')
+            examples_ind = -1
+            if 'examples' in cols:
+                examples_ind = cols.index('examples')
+
             for ind in range(len(df)):
-                names = str(df.iloc[ind]['str']).split(self.NAME_SEPARATOR)
+                names = str(df.iat[ind, str_ind]).split(self.NAME_SEPARATOR)
                 for _name in names:
                     if ind % 10000 == 0:
                         print("Done: {}".format(ind))
 
                     # Get the cui
-                    cui = df.iloc[ind]['cui']
+                    cui = df.iat[ind, cui_ind]
 
                     # Save originals
                     pretty_name = _name
@@ -80,7 +103,7 @@ class PrepareCDB(object):
 
                     is_pref_name = False
                     if 'tty' in df.columns:
-                        _tmp = str(df.iloc[ind]['tty'])
+                        _tmp = str(df.iat[ind, tty_ind])
                         if _tmp.lower().strip() == 'pn':
                             is_pref_name = True
 
@@ -99,7 +122,7 @@ class PrepareCDB(object):
                     # Check is unique 
                     is_unique = None
                     if 'is_unique' in df.columns:
-                        _tmp = str(df.iloc[ind]['is_unique']).strip()
+                        _tmp = str(df.iat[ind, is_unique_ind]).strip()
                         if _tmp.lower().strip() == '0':
                             is_unique = False
                         elif _tmp.lower().strip() == '1':
@@ -109,12 +132,12 @@ class PrepareCDB(object):
                     onto = 'default'
                     if 'onto' in df.columns:
                         # Get the ontology 
-                        onto = df.iloc[ind]['onto']
+                        onto = df.iat[ind, onto_ind]
 
                     # Get the tui 
                     tui = None
                     if 'tui' in df.columns:
-                        tui = str(df.iloc[ind]['tui'])
+                        tui = str(df.iat[ind, tui_ind])
                         #TODO: If there are multiple tuis just take the first one
                         if len(tui.split(',')) > 1:
                             tui = tui.split(',')[0]
@@ -123,7 +146,7 @@ class PrepareCDB(object):
                     # Get the concept description
                     desc = ""
                     if 'desc' in df.columns:
-                        desc = str(df.iloc[ind]['desc']).strip()
+                        desc = str(df.iat[ind, desc_ind]).strip()
 
                     # Add the concept
                     self.cdb.add_concept(cui, name, onto, tokens, snames,
@@ -135,7 +158,7 @@ class PrepareCDB(object):
                     # Process examples if we have them
                     examples = []
                     if 'examples' in df.columns:
-                        tmp = str(df.iloc[ind]['examples']).strip().split(self.NAME_SEPARATOR)
+                        tmp = str(df.iat[ind, examples_ind]).strip().split(self.NAME_SEPARATOR)
                         for example in tmp:
                             example = example.strip()
                             if len(example) > 0:
