@@ -7,15 +7,12 @@ A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). 
 and contains a very small portion of UMLS (<1%). 
 
 
-## How to use
-There are a few ways to run CAT
-
-### PIP Installation
+### Install using PIP
 1. Install MedCAT 
 
 `pip install --upgrade medcat`
 
-2. Now install the spacy models
+2. Install the scispacy models
 
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
 
