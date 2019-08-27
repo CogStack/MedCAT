@@ -24,7 +24,7 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    DEBUG = os.getenv('DEBUG', "true").lower() == 'false'
+    DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 100))
