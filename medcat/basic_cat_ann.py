@@ -22,7 +22,9 @@ class CatAnn(object):
                 else:
                     to_disamb.append((list(tkns), name))
             else:
-                to_disamb.append((list(tkns), name))
+                # For now ignore if < 7 and tokens don't match
+                #to_disamb.append((list(tkns), name))
+                pass
         else:
             # Is the number of tokens matching for short words
             if not (len(name) < 7 and len(tkns) not in self.cdb.name2ntkns[name]):
@@ -33,4 +35,6 @@ class CatAnn(object):
                 else:
                     to_disamb.append((list(tkns), name))
             else:
-                to_disamb.append((list(tkns), name))
+                # For now ignore
+                #to_disamb.append((list(tkns), name))
+                pass
