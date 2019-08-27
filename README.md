@@ -11,7 +11,9 @@ and contains a very small portion of UMLS (<1%).
 There are a few ways to run CAT
 
 ### PIP Installation
-1. Install MedCAT `pip install --upgrade medcat`
+1. Install MedCAT 
+
+`pip install --upgrade medcat`
 
 2. Now install the spacy models
 
@@ -110,7 +112,7 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 
 
 ## Models
-A basic trained model is made public for the vocabulary. It is trained for the 35K entities available in `MedMentions`. It is quite limited
+A basic trained model is made public for the vocabulary. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
