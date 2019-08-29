@@ -16,7 +16,9 @@ and contains a very small portion of UMLS (<1%).
 
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
 
-3. How to use:
+3. Downlad the Vocabulary and CDB from the Models section bellow
+
+4. How to use:
 ```python
 from medcat.cat import CAT
 from medcat.utils.vocab import Vocab
@@ -108,7 +110,7 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 
 
 ## Models
-A basic trained model is made public for the vocabulary. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
+A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
