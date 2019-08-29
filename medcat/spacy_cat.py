@@ -7,9 +7,10 @@ import os
 
 # IF UMLS it includes specific rules that are only good for the Full UMLS version
 if os.getenv('TYPE', 'other').lower() == 'umls':
-    print("IT IS UMLS")
+    log.info("Using cat_ann for annotations")
     from medcat.cat_ann import CatAnn
 else:
+    log.info("Using basic_cat_ann for annotations")
     from medcat.basic_cat_ann import CatAnn
 
 
