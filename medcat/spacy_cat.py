@@ -4,6 +4,7 @@ import operator
 from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 import os
+log = basic_logger("spacycat")
 
 # IF UMLS it includes specific rules that are only good for the Full UMLS version
 if os.getenv('TYPE', 'other').lower() == 'umls':
@@ -14,7 +15,6 @@ else:
     from medcat.basic_cat_ann import CatAnn
 
 
-log = basic_logger("spacycat")
 
 class SpacyCat(object):
     """ A Spacy pipe module, can be easily added into a spacey pipline
