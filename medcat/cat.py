@@ -51,6 +51,26 @@ class CAT(object):
                                      negative=negative)
 
 
+    def unlink_concept_name(self, cui, name):
+        # Unlink a concept from a name
+        p_name, _, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
+
+        # To be sure unlink the orignal and the processed name
+        names = [name, p_name]
+        for name in names:
+            if name in self.cdb.cui2names[cui]:
+                self.cdb.cui2names[cui].remove(name)
+                if len(self.cdb.cui2names[cui]) == 0:
+                    del self.cdb.cui2names[cui]
+
+            if name in self.cdb.name2cui:
+                if cui in self.cdb.name2cui[name]:
+                    self.cdb.name2cui[name].remove(cui)
+
+                    if len(self.cdb.name2cui[name]) == 0:
+                        del self.cdb.name2cui[name]
+
+
     def add_concept(self, concept, text=None, tkn_inds=None):
         cui = concept['cui']
         onto = concept.get('onto', 'user')
@@ -59,8 +79,6 @@ class CAT(object):
         name, tokens, snames, tokens_vocab = get_all_from_name(name=pretty_name, source_value=source_value, nlp=self.nlp)
         tui = concept.get('tui', 'None')
         unique = True
-
-        print(cui, name, onto, tokens, snames, tokens_vocab, tui)
 
         # Add the new concept
         self.cdb.add_concept(cui, name, onto, tokens, snames,
