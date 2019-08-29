@@ -5,13 +5,13 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="0.2.3",
+    version="0.2.3.2",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/w-is-h/cat",
+    url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing'],
     install_requires=[
         'numpy',
@@ -19,7 +19,7 @@ setuptools.setup(
         'gensim',
         'spacy',
         'scipy',
-        'scispacy==0.2.0',],
+        'scispacy',],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
