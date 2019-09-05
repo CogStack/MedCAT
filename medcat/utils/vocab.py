@@ -4,8 +4,8 @@ import pickle
 class Vocab(object):
     def __init__(self):
         self.vocab = {}
-        self.index2word = []
-        self.vec_index2word = []
+        self.index2word = {}
+        self.vec_index2word = {}
         self.unigram_table = []
 
 
@@ -24,55 +24,73 @@ class Vocab(object):
         self.vocab[word]['vec'] = vec
 
 
-    def add_word(self, word, cnt=1, vec=None):
-        self.index2word.append(word)
-        item = {'vec': None, 'cnt': cnt}
-        self.vocab[word] = item
+    def add_word(self, word, cnt=1, vec=None, replace=True):
+        """Add a word to the vocabulary
+
+        word:  the word to be added, it should be lemmatized and lowercased
+        cnt:  count of this word in your dataset
+        vec:  the vector repesentation of the word
+        replace:  will replace old vector representation
+        """
+        if word not in self.vocab:
+            ind = len(self.index2word)
+            self.index2word[ind] = word
+            item = {'vec': vec, 'cnt': cnt, 'ind': ind}
+            self.vocab[word] = item
+
+            if vec is not None:
+                self.vec_index2word[ind] = word
+        elif replace and vec is not None:
+            self.vocab[word].vec = vec
+            self.vocab[word].cnt = cnt
+
+            # If this word didn't have a vector before
+            ind = self.vocab[word].ind
+            if ind not in self.vec_index2word:
+                self.vec_index2word[ind] = word
 
 
-    def add_words(self, path):
+    def add_words(self, path, replace=True):
+        """Adds words to the vocab from a file, the file
+        is required to have the following format (vec being optional):
+            <word>\t<cnt>[\t<vec_space_separated>]
+
+        e.g. one line: the word house with 3 dimensional vectors
+            house   34444   0.3232 0.123213 1.231231
+
+        path: path to the file with words and vectors
+        replace:  existing words in the vocabulary will be replaced
+        """
         f = open(path)
 
         for line in f:
             parts = line.split("\t")
-            self.index2word.append(parts[0])
-            self.vec_index2word.append(parts[0])
+            word = parts[0]
+            cnt = int(parts[1].strip())
+            vec = None
+            if len(parts) == 3:
+                vec = np.array([float(x) for x in parts[2].strip().split(" ")])
 
-            item = {'vec': np.array([float(x)
-                for x in parts[2].strip().split(" ")]), 'cnt': int(parts[1].strip())}
-            self.vocab[parts[0]] = item
-
-
-    def add_words_nvec(self, path, reset_cnt=False):
-        f = open(path)
-
-        for line in f:
-            parts = line.split("\t")
-            if parts[0] not in self.vocab:
-                self.index2word.append(parts[0])
-
-                item = {'vec': None, 'cnt': int(parts[1].strip()),
-                        'ind': len(self.index2word) - 1}
-                self.vocab[parts[0]] = item
-            elif reset_cnt:
-                # Reset the count
-                self.vocab[parts[0]]['cnt'] = int(parts[1].strip())
+            self.add_word(word, cnt, vec)
 
 
     def make_unigram_table(self):
-        prob = []
         freqs = []
+        self.unigram_table = []
 
-        for word in self.vec_index2word:
+        words = list(self.vec_index2word.values())
+        for word in words:
             freqs.append(self[word])
 
         freqs = np.array(freqs)
         freqs = np.power(freqs, 3/4)
         sm = np.sum(freqs)
 
-        for i, word in enumerate(self.vec_index2word):
-            p = freqs[i] / sm
-            self.unigram_table.extend([i] * int(p * 1000000))
+        for ind in self.vec_index2word.keys():
+            word = self.vec_index2word[ind]
+            f_ind = words.index(word)
+            p = freqs[f_ind] / sm
+            self.unigram_table.extend([ind] * int(p * 10000000))
 
         self.unigram_table = np.array(self.unigram_table)
 
