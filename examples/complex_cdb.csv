@@ -1,6 +1,2 @@
-cui,str,tui,sab,unique,examples
-1,cancer|myeloma|neoplasm,T33,0,bla
-2,kidney failure|failure of kidneys|failure renal|renal insufficiency
-3,fever
-
-# Will explain, does not make sense for now
+cui,str,onto,tty,tui,sty,desc,is_unique,examples
+C0000039,"1,2 Dihexadecyl sn Glycerophosphocholine",MSH,PM,T109,Organic Chemical,Synthetic phospholipid used in liposomes and lipid bilayers to study biological membranes. It is also a major constituent of PULMONARY SURFACTANTS.,-1,<example of this concept used in a sentence>
