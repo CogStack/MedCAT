@@ -26,17 +26,18 @@ class CAT(object):
 
     def __init__(self, cdb, vocab=None, skip_stopwords=False):
         self.cdb = cdb
+        self.vocab = vocab
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)
         #self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=skip_stopwords))
 
         # Add spell checker pipe
-        self.spell_checker = CustomSpellChecker(cdb_vocab=cdb.vocab, data_vocab=vocab)
+        self.spell_checker = CustomSpellChecker(cdb_vocab=self.cdb.vocab, data_vocab=self.vocab)
         self.nlp.add_spell_checker(spell_checker=self.spell_checker)
 
         # Add cat
-        self.spacy_cat = SpacyCat(cdb=cdb, vocab=vocab)
+        self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
 
