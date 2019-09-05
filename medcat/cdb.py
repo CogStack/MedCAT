@@ -48,7 +48,7 @@ class CDB(object):
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
                     is_pref_name=False, tui=None, pretty_name='',
-                    desc=None, tokens_vocab=None, original_name='',
+                    desc=None, tokens_vocab=None, original_name=None,
                     is_unique=None):
         """ Add a concept to internal CDB representation
 
@@ -71,6 +71,10 @@ class CDB(object):
             self.name_isupper[name] = self.name_isupper[name] or isupper
         else:
             self.name_isupper[name] = isupper
+
+        # Add original name
+        if original_name is not None:
+            self.name2original_name[name] = original_name
 
         # Add prefered name 
         if is_pref_name:

@@ -72,6 +72,18 @@ class CAT(object):
                         del self.cdb.name2cui[name]
 
 
+    def add_name(self, cui, name):
+        onto = 'def'
+        if cui in self.cdb.cui2onto:
+            onto = self.cdb.cui2onto[cui][0]
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
+
+        # This will add a new concept if the cui doesn't exist
+        #or link the name to an existing concept if it exists.
+        self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab, original_name=name)
+
+
+
     def add_concept(self, concept, text=None, tkn_inds=None):
         cui = concept['cui']
         onto = concept.get('onto', 'user')
@@ -84,7 +96,7 @@ class CAT(object):
         # Add the new concept
         self.cdb.add_concept(cui, name, onto, tokens, snames,
                              tui=tui, pretty_name=pretty_name, is_pref_name=True,
-                             tokens_vocab=tokens_vocab, unique=unique)
+                             tokens_vocab=tokens_vocab, unique=unique, original_name=source_value)
 
         if tkn_inds and text:
             # Add the context
