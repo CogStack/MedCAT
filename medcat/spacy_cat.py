@@ -28,7 +28,7 @@ class SpacyCat(object):
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 1000))
+    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 10000))
     MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 20))
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
