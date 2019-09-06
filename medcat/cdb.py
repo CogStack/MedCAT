@@ -28,8 +28,10 @@ class CDB(object):
         self.cui2desc = {} # Map between a CUI and its cdb description
         self.cui_count = {} # TRAINING - How many times this this CUI appear until now
         self.cui_count_ext = {} # Always - counter for cuis that can be reset, destroyed..
-        self.cui2onto = {}
+        self.cui2ontos = {} # Cui to ontology from where it comes
         self.cui2names = {} # CUI to all the different names it can have
+        self.cui2original_names = {} # CUI to all the different original names it can have
+        self.original_name2cuis = {} # Original name to cuis it can be assigned to
         self.cui2tui = {} # CUI to the semantic type ID
         self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
         self.tui2name = {} # Semnatic tpye id to its name
@@ -75,6 +77,17 @@ class CDB(object):
         # Add original name
         if original_name is not None:
             self.name2original_name[name] = original_name
+
+            if original_name in self.original_name2cuis:
+                self.original_name2cuis[original_name].add(cui)
+            else:
+                self.original_name2cuis[original_name] = {cui}
+
+            if cui in self.cui2original_names:
+                self.cui2original_names[cui].add(original_name)
+            else:
+                self.cui2original_names[cui] = {original_name}
+
 
         # Add prefered name 
         if is_pref_name:
@@ -144,10 +157,10 @@ class CDB(object):
         else:
             self.onto2cuis[onto].add(cui)
 
-        if cui in self.cui2onto:
-            self.cui2onto.append(onto)
+        if cui in self.cui2ontos:
+            self.cui2ontos.append(onto)
         else:
-            self.cui2onto = [onto]
+            self.cui2ontos = [onto]
 
         # Add mappings to name2cui
         if name not in self.name2cui:

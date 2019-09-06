@@ -67,3 +67,28 @@ def doc2html(doc):
     out = TPL_ENTS.format(content=markup, dir='ltr')
 
     return out
+
+
+def json2html(doc):
+    markup = ""
+    offset = 0
+    text = doc['text']
+
+    for span in list(doc['entities']):
+        start = span['start']
+        end = span['end']
+        fragments = text[offset:start].split("\n")
+
+        for i, fragment in enumerate(fragments):
+            markup += escape_html(fragment)
+            if len(fragments) > 1 and i != len(fragments) - 1:
+                markup += "</br>"
+        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(1 * 1 + 0.12), 'text': escape_html(span['str'])}
+        # Add the entity
+        markup += TPL_ENT.format(**ent)
+        offset = end
+    markup += escape_html(text[offset:])
+
+    out = TPL_ENTS.format(content=markup, dir='ltr')
+
+    return out
