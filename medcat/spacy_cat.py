@@ -36,7 +36,8 @@ class SpacyCat(object):
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
 
-    MIN_ACC = float(os.getenv('MIN_ACC', 0))
+    MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
+    MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
     MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 1))
     NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
@@ -300,7 +301,7 @@ class SpacyCat(object):
             self._cuis.add(cui)
 
 
-    def _create_main_ann(self, doc):
+    def _create_main_ann(self, doc, tuis=None):
         """ Only used for testing. Creates annotation in the spacy ents list
         from all the annotations for this document.
 
@@ -310,14 +311,15 @@ class SpacyCat(object):
 
         tkns_in = []
         for ent in doc._.ents:
-            to_add = True
-            for tkn in ent:
-                if tkn in tkns_in:
-                    to_add = False
-            if to_add:
+            if tuis is None or ent._.tui in tuis:
+                to_add = True
                 for tkn in ent:
-                    tkns_in.append(tkn)
-                doc.ents = list(doc.ents) + [ent]
+                    if tkn in tkns_in:
+                        to_add = False
+                if to_add:
+                    for tkn in ent:
+                        tkns_in.append(tkn)
+                    doc.ents = list(doc.ents) + [ent]
 
 
     def __call__(self, doc):
@@ -411,15 +413,17 @@ class SpacyCat(object):
         log.debug("There are {} concepts to be disambiguated.".format(len(to_disamb)))
         log.debug("The concepts are: " + str(to_disamb))
 
-        _min_acc = self.MIN_ACC
-        if self.force_train:
-            _min_acc = 0.4
 
         for concept in to_disamb:
             # Loop over all concepts to be disambiguated
             tkns = concept[0]
             name = concept[1]
             cuis = list(self.cdb.name2cui[name])
+
+            if len(cuis) > 1:
+                _min_acc = self.MIN_ACC
+            else:
+                _min_acc = self.MIN_ACC_TH
 
             accs = []
             self.MIN_COUNT = self.MIN_CUI_COUNT_STRICT
