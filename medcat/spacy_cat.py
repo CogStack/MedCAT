@@ -35,6 +35,7 @@ class SpacyCat(object):
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
+    TUI_FILTER = os.getenv('TUI_FILTER', None)
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -263,42 +264,50 @@ class SpacyCat(object):
         acc:  accuracy for this annotation
         name:  concept name
         """
-        if not is_disamb and cui in self.cdb.cui2ncontext_vec:
-            self.to_disamb.append((list(tkns), name))
-        else:
-            if self.LBL_STYLE == 'long':
-                lbl = "{} - {} - {} - {} - {:.2}".format(cui, self.cdb.cui2pretty_name.get(cui, ''),
-                        self.cdb.cui2tui.get(cui, ''), self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
-            elif self.LBL_STYLE == 'ent':
-                lbl = "{} - {:.2}".format(self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''), float(acc))
+        # Skip if tui filter
+        if self.TUI_FILTER is None or self.cdb.cui2tui[cui] in self.TUI_FILTER:
+            if not is_disamb and cui in self.cdb.cui2ncontext_vec:
+                self.to_disamb.append((list(tkns), name))
             else:
-                lbl = cui
-
-            lbl = doc.vocab.strings.add(lbl)
-            ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
-
-
-            if self.ACC_ALWAYS:
-                acc = self._calc_acc(cui, doc, tkns, name)
-
-            ent._.acc = acc
-            ent._.cui = cui
-            ent._.tui = self.cdb.cui2tui.get(cui, 'None')
-            ent._.id = self.ent_id
-            self.ent_id += 1
-            doc._.ents.append(ent)
-
-            # Increase counter for cui_count_ext if not already added
-            if cui not in self._cuis:
-                if cui in self.cdb.cui_count_ext:
-                    self.cdb.cui_count_ext[cui] += 1
+                if self.LBL_STYLE == 'long':
+                    lbl = "{} - {} - {} - {} - {:.2}".format(
+                            cui,
+                            self.cdb.cui2pretty_name.get(cui, ''),
+                            self.cdb.cui2tui.get(cui, ''),
+                            self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''),
+                            float(acc))
+                elif self.LBL_STYLE == 'ent':
+                    lbl = "{} - {:.2}".format(self.cdb.tui2name.get(
+                        self.cdb.cui2tui.get(cui, ''), ''),
+                        float(acc))
                 else:
-                    self.cdb.cui_count_ext[cui] = 1
+                    lbl = cui
 
-            if self.train or self.force_train:
-                self._add_cntx_vec(cui, doc, tkns)
+                lbl = doc.vocab.strings.add(lbl)
+                ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
 
-            self._cuis.add(cui)
+
+                if self.ACC_ALWAYS:
+                    acc = self._calc_acc(cui, doc, tkns, name)
+
+                ent._.acc = acc
+                ent._.cui = cui
+                ent._.tui = self.cdb.cui2tui.get(cui, 'None')
+                ent._.id = self.ent_id
+                self.ent_id += 1
+                doc._.ents.append(ent)
+
+                # Increase counter for cui_count_ext if not already added
+                if cui not in self._cuis:
+                    if cui in self.cdb.cui_count_ext:
+                        self.cdb.cui_count_ext[cui] += 1
+                    else:
+                        self.cdb.cui_count_ext[cui] = 1
+
+                if self.train or self.force_train:
+                    self._add_cntx_vec(cui, doc, tkns)
+
+                self._cuis.add(cui)
 
 
     def _create_main_ann(self, doc, tuis=None):
@@ -420,27 +429,36 @@ class SpacyCat(object):
             name = concept[1]
             cuis = list(self.cdb.name2cui[name])
 
-            if len(cuis) > 1:
-                _min_acc = self.MIN_ACC
-            else:
-                _min_acc = self.MIN_ACC_TH
+            # Remove cuis if tui filter
+            if self.TUI_FILTER is not None:
+                new_cuis = []
+                for cui in cuis:
+                    if self.cdb.cui2tui[cui] in self.TUI_FILTER:
+                        new_cuis.append(cui)
+                cuis = new_cuis
 
-            accs = []
-            self.MIN_COUNT = self.MIN_CUI_COUNT_STRICT
-            for cui in cuis:
-                if self.cdb.cui_count.get(cui, 0) >= self.MIN_CUI_COUNT:
-                    self.MIN_COUNT = self.MIN_CUI_COUNT
-            for cui in cuis:
-                # Each concept can have one or more cuis assigned
-                if self.cdb.cui_count.get(cui, 0) >= self.MIN_COUNT:
-                    # If this cui appeared enough times
-                    accs.append(self._calc_acc(cui, tkns[0].doc, tkns, name))
+            if len(cuis) > 0:
+                if len(cuis) > 1:
+                    _min_acc = self.MIN_ACC
                 else:
-                    # If not just set the accuracy to -1
-                    accs.append(-1)
-            ind = np.argmax(accs)
-            cui = cuis[ind]
-            acc = accs[ind]
-            # Add only if acc > _min_acc 
-            if acc > _min_acc:
-                self._add_ann(cui, tkns[0].doc, tkns, acc, is_disamb=True)
+                    _min_acc = self.MIN_ACC_TH
+
+                accs = []
+                self.MIN_COUNT = self.MIN_CUI_COUNT_STRICT
+                for cui in cuis:
+                    if self.cdb.cui_count.get(cui, 0) >= self.MIN_CUI_COUNT:
+                        self.MIN_COUNT = self.MIN_CUI_COUNT
+                for cui in cuis:
+                    # Each concept can have one or more cuis assigned
+                    if self.cdb.cui_count.get(cui, 0) >= self.MIN_COUNT:
+                        # If this cui appeared enough times
+                        accs.append(self._calc_acc(cui, tkns[0].doc, tkns, name))
+                    else:
+                        # If not just set the accuracy to -1
+                        accs.append(-1)
+                ind = np.argmax(accs)
+                cui = cuis[ind]
+                acc = accs[ind]
+                # Add only if acc > _min_acc 
+                if acc > _min_acc:
+                    self._add_ann(cui, tkns[0].doc, tkns, acc, is_disamb=True)
