@@ -21,6 +21,7 @@ class PrepareCDB(object):
     NAME_SEPARATOR = "|"
     CONCEPT_LENGTH_LIMIT = 8
     SKIP_STOPWORDS = False
+    VERSIONS = ['CLEAN', 'RAW']
 
     def __init__(self, vocab=None, pretrained_cdb=None, word_tokenizer=None):
         self.vocab = vocab
@@ -80,99 +81,113 @@ class PrepareCDB(object):
                     if ind % 10000 == 0:
                         print("Done: {}".format(ind))
 
-                    # Get the cui
-                    cui = df.iat[ind, cui_ind]
+                    skip_raw = False
+                    for version in self.VERSIONS:
+                        if version == "RAW" and skip_raw:
+                            continue
 
-                    # Save originals
-                    pretty_name = _name
-                    original_name = _name
-                    name = clean_name(_name)
+                        # Get the cui
+                        cui = df.iat[ind, cui_ind]
 
-                    # Clean and preprocess the name
-                    sc_name = self.nlp(name)
-                    tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct
-                              and not t._.to_skip]
-                    tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
+                        # Save originals
+                        pretty_name = _name
+                        original_name = _name
+                        name = clean_name(_name)
 
-                    # Don't allow concept names to be above concept_length_limit
-                    if len(tokens) > self.CONCEPT_LENGTH_LIMIT:
-                        continue
+                        # Clean and preprocess the name
+                        sc_name = self.nlp(name)
+                        if version == 'CLEAN':
+                            tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct
+                                      and not t._.to_skip]
+                        elif version == 'RAW':
+                            tokens= [str(t.lower_) for t in sc_name if not t._.is_punct
+                                            and not t._.to_skip]
 
-                    name = self.SEPARATOR.join(tokens)
-                    _name = "".join(tokens)
+                        tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
 
-                    is_pref_name = False
-                    if 'tty' in df.columns:
-                        _tmp = str(df.iat[ind, tty_ind])
-                        if _tmp.lower().strip() == 'pn':
-                            is_pref_name = True
+                        # Don't allow concept names to be above concept_length_limit
+                        if len(tokens) > self.CONCEPT_LENGTH_LIMIT:
+                            continue
 
-                    # Skip concepts are digits or each token is a single letter
-                    length_one = [True if len(x) < 2 else False for x in tokens]
-                    if _name.isdigit() or all(length_one):
-                        continue
+                        name = self.SEPARATOR.join(tokens)
+                        tmp_name = "".join(tokens)
 
-                    # Create snames of the name
-                    snames = []
-                    sname = ""
-                    for token in tokens:
-                        sname = sname + token + self.SEPARATOR
-                        snames.append(sname.strip())
+                        if name == self.SEPARATOR.join(tokens_vocab):
+                            # Both names are the same, skip raw version
+                            skip_raw = True
 
-                    # Check is unique 
-                    is_unique = None
-                    if 'is_unique' in df.columns:
-                        _tmp = str(df.iat[ind, is_unique_ind]).strip()
-                        if _tmp.lower().strip() == '0':
-                            is_unique = False
-                        elif _tmp.lower().strip() == '1':
-                            is_unique = True
+                        is_pref_name = False
+                        if 'tty' in df.columns:
+                            _tmp = str(df.iat[ind, tty_ind])
+                            if _tmp.lower().strip() == 'pn':
+                                is_pref_name = True
 
-                    # Get the ontology: 'sab' in umls
-                    onto = 'default'
-                    if 'onto' in df.columns:
-                        # Get the ontology 
-                        onto = df.iat[ind, onto_ind]
+                        # Skip concepts are digits or each token is a single letter
+                        length_one = [True if len(x) < 2 else False for x in tokens]
+                        if tmp_name.isdigit() or all(length_one):
+                            continue
 
-                    # Get the tui 
-                    tui = None
-                    if 'tui' in df.columns:
-                        tui = str(df.iat[ind, tui_ind])
-                        #TODO: If there are multiple tuis just take the first one
-                        if len(tui.split(',')) > 1:
-                            tui = tui.split(',')[0]
+                        # Create snames of the name
+                        snames = []
+                        sname = ""
+                        for token in tokens:
+                            sname = sname + token + self.SEPARATOR
+                            snames.append(sname.strip())
+
+                        # Check is unique 
+                        is_unique = None
+                        if 'is_unique' in df.columns:
+                            _tmp = str(df.iat[ind, is_unique_ind]).strip()
+                            if _tmp.lower().strip() == '0':
+                                is_unique = False
+                            elif _tmp.lower().strip() == '1':
+                                is_unique = True
+
+                        # Get the ontology: 'sab' in umls
+                        onto = 'default'
+                        if 'onto' in df.columns:
+                            # Get the ontology 
+                            onto = df.iat[ind, onto_ind]
+
+                        # Get the tui 
+                        tui = None
+                        if 'tui' in df.columns:
+                            tui = str(df.iat[ind, tui_ind])
+                            #TODO: If there are multiple tuis just take the first one
+                            if len(tui.split(',')) > 1:
+                                tui = tui.split(',')[0]
 
 
-                    # Get the concept description
-                    desc = ""
-                    if 'desc' in df.columns:
-                        desc = str(df.iat[ind, desc_ind]).strip()
+                        # Get the concept description
+                        desc = ""
+                        if 'desc' in df.columns:
+                            desc = str(df.iat[ind, desc_ind]).strip()
 
-                    # Add the concept
-                    self.cdb.add_concept(cui, name, onto, tokens, snames,
-                            tui=tui, pretty_name=pretty_name,
-                            tokens_vocab=tokens_vocab, is_unique=is_unique,
-                            desc=desc, original_name=original_name,
-                            is_pref_name=is_pref_name)
+                        # Add the concept
+                        self.cdb.add_concept(cui, name, onto, tokens, snames,
+                                tui=tui, pretty_name=pretty_name,
+                                tokens_vocab=tokens_vocab, is_unique=is_unique,
+                                desc=desc, original_name=original_name,
+                                is_pref_name=is_pref_name)
 
-                    # Process examples if we have them
-                    examples = []
-                    if 'examples' in df.columns:
-                        tmp = str(df.iat[ind, examples_ind]).strip().split(self.NAME_SEPARATOR)
-                        for example in tmp:
-                            example = example.strip()
-                            if len(example) > 0:
-                                examples.append(example)
-                    # If we have examples
-                    for example in examples:
-                        doc = self.nlp(example)
-                        cntx = []
-                        for word in doc:
-                            if not word._.to_skip:
-                                for w in self.tokenizer(word._.norm):
-                                    if w in self.vocab and self.vocab.vec(w) is not None:
-                                        cntx.append(self.vocab.vec(w))
-                        if len(cntx) > 1:
-                            cntx = np.average(cntx, axis=0)
-                            self.cdb.add_context_vec(cui, cntx, cntx_type='MED')
+                        # Process examples if we have them
+                        examples = []
+                        if 'examples' in df.columns:
+                            tmp = str(df.iat[ind, examples_ind]).strip().split(self.NAME_SEPARATOR)
+                            for example in tmp:
+                                example = example.strip()
+                                if len(example) > 0:
+                                    examples.append(example)
+                        # If we have examples
+                        for example in examples:
+                            doc = self.nlp(example)
+                            cntx = []
+                            for word in doc:
+                                if not word._.to_skip:
+                                    for w in self.tokenizer(word._.norm):
+                                        if w in self.vocab and self.vocab.vec(w) is not None:
+                                            cntx.append(self.vocab.vec(w))
+                            if len(cntx) > 1:
+                                cntx = np.average(cntx, axis=0)
+                                self.cdb.add_context_vec(cui, cntx, cntx_type='MED')
         return self.cdb

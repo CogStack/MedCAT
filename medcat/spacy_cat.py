@@ -43,6 +43,10 @@ class SpacyCat(object):
     NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
 
+    LR = float(os.getenv('LR', 0.5))
+    ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
+
+
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
         self.vocab = vocab
@@ -122,7 +126,7 @@ class SpacyCat(object):
         cntx = None
         cntx_short = None
         words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
-        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
+        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=False)
 
         cntx_vecs = []
         for word in words:
@@ -190,15 +194,20 @@ class SpacyCat(object):
         self.cdb.add_ncontext_vec(cui, cntx)
 
 
-    def _add_cntx_vec(self, cui, doc, tkns, manual=False, negative=False):
+    def _add_cntx_vec(self, cui, doc, tkns, negative=False, lr=None, anneal=None):
         """ Add context vectors for this CUI
 
         cui:  concept id
         doc:  spacy document where the cui was found
         tkns:  tokens that were found for this cui
         """
+        if lr is None:
+            lr = self.LR
+        if anneal is None:
+            anneal = self.ANNEAL
+
         if negative:
-            self.cdb.cui2ncontext_vec[cui] = True
+            self.cdb.cui_disamb_always[cui] = True
 
         # Get words around this concept
         words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
@@ -217,12 +226,14 @@ class SpacyCat(object):
         if len(cntx_vecs) > 0:
             cntx = np.average(cntx_vecs, axis=0)
             # Add context vectors only if we have some
-            self.cdb.add_context_vec(cui, cntx, cntx_type='MED', manual=manual, negative=negative)
+            self.cdb.add_context_vec(cui, cntx, cntx_type='MED', negative=negative, lr=lr,
+                                     anneal=anneal)
 
         if len(cntx_vecs_short) > 0:
             cntx_short = np.average(cntx_vecs_short, axis=0)
             # Add context vectors only if we have some
-            self.cdb.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False, manual=manual, negative=negative)
+            self.cdb.add_context_vec(cui, cntx_short, cntx_type='SHORT', inc_cui_count=False,
+                    negative=negative, lr=lr, anneal=anneal)
 
         if np.random.rand() < self.NEG_PROB and not negative:
             # Add only if probability and 'not' negative input
@@ -230,7 +241,7 @@ class SpacyCat(object):
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
-                                      inc_cui_count=False, manual=False)
+                                      inc_cui_count=False)
 
         #### DEBUG ONLY ####
         if self.DEBUG:
@@ -266,7 +277,7 @@ class SpacyCat(object):
         """
         # Skip if tui filter
         if self.TUI_FILTER is None or self.cdb.cui2tui[cui] in self.TUI_FILTER:
-            if not is_disamb and cui in self.cdb.cui2ncontext_vec:
+            if not is_disamb and cui in self.cdb.cui_disamb_always:
                 self.to_disamb.append((list(tkns), name))
             else:
                 if self.LBL_STYLE == 'long':
@@ -344,7 +355,7 @@ class SpacyCat(object):
 
         _doc = []
         for token in doc:
-            if not token._.to_skip:
+            if not token._.to_skip or token.is_stop:
                 _doc.append(token)
 
         self.to_disamb = []
@@ -352,8 +363,18 @@ class SpacyCat(object):
             # Go through all the tokens in this document and annotate them
             tkns = [_doc[i]]
             name = _doc[i]._.norm
+            raw_name = _doc[i].lower_
 
-            if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
+
+            if raw_name in self.cdb.name2cui and len(raw_name) > self.MIN_CONCEPT_LENGTH:
+                # Add annotation
+                if not self.train or not self._train_skip(raw_name) or self.force_train:
+                    if not _doc[i].is_stop:
+                        if self.DISAMB_EVERYTHING:
+                            self.to_disamb.append((list(tkns), raw_name))
+                        else:
+                            self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
+            elif name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                 # Add annotation
                 if not self.train or not self._train_skip(name) or self.force_train:
                     if not _doc[i].is_stop:
@@ -363,17 +384,28 @@ class SpacyCat(object):
                             self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
             for j in range(i+1, len(_doc)):
-                if _doc[j]._.to_skip:
-                    continue
+                skip = False
+                if _doc[j].is_stop:
+                    # If it is a stopword, skip for name
+                    skip = True
+                else:
+                    # Add to name only the ones that are not skipped
+                    name = name + _doc[j]._.norm
 
-                name = name + _doc[j]._.norm
+                raw_name = raw_name + _doc[j].lower_
                 tkns.append(_doc[j])
 
-                if name not in self.cdb.sname2name:
+                if name not in self.cdb.sname2name and raw_name not in self.cdb.sname2name:
                     # There is not one entity containing these words
                     break
                 else:
-                    if name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
+                    if raw_name in self.cdb.name2cui and len(raw_name) > self.MIN_CONCEPT_LENGTH:
+                        if not self.train or not self._train_skip(raw_name) or self.force_train:
+                            if self.DISAMB_EVERYTHING:
+                                self.to_disamb.append((list(tkns), raw_name))
+                            else:
+                                self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
+                    elif not skip and name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                         if not self.train or not self._train_skip(name) or self.force_train:
                             if self.DISAMB_EVERYTHING:
                                 self.to_disamb.append((list(tkns), name))

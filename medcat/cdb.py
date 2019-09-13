@@ -43,7 +43,7 @@ class CDB(object):
         self.cui2context_vec = {} # CUI to context vector
         self.cui2context_vec_short = {} # CUI to context vector - short
         self.cui2context_vec_long = {} # CUI to context vector - long
-        self.cui2ncontext_vec = {} # CUI to negative context vector
+        self.cui_disamb_always = {} # Should this CUI be always disambiguated
         self.vocab = {} # Vocabulary of all words ever, hopefully 
         self._coo_matrix = None # cooccurrence matrix - scikit
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
@@ -70,6 +70,7 @@ class CDB(object):
         """
         # Add is name upper
         if name in self.name_isupper:
+            self.name_isupper[name] = self.name_isupper[name] or isupper
             self.name_isupper[name] = self.name_isupper[name] or isupper
         else:
             self.name_isupper[name] = isupper
@@ -146,10 +147,9 @@ class CDB(object):
 
         # Add number of tokens for this name
         if name in self.name2ntkns:
-            self.name2ntkns[name].append(len(tokens))
+            self.name2ntkns[name].add(len(tokens))
         else:
-            self.name2ntkns[name] = [len(tokens)]
-
+            self.name2ntkns[name] = {len(tokens)}
 
         # Add mappings to onto2cuis
         if onto not in self.onto2cuis:
@@ -173,7 +173,7 @@ class CDB(object):
 
         # Add mappings to cui2names
         if cui not in self.cui2names:
-            self.cui2names[cui] = set([name])
+            self.cui2names[cui] = {name}
         else:
             self.cui2names[cui].add(name)
 
@@ -198,7 +198,7 @@ class CDB(object):
                 self.tui2name[key] = d[key]
 
 
-    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True, manual=False):
+    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True, anneal=True, lr=0.5):
         """ Add the vector representation of a context for this CUI
 
         cui:  The concept in question
@@ -209,17 +209,10 @@ class CDB(object):
         inc_cui_count:  should this be counted
         """
         if cui not in self.cui_count:
-            self.increase_cui_count(cui, True, manual=manual)
+            self.increase_cui_count(cui, True)
 
+        # Ignore very similar context
         prob = 0.95
-        """
-        cnt = self.cui_count[cui]
-        if cnt < int(cui_limit_high / 2):
-            prob = 0.95
-        else:
-            div = 2*cui_limit_high
-            prob = max(0.5, 0.95 - (cnt / div))
-        """
 
         # Set the right context
         if cntx_type == 'MED':
@@ -229,75 +222,43 @@ class CDB(object):
         elif cntx_type == 'LONG':
             cui2context_vec = self.cui2context_vec_long
 
-
         sim = 0
         cv = context_vec
         if cui in cui2context_vec:
             sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
 
+            if anneal:
+                lr = max(lr / self.cui_count[cui], 0.001)
+
             if negative:
-                if not manual:
-                    b = max((0.2 / self.cui_count[cui]), 0.0001)  * max(0, sim)
-                else:
-                    # Means someone manually annotated the example, use high learning rate
-                    b = 0.1 * max(0, sim)
+                b = max(0, sim) * lr
                 cui2context_vec[cui] = cui2context_vec[cui]*(1-b) - cv*b
+                #cui2context_vec[cui] = cui2context_vec[cui] - cv*b
             else:
                 if sim < prob:
-                    if not manual:
-                        # Annotation is from Unsupervised learning
-                        c = 0.001
-                        b = max((0.5 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                    else:
-                        # Means someone manually annotated the example, use high learning rate
-                        b = 0.1 * (1 - max(0, sim))
-
+                    #cui2context_vec[cui] = cui2context_vec[cui] + cv*b
+                    b = (1 - max(0, sim)) * lr
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
 
                     # Increase cui count
                     self.increase_cui_count(cui, inc_cui_count)
         else:
             if negative:
-                cui2context_vec[cui] = -cv
+                cui2context_vec[cui] = -1 * cv
             else:
                 cui2context_vec[cui] = cv
 
-            self.increase_cui_count(cui, inc_cui_count, manual)
+            self.increase_cui_count(cui, inc_cui_count)
 
         return sim
 
 
-    def increase_cui_count(self, cui, inc_cui_count, manual=False):
+    def increase_cui_count(self, cui, inc_cui_count):
         if inc_cui_count:
             if cui in self.cui_count:
                 self.cui_count[cui] += 1
             else:
-                if manual:
-                    self.cui_count[cui] = 5
-                else:
-                    self.cui_count[cui] = 1
-
-
-
-    def add_ncontext_vec(self, cui, ncontext_vec):
-        """ Add the vector representation of a context for this CUI
-
-        cui:  The concept in question
-        ncontext_vec:  Vector represenation of the context
-        """
-
-        sim = 0
-        cv = ncontext_vec
-        cui2context_vec = self.cui2ncontext_vec
-
-        if cui in self.cui_count:
-            if cui in cui2context_vec:
-                sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
-                c = 0.001
-                b = max((0.1 / self.cui_count[cui]), c)  * (1 - max(0, sim))
-                cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
-            else:
-                cui2context_vec[cui] = cv
+                self.cui_count[cui] = 1
 
 
     def add_coo(self, cui1, cui2):
@@ -474,9 +435,6 @@ class CDB(object):
         # cui2context_vec_short
         tmp_cui2context_vec_short = self.cui2context_vec_short
         self.cui2context_vec_short = {}
-        # cui2ncontext_vec
-        tmp_cui2ncontext_vec = self.cui2ncontext_vec
-        self.cui2ncontext_vec = {}
         tmp_cui2names = self.cui2names
         self.cui2names = {}
         for cui in tmp:
@@ -497,8 +455,6 @@ class CDB(object):
                     self.cui2context_vec[cui] = tmp_cui2context_vec[cui]
                 if cui in tmp_cui2context_vec_short:
                     self.cui2context_vec_short[cui] = tmp_cui2context_vec_short[cui]
-                if cui in tmp_cui2ncontext_vec:
-                    self.cui2ncontext_vec[cui] = tmp_cui2ncontext_vec[cui]
                 self.cui2names[cui] = tmp_cui2names[cui]
 
         # The main one name2cui
@@ -526,9 +482,8 @@ class CDB(object):
     def reset_training(self):
         self.cui_count = {}
         self.cui2context_vec = {}
-        self.cui2ncontext_vec = {}
         self.cui2context_vec_short = {}
         self.cui2context_vec_long = {}
         self.coo_dict = {}
-        self.cui2ncontext_vec = {}
+        self.cui_disamb_always = {}
         self.reset_coo_matrix()

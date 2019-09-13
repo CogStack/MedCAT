@@ -24,7 +24,7 @@ class CAT(object):
     SEPARATOR = ""
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
 
-    def __init__(self, cdb, vocab=None, skip_stopwords=False):
+    def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
         self.vocab = vocab
         # Build the required spacy pipeline
@@ -48,8 +48,8 @@ class CAT(object):
     def add_concept_cntx(self, cui, text, tkn_inds, negative=False):
         doc = self(text)
         tkns = [doc[ind] for ind in range(tkn_inds[0], tkn_inds[-1] + 1)]
-        self.spacy_cat._add_cntx_vec(cui=cui, doc=doc, tkns=tkns, manual=True,
-                                     negative=negative)
+        self.spacy_cat._add_cntx_vec(cui=cui, doc=doc, tkns=tkns,
+                                     negative=negative, lr=0.1, anneal=False)
 
 
     def unlink_concept_name(self, cui, name):
@@ -76,11 +76,13 @@ class CAT(object):
         onto = 'def'
         if cui in self.cdb.cui2onto:
             onto = self.cdb.cui2onto[cui][0]
-        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=name, source_value=name,
+                nlp=self.nlp)
 
         # This will add a new concept if the cui doesn't exist
         #or link the name to an existing concept if it exists.
-        self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab, original_name=name)
+        self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
+                original_name=name)
 
 
 
@@ -89,7 +91,8 @@ class CAT(object):
         onto = concept.get('onto', 'user')
         pretty_name = concept['name']
         source_value = concept['source_value']
-        name, tokens, snames, tokens_vocab = get_all_from_name(name=pretty_name, source_value=source_value, nlp=self.nlp)
+        name, tokens, snames, tokens_vocab = get_all_from_name(name=pretty_name,
+                source_value=source_value, nlp=self.nlp)
         tui = concept.get('tui', 'None')
         unique = True
 
@@ -102,6 +105,14 @@ class CAT(object):
             # Add the context
             self.add_concept_cntx(cui, text, tkn_inds)
 
+
+    def train_supervised(self, data):
+        """ Given data learns vector embeddings for concepts
+        in a suppervised way.
+
+        data:  json data in format <>
+        """
+        pass
 
     @property
     def train(self):
