@@ -236,9 +236,9 @@ class CDB(object):
                 #cui2context_vec[cui] = cui2context_vec[cui] - cv*b
             else:
                 if sim < prob:
-                    #cui2context_vec[cui] = cui2context_vec[cui] + cv*b
                     b = (1 - max(0, sim)) * lr
                     cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
+                    #cui2context_vec[cui] = cui2context_vec[cui] + cv*b
 
                     # Increase cui count
                     self.increase_cui_count(cui, inc_cui_count)

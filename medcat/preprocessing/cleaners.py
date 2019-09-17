@@ -151,13 +151,14 @@ def clean_snt(text):
     return text
 
 
-def spacy_tag_punct(doc, skip_stopwords=True):
+def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=[]):
     for token in doc:
         if IS_PUNCT.match(token.text):
             # There can't be punct in a token
             #if it also has text
-            token._.is_punct = True
-            token._.to_skip = True
+            if token.text not in keep_punct:
+                token._.is_punct = True
+                token._.to_skip = True
 
         # Skip if specific strings
         if TO_SKIP.match(token.lower_):

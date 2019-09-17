@@ -4,28 +4,37 @@ from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
 from medcat.utils.vocab import Vocab
 from urllib.request import urlretrieve
+from .models import *
 import os
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
 
-if not os.path.exists(vocab_path):
-    vocab_url = os.getenv('VOCAB_URL')
-    urlretrieve(vocab_url, vocab_path)
+try:
+    if not os.path.exists(vocab_path):
+        vocab_url = os.getenv('VOCAB_URL')
+        urlretrieve(vocab_url, vocab_path)
 
-if not os.path.exists(cdb_path):
-    cdb_url = os.getenv('CDB_URL')
-    urlretrieve(cdb_url, cdb_path)
+    if not os.path.exists(cdb_path):
+        cdb_url = os.getenv('CDB_URL')
+        urlretrieve(cdb_url, cdb_path)
 
-vocab = Vocab()
-vocab.load_dict(vocab_path)
-cdb = CDB()
-cdb.load_dict(cdb_path)
-cat = CAT(cdb=cdb, vocab=vocab)
+    vocab = Vocab()
+    vocab.load_dict(vocab_path)
+    cdb = CDB()
+    cdb.load_dict(cdb_path)
+    cat = CAT(cdb=cdb, vocab=vocab)
+except Exception as e:
+    print(str(e))
 
 def get_html_and_json(text):
     doc = cat(text)
     doc_json = cat.get_json(text)
+
+    uploaded_text = UploadedText()
+    uploaded_text.text = str(text)
+    uploaded_text.save()
+
     return doc2html(doc), doc_json
 
 
