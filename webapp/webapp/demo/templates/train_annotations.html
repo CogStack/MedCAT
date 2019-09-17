@@ -14,10 +14,18 @@
             <form method='POST' class='textbox'>
               {% csrf_token %}
               <div class="form-group">
+
                 <label for="exampleFormControlTextarea1">Enter some text and click Annotate</label>
                 <textarea class="form-control" name="text" rows="15"></textarea>
               </div>
               <button type="submit" class="btn btn-primary">Annotate</button>
+            <br />
+            <br />
+            <br />
+            <br />
+            <h5> Please note this is a limited version of MedCAT as the full version of UMLS models can not be made publicaly available. 
+                To access the full version you can either build it from UMLS source or contact the developers. As this is a built on a very small subset
+                of UMLS it can detect some strange concepts or give results that don't any sense.</h5>
             </form>
         </div>
 	{% else %}
