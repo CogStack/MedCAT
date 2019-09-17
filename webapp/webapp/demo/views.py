@@ -17,6 +17,8 @@ try:
 
     if not os.path.exists(cdb_path):
         cdb_url = os.getenv('CDB_URL')
+        print("*"*399)
+        print(cdb_url)
         urlretrieve(cdb_url, cdb_path)
 
     vocab = Vocab()

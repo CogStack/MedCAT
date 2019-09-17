@@ -7,7 +7,7 @@ RUN mkdir -p /webapp/models
 COPY . /webapp
 
 ENV VOCAB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat
-ENV CDB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-clean.dat
+ENV CDB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat
 
 ENV CDB_PATH=/webapp/models/cdb.dat
 ENV VOCAB_PATH=/webapp/models/vocab.dat
