@@ -1,8 +1,9 @@
+DEBUG=False
 TYPE=NOT_UMLS
 UPDATE_COO=False
-DEBUG=False
 NESTED_ENTITIES=False
-CNTX_SPAN=7
+
+CNTX_SPAN=9
 CNTX_SPAN_SHORT=2
 MIN_CUI_COUNT=200
 MIN_CUI_COUNT_STRICT=2
@@ -10,13 +11,16 @@ MIN_ACC=0.05
 MIN_CONCEPT_LENGTH=1
 NEG_PROB=0.5
 LBL_STYLE=long
-UPDATE_COO=False
-SPACY_MODEL=en_core_sci_md
 
+LR=1
+ANNEAL=True
+KEEP_PUNCT=:|.
+
+SPACY_MODEL=en_core_sci_md
 VOCAB_PATH=/webapp/models/vocab.dat
 CDB_PATH=/webapp/models/cdb.dat
 VOCAB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat
-CDB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-clean.dat
+CDB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat
 
 MKL_NUM_THREAD=1
 NUMEXPR_NUM_THREADS=1
