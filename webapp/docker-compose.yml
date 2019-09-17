@@ -7,7 +7,7 @@ services:
         context: ./webapp
     command: python /webapp/manage.py runserver 0.0.0.0:8000
     volumes:
-            - ./webapp/demo:/webapp/demo
+            - ./webapp/db:/webapp/db
     ports:
       - "8001:8000"
     env_file:
