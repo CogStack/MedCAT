@@ -23,6 +23,7 @@ class CAT(object):
     """
     SEPARATOR = ""
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
+    KEEP_PUNCT = os.getenv("KEEP_PUNCT", ",|:|.").split("|")
 
     def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
@@ -32,7 +33,7 @@ class CAT(object):
         #self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct,
                                                  skip_stopwords=skip_stopwords,
-                                                 keep_punct=[',', ':', '.']))
+                                                 keep_punct=self.KEEP_PUNCT))
 
         # Add spell checker pipe
         self.spell_checker = CustomSpellChecker(cdb_vocab=self.cdb.vocab, data_vocab=self.vocab)
