@@ -13,6 +13,7 @@ medcat.egg-info/
 build/
 .idea
 venv
+db.sqlite3
 
 #tmp and similar files
 .nfs*

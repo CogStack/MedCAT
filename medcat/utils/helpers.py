@@ -1,6 +1,7 @@
 import numpy as np
 from spacy.util import escape_html
 from .other import *
+from medcat.preprocessing.cleaners import clean_name
 
 
 def to_json_simple(docs, cdb):
@@ -92,3 +93,18 @@ def json2html(doc):
     out = TPL_ENTS.format(content=markup, dir='ltr')
 
     return out
+
+
+def prepare_name(cat, text, version='CLEAN'):
+    """ Cleans up the name
+    """
+    name = clean_name(text)
+
+    if version == 'CLEAN':
+        sc_name = cat(text)
+        tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct
+                  and not t._.to_skip]
+
+    # Join everything and return name 
+    name = "".join(tokens)
+    return name
