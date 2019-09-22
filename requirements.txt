@@ -4,4 +4,3 @@ spacy
 gensim
 scipy
 Flask
-scispacy==0.2.0
