@@ -115,7 +115,7 @@ so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
 
-CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-clean.dat) - Built from MedMentions
+CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built from MedMentions
 
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
