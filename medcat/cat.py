@@ -15,8 +15,11 @@ import copy
 import json
 from functools import partial
 from medcat.preprocessing.cleaners import spacy_tag_punct
-from medcat.utils.helpers import get_all_from_name
+from medcat.utils.helpers import get_all_from_name, prepare_name
 import os
+from medcat.utils.loggers import basic_logger
+
+log = basic_logger("CAT")
 
 class CAT(object):
     """ Annotate a dataset
@@ -48,11 +51,11 @@ class CAT(object):
         return self.nlp(text)
 
 
-    def add_concept_cntx(self, cui, text, tkn_inds, negative=False):
+    def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=0.1, anneal=False):
         doc = self(text)
         tkns = [doc[ind] for ind in range(tkn_inds[0], tkn_inds[-1] + 1)]
         self.spacy_cat._add_cntx_vec(cui=cui, doc=doc, tkns=tkns,
-                                     negative=negative, lr=0.1, anneal=False)
+                                     negative=negative, lr=lr, anneal=anneal)
 
 
     def unlink_concept_name(self, cui, name):
@@ -75,38 +78,45 @@ class CAT(object):
                         del self.cdb.name2cui[name]
 
 
-    def add_name(self, cui, name):
+    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None):
+        """ Adds a new concept or appends the name to an existing concept
+        if the cui already exists in the DB.
+
+        cui:  Concept uniqe ID
+        source_val:  Source value in the text
+        text:  the text of a document where source_val was found
+        """
         onto = 'def'
-        if cui in self.cdb.cui2onto:
-            onto = self.cdb.cui2onto[cui][0]
-        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=name, source_value=name,
-                nlp=self.nlp)
+        if cui in self.cdb.cui2ontos:
+            onto = self.cdb.cui2ontos[cui][0]
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val, source_value=source_val,
+                nlp=self.nlp, version='clean')
 
         # This will add a new concept if the cui doesn't exist
         #or link the name to an existing concept if it exists.
         self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                original_name=name)
+                original_name=source_val, is_pref_name=is_pref_name)
 
+        # Add the raw also
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val, source_value=source_val,
+                nlp=self.nlp, version='raw')
+        self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
+                original_name=source_val, is_pref_name=False)
 
+        if text is not None and source_val in text:
+            if tkn_inds is None:
+                tkn_inds = []
+                doc = self(text)
 
-    def add_concept(self, concept, text=None, tkn_inds=None):
-        cui = concept['cui']
-        onto = concept.get('onto', 'user')
-        pretty_name = concept['name']
-        source_value = concept['source_value']
-        name, tokens, snames, tokens_vocab = get_all_from_name(name=pretty_name,
-                source_value=source_value, nlp=self.nlp)
-        tui = concept.get('tui', 'None')
-        unique = True
+                start = text.index(source_val)
+                end = start + len(source_val)
 
-        # Add the new concept
-        self.cdb.add_concept(cui, name, onto, tokens, snames,
-                             tui=tui, pretty_name=pretty_name, is_pref_name=True,
-                             tokens_vocab=tokens_vocab, unique=unique, original_name=source_value)
+                for tkn in doc:
+                    if tkn.idx >= start and tkn.idx <= end:
+                        tkn_inds.append(tkn.i)
 
-        if tkn_inds and text:
-            # Add the context
-            self.add_concept_cntx(cui, text, tkn_inds)
+            if len(tkn_inds) > 0:
+                self.add_concept_cntx(cui, text, tkn_inds)
 
 
     def train_supervised(self, data):

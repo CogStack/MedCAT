@@ -29,22 +29,6 @@ def to_json_sumithra(docs, cdb):
     return d
 
 
-def get_all_from_name(name, nlp, source_value, SEP=""):
-    sc_name = nlp(source_value)
-    tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct and not t._.to_skip]
-    tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
-
-    snames = []
-    sname = ""
-    for token in tokens:
-        sname = sname + token + SEP
-        snames.append(sname.strip())
-
-    name = SEP.join(tokens)
-
-    return name, tokens, snames, tokens_vocab
-
-
 def doc2html(doc):
     markup = ""
     offset = 0
@@ -95,16 +79,35 @@ def json2html(doc):
     return out
 
 
-def prepare_name(cat, text, version='CLEAN'):
+def prepare_name(cat, name, version='CLEAN'):
     """ Cleans up the name
     """
-    name = clean_name(text)
+    name = clean_name(name)
 
-    if version == 'CLEAN':
-        sc_name = cat(text)
+    if version.lower() == 'clean':
+        sc_name = cat(name)
         tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct
+                  and not t._.to_skip]
+
+    if version.lower() == 'raw':
+        sc_name = cat(name)
+        tokens = [t.lower_ for t in sc_name if not t._.is_punct
                   and not t._.to_skip]
 
     # Join everything and return name 
     name = "".join(tokens)
-    return name
+    return name, tokens
+
+
+def get_all_from_name(name, nlp, source_value, SEP="", version='clean'):
+    sc_name = nlp(source_value)
+    name, tokens = prepare_name(nlp, name=name, version=version)
+    tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]
+
+    snames = []
+    sname = ""
+    for token in tokens:
+        sname = sname + token + SEP
+        snames.append(sname.strip())
+
+    return name, tokens, snames, tokens_vocab
