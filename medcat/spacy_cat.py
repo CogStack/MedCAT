@@ -4,7 +4,7 @@ import operator
 from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 import os
-log = basic_logger("spacycat")
+log = basic_logger("cat_spacycat")
 
 # IF UMLS it includes specific rules that are only good for the Full UMLS version
 if os.getenv('TYPE', 'other').lower() == 'umls':
@@ -126,7 +126,7 @@ class SpacyCat(object):
         cntx = None
         cntx_short = None
         words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
-        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=False)
+        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
 
         cntx_vecs = []
         for word in words:
