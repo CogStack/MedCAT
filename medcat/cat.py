@@ -15,7 +15,7 @@ import copy
 import json
 from functools import partial
 from medcat.preprocessing.cleaners import spacy_tag_punct
-from medcat.utils.helpers import get_all_from_name, prepare_name
+from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
 import os
 from medcat.utils.loggers import basic_logger
 
@@ -26,7 +26,7 @@ class CAT(object):
     """
     SEPARATOR = ""
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
-    KEEP_PUNCT = os.getenv("KEEP_PUNCT", ",|:|.").split("|")
+    KEEP_PUNCT = os.getenv("KEEP_PUNCT", ":").split("|")
 
     def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
@@ -51,10 +51,11 @@ class CAT(object):
         return self.nlp(text)
 
 
-    def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=0.1, anneal=False):
-        doc = self(text)
-        tkns = [doc[ind] for ind in range(tkn_inds[0], tkn_inds[-1] + 1)]
-        self.spacy_cat._add_cntx_vec(cui=cui, doc=doc, tkns=tkns,
+    def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=0.1, anneal=False, spacy_doc=None):
+        if spacy_doc is None:
+            spacy_doc = self(text)
+        tkns = [spacy_doc[ind] for ind in range(tkn_inds[0], tkn_inds[-1] + 1)]
+        self.spacy_cat._add_cntx_vec(cui=cui, doc=spacy_doc, tkns=tkns,
                                      negative=negative, lr=lr, anneal=anneal)
 
 
@@ -78,14 +79,7 @@ class CAT(object):
                         del self.cdb.name2cui[name]
 
 
-    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None):
-        """ Adds a new concept or appends the name to an existing concept
-        if the cui already exists in the DB.
-
-        cui:  Concept uniqe ID
-        source_val:  Source value in the text
-        text:  the text of a document where source_val was found
-        """
+    def _add_name(self, cui, source_val, is_pref_name):
         onto = 'def'
         if cui in self.cdb.cui2ontos:
             onto = self.cdb.cui2ontos[cui][0]
@@ -103,20 +97,30 @@ class CAT(object):
         self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
                 original_name=source_val, is_pref_name=False)
 
-        if text is not None and source_val in text:
+
+    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=0.1, anneal=False):
+        """ Adds a new concept or appends the name to an existing concept
+        if the cui already exists in the DB.
+
+        cui:  Concept uniqe ID
+        source_val:  Source value in the text
+        text:  the text of a document where source_val was found
+        """
+
+        # First add the name
+        self._add_name(cui, source_val, is_pref_name)
+
+        # Now add context if text is present
+        if text is not None and (source_val in text or text_inds):
+            if spacy_doc is None:
+                spacy_doc = self(text)
+
             if tkn_inds is None:
-                tkn_inds = []
-                doc = self(text)
+                tkn_inds = tkn_inds_from_doc(spacy_doc=spacy_doc, text_inds=text_inds,
+                                             source_val=source_val)
 
-                start = text.index(source_val)
-                end = start + len(source_val)
-
-                for tkn in doc:
-                    if tkn.idx >= start and tkn.idx <= end:
-                        tkn_inds.append(tkn.i)
-
-            if len(tkn_inds) > 0:
-                self.add_concept_cntx(cui, text, tkn_inds)
+            if tkn_inds is not None and len(tkn_inds) > 0:
+                self.add_concept_cntx(cui, text, tkn_inds, spacy_doc=spacy_doc, lr=lr, anneal=anneal)
 
 
     def train_supervised(self, data):
