@@ -15,11 +15,10 @@ class CatAnn(object):
         if len(tkns) == 1 and tkns[0].is_upper:
             one_tkn_upper = True
 
-        if not(len(name) <= 3 and not one_tkn_upper):
-            # Put into to_disamb tokens that are not unique
+        if len(name) > 3 or one_tkn_upper:
             if name in self.cdb.name_isunique:
                 # Is the number of tokens matching for short words
-                if not (len(name) < 7 and len(tkns) not in self.cdb.name2ntkns[name]):
+                if len(name) >= 7 or len(tkns) in self.cdb.name2ntkns[name]:
                     if self.cdb.name_isunique[name]:
                         # Annotate
                         cui = list(self.cdb.name2cui[name])[0]
@@ -32,7 +31,7 @@ class CatAnn(object):
                     pass
             else:
                 # Is the number of tokens matching for short words
-                if not (len(name) < 7 and len(tkns) not in self.cdb.name2ntkns[name]):
+                if len(name) > 7 or len(tkns) in self.cdb.name2ntkns[name]):
                     if len(self.cdb.name2cui[name]) == 1 and len(name) > 2:
                         # There is only one concept linked to this name and has
                         #more than 2 characters
