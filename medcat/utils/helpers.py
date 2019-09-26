@@ -111,3 +111,24 @@ def get_all_from_name(name, nlp, source_value, SEP="", version='clean'):
         snames.append(sname.strip())
 
     return name, tokens, snames, tokens_vocab
+
+
+def tkn_inds_from_doc(spacy_doc, text_inds=None, source_val=None):
+    print("SB")
+    tkn_inds = None
+    start = None
+    end = None
+    if text_inds is None and source_val in spacy_doc.text:
+        start = spacy_doc.text.index(source_val)
+        end = start + len(source_val)
+    elif text_inds is not None:
+        start = text_inds[0]
+        end = text_inds[1]
+
+    if start is not None:
+        tkn_inds = []
+        for tkn in spacy_doc:
+            if tkn.idx >= start and tkn.idx <= end:
+                tkn_inds.append(tkn.i)
+
+    return tkn_inds

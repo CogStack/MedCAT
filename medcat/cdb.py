@@ -158,9 +158,9 @@ class CDB(object):
             self.onto2cuis[onto].add(cui)
 
         if cui in self.cui2ontos:
-            self.cui2ontos.append(onto)
+            self.cui2ontos[cui].add(onto)
         else:
-            self.cui2ontos = [onto]
+            self.cui2ontos[cui] = {onto}
 
         # Add mappings to name2cui
         if name not in self.name2cui:
