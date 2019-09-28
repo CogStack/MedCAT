@@ -31,7 +31,7 @@ class CatAnn(object):
                     pass
             else:
                 # Is the number of tokens matching for short words
-                if len(name) > 7 or len(tkns) in self.cdb.name2ntkns[name]):
+                if len(name) > 7 or len(tkns) in self.cdb.name2ntkns[name]:
                     if len(self.cdb.name2cui[name]) == 1 and len(name) > 2:
                         # There is only one concept linked to this name and has
                         #more than 2 characters

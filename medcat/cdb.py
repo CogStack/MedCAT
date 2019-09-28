@@ -8,6 +8,7 @@ from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.attr_dict import AttrDict
 from medcat.utils.loggers import basic_logger
 import os
+import pandas as pd
 
 log = basic_logger("cdb")
 class CDB(object):
@@ -43,6 +44,7 @@ class CDB(object):
         self.cui2context_vec = {} # CUI to context vector
         self.cui2context_vec_short = {} # CUI to context vector - short
         self.cui2context_vec_long = {} # CUI to context vector - long
+        self.cui2info = {} # Additional info for a concept
         self.cui_disamb_always = {} # Should this CUI be always disambiguated
         self.vocab = {} # Vocabulary of all words ever, hopefully 
         self._coo_matrix = None # cooccurrence matrix - scikit
@@ -68,6 +70,10 @@ class CDB(object):
         tokens_vocab:  Tokens that should be added to the vocabulary, usually not normalized
         original_name: As in UMLS or any other vocab
         """
+        # Add the info property
+        if cui not in self.cui2info:
+            self.cui2info[cui] = {}
+
         # Add is name upper
         if name in self.name_isupper:
             self.name_isupper[name] = self.name_isupper[name] or isupper
@@ -188,14 +194,17 @@ class CDB(object):
                     self.cui2words[cui][token] = 1
 
 
-    def add_tui_names(self, d):
+    def add_tui_names(self, csv_path):
         """ Fils the tui2name dict
 
-        d:  map from "tui" to "tui_name"
         """
-        for key in d.keys():
-            if key not in self.tui2name:
-                self.tui2name[key] = d[key]
+        df = pd.read_csv(csv_path)
+
+        for index, row in df.iterrows():
+            tui = row['tui']
+            name = row['name']
+            if tui not in self.tui2name:
+                self.tui2name[tui] = name
 
 
     def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True, anneal=True, lr=0.5):
@@ -214,6 +223,7 @@ class CDB(object):
         # Ignore very similar context
         prob = 0.95
 
+
         # Set the right context
         if cntx_type == 'MED':
             cui2context_vec = self.cui2context_vec
@@ -226,9 +236,8 @@ class CDB(object):
         cv = context_vec
         if cui in cui2context_vec:
             sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
-
             if anneal:
-                lr = max(lr / self.cui_count[cui], 0.001)
+                lr = max(lr / self.cui_count[cui], 0.0005)
 
             if negative:
                 b = max(0, sim) * lr
@@ -389,94 +398,37 @@ class CDB(object):
             self.__dict__ = pickle.load(f)
 
 
-    def filter(self, tuis=[], cuis=[]):
-        """ A fairly simple function that is limiting the CDB to only certain cuis or tuis
-
-        tuis:  List of tuis to filter by
-        cuis:  List of cuis to filter by
+    def add_icd10(self, csv_path):
+        """ Add map from cui to icd10 for concepts
         """
-        # TODO: This one has to be fixed, but not so easy, for now this is good enough
-        # self.sname2name = set()
+        df = pd.read_csv(csv_path)
 
-        # Just reset the co-matrix and the coo_dict
-        self._coo_matrix = None
-        self.coo_dict = {}
+        for index, row in df.iterrows():
+            cui = row['cui']
+            icd = row['icd10']
+            name = row['name']
+            if cui in self.cui2names:
+                icd = {'chapter': icd, 'name': name}
 
-        _cuis = set(cuis)
-        if len(tuis) > 0:
-            for tui in tuis:
-                _cuis.update(self.tui2cuis[tui])
+                if 'icd10' in self.cui2info[cui]:
+                    self.cui2info[cui]['icd10'].append(icd)
+                else:
+                    self.cui2info[cui]['icd10'] = [icd]
 
-        # Remove everything but the cuis in _cuis from everywhere 
-        tmp = self.index2cui
-        self.index2cui = []
-        self.cui2index = {}
-        # cui_count
-        tmp_cui_count = self.cui_count
-        self.cui_count = {}
-        # cui2desc
-        tmp_cui2desc = self.cui2desc
-        self.cui2desc = {}
-        # cui2tui
-        tmp_cui2tui = self.cui2tui
-        self.cui2tui = {}
-        # cui2pref_name
-        tmp_cui2pref_name = self.cui2pref_name
-        self.cui2pref_name = {}
-        # cui2pretty_name = {}
-        tmp_cui2pretty_name = self.cui2pretty_name
-        self.cui2pretty_name = {}
-        # cui2words
-        tmp_cui2words = self.cui2words
-        self.cui2words = {}
-        # cui2context_vec 
-        tmp_cui2context_vec = self.cui2context_vec
-        self.cui2context_vec = {}
-        # cui2context_vec_short
-        tmp_cui2context_vec_short = self.cui2context_vec_short
-        self.cui2context_vec_short = {}
-        tmp_cui2names = self.cui2names
-        self.cui2names = {}
-        for cui in tmp:
-            if cui in _cuis:
-                self.index2cui.append(cui)
-                self.cui2index[cui] = len(self.index2cui) - 1
-                if cui in tmp_cui2desc:
-                    self.cui2desc[cui] = tmp_cui2desc[cui]
-                if cui in tmp_cui_count:
-                    self.cui_count[cui] = tmp_cui_count[cui]
-                if cui in tmp_cui2tui:
-                    self.cui2tui[cui] = tmp_cui2tui[cui]
-                if cui in tmp_cui2pref_name:
-                    self.cui2pref_name[cui] = tmp_cui2pref_name[cui]
-                self.cui2pretty_name[cui] = tmp_cui2pretty_name[cui]
-                self.cui2words[cui] = tmp_cui2words[cui]
-                if cui in tmp_cui2context_vec:
-                    self.cui2context_vec[cui] = tmp_cui2context_vec[cui]
-                if cui in tmp_cui2context_vec_short:
-                    self.cui2context_vec_short[cui] = tmp_cui2context_vec_short[cui]
-                self.cui2names[cui] = tmp_cui2names[cui]
 
-        # The main one name2cui
-        tmp = self.name2cui
-        self.name2cui = {}
-        # name2cnt
-        tmp_name2cnt = self.name2cnt
-        self.name2cnt = {}
-        # name_isupper
-        tmp_name_isupper = self.name_isupper
-        self.name_isupper = {}
-        for name, cuis in tmp.items():
-            for cui in cuis:
-                if cui in _cuis:
-                    if cui in self.name2cui:
-                        self.name2cui[name].add(cui)
-                    else:
-                        self.name2cui[name] = set([cui])
-                    # name2cnt
-                    self.name2cnt[name] = tmp_name2cnt[name]
-                    # name_isupper
-                    self.name_isupper[name] = tmp_name_isupper[name]
+    def add_desc(self, csv_path):
+        """ Add descriptions to the concepts
+        """
+        df = pd.read_csv(csv_path)
+
+        for index, row in df.iterrows():
+            cui = row['cui']
+            desc = row['desc']
+
+            # Check do we have this concept at all
+            if cui in self.cui2names:
+                # If yes add description
+                self.cui2desc[cui] = desc
 
 
     def reset_training(self):
