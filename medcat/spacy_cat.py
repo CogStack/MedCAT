@@ -241,7 +241,7 @@ class SpacyCat(object):
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
-                                      inc_cui_count=False)
+                                      inc_cui_count=False, lr=lr, anneal=True)
 
         #### DEBUG ONLY ####
         if self.DEBUG:

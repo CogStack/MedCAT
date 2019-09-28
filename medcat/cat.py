@@ -81,24 +81,29 @@ class CAT(object):
 
     def _add_name(self, cui, source_val, is_pref_name):
         onto = 'def'
-        if cui in self.cdb.cui2ontos:
-            onto = self.cdb.cui2ontos[cui][0]
-        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val, source_value=source_val,
-                nlp=self.nlp, version='clean')
 
+        if cui in self.cdb.cui2ontos and self.cdb.cui2ontos[cui]:
+            onto = list(self.cdb.cui2ontos[cui])[0]
+
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
+                source_value=source_val,
+                nlp=self.nlp, version='clean')
         # This will add a new concept if the cui doesn't exist
         #or link the name to an existing concept if it exists.
-        self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                original_name=source_val, is_pref_name=is_pref_name)
+        if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui]:
+            self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
+                    original_name=source_val, is_pref_name=is_pref_name)
 
-        # Add the raw also
-        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val, source_value=source_val,
+        # Add the raw also if needed
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
+                source_value=source_val,
                 nlp=self.nlp, version='raw')
-        self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                original_name=source_val, is_pref_name=False)
+        if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui]:
+            self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
+                    original_name=source_val, is_pref_name=False)
 
 
-    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=0.1, anneal=False):
+    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=0.1, anneal=False, negative=False):
         """ Adds a new concept or appends the name to an existing concept
         if the cui already exists in the DB.
 
@@ -120,16 +125,45 @@ class CAT(object):
                                              source_val=source_val)
 
             if tkn_inds is not None and len(tkn_inds) > 0:
-                self.add_concept_cntx(cui, text, tkn_inds, spacy_doc=spacy_doc, lr=lr, anneal=anneal)
+                self.add_concept_cntx(cui, text, tkn_inds, spacy_doc=spacy_doc, lr=lr, anneal=anneal,
+                        negative=negative)
 
 
-    def train_supervised(self, data):
+    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, lr=1, anneal=True):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
-        data:  json data in format <>
+        data_path:  path to data in json format
         """
-        pass
+        self.train = False
+        data = json.load(open(data_path))
+
+        if reset_cdb:
+            self.cdb = CDB()
+
+        if reset_cui_count:
+            # Get all CUIs
+            cuis = []
+            for doc in data['documents']:
+                for ann in doc['annotations']:
+                    cuis.append(ann['cui'])
+            for cui in set(cuis):
+                if cui in self.cdb.cui_count:
+                    self.cdb.cui_count[cui] = 1
+
+        for doc in data['documents']:
+            spacy_doc = self(doc['text'])
+
+            for ann in doc['annotations']:
+                cui = ann['cui']
+                start = ann['start']
+                end = ann['end']
+
+                self.add_name(cui=cui,
+                              source_val=ann['value'],
+                              spacy_doc=spacy_doc,
+                              text_inds=[start, end],
+                              lr=lr)
 
     @property
     def train(self):

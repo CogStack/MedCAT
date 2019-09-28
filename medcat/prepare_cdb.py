@@ -152,16 +152,21 @@ class PrepareCDB(object):
                         # Get the tui 
                         tui = None
                         if 'tui' in df.columns:
-                            tui = str(df.iat[ind, tui_ind])
-                            #TODO: If there are multiple tuis just take the first one
-                            if len(tui.split(',')) > 1:
-                                tui = tui.split(',')[0]
+                            _tui = str(df.iat[ind, tui_ind]).strip()
+                            if len(_tui) > 0 and _tui != "nan":
+                                tui = _tui
+                                #TODO: If there are multiple tuis just take the first one
+                                if len(tui.split(',')) > 1:
+                                    tui = tui.split(',')[0]
 
 
                         # Get the concept description
-                        desc = ""
+                        desc = None
                         if 'desc' in df.columns:
-                            desc = str(df.iat[ind, desc_ind]).strip()
+                            _desc = str(df.iat[ind, desc_ind]).strip()
+                            if len(_desc) > 0:
+                                desc = _desc
+
 
                         # Add the concept
                         self.cdb.add_concept(cui, name, onto, tokens, snames,

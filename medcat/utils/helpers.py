@@ -114,7 +114,6 @@ def get_all_from_name(name, nlp, source_value, SEP="", version='clean'):
 
 
 def tkn_inds_from_doc(spacy_doc, text_inds=None, source_val=None):
-    print("SB")
     tkn_inds = None
     start = None
     end = None
