@@ -51,7 +51,7 @@ class CAT(object):
         return self.nlp(text)
 
 
-    def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=0.1, anneal=False, spacy_doc=None):
+    def add_concept_cntx(self, cui, text, tkn_inds, negative=False, lr=None, anneal=None, spacy_doc=None):
         if spacy_doc is None:
             spacy_doc = self(text)
         tkns = [spacy_doc[ind] for ind in range(tkn_inds[0], tkn_inds[-1] + 1)]
@@ -103,7 +103,7 @@ class CAT(object):
                     original_name=source_val, is_pref_name=False)
 
 
-    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=0.1, anneal=False, negative=False):
+    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=None, anneal=None, negative=False):
         """ Adds a new concept or appends the name to an existing concept
         if the cui already exists in the DB.
 
@@ -129,7 +129,8 @@ class CAT(object):
                         negative=negative)
 
 
-    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, lr=1, anneal=True):
+    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, epochs=2, lr=None,
+                         anneal=None):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -151,19 +152,35 @@ class CAT(object):
                 if cui in self.cdb.cui_count:
                     self.cdb.cui_count[cui] = 1
 
-        for doc in data['documents']:
-            spacy_doc = self(doc['text'])
+        for epoch in epochs:
+            log.info("Starting epoch: {}".format(epoch))
+            for doc in data['documents']:
+                spacy_doc = self(doc['text'])
 
-            for ann in doc['annotations']:
-                cui = ann['cui']
-                start = ann['start']
-                end = ann['end']
+                for ann in doc['annotations']:
+                    cui = ann['cui']
+                    start = ann['start']
+                    end = ann['end']
+                    deleted = ann['deleted']
 
-                self.add_name(cui=cui,
-                              source_val=ann['value'],
-                              spacy_doc=spacy_doc,
-                              text_inds=[start, end],
-                              lr=lr)
+                    if deleted:
+                        # Add negatives only if they exist in the CDB
+                        if cui in self.cdb.cui2names:
+                            self.add_name(cui=cui,
+                                          source_val=ann['value'],
+                                          spacy_doc=spacy_doc,
+                                          text_inds=[start, end],
+                                          negative=deleted,
+                                          lr=lr,
+                                          anneal=anneal)
+                    else:
+                        self.add_name(cui=cui,
+                                      source_val=ann['value'],
+                                      spacy_doc=spacy_doc,
+                                      text_inds=[start, end],
+                                      lr=lr,
+                                      anneal=anneal)
+
 
     @property
     def train(self):
