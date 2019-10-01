@@ -14,7 +14,7 @@ and contains a very small portion of UMLS (<1%).
 
 2. Install the scispacy models
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.0/en_core_sci_md-0.2.0.tar.gz`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.3/en_core_sci_md-0.2.3.tar.gz`
 
 3. Downlad the Vocabulary and CDB from the Models section bellow
 

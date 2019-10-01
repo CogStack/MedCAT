@@ -1,22 +1,17 @@
+import os
+import json
 import pandas
 import spacy
-from spacy.tokenizer import Tokenizer
+from time import sleep
+from functools import partial
+from multiprocessing import Process, Manager, Queue, Pool, Array
 from medcat.cdb import CDB
 from medcat.spacy_cat import SpacyCat
 from medcat.preprocessing.tokenizers import spacy_split_all
-from spacy.tokens import Token
-from medcat.utils.spelling import CustomSpellChecker, SpacySpellChecker
+from medcat.utils.spelling import CustomSpellChecker
 from medcat.utils.spacy_pipe import SpacyPipe
-from medcat.preprocessing.iterators import EmbMimicCSV
-from gensim.models import FastText
-from multiprocessing import Process, Manager, Queue, Pool, Array
-from time import sleep
-import copy
-import json
-from functools import partial
 from medcat.preprocessing.cleaners import spacy_tag_punct
 from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
-import os
 from medcat.utils.loggers import basic_logger
 
 log = basic_logger("CAT")
