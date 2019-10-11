@@ -36,6 +36,7 @@ class SpacyCat(object):
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
+    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 1))
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -45,6 +46,8 @@ class SpacyCat(object):
 
     LR = float(os.getenv('LR', 0.5))
     ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
+
+
 
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
@@ -383,7 +386,12 @@ class SpacyCat(object):
                         else:
                             self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
+            last_notskipped_tkn = tkns[-1]
             for j in range(i+1, len(_doc)):
+                # Don't allow more than MAX skipped tokens
+                if _doc[j].i - last_notskipped_tkn.i - 1 > self.MAX_SKIP_TKN:
+                    break
+
                 skip = False
                 if _doc[j].is_stop:
                     # If it is a stopword, skip for name
@@ -391,6 +399,7 @@ class SpacyCat(object):
                 else:
                     # Add to name only the ones that are not skipped
                     name = name + _doc[j]._.norm
+                    last_notskipped_tkn = _doc[j]
 
                 raw_name = raw_name + _doc[j].lower_
                 tkns.append(_doc[j])
