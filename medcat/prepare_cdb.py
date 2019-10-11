@@ -42,7 +42,7 @@ class PrepareCDB(object):
     def _tok(self, text):
         return [text]
 
-    def prepare_csvs(self, csv_paths, sep=','):
+    def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None):
         """ Compile one or multiple CSVs into an internal CDB class
 
         csv_paths:  an array of paths to the csv files that should be processed
@@ -52,7 +52,7 @@ class PrepareCDB(object):
         """
 
         for csv_path in csv_paths:
-            df = pandas.read_csv(csv_path, sep=sep)
+            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar)
             cols = list(df.columns)
             str_ind = cols.index('str')
             cui_ind = cols.index('cui')
@@ -87,7 +87,7 @@ class PrepareCDB(object):
                             continue
 
                         # Get the cui
-                        cui = df.iat[ind, cui_ind]
+                        cui = str(df.iat[ind, cui_ind])
 
                         # Save originals
                         pretty_name = _name
@@ -147,7 +147,7 @@ class PrepareCDB(object):
                         onto = 'default'
                         if 'onto' in df.columns:
                             # Get the ontology 
-                            onto = df.iat[ind, onto_ind]
+                            onto = str(df.iat[ind, onto_ind])
 
                         # Get the tui 
                         tui = None

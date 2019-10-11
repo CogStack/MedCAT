@@ -43,5 +43,3 @@ class CatAnn(object):
                     # For now ignore
                     #to_disamb.append((list(tkns), name))
                     pass
-        elif len(name) == 2:
-            to_disamb.append((list(tkns), name))
