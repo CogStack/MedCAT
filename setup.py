@@ -5,7 +5,7 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="0.2.5.8",
+    version="0.2.6.0",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",

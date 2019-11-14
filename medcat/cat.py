@@ -237,11 +237,8 @@ class CAT(object):
             out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
             out_ent['source_value'] = str(ent.text)
             out_ent['acc'] = str(ent._.acc)
-            out_ent['start_tkn'] = ent[0].i
-            out_ent['end_tkn'] = ent[-1].i
-            out_ent['start_ind'] = ent.start_char
-            out_ent['end_ind'] = ent.end_char
-            out_ent['label'] = str(ent.label_)
+            out_ent['start'] = ent.start_char
+            out_ent['end'] = ent.end_char
             out_ent['id'] = str(ent._.id)
             out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(ent._.cui, '')
             out.append(dict(out_ent))
@@ -259,6 +256,7 @@ class CAT(object):
         out = {'entities': ents, 'text': text}
 
         return json.dumps(out)
+
 
     def multi_processing(self, in_data, nproc=8, batch_size=100):
         """ Run multiprocessing NOT FOR TRAINING
@@ -306,57 +304,13 @@ class CAT(object):
             if 'pid' in key:
                 data = out_dict[key]
                 print("Merging training data for proc: " + str(key))
-                out.extend(data[2])
+                out.extend(data)
         print("Done processing {} documents\n".format(len(out)))
-        return out
 
+        # Sometimes necessary to free memory
+        out_dict.clear()
+        del out_dict
 
-    def multi_processing_coo(self, in_data, nproc=8, batch_size=100, coo=False):
-        """ Run multiprocessing NOT FOR TRAINING
-        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
-        nproc:  number of processors
-
-        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
-        """
-
-        # Create the input output for MP
-        in_q = Queue(maxsize=4*nproc)
-        manager = Manager()
-        out_dict = manager.dict()
-        out_dict['processed'] = []
-
-        # Create processes
-        procs = []
-        for i in range(nproc):
-            p = Process(target=self._mp_cons, args=(in_q, out_dict, i))
-            p.start()
-            procs.append(p)
-
-        data = []
-        for id, text in in_data:
-            data.append((id, text))
-            if len(data) == batch_size:
-                in_q.put(data)
-                data = []
-        # Put the last batch if it exists
-        if len(data) > 0:
-            in_q.put(data)
-
-        for _ in range(nproc):  # tell workers we're done
-            in_q.put(None)
-
-        in_q.close()
-
-        for p in procs:
-            p.join()
-
-        # Merge all the new CDB versions and get the output
-        out = []
-        for key in out_dict.keys():
-            if 'pid' in key:
-                data = out_dict[key]
-                print("Merging training data for proc: " + str(key))
-                out.extend(data[2])
         return out
 
 
@@ -368,8 +322,7 @@ class CAT(object):
                 data = in_q.get()
                 if data is None:
                     print("DONE " + str(pid))
-                    out_dict['pid: {}'.format(pid)] = (self.cdb.coo_dict,
-                            self.cdb.cui_count_ext, out)
+                    out_dict['pid: {}'.format(pid)] = out
                     break
 
                 for id, text in data:
@@ -380,5 +333,3 @@ class CAT(object):
                         print(e)
 
             sleep(1)
-
-
