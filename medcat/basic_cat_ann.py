@@ -15,7 +15,7 @@ class CatAnn(object):
         if len(tkns) == 1 and tkns[0].is_upper:
             one_tkn_upper = True
 
-        if len(name) > 3 or one_tkn_upper:
+        if len(name) > 1 or one_tkn_upper:
             if name in self.cdb.name_isunique:
                 # Is the number of tokens matching for short words
                 if len(name) >= 7 or len(tkns) in self.cdb.name2ntkns[name]:

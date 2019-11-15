@@ -26,6 +26,7 @@ class SpacyCat(object):
             it will not be performed
     """
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
+    PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "true").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 10000))
@@ -485,6 +486,7 @@ class SpacyCat(object):
                     _min_acc = self.MIN_ACC_TH
 
                 accs = []
+                cnts = []
                 self.MIN_COUNT = self.MIN_CUI_COUNT_STRICT
                 for cui in cuis:
                     if self.cdb.cui_count.get(cui, 0) >= self.MIN_CUI_COUNT:
@@ -494,9 +496,17 @@ class SpacyCat(object):
                     if self.cdb.cui_count.get(cui, 0) >= self.MIN_COUNT:
                         # If this cui appeared enough times
                         accs.append(self._calc_acc(cui, tkns[0].doc, tkns, name))
+                        cnts.append(self.cdb.cui_count.get(cui, 0))
                     else:
                         # If not just set the accuracy to -1
                         accs.append(-1)
+                        cnts.append(-1)
+                if self.PREFER_FREQUENT and cnts:
+                    # Prefer frequent concepts
+                    mps = np.array([0.9] * len(cnts))
+                    mps[np.where(np.array(cnts) == max(cnts))] = 1
+                    accs = accs * mps
+
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]
