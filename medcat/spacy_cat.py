@@ -487,13 +487,10 @@ class SpacyCat(object):
 
                 accs = []
                 cnts = []
-                self.MIN_COUNT = self.MIN_CUI_COUNT_STRICT
-                for cui in cuis:
-                    if self.cdb.cui_count.get(cui, 0) >= self.MIN_CUI_COUNT:
-                        self.MIN_COUNT = self.MIN_CUI_COUNT
+                MIN_COUNT = self.MIN_CUI_COUNT_STRICT
                 for cui in cuis:
                     # Each concept can have one or more cuis assigned
-                    if self.cdb.cui_count.get(cui, 0) >= self.MIN_COUNT:
+                    if self.cdb.cui_count.get(cui, 0) >= MIN_COUNT:
                         # If this cui appeared enough times
                         accs.append(self._calc_acc(cui, tkns[0].doc, tkns, name))
                         cnts.append(self.cdb.cui_count.get(cui, 0))
@@ -505,8 +502,8 @@ class SpacyCat(object):
                     # Prefer frequent concepts
                     mps = np.array([0.9] * len(cnts))
                     mps[np.where(np.array(cnts) == max(cnts))] = 1
+                    mps[np.where(np.array(cnts) < (max(cnts) / 10))] = 0.7
                     accs = accs * mps
-
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]
