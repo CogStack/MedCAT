@@ -102,7 +102,7 @@ class CDB(object):
             if pretty_name:
                 self.cui2pretty_name[cui] = pretty_name
 
-        if cui not in self.cui2pretty_name:
+        if cui not in self.cui2pretty_name and pretty_name:
             self.cui2pretty_name[cui] = pretty_name
 
         if tui is not None:
