@@ -5,32 +5,41 @@ def clean_primary_name(cdb):
     #as we assume that they are unique
     for cui in cdb.cui2pref_name.keys():
         name = cdb.cui2pref_name[cui]
-        # Link only this cui to the pref_name, if name > 3 chars
-        if len(str(name)) > 3:
+        # Link only this cui to the pref_name, if name > 4 chars
+        if len(str(name)) > 4:
             # Remove name from cuis
             cuis = list(cdb.name2cui[name])
             for _cui in cuis:
                 if _cui != cui:
-                    try:
-                        cdb.cui2names[_cui].remove(name)
-                    except Exception as e:
-                        pass
+                    skip = False
+                    if _cui in cdb.cui2pref_name:
+                        if name == cdb.cui2pref_name[_cui]:
+                            skip = True
+                            print("SKIP")
+                            print(name)
+                            print(_cui, cui)
+                            print()
+                    if not skip:
+                        try:
+                            cdb.cui2names[_cui].remove(name)
+                            cdb.name2cui[name].remove(_cui)
+                            print(name, _cui)
+                            print()
+                        except Exception as e:
+                            pass
             # Remove links apart from the choosen one
             cdb.name2cui[name] = {cui}
 
 
 def clean_common_words(cdb, words):
-    # This will remove words in words from
-    #cdb
-    # TODO: Here we need to cleanup more things, like the snames
-
+    # This will mark common words as not unique
     for word in words:
         # Remove word from CUIs
         if word in cdb.name2cui:
             cuis = list(cdb.name2cui[word])
             for cui in cuis:
                 try:
-                    cdb.cui2names[cui].remove(word)
+                    cdb.name_isunique[word] = False
                 except Exception as e:
                     print(cui)
                     print(word)
@@ -42,3 +51,16 @@ def clean_common_words(cdb, words):
 
             # Remove the word now
             del cdb.name2cui[word]
+
+import re
+def fix_snomed_names(cdb, cat):
+    r = re.compile("\([^\(\)]+\)$")
+    i = 0
+    for cui in cdb.cui2pref_name.keys():
+        i += 1
+        name = cdb.cui2pretty_name[cui]
+        name = r.sub("", name).strip()
+        if len(name) > 3:
+            cat.add_name(cui, name, is_pref_name=True)
+        if i % 10000 == 0:
+            print(i)
