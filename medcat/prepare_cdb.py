@@ -42,7 +42,8 @@ class PrepareCDB(object):
     def _tok(self, text):
         return [text]
 
-    def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None):
+    def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None, only_existing=False,
+            add_cleaner=None):
         """ Compile one or multiple CSVs into an internal CDB class
 
         csv_paths:  an array of paths to the csv files that should be processed
@@ -75,6 +76,7 @@ class PrepareCDB(object):
             if 'examples' in cols:
                 examples_ind = cols.index('examples')
 
+
             for ind in range(len(df)):
                 names = str(df.iat[ind, str_ind]).split(self.NAME_SEPARATOR)
                 for _name in names:
@@ -83,16 +85,22 @@ class PrepareCDB(object):
 
                     skip_raw = False
                     for version in self.VERSIONS:
-                        if version == "RAW" and skip_raw:
-                            continue
-
                         # Get the cui
                         cui = str(df.iat[ind, cui_ind])
+
+                        if (version == "RAW" and skip_raw) or \
+                           (only_existing and cui not in self.cdb.cui2names):
+                            continue
 
                         # Save originals
                         pretty_name = _name
                         original_name = _name
-                        name = clean_name(_name)
+                        name = _name
+
+                        if version == "CLEAN" and add_cleaner is not None:
+                            name = add_cleaner(name)
+
+                        name = clean_name(name)
 
                         # Clean and preprocess the name
                         sc_name = self.nlp(name)
@@ -100,7 +108,7 @@ class PrepareCDB(object):
                             tokens = [str(t.lemma_).lower() for t in sc_name if not t._.is_punct
                                       and not t._.to_skip]
                         elif version == 'RAW':
-                            tokens= [str(t.lower_) for t in sc_name if not t._.is_punct
+                            tokens = [str(t.lower_) for t in sc_name if not t._.is_punct
                                             and not t._.to_skip]
 
                         tokens_vocab = [t.lower_ for t in sc_name if not t._.is_punct]

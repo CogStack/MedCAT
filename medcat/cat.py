@@ -87,15 +87,15 @@ class CAT(object):
         #or link the name to an existing concept if it exists.
         if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui]:
             self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                    original_name=source_val, is_pref_name=is_pref_name)
+                    original_name=source_val, is_pref_name=False)
 
         # Add the raw also if needed
         p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
                 source_value=source_val,
                 nlp=self.nlp, version='raw')
-        if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui]:
+        if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui] or is_pref_name:
             self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                    original_name=source_val, is_pref_name=False)
+                    original_name=source_val, is_pref_name=is_pref_name)
 
 
     def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=None, anneal=None, negative=False):

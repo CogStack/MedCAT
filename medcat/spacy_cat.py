@@ -177,7 +177,7 @@ class SpacyCat(object):
                 if sim2 > 0 and abs(sim - sim2) > 0.1:
                     sim = (sim + sim2) / 2
             if name is not None:
-                if cui in self.cdb.cui2pref_name and sim > self.MIN_ACC:
+                if cui in self.cdb.cui2pref_name:
                     if name == self.cdb.cui2pref_name[cui]:
                         sim = min(1, sim + 0.3)
             return sim

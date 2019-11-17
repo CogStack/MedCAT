@@ -99,7 +99,8 @@ class CDB(object):
         # Add prefered name 
         if is_pref_name:
             self.cui2pref_name[cui] = name
-            self.cui2pretty_name[cui] = pretty_name
+            if pretty_name:
+                self.cui2pretty_name[cui] = pretty_name
 
         if cui not in self.cui2pretty_name:
             self.cui2pretty_name[cui] = pretty_name
@@ -125,8 +126,10 @@ class CDB(object):
 
         # Add description
         if desc is not None:
-            if cui not in self.cui2desc or is_pref_name:
-                self.cui2desc[cui] = desc
+            if cui not in self.cui2desc:
+                self.cui2desc[cui] = str(desc)
+            elif str(desc) not in str(self.cui2desc[cui]):
+                self.cui2desc[cui] = str(self.cui2desc[cui]) + "\n\n" + str(desc)
 
         # Add cui to a list of cuis
         if cui not in self.index2cui:
@@ -428,7 +431,10 @@ class CDB(object):
             # Check do we have this concept at all
             if cui in self.cui2names:
                 # If yes add description
-                self.cui2desc[cui] = desc
+                if cui not in self.cui2desc:
+                    self.cui2desc[cui] = str(desc)
+                elif str(desc) not in str(self.cui2desc[cui]):
+                    self.cui2desc[cui] = str(self.cui2desc[cui]) + "\n\n" + str(desc)
 
 
     def reset_training(self):

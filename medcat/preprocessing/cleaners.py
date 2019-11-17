@@ -79,6 +79,12 @@ BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 SKIP_CHARS = re.compile("[\[\]\*]+")
 
+
+def clean_drugs_uk(text, stopwords=None, umls=None):
+    text = BR.sub(" ", text)
+
+    return clean_name(text, stopwords, umls)
+
 def clean_name(text, stopwords=None, umls=False):
     # Remove multi spaces
     text = re.sub("[ ]+", " ", text).strip()
