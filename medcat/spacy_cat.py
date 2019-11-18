@@ -498,12 +498,13 @@ class SpacyCat(object):
                         # If not just set the accuracy to -1
                         accs.append(-1)
                         cnts.append(-1)
-                if self.PREFER_FREQUENT and cnts:
-                    # Prefer frequent concepts
-                    mps = np.array([0.9] * len(cnts))
-                    mps[np.where(np.array(cnts) == max(cnts))] = 1
+                if self.PREFER_FREQUENT and cnts and max(cnts) > 100:
+                    # Prefer frequent concepts, only in cases when cnt > 100
+                    mps = np.array([1] * len(cnts))
+                    mps[np.where(np.array(cnts) < (max(cnts) / 2))] = 0.9
                     mps[np.where(np.array(cnts) < (max(cnts) / 10))] = 0.7
                     accs = accs * mps
+
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]

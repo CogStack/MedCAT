@@ -19,7 +19,7 @@ class PrepareCDB(object):
     """
     SEPARATOR = ""
     NAME_SEPARATOR = "|"
-    CONCEPT_LENGTH_LIMIT = 8
+    CONCEPT_LENGTH_LIMIT = 20
     SKIP_STOPWORDS = False
     VERSIONS = ['CLEAN', 'RAW']
 
@@ -120,7 +120,7 @@ class PrepareCDB(object):
                         name = self.SEPARATOR.join(tokens)
                         tmp_name = "".join(tokens)
 
-                        if name == self.SEPARATOR.join(tokens_vocab):
+                        if add_cleaner is None and name == self.SEPARATOR.join(tokens_vocab):
                             # Both names are the same, skip raw version
                             skip_raw = True
 
