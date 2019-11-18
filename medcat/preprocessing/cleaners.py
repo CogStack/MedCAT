@@ -74,16 +74,22 @@ def clean_text(text):
 
 
 BR_U4 = re.compile("\[[^\]]{0,3}\]")
-CB = re.compile("(^|\s)\([^\)]*\)($|\s)")
+CB = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)(\s)")
+CB_D = re.compile("(\s)\([a-z]+[^\)\(]*\)($)")
 BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 SKIP_CHARS = re.compile("[\[\]\*]+")
 
 
 def clean_drugs_uk(text, stopwords=None, umls=None):
-    text = BR.sub(" ", text)
+    _text = CB.sub(" ", text)
+    _text = CB.sub(" ", _text)
+    _text = CB_D.sub(" ", _text)
+    if len(_text) > 8:
+        text = _text
 
     return clean_name(text, stopwords, umls)
+
 
 def clean_name(text, stopwords=None, umls=False):
     # Remove multi spaces
