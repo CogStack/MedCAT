@@ -401,42 +401,6 @@ class CDB(object):
             self.__dict__ = pickle.load(f)
 
 
-    def add_icd10(self, csv_path):
-        """ Add map from cui to icd10 for concepts
-        """
-        df = pd.read_csv(csv_path)
-
-        for index, row in df.iterrows():
-            cui = row['cui']
-            icd = row['icd10']
-            name = row['name']
-            if cui in self.cui2names:
-                icd = {'chapter': icd, 'name': name}
-
-                if 'icd10' in self.cui2info[cui]:
-                    self.cui2info[cui]['icd10'].append(icd)
-                else:
-                    self.cui2info[cui]['icd10'] = [icd]
-
-
-    def add_desc(self, csv_path):
-        """ Add descriptions to the concepts
-        """
-        df = pd.read_csv(csv_path)
-
-        for index, row in df.iterrows():
-            cui = row['cui']
-            desc = row['desc']
-
-            # Check do we have this concept at all
-            if cui in self.cui2names:
-                # If yes add description
-                if cui not in self.cui2desc:
-                    self.cui2desc[cui] = str(desc)
-                elif str(desc) not in str(self.cui2desc[cui]):
-                    self.cui2desc[cui] = str(self.cui2desc[cui]) + "\n\n" + str(desc)
-
-
     def reset_training(self):
         self.cui_count = {}
         self.cui2context_vec = {}
