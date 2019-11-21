@@ -131,3 +131,113 @@ def tkn_inds_from_doc(spacy_doc, text_inds=None, source_val=None):
                 tkn_inds.append(tkn.i)
 
     return tkn_inds
+
+
+def umls_to_icd10(cdb, csv_path):
+    import pandas as pd
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        cui = row['CUI']
+        icd = row['Class ID'].split('/')[-1]
+        name = row['Preferred Label']
+        if cui is not None and cui in cdb.cui2names:
+            icd = {'chapter': icd, 'name': name}
+
+            if 'icd10' in cdb.cui2info[cui]:
+                cdb.cui2info[cui]['icd10'].append(icd)
+            else:
+                cdb.cui2info[cui]['icd10'] = [icd]
+
+
+def umls_to_snomed(cdb, pickle_path):
+    """ Map UMLS CDB to SNOMED concepts 
+    """
+    import pickle
+
+    data = pickle.load(open(pickle_path, 'rb'))
+
+    for key in data.keys():
+        cui = str(key)
+        for snomed_cui in data[key]:
+            if "S-" in str(snomed_cui):
+                snomed_cui = str(snomed_cui)
+            else:
+                snomed_cui = "S-" + str(snomed_cui)
+
+            if key in cdb.cui2info:
+                if 'snomed' in cdb.cui2info[key]:
+                    cdb.cui2info[cui]['snomed'].append(snomed_cui)
+                else:
+                    cdb.cui2info[cui]['snomed'] = [snomed_cui]
+
+
+def snomed_to_umls(cdb, pickle_path):
+    """ Map SNOMED CDB to UMLS concepts
+    """
+    import pickle
+
+    data = pickle.load(open(pickle_path, 'rb'))
+
+    for key in data.keys():
+        for umls_cui in data[key]:
+            # Add S if it is not there
+            if "S-" in str(key):
+                cui = key
+            else:
+                cui = "S-" + str(key)
+
+            if cui in cdb.cui2info:
+                if 'umls' in cdb.cui2info[cui]:
+                    cdb.cui2info[cui]['umls'].append(umls_cui)
+                else:
+                    cdb.cui2info[cui]['umls'] = [umls_cui]
+
+
+def snomed_to_icd10(cdb, csv_path):
+    """ Add map from cui to icd10 for concepts
+    """
+    import pandas as pd
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        icd = row['icd10']
+        name = row['name']
+
+        if "S-" in str(row['cui']):
+            cui = str(row['cui'])
+        else:
+            cui = "S-" + str(row['cui'])
+
+
+        if cui in cdb.cui2names:
+            icd = {'chapter': icd, 'name': name}
+
+            if 'icd10' in cdb.cui2info[cui]:
+                cdb.cui2info[cui]['icd10'].append(icd)
+            else:
+                cdb.cui2info[cui]['icd10'] = [icd]
+
+
+def snomed_to_desc(cdb, csv_path):
+    """ Add descriptions to the concepts
+    """
+    import pandas as pd
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        desc = row['desc']
+
+        if "S-" in str(row['cui']):
+            cui = str(row['cui'])
+        else:
+            cui = "S-" + str(row['cui'])
+
+
+        # Check do we have this concept at all
+        if cui in cdb.cui2names:
+            # If yes add description
+            if cui not in cdb.cui2desc:
+                cdb.cui2desc[cui] = str(desc)
+            elif str(desc) not in str(cdb.cui2desc[cui]):
+                cdb.cui2desc[cui] = str(cdb.cui2desc[cui]) + "\n\n" + str(desc)

@@ -500,11 +500,13 @@ class SpacyCat(object):
                         cnts.append(-1)
                 if self.PREFER_FREQUENT and cnts and max(cnts) > 100:
                     # Prefer frequent concepts, only in cases when cnt > 100
-                    mps = np.array([1] * len(cnts))
-                    mps[np.where(np.array(cnts) < (max(cnts) / 2))] = 0.9
-                    mps[np.where(np.array(cnts) < (max(cnts) / 10))] = 0.7
-                    accs = accs * mps
+                    mps = np.array([1] * len(cnts), dtype=np.float)
+                    _cnts = np.array(cnts)
+                    mps[np.where(_cnts < (max(cnts) / 2))] = 0.9
+                    mps[np.where(_cnts < (max(cnts) / 5))] = 0.8
+                    mps[np.where(_cnts < (max(cnts) / 10))] = 0.6
 
+                    accs = accs * mps
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]
