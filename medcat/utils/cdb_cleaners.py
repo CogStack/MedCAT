@@ -64,3 +64,16 @@ def fix_snomed_names(cdb, cat):
             cat.add_name(cui, name, is_pref_name=True)
         if i % 10000 == 0:
             print(i)
+
+
+def fix_x_names(cdb, cat):
+    i = 0
+    for cui in cdb.cui2original_names:
+        for name in list(cdb.cui2original_names[cui]):
+            if name.startswith("[X]"):
+                _name = name.replace("[X]", "")
+                cat.add_name(cui, _name, is_pref_name=False, only_new=True)
+
+                if i % 1000 == 0:
+                    print(i)
+                i += 1

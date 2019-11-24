@@ -133,21 +133,58 @@ def tkn_inds_from_doc(spacy_doc, text_inds=None, source_val=None):
     return tkn_inds
 
 
+def umls_to_icd10cm(cdb, csv_path):
+    import pandas as pd
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        try:
+            cuis = str(row['CUI']).split("|")
+            chapter = row['Class ID'].split('/')[-1]
+            name = row['Preferred Label']
+            for cui in cuis:
+                if cui is not None and cui in cdb.cui2names:
+                    icd10 = {'chapter': chapter, 'name': name}
+
+                    if 'icd10' in cdb.cui2info[cui]:
+                        # Check is the chapter already in
+                        isin = False
+                        for tmp in cdb.cui2info[cui]['icd10']:
+                            if tmp['chapter'] == chapter:
+                                isin = True
+                        if not isin:
+                            cdb.cui2info[cui]['icd10'].append(icd10)
+                    else:
+                        cdb.cui2info[cui]['icd10'] = [icd10]
+        except:
+            print(row['CUI'])
+
+
 def umls_to_icd10(cdb, csv_path):
     import pandas as pd
     df = pd.read_csv(csv_path)
 
     for index, row in df.iterrows():
-        cui = row['CUI']
-        icd = row['Class ID'].split('/')[-1]
-        name = row['Preferred Label']
-        if cui is not None and cui in cdb.cui2names:
-            icd = {'chapter': icd, 'name': name}
+        try:
+            cui = str(row['cui'])
+            chapter = row['chapter']
+            name = row['name']
 
-            if 'icd10' in cdb.cui2info[cui]:
-                cdb.cui2info[cui]['icd10'].append(icd)
-            else:
-                cdb.cui2info[cui]['icd10'] = [icd]
+            if cui is not None and cui in cdb.cui2names:
+                icd10 = {'chapter': chapter, 'name': name}
+
+                if 'icd10' in cdb.cui2info[cui]:
+                    # Check is the chapter already in
+                    isin = False
+                    for tmp in cdb.cui2info[cui]['icd10']:
+                        if tmp['chapter'] == chapter:
+                            isin = True
+                    if not isin:
+                        cdb.cui2info[cui]['icd10'].append(icd10)
+                else:
+                    cdb.cui2info[cui]['icd10'] = [icd10]
+        except:
+            print(row['CUI'])
 
 
 def umls_to_snomed(cdb, pickle_path):
@@ -241,3 +278,50 @@ def snomed_to_desc(cdb, csv_path):
                 cdb.cui2desc[cui] = str(desc)
             elif str(desc) not in str(cdb.cui2desc[cui]):
                 cdb.cui2desc[cui] = str(cdb.cui2desc[cui]) + "\n\n" + str(desc)
+
+
+def filter_only_icd10(doc, cat):
+    ents = []
+    for ent in doc._.ents:
+        if 'icd10' in cat.cdb.cui2info.get(ent._.cui, {}):
+            ents.append(ent)
+    doc._.ents = ents
+    doc.ents = []
+    cat.spacy_cat._create_main_ann(doc)
+
+
+def add_names_icd10(cdb, csv_path, cat):
+    import pandas as pd
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        try:
+            cui = str(row['cui'])
+            name = row['name']
+            cat.add_name(cui, name, is_pref_name=False, only_new=True)
+        except Exception as e:
+            print(row['cui'])
+
+        if index % 1000 == 0:
+            print(index)
+
+
+def add_names_icd10cm(cdb, csv_path, cat):
+    import pandas as pd
+    df = pd.read_csv(csv_path)
+
+    for index, row in df.iterrows():
+        try:
+            cuis = str(row['CUI']).split("|")
+            name = row['Preferred Label']
+            for cui in cuis:
+                bl = len(cdb.cui2names.get(cui, []))
+                cat.add_name(cui, name, is_pref_name=False, only_new=True)
+                if bl != len(cdb.cui2names.get(cui, [])):
+                    print(name, cui)
+        except Exception as e:
+            print(e)
+            break
+
+        if index % 1000 == 0:
+            print(index)
