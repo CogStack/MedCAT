@@ -8,6 +8,7 @@ class CatAnn(object):
     def __init__(self, cdb, spacy_cat):
         self.cdb = cdb
         self._cat = spacy_cat
+        self.pref_names = set(cdb.cui2pref_name.values())
 
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
@@ -37,6 +38,12 @@ class CatAnn(object):
                         #more than 2 characters
                         cui = list(self.cdb.name2cui[name])[0]
                         self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
+                    elif self._cat.train and name in self.pref_names and len(name) > 3:
+                        # If training use prefered names as ground truth
+                        cuis = self.cdb.name2cui[name]
+                        for cui in cuis:
+                            if name == self.cdb.cui2pref_name[cui]:
+                                self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
                     else:
                         to_disamb.append((list(tkns), name))
                 else:

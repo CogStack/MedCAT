@@ -159,6 +159,29 @@ def umls_to_icd10cm(cdb, csv_path):
         except:
             print(row['CUI'])
 
+def umls_to_icd10_over_snomed(cdb, pickle_path):
+    import pickle
+    u2i = pickle.load(open(pickle_path, 'rb'))
+
+    for cui in u2i.keys():
+        if cui in cdb.cui2names:
+            if cui not in cdb.cui2info:
+                cdb.cui2info[cui] = {}
+
+            for icd10 in u2i[cui]:
+                if 'icd10' in cdb.cui2info[cui]:
+                    # Check is the chapter already in
+                    isin = False
+                    for tmp in cdb.cui2info[cui]['icd10']:
+                        if tmp['chapter'] == icd10['chapter']:
+                            isin = True
+                    if not isin:
+                        cdb.cui2info[cui]['icd10'].append(icd10)
+                else:
+                    cdb.cui2info[cui]['icd10'] = [icd10]
+            else:
+                pass
+
 
 def umls_to_icd10(cdb, csv_path):
     import pandas as pd
