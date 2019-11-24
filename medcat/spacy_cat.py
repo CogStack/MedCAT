@@ -27,6 +27,7 @@ class SpacyCat(object):
     """
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "true").lower() == 'true'
+    PREFER_ICD10 = os.getenv('PREFER_ICD10', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 10000))
@@ -38,6 +39,7 @@ class SpacyCat(object):
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
     MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
+    SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -392,7 +394,7 @@ class SpacyCat(object):
                     break
 
                 skip = False
-                if _doc[j].is_stop:
+                if _doc[j].is_stop and self.SKIP_STOPWORDS:
                     # If it is a stopword, skip for name
                     skip = True
                 else:
@@ -505,6 +507,15 @@ class SpacyCat(object):
                     mps[np.where(_cnts < (max(cnts) / 10))] = 0.6
 
                     accs = accs * mps
+
+                if self.PREFER_ICD10:
+                    # Prefer concepts that have ICD10
+                    mps = np.array([1] * len(cnts), dtype=np.float)
+                    noicd = [False if 'icd10' in self.cdb.cui2info.get(cui, {}) else
+                             True for cui in cuis]
+                    mps[noicd] = 0.6
+                    accs = accs * mps
+
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]

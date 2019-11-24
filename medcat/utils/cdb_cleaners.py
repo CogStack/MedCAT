@@ -1,6 +1,8 @@
 import traceback
 
 def clean_primary_name(cdb):
+    """ BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION
+    """
     # This will remove ambiguity for primary names 
     #as we assume that they are unique
     for cui in cdb.cui2pref_name.keys():
@@ -26,12 +28,15 @@ def clean_primary_name(cdb):
                             print(name, _cui)
                             print()
                         except Exception as e:
+                            print(e)
                             pass
             # Remove links apart from the choosen one
             cdb.name2cui[name] = {cui}
 
 
 def clean_common_words(cdb, words):
+    """ BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION
+    """
     # This will mark common words as not unique
     for word in words:
         # Remove word from CUIs
