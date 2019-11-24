@@ -409,3 +409,54 @@ class CDB(object):
         self.coo_dict = {}
         self.cui_disamb_always = {}
         self.reset_coo_matrix()
+
+
+    def filter_by_cui(self, cuis_to_keep=[]):
+        names = []
+        cuis = []
+        for cui in self.cui2names:
+            if cui not in cuis_to_keep:
+                cuis.append(cui)
+
+        # Cleanup cui maps
+        for cui in cuis:
+            if cui in self.cui2desc:
+                del self.cui2desc[cui]
+            if cui in self.cui_count:
+                del self.cui_count[cui]
+            if cui in self.cui_count_ext:
+                del self.cui_count_ext[cui]
+            if cui in self.cui2names:
+                del self.cui2names[cui]
+            if cui in self.cui2original_names:
+                del self.cui2original_names[cui]
+            if cui in self.cui2pref_name:
+                del self.cui2pref_name[cui]
+            if cui in self.cui2pretty_name:
+                del self.cui2pretty_name[cui]
+            if cui in self.cui2words:
+                del self.cui2words[cui]
+            if cui in self.cui2context_vec:
+                del self.cui2context_vec[cui]
+            if cui in self.cui2context_vec_short:
+                del self.cui2context_vec_short[cui]
+            if cui in self.cui2context_vec_long:
+                del self.cui2context_vec_long[cui]
+            if cui in self.cui2info:
+                del self.cui2info[cui]
+            if cui in self.cui_disamb_always:
+                del self.cui_disamb_always[cui]
+        print("Done CUI cleaning")
+
+        # Cleanup names
+        for name in list(self.name2cui.keys()):
+            _cuis = list(self.name2cui[name])
+
+            for cui in _cuis:
+                if cui not in cuis_to_keep:
+                    self.name2cui[name].remove(cui)
+
+            if len(self.name2cui[name]) == 0:
+                del self.name2cui[name]
+        print("Done all")
+

@@ -37,7 +37,7 @@ class SpacyCat(object):
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
-    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 1))
+    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -47,8 +47,6 @@ class SpacyCat(object):
 
     LR = float(os.getenv('LR', 0.5))
     ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
-
-
 
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
