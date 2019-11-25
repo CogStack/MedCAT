@@ -42,7 +42,7 @@ class CatAnn(object):
                         # If training use prefered names as ground truth
                         cuis = self.cdb.name2cui[name]
                         for cui in cuis:
-                            if name == self.cdb.cui2pref_name[cui]:
+                            if name == self.cdb.cui2pref_name.get(cui, 'nan-nan'):
                                 self._cat._add_ann(cui, doc, tkns, acc=1, name=name)
                     else:
                         to_disamb.append((list(tkns), name))

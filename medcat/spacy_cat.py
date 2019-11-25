@@ -40,6 +40,7 @@ class SpacyCat(object):
     TUI_FILTER = os.getenv('TUI_FILTER', None)
     MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
+    WEIGHTED_AVG = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -67,6 +68,9 @@ class SpacyCat(object):
         else:
             self.tokenizer = tokenizer
 
+        # Weight drops for average
+        self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2] + [0.1] * 300
+
 
     def _tok(self, text):
         return [text]
@@ -81,12 +85,18 @@ class SpacyCat(object):
         skip_current:  if True found words will not include the current tkns
         skip_words:  If True stopwords and punct will be skipped
         """
+        weights = []
         words = []
 
         # Go left
         i = tkns[0].i - 1
         n = 0
         while(n < span and i >= 0):
+            if self.WEIGHTED_AVG:
+                weights.append(self.wdrops[n])
+            else:
+                weights.append(1)
+
             word = doc[i]
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
@@ -95,17 +105,24 @@ class SpacyCat(object):
             else:
                 words = self.tokenizer(word._.norm) + words
                 n += 1
+
             i = i - 1
 
         # Add tokens if not skip_current
         if not skip_current:
             for tkn in tkns:
                 words.append(tkn._.norm)
+                weights.append(1)
 
         # Go right
         i = tkns[-1].i + 1
         n = 0
         while(n < span and i < len(doc)):
+            if self.WEIGHTED_AVG:
+                weights.append(self.wdrops[n])
+            else:
+                weights.append(1)
+
             word = doc[i]
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
@@ -114,9 +131,10 @@ class SpacyCat(object):
             else:
                 words = words + self.tokenizer(word._.norm)
                 n += 1
+
             i = i + 1
 
-        return words
+        return words, weights
 
 
     def _calc_acc(self, cui, doc, tkns, name=None):
@@ -129,18 +147,18 @@ class SpacyCat(object):
         """
         cntx = None
         cntx_short = None
-        words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
-        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
+        words, weights = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
+        words_short, weights_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
 
         cntx_vecs = []
-        for word in words:
+        for w_ind, word in enumerate(words):
             if word in self.vocab and self.vocab.vec(word) is not None:
-                cntx_vecs.append(self.vocab.vec(word))
+                cntx_vecs.append(self.vocab.vec(word) * weights[w_ind])
 
         cntx_vecs_short = []
-        for word in words_short:
+        for w_ind, word in enumerate(words_short):
             if word in self.vocab and self.vocab.vec(word) is not None:
-                cntx_vecs_short.append(self.vocab.vec(word))
+                cntx_vecs_short.append(self.vocab.vec(word) * weights_short[w_ind])
 
         if len(cntx_vecs_short) > 0:
             cntx_short = np.average(cntx_vecs_short, axis=0)
@@ -179,7 +197,7 @@ class SpacyCat(object):
             if name is not None:
                 if cui in self.cdb.cui2pref_name:
                     if name == self.cdb.cui2pref_name[cui]:
-                        sim = min(1, sim + 0.3)
+                        sim = min(1, sim + 0.1)
             return sim
         else:
             return -1
@@ -214,18 +232,18 @@ class SpacyCat(object):
             self.cdb.cui_disamb_always[cui] = True
 
         # Get words around this concept
-        words = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
-        words_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
+        words, weights = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN, skip_words=True, skip_current=False)
+        words_short, weights_short = self._get_doc_words(doc, tkns, span=self.CNTX_SPAN_SHORT, skip_current=True)
 
         cntx_vecs = []
-        for word in words:
+        for w_ind, word in enumerate(words):
             if word in self.vocab and self.vocab.vec(word) is not None:
-                cntx_vecs.append(self.vocab.vec(word))
+                cntx_vecs.append(self.vocab.vec(word) * weights[w_ind])
 
         cntx_vecs_short = []
-        for word in words_short:
+        for w_ind, word in enumerate(words_short):
             if word in self.vocab and self.vocab.vec(word) is not None:
-                cntx_vecs_short.append(self.vocab.vec(word))
+                cntx_vecs_short.append(self.vocab.vec(word) * weights_short[w_ind])
 
         if len(cntx_vecs) > 0:
             cntx = np.average(cntx_vecs, axis=0)
