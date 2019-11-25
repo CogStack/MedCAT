@@ -522,7 +522,7 @@ class SpacyCat(object):
                     _cnts = np.array(cnts)
                     mps[np.where(_cnts < (max(cnts) / 2))] = 0.9
                     mps[np.where(_cnts < (max(cnts) / 5))] = 0.8
-                    mps[np.where(_cnts < (max(cnts) / 10))] = 0.6
+                    mps[np.where(_cnts < (max(cnts) / 50))] = 0.7
 
                     accs = accs * mps
 
