@@ -40,7 +40,7 @@ class SpacyCat(object):
     TUI_FILTER = os.getenv('TUI_FILTER', None)
     MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
-    WEIGHTED_AVG = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
+    WEIGHTED_AVG = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -91,20 +91,25 @@ class SpacyCat(object):
         # Go left
         i = tkns[0].i - 1
         n = 0
+        add_weight = True
         while(n < span and i >= 0):
             if self.WEIGHTED_AVG:
-                weights.append(self.wdrops[n])
+                if add_weight:
+                    weights = [self.wdrops[n]] + weights
+                    add_weight = False
             else:
-                weights.append(1)
+                weights.append(1.0)
 
             word = doc[i]
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
                     words = self.tokenizer(word._.norm) + words
                     n += 1
+                    add_weight = True
             else:
                 words = self.tokenizer(word._.norm) + words
                 n += 1
+                add_weight = True
 
             i = i - 1
 
@@ -112,25 +117,30 @@ class SpacyCat(object):
         if not skip_current:
             for tkn in tkns:
                 words.append(tkn._.norm)
-                weights.append(1)
+                weights.append(1.0)
 
         # Go right
         i = tkns[-1].i + 1
         n = 0
+        add_weight = True
         while(n < span and i < len(doc)):
             if self.WEIGHTED_AVG:
-                weights.append(self.wdrops[n])
+                if add_weight:
+                    weights.append(self.wdrops[n])
+                    add_weight = False
             else:
-                weights.append(1)
+                weights.append(1.0)
 
             word = doc[i]
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
                     words = words + self.tokenizer(word._.norm)
                     n += 1
+                    add_weight = True
             else:
                 words = words + self.tokenizer(word._.norm)
                 n += 1
+                add_weight = True
 
             i = i + 1
 
