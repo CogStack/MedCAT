@@ -40,7 +40,7 @@ class SpacyCat(object):
     TUI_FILTER = os.getenv('TUI_FILTER', None)
     MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
-    WEIGHTED_AVG = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
+    WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
     MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
@@ -526,6 +526,8 @@ class SpacyCat(object):
                         # If not just set the accuracy to -1
                         accs.append(-1)
                         cnts.append(-1)
+
+                # TODO: SEPARATE INTO A CLASS THAT MODIFIES THE SCORES
                 if self.PREFER_FREQUENT and cnts and max(cnts) > 100:
                     # Prefer frequent concepts, only in cases when cnt > 100
                     mps = np.array([1] * len(cnts), dtype=np.float)
