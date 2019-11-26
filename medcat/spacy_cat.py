@@ -26,6 +26,7 @@ class SpacyCat(object):
             it will not be performed
     """
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
+    NORM_EMB = os.getenv('NORM_EMB', "false").lower() == 'true' # Should we normalize the w2v
     PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "true").lower() == 'true'
     PREFER_ICD10 = os.getenv('PREFER_ICD10', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
@@ -93,6 +94,12 @@ class SpacyCat(object):
         n = 0
         add_weight = True
         while(n < span and i >= 0):
+            word = doc[i]
+            if self.NORM_EMB:
+                _word = word._.norm
+            else:
+                _word = word.text.lower()
+
             if self.WEIGHTED_AVG:
                 if add_weight:
                     weights = [self.wdrops[n]] + weights
@@ -100,14 +107,15 @@ class SpacyCat(object):
             else:
                 weights.append(1.0)
 
-            word = doc[i]
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
-                    words = self.tokenizer(word._.norm) + words
+                    words = self.tokenizer(_word) + words
+
                     n += 1
                     add_weight = True
             else:
-                words = self.tokenizer(word._.norm) + words
+                words = self.tokenizer(_word) + words
+
                 n += 1
                 add_weight = True
 
@@ -124,6 +132,12 @@ class SpacyCat(object):
         n = 0
         add_weight = True
         while(n < span and i < len(doc)):
+            word = doc[i]
+            if self.NORM_EMB:
+                _word = word._.norm
+            else:
+                _word = word.text.lower()
+
             if self.WEIGHTED_AVG:
                 if add_weight:
                     weights.append(self.wdrops[n])
@@ -131,14 +145,13 @@ class SpacyCat(object):
             else:
                 weights.append(1.0)
 
-            word = doc[i]
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
-                    words = words + self.tokenizer(word._.norm)
+                    words = words + self.tokenizer(_word)
                     n += 1
                     add_weight = True
             else:
-                words = words + self.tokenizer(word._.norm)
+                words = words + self.tokenizer(_word)
                 n += 1
                 add_weight = True
 
@@ -534,7 +547,7 @@ class SpacyCat(object):
                     _cnts = np.array(cnts)
                     mps[np.where(_cnts < (max(cnts) / 2))] = 0.9
                     mps[np.where(_cnts < (max(cnts) / 5))] = 0.8
-                    mps[np.where(_cnts < (max(cnts) / 50))] = 0.7
+                    mps[np.where(_cnts < (max(cnts) / 50))] = 0.6
 
                     accs = accs * mps
 
