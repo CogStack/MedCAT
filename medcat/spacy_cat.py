@@ -29,17 +29,17 @@ class SpacyCat(object):
     NORM_EMB = os.getenv('NORM_EMB', "false").lower() == 'true' # Should we normalize the w2v
     PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "true").lower() == 'true'
     PREFER_ICD10 = os.getenv('PREFER_ICD10', "false").lower() == 'true'
-    CNTX_SPAN = int(os.getenv('CNTX_SPAN', 7))
-    CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 2))
-    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 10000))
-    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 20))
+    CNTX_SPAN = int(os.getenv('CNTX_SPAN', 9))
+    CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 3))
+    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 30000))
+    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 5))
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
-    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
+    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 1))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
     WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
 
@@ -49,7 +49,7 @@ class SpacyCat(object):
     NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
 
-    LR = float(os.getenv('LR', 0.5))
+    LR = float(os.getenv('LR', 1))
     ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
 
 

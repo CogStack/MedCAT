@@ -21,7 +21,7 @@ class CAT(object):
     """
     SEPARATOR = ""
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
-    KEEP_PUNCT = os.getenv("KEEP_PUNCT", ":").split("|")
+    KEEP_PUNCT = os.getenv("KEEP_PUNCT", ":|.").split("|")
 
     def __init__(self, cdb, vocab=None, skip_stopwords=True):
         self.cdb = cdb
