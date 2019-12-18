@@ -513,12 +513,14 @@ class SpacyCat(object):
             cuis = list(self.cdb.name2cui[name])
 
             # Remove cuis if tui filter
+            """
             if self.TUI_FILTER is not None:
                 new_cuis = []
                 for cui in cuis:
                     if self.cdb.cui2tui[cui] in self.TUI_FILTER:
                         new_cuis.append(cui)
                 cuis = new_cuis
+            """
 
             if len(cuis) > 0:
                 if len(cuis) > 1:
@@ -546,8 +548,8 @@ class SpacyCat(object):
                     mps = np.array([1] * len(cnts), dtype=np.float)
                     _cnts = np.array(cnts)
                     mps[np.where(_cnts < (max(cnts) / 2))] = 0.9
-                    mps[np.where(_cnts < (max(cnts) / 5))] = 0.8
-                    mps[np.where(_cnts < (max(cnts) / 50))] = 0.6
+                    mps[np.where(_cnts < (max(cnts) / 10))] = 0.8
+                    mps[np.where(_cnts < (max(cnts) / 50))] = 0.7
 
                     accs = accs * mps
 
@@ -556,7 +558,7 @@ class SpacyCat(object):
                     mps = np.array([1] * len(cnts), dtype=np.float)
                     noicd = [False if 'icd10' in self.cdb.cui2info.get(cui, {}) else
                              True for cui in cuis]
-                    mps[noicd] = 0.6
+                    mps[noicd] = 0.5
                     accs = accs * mps
 
                 ind = np.argmax(accs)

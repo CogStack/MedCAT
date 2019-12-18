@@ -218,7 +218,7 @@ class CAT(object):
         self.train = False
 
 
-    def get_entities(self, text):
+    def get_entities(self, text, cat_filter=None, only_cui=False):
         """ Get entities
 
         text:  text to be annotated
@@ -226,6 +226,9 @@ class CAT(object):
         """
         doc = self(text)
         out = []
+
+        if cat_filter:
+            cat_filter(doc, self)
 
         out_ent = {}
         if self.NESTED_ENTITIES:
@@ -235,55 +238,58 @@ class CAT(object):
 
         for ind, ent in enumerate(_ents):
             cui = str(ent._.cui)
-            out_ent['cui'] = cui
-            out_ent['tui'] = str(ent._.tui)
-            out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
-            out_ent['source_value'] = str(ent.text)
-            out_ent['acc'] = str(ent._.acc)
-            out_ent['start'] = ent.start_char
-            out_ent['end'] = ent.end_char
-            out_ent['id'] = str(ent._.id)
-            out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(cui, '')
+            if not only_cui:
+                out_ent['cui'] = cui
+                out_ent['tui'] = str(ent._.tui)
+                out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
+                out_ent['source_value'] = str(ent.text)
+                out_ent['acc'] = str(ent._.acc)
+                out_ent['start'] = ent.start_char
+                out_ent['end'] = ent.end_char
+                out_ent['id'] = str(ent._.id)
+                out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(cui, '')
 
-            if cui in self.cdb.cui2info and 'icd10' in self.cdb.cui2info[cui]:
-                icds = []
-                for icd10 in self.cdb.cui2info[cui]['icd10']:
-                    icds.append(str(icd10['chapter']))
-                out_ent['icd10'] = ",".join(icds)
+                if cui in self.cdb.cui2info and 'icd10' in self.cdb.cui2info[cui]:
+                    icds = []
+                    for icd10 in self.cdb.cui2info[cui]['icd10']:
+                        icds.append(str(icd10['chapter']))
+                    out_ent['icd10'] = ",".join(icds)
+                else:
+                    out_ent['icd10'] = ""
+
+                if cui in self.cdb.cui2info and 'umls' in self.cdb.cui2info[cui]:
+                    umls = [str(u) for u in self.cdb.cui2info[cui]['umls']]
+                    out_ent['umls'] = ",".join(umls)
+                else:
+                    out_ent['umls'] = ''
+
+                if cui in self.cdb.cui2info and 'snomed' in self.cdb.cui2info[cui]:
+                    snomed = [str(u) for u in self.cdb.cui2info[cui]['snomed']]
+                    out_ent['snomed'] = ",".join(snomed)
+                else:
+                    out_ent['snomed'] = ''
+
+
+                out.append(dict(out_ent))
             else:
-                out_ent['icd10'] = ""
-
-            if cui in self.cdb.cui2info and 'umls' in self.cdb.cui2info[cui]:
-                umls = [str(u) for u in self.cdb.cui2info[cui]['umls']]
-                out_ent['umls'] = ",".join(umls)
-            else:
-                out_ent['umls'] = ''
-
-            if cui in self.cdb.cui2info and 'snomed' in self.cdb.cui2info[cui]:
-                snomed = [str(u) for u in self.cdb.cui2info[cui]['snomed']]
-                out_ent['snomed'] = ",".join(snomed)
-            else:
-                out_ent['snomed'] = ''
-
-
-            out.append(dict(out_ent))
+                out.append(cui)
 
         return out
 
 
-    def get_json(self, text):
+    def get_json(self, text, cat_filter=None, only_cui=False):
         """ Get output in json format
 
         text:  text to be annotated
         return:  json with fields {'entities': <>, 'text': text}
         """
-        ents = self.get_entities(text)
+        ents = self.get_entities(text, cat_filter, only_cui)
         out = {'entities': ents, 'text': text}
 
         return json.dumps(out)
 
 
-    def multi_processing(self, in_data, nproc=8, batch_size=100):
+    def multi_processing(self, in_data, nproc=8, batch_size=100, cat_filter=None, only_cui=False):
         """ Run multiprocessing NOT FOR TRAINING
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
@@ -301,7 +307,7 @@ class CAT(object):
         # Create processes
         procs = []
         for i in range(nproc):
-            p = Process(target=self._mp_cons, args=(in_q, out_dict, i))
+            p = Process(target=self._mp_cons, args=(in_q, out_dict, i, cat_filter, only_cui))
             p.start()
             procs.append(p)
 
@@ -339,7 +345,7 @@ class CAT(object):
         return out
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0):
+    def _mp_cons(self, in_q, out_dict, pid=0, cat_filter=None, only_cui=False):
         cnt = 0
         out = []
         while True:
@@ -352,7 +358,7 @@ class CAT(object):
 
                 for id, text in data:
                     try:
-                        doc = json.loads(self.get_json(text))
+                        doc = json.loads(self.get_json(text, cat_filter, only_cui))
                         out.append((id, doc))
                     except Exception as e:
                         print(e)

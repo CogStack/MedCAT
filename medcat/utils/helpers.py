@@ -270,8 +270,8 @@ def snomed_to_icd10(cdb, csv_path):
     df = pd.read_csv(csv_path)
 
     for index, row in df.iterrows():
-        icd = row['icd10']
-        name = row['name']
+        icd = str(row['icd10'])
+        name = str(row['name'])
 
         if "S-" in str(row['cui']):
             cui = str(row['cui'])
@@ -279,7 +279,7 @@ def snomed_to_icd10(cdb, csv_path):
             cui = "S-" + str(row['cui'])
 
 
-        if cui in cdb.cui2names:
+        if cui in cdb.cui2names and icd is not None and icd != 'nan' and len(icd) > 0:
             icd = {'chapter': icd, 'name': name}
 
             if 'icd10' in cdb.cui2info[cui]:
@@ -357,3 +357,16 @@ def add_names_icd10cm(cdb, csv_path, cat):
 
         if index % 1000 == 0:
             print(index)
+
+
+def remove_icd10_ranges(cdb):
+    for cui in cdb.cui2info:
+        if 'icd10' in cdb.cui2info[cui]:
+            new_icd = []
+            for icd in list(cdb.cui2info[cui]['icd10']):
+                if '-' not in icd['chapter']:
+                    new_icd.append(icd)
+            if len(new_icd) > 0:
+                cdb.cui2info[cui]['icd10'] = new_icd
+            else:
+                del cdb.cui2info[cui]['icd10']
