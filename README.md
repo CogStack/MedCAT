@@ -1,6 +1,6 @@
 # Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
-A simple tool for concept annotation from UMLS or any other source.
+A simple tool for concept annotation from UMLS/SNOMED or any other source.
 
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
