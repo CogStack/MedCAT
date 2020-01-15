@@ -1,6 +1,5 @@
 import numpy as np
-from spacy.util import escape_html
-from .other import *
+from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
 
 
@@ -131,6 +130,17 @@ def tkn_inds_from_doc(spacy_doc, text_inds=None, source_val=None):
                 tkn_inds.append(tkn.i)
 
     return tkn_inds
+
+
+def filter_cdb_by_icd10(cdb: CDB) -> CDB:
+    """
+    Filters an existing CDB to only contain concepts that have an associated ICD-10 code.
+    Can be used for snomed orr UMLS CDBs.
+    :return: filtered CDB
+    """
+    cuis_to_keep = [cui for cui in cdb.cui2names.keys() if 'icd10' in cdb.cui2info[cui]]
+    cdb.filter_by_cui(cuis_to_keep)
+    return cdb
 
 
 def umls_to_icd10cm(cdb, csv_path):
