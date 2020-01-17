@@ -33,7 +33,7 @@ class LSTM(nn.Module):
 
     def forward(self, x, cpos):
         # Get the mask from x
-        mask = torch.tensor(x != self.padding_idx, dtype=torch.long)
+        mask = x != self.padding_idx
 
         # Embed the input: from id -> vec
         x = self.embeddings(x) # x.shape = batch_size x sequence_length x emb_size
