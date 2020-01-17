@@ -20,7 +20,7 @@ def prepare_from_json(data, cntx_size, tokenizer, lowercase=True):
                 doc_text = tokenizer.encode(text)
 
                 for ann in document['annotations']:
-                    if ann['validated']:
+                    if ann['validated'] and ann['correct']:
                         start = ann['start']
                         end = ann['end']
 

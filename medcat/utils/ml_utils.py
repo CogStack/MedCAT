@@ -23,7 +23,7 @@ def get_batch(ind, batch_size, x, y, cpos, device):
 
 
 def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=20, pad_id=30000, batch_size=100,
-                  nepochs=50, device='cpu', save_dir='./meta_cat/'):
+                  nepochs=20, device='cpu', save_dir='./meta_cat/'):
     # Split data
     y = np.array([x[0] for x in data])
     x = [x[1] for x in data]
