@@ -6,8 +6,14 @@
 /output/
 /graphics/
 /models/*.dat
+dist/
 tmp/
 *_tmp/
+medcat.egg-info/
+build/
+.idea
+venv
+db.sqlite3
 
 #tmp and similar files
 .nfs*
@@ -26,3 +32,7 @@ tmp_*
 *hidden*
 nohup.out
 tmp.py
+.DS_Store
+
+# models files
+*.dat

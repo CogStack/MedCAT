@@ -1,100 +1,99 @@
-# <img src="https://github.com/w-is-h/cat/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
+# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
 A simple tool for concept annotation from UMLS or any other source.
 
-### This is still experimental
+## Demo
+A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
+and contains a very small portion of UMLS (<1%). 
 
 
-## How to use
-There are a few ways to run CAT, simplest one being docker.
+### Install using PIP
+1. Install MedCAT 
 
-### Docker
-If using docker the appropriate models will be automatically downloaded, you only need to run:
+`pip install --upgrade medcat`
 
-`docker build --network=host -t cat -f Dockerfile.MedMen .`
+2. Install the scispacy models
 
-Once the container is built start it using:
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.3/en_core_sci_md-0.2.3.tar.gz`
 
-`docker run --env-file=./envs/env_medann -p 5000:5000 cat`
+3. Downlad the Vocabulary and CDB from the Models section bellow
 
-You can now access the API on
-
-`<YOUR_IP>:5000/api`
-
-OR a simple frontend
-
-`<YOUR_IP>:5000/api_test`
-
-
-### From IPython/Jupyter/Python
-
-First export the path to the `cat` repo:
-
-`export PYTHONPATH=/home/user/cat/`
-
-
-Given that you already have a Vocab and the UMLS class prebuilt you only need to do the following:
+4. How to use:
 ```python
-from cat.cat import CAT
-from cat.umls import UMLS
-from cat.utils.vocab import Vocab
+from medcat.cat import CAT
+from medcat.utils.vocab import Vocab
+from medcat.cdb import CDB 
 
 vocab = Vocab()
-umls = UMLS()
-
-# Models available for download, look bellow
+# Load the vocab model you downloaded
 vocab.load_dict('<path to the vocab file>')
-umls.load_dict('<path to the umls file>') 
-cat = CAT(umls=umls, vocab=vocab)
 
-# A simple test
-text = "A 14 mm Hemashield tube graft was selected and sewn end-to-end fashion to the proximal aorta using a semi continuous 3-0 Prolene suture."
-doc = cat(text)
-# All the extracted entites are now in, each one is a spacy Entity:
-doc._.ents
-# Each entity has an accuracy assigned to it, e.g.
-doc._.ents[0]._.acc
+# Load the cdb model you downloaded
+cdb = CDB()
+cdb.load_dict('<path to the cdb file>') 
+
+# create cat
+cat = CAT(cdb=cdb, vocab=vocab)
+cat.train = False
+
+# Test it
+doc = "My simple document with kidney failure"
+doc_spacy = cat(doc)
+# Entities are in
+doc_spacy._.ents
+# Or to get a json
+doc_json = cat.get_json(doc)
 
 # To have a look at the results:
 from spacy import displacy
 # Note that this will not show all entites, but only the longest ones
-displacy.serve(doc, style='ent')
+displacy.serve(doc_spacy, style='ent')
 
-# To get JSON output do
-doc_json = cat.get_json(text)
+# To train - unsupervised, set the train flag to True and run
+#documents through MedCAT
+cat.train = True
 
-# To run cat on a large number of documents
+# To run cat on a large number of documents, this will
+#also run trainnig as the flag is set to True.
 data = [(<doc_id>, <text>), (<doc_id>, <text>), ...]
 docs = cat.multi_processing(data)
-```
 
-### Training and Fine-tuning
-
-To fine-tune or train everything from the ground up (excluding word-vectors), you can use the following:
-```python
-from cat.cat import CAT
-from cat.umls import UMLS
-from cat.utils.vocab import Vocab
-
-vocab = Vocab()
-umls = UMLS()
-
-vocab.load_dict('<path to the vocab file>')
-umls.load_dict('<path to the umls file>')
-cat = CAT(umls=umls, vocab=vocab)
-
-# To run the training do
+# To explicitly run trainnig you can do
 f = open("<some file with a lot of medical text>", 'r')
 # If you want fine tune set it to True, old training will be preserved
-cat.run_training(f, fine_tune=False)
+cat.run_training(f, fine_tune=True)
 ```
 
 
-## Requirements
-`python >= 3.5` [tested with 3.7, but most likely works with 3+]
+### Building a new Concept Database
 
-Get the spacy `en` model
-`python -m spacy download en_core_web_sm`
+```python
+from medcat.cat import CAT
+from medcat.utils.vocab import Vocab
+from medcat.cdb import CDB 
+
+vocab = Vocab()
+# Load the vocab model you downloaded
+vocab.load_dict('<path to the vocab file>')
+
+# If you have an existing CDB
+cdb = CDB()
+cdb.load_dict('<path to the cdb file>') 
+
+# You can now add concepts from a CSV file, examples of the files can be found in ./examples
+preparator = PrepareCDB(vocab=vocab)
+csv_paths = ['<path to your csv_file>', '<another one>', ...] 
+# e.g.
+csv_paths = ['./examples/simple_cdb.csv']
+cdb = preparator.prepare_csvs(csv_paths)
+
+# Save the new CDB for later
+cdb.save_dict("<path to a file where it will be saved>")
+# Done
+```
+
+## If building from source, the requirements are
+`python >= 3.5`
 
 All the rest can be instaled using `pip` from the requirements.txt file, by running:
 
@@ -105,18 +104,19 @@ All the rest can be instaled using `pip` from the requirements.txt file, by runn
 
 | Dataset | SoftF1 | Description |
 | --- | :---: | --- |
-| MedMentions | 0.798 | The whole MedMentions dataset without any modifications or supervised training |
-| MedMentions | 0.786 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
-| MedMentions | 0.92 | Medmentions filterd by TUI to only concepts that are a disease |
+| MedMentions | 0.84 | The whole MedMentions dataset without any modifications or supervised training |
+| MedMentions | 0.828 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
+| MedMentions | 0.97 | Medmentions filterd by TUI to only concepts that are a disease |
 
 
 ## Models
-A basic trained model is made public. It is trained for the 35K entities available in `MedMentions`. It is quite limited
+A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
-Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm_dict.dat) - Built from MedMentions
+Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
 
-Trained UMLS [Download](https://s3-eu-west-1.amazonaws.com/zkcl/med_ann_norm.dat)
+CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built from MedMentions
+
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)

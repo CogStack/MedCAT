@@ -1,0 +1,110 @@
+.textbox{
+  margin-left: 5%;
+  margin-right: 5%;
+  margin-top: 5%;
+}
+
+.train-annotations{
+  margin-top: 3%;
+  min-height: 80vh;
+}
+
+.annotations{
+  padding-top: 1%;
+  overflow: scroll;
+  max-height: 82vh;
+  padding-left: 40px;
+  margin-left: -20px;
+  box-shadow: 5px -5px 5px -5px #9476518a;
+}
+
+.green:hover {
+  color: green;
+}
+
+.red:hover {
+  color: red;
+}
+
+
+div.icons{
+  margin-top: -15px;
+  margin-left: 30px;
+  font-size: 30px;
+  position: relative;
+  float: right;
+}
+
+table.info{
+  margin-top: 10%;
+}
+
+.concept-info{
+  box-shadow: -5px -5px 5px -5px #aaaaaa;
+  padding-top: 1%;
+  overflow: scroll;
+  max-height: 82vh;
+  margin-left: 20px;
+}
+
+.row{
+  min-height: 80vh;
+  max-height: 80vh;
+}
+
+mark{
+  cursor: pointer;
+}
+
+i{
+  cursor: pointer;
+}
+
+
+.btns-a{
+  margin-bottom:10px; 
+}
+
+.btns-a-r{
+  margin-left: 10px;
+  margin-bottom:10px; 
+  position: relative;
+  float: right;
+}
+
+td.first{
+  width: 50px;
+}
+
+td.second{
+  width: 100%;
+}
+
+.w100{
+  width: 100%
+}
+
+.flt-right{
+  float: right;
+  margin-right: 5px;
+}
+
+.posfed{
+  -webkit-animation: fadein 0.3s;
+  color: green;
+  float: right;
+  margin-right: 10px;
+  border-left: 4px solid black;
+  padding: 4px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  position: fixed;
+  top: 3px;
+  right: 3px;
+}
+
+/* Safari, Chrome and Opera > 12.1 */
+@-webkit-keyframes fadein {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
