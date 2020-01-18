@@ -23,7 +23,7 @@ class CAT(object):
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
     KEEP_PUNCT = os.getenv("KEEP_PUNCT", ":|.").split("|")
 
-    def __init__(self, cdb, vocab=None, skip_stopwords=True):
+    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab
         # Build the required spacy pipeline
@@ -40,6 +40,9 @@ class CAT(object):
         # Add cat
         self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
+
+        for meta_cat in meta_cats:
+            self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
 
 
     def __call__(self, text):
@@ -108,12 +111,12 @@ class CAT(object):
         source_val:  Source value in the text
         text:  the text of a document where source_val was found
         """
-
         # First add the name
         self._add_name(cui, source_val, is_pref_name, only_new=only_new)
 
         # Now add context if text is present
-        if text is not None and (source_val in text or text_inds):
+        if (text is not None and (source_val in text or text_inds)) or \
+           (spacy_doc is not None and (text_inds or tkn_inds)):
             if spacy_doc is None:
                 spacy_doc = self(text)
 
@@ -126,7 +129,7 @@ class CAT(object):
                         negative=negative)
 
 
-    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, epochs=2, lr=None,
+    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=5, lr=None,
                          anneal=None):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
@@ -142,27 +145,34 @@ class CAT(object):
         if reset_cui_count:
             # Get all CUIs
             cuis = []
-            for doc in data['documents']:
-                for ann in doc['annotations']:
-                    cuis.append(ann['cui'])
+            for project in data['projects']:
+                for doc in project['documents']:
+                    for ann in doc['annotations']:
+                        cuis.append(ann['cui'])
             for cui in set(cuis):
                 if cui in self.cdb.cui_count:
                     self.cdb.cui_count[cui] = 1
 
-        for epoch in epochs:
-            log.info("Starting epoch: {}".format(epoch))
-            for doc in data['documents']:
-                spacy_doc = self(doc['text'])
-
+        # Remove entites that were terminated
+        for project in data['projects']:
+            for doc in project['documents']:
                 for ann in doc['annotations']:
-                    cui = ann['cui']
-                    start = ann['start']
-                    end = ann['end']
-                    deleted = ann['deleted']
+                    if ann['killed']:
+                        self.unlink_concept_name(ann['cui'], ann['value'])
 
-                    if deleted:
-                        # Add negatives only if they exist in the CDB
-                        if cui in self.cdb.cui2names:
+        for epoch in range(nepochs):
+            print("Starting epoch: {}".format(epoch))
+            log.info("Starting epoch: {}".format(epoch))
+            for project in data['projects']:
+                for doc in project['documents']:
+                    spacy_doc = self(doc['text'])
+                    for ann in doc['annotations']:
+                        if not ann['killed']:
+                            cui = ann['cui']
+                            start = ann['start']
+                            end = ann['end']
+                            deleted = ann['deleted']
+
                             self.add_name(cui=cui,
                                           source_val=ann['value'],
                                           spacy_doc=spacy_doc,
@@ -170,14 +180,6 @@ class CAT(object):
                                           negative=deleted,
                                           lr=lr,
                                           anneal=anneal)
-                    else:
-                        self.add_name(cui=cui,
-                                      source_val=ann['value'],
-                                      spacy_doc=spacy_doc,
-                                      text_inds=[start, end],
-                                      lr=lr,
-                                      anneal=anneal)
-
 
     @property
     def train(self):
@@ -269,6 +271,11 @@ class CAT(object):
                 else:
                     out_ent['snomed'] = ''
 
+                if hasattr(ent._, 'meta_anns'):
+                    out_ent['meta_anns'] = []
+                    for key in ent._.meta_anns.keys():
+                        one = {'name': key, 'value': ent._.meta_anns[key]}
+                        out_ent['meta_anns'].append(one) 
 
                 out.append(dict(out_ent))
             else:
