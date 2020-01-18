@@ -134,6 +134,46 @@ class CAT(object):
                         negative=negative)
 
 
+    def _print_stats(self, data, epoch=0):
+        tp = 0
+        fp = 0
+        fn = 0
+        docs_with_problems = set()
+        # Stupid
+        for project in data['projects']:
+            for doc in project['documents']:
+                spacy_doc = self(doc['text'])
+                anns = doc['annotations']
+                p_anns = spacy_doc.ents
+
+                anns_norm = []
+                for ann in anns:
+                    if not ann['killed'] and not ann['deleted']:
+                        anns_norm.append((ann['start'], ann['cui']))
+                p_anns_norm = []
+                for ann in p_anns:
+                    p_anns_norm.append((ann.start_char, ann._.cui))
+
+                for ann in p_anns_norm:
+                    if ann in anns_norm:
+                        tp += 1
+                    else:
+                        fp += 1
+                        docs_with_problems.add(doc['name'])
+
+                for ann in anns_norm:
+                    if ann not in p_anns_norm:
+                        fn += 1
+                        docs_with_problems.add(doc['name'])
+
+
+        prec = tp / (tp + fp)
+        rec = tp / (tp + fn)
+        f1 = (prec + rec) / 2
+        print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
+        print("Docs with problems: {}".format("; ".join(docs_with_problems)))
+
+
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=5, lr=None,
                          anneal=None, print_stats=False, test_set=None):
         """ Given data learns vector embeddings for concepts
@@ -143,6 +183,12 @@ class CAT(object):
         """
         self.train = False
         data = json.load(open(data_path))
+
+        if print_stats:
+            if test_set:
+                self._print_stats(test_set)
+            else:
+                self._print_stats(data)
 
         if reset_cdb:
             self.cdb = CDB()
@@ -169,47 +215,6 @@ class CAT(object):
             print("Starting epoch: {}".format(epoch))
             log.info("Starting epoch: {}".format(epoch))
             # Print acc before training
-            if print_stats:
-                tp = 0
-                fp = 0
-                fn = 0
-                docs_with_problems = set()
-                # Stupid
-                to_check = data
-                if test_set is not None:
-                    to_check = test_set
-                for project in to_check['projects']:
-                    for doc in project['documents']:
-                        spacy_doc = self(doc['text'])
-                        anns = doc['annotations']
-                        p_anns = spacy_doc.ents
-
-                        anns_norm = []
-                        for ann in anns:
-                            if not ann['killed'] and not ann['deleted']:
-                                anns_norm.append((ann['start'], ann['cui']))
-                        p_anns_norm = []
-                        for ann in p_anns:
-                            p_anns_norm.append((ann.start_char, ann._.cui))
-
-                        for ann in p_anns_norm:
-                            if ann in anns_norm:
-                                tp += 1
-                            else:
-                                fp += 1
-                                docs_with_problems.add(doc['name'])
-
-                        for ann in anns_norm:
-                            if ann not in p_anns_norm:
-                                fn += 1
-                                docs_with_problems.add(doc['name'])
-
-
-                prec = tp / (tp + fp)
-                rec = tp / (tp + fn)
-                f1 = (prec + rec) / 2
-                print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
-                print("Docs with problems: {}".format("; ".join(docs_with_problems)))
 
             for project in data['projects']:
                 for doc in project['documents']:
@@ -228,6 +233,13 @@ class CAT(object):
                                           negative=deleted,
                                           lr=lr,
                                           anneal=anneal)
+            if print_stats:
+                if test_set:
+                    self._print_stats(test_set, epoch=epoch+1)
+                else:
+                    self._print_stats(data, epoch=epoch+1)
+
+
 
     @property
     def train(self):
