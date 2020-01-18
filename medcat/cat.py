@@ -59,10 +59,15 @@ class CAT(object):
 
     def unlink_concept_name(self, cui, name):
         # Unlink a concept from a name
-        p_name, _, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
+        p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
 
         # To be sure unlink the orignal and the processed name
         names = [name, p_name]
+
+        if tokens[-1].lower() == "s":
+            # Remove last 's'
+            names.append(p_name[0:-1])
+
         for name in names:
             if name in self.cdb.cui2names[cui]:
                 self.cdb.cui2names[cui].remove(name)
@@ -130,7 +135,7 @@ class CAT(object):
 
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=5, lr=None,
-                         anneal=None):
+                         anneal=None, print_stats=False, test_set=None):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -163,6 +168,49 @@ class CAT(object):
         for epoch in range(nepochs):
             print("Starting epoch: {}".format(epoch))
             log.info("Starting epoch: {}".format(epoch))
+            # Print acc before training
+            if print_stats:
+                tp = 0
+                fp = 0
+                fn = 0
+                docs_with_problems = set()
+                # Stupid
+                to_check = data
+                if test_set is not None:
+                    to_check = test_set
+                for project in to_check['projects']:
+                    for doc in project['documents']:
+                        spacy_doc = self(doc['text'])
+                        anns = doc['annotations']
+                        p_anns = spacy_doc.ents
+
+                        anns_norm = []
+                        for ann in anns:
+                            if not ann['killed'] and not ann['deleted']:
+                                anns_norm.append((ann['start'], ann['cui']))
+                        p_anns_norm = []
+                        for ann in p_anns:
+                            p_anns_norm.append((ann.start_char, ann._.cui))
+
+                        for ann in p_anns_norm:
+                            if ann in anns_norm:
+                                tp += 1
+                            else:
+                                fp += 1
+                                docs_with_problems.add(doc['name'])
+
+                        for ann in anns_norm:
+                            if ann not in p_anns_norm:
+                                fn += 1
+                                docs_with_problems.add(doc['name'])
+
+
+                prec = tp / (tp + fp)
+                rec = tp / (tp + fn)
+                f1 = (prec + rec) / 2
+                print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
+                print("Docs with problems: {}".format("; ".join(docs_with_problems)))
+
             for project in data['projects']:
                 for doc in project['documents']:
                     spacy_doc = self(doc['text'])
