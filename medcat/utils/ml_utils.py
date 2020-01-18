@@ -22,7 +22,7 @@ def get_batch(ind, batch_size, x, y, cpos, device):
     return x_batch.to(device), y_batch.to(device), c_batch.to(device)
 
 
-def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=20, pad_id=30000, batch_size=100,
+def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=30000, batch_size=100,
                   nepochs=20, device='cpu', save_dir='./meta_cat/'):
     # Split data
     y = np.array([x[0] for x in data])
@@ -106,7 +106,11 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=20, pad_id=3000
         print("\n\n\n")
         f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1))
         if f1 > best_f1:
-            #net.save(save_dir + "net.dat")
+            path = save_dir + "lstm.dat"
+            torch.save(net.state_dict(), path)
+            best_f1 = f1
+
             print("=" * 50)
             print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
-            best_f1 = f1
+
+
