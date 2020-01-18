@@ -23,11 +23,11 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name, model='lstm',lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, device='cpu'):
+              batch_size=100, nepochs=20, device='cpu', lowercase=True):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_size, self.tokenizer)
+        data = prepare_from_json(data, self.cntx_size, self.tokenizer, lowercase=lowercase)
 
         # Check is the name there
         if category_name not in data:
@@ -120,11 +120,13 @@ class MetaCAT(object):
         self.model.load_state_dict(torch.load(path))
 
 
-    def __call__(self, doc):
+    def __call__(self, doc, lowercase=True):
         """ Spacy pipe method """
         data = []
         id2row = {}
         text = doc.text
+        if lowercase:
+            text = text.lower()
         doc_text = self.tokenizer.encode(text)
         x = []
         cpos = []
