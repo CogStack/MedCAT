@@ -39,7 +39,7 @@ class SpacyCat(object):
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
-    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 1))
+    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
     WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
 
