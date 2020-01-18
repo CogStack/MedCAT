@@ -410,16 +410,25 @@ class CDB(object):
         self.cui_disamb_always = {}
         self.reset_coo_matrix()
 
+    def filter_by_tui(self, tuis_to_keep):
+        all_cuis = [c for c_list in [self.tui2cuis[tui] for tui in tuis_to_keep] for c in c_list]
+        self.filter_by_cui(all_cuis)
 
-    def filter_by_cui(self, cuis_to_keep=[]):
-        names = []
+
+    def filter_by_cui(self, cuis_to_keep=None):
+        assert cuis_to_keep, "Cannot remove all concepts, enter at least one CUI in a set."
+        print("FYI - with large CDBs this can take a long time.")
+        cuis_to_keep = set(cuis_to_keep)
         cuis = []
+        print("Gathering CUIs ")
         for cui in self.cui2names:
             if cui not in cuis_to_keep:
                 cuis.append(cui)
 
-        # Cleanup cui maps
-        for cui in cuis:
+        print("Cleaning up CUI maps...")
+        for i, cui in enumerate(cuis):
+            if i % 10000 == 0:
+                print(f'removed 10k concepts, {len(cuis) - i} to go...')
             if cui in self.cui2desc:
                 del self.cui2desc[cui]
             if cui in self.cui_count:
@@ -448,7 +457,7 @@ class CDB(object):
                 del self.cui_disamb_always[cui]
         print("Done CUI cleaning")
 
-        # Cleanup names
+        print("Cleaning names...")
         for name in list(self.name2cui.keys()):
             _cuis = list(self.name2cui[name])
 
