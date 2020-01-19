@@ -148,7 +148,7 @@ class CAT(object):
 
                 anns_norm = []
                 for ann in anns:
-                    if not ann['killed'] and not ann['deleted']:
+                    if ann['validated'] and (not ann['killed'] and not ann['deleted']):
                         anns_norm.append((ann['start'], ann['cui']))
                 p_anns_norm = []
                 for ann in p_anns:
