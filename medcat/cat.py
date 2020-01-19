@@ -69,7 +69,7 @@ class CAT(object):
             names.append(p_name[0:-1])
 
         for name in names:
-            if name in self.cdb.cui2names[cui]:
+            if cui in self.cdb.cui2names and name in self.cdb.cui2names[cui]:
                 self.cdb.cui2names[cui].remove(name)
                 if len(self.cdb.cui2names[cui]) == 0:
                     del self.cdb.cui2names[cui]
@@ -135,9 +135,9 @@ class CAT(object):
 
 
     def _print_stats(self, data, epoch=0):
-        tp = 0
-        fp = 0
-        fn = 0
+        tp = 1
+        fp = 1
+        fn = 1
         docs_with_problems = set()
         # Stupid
         for project in data['projects']:
@@ -166,15 +166,18 @@ class CAT(object):
                         fn += 1
                         docs_with_problems.add(doc['name'])
 
+        try:
+            prec = tp / (tp + fp)
+            rec = tp / (tp + fn)
+            f1 = (prec + rec) / 2
+            print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
+            print("First 10 out of {} docs with problems: {}".format(len(docs_with_problems),
+                  "; ".join([str(x) for x in list(docs_with_problems)[0:10]])))
+        except Exception as e:
+            print(e)
 
-        prec = tp / (tp + fp)
-        rec = tp / (tp + fn)
-        f1 = (prec + rec) / 2
-        print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
-        print("Docs with problems: {}".format("; ".join(docs_with_problems)))
 
-
-    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=5, lr=None,
+    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=10, lr=None,
                          anneal=None, print_stats=False, test_set=None):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
@@ -192,6 +195,8 @@ class CAT(object):
 
         if reset_cdb:
             self.cdb = CDB()
+            self.spacy_cat.cdb = self.cdb
+            self.spacy_cat.cat_ann.cdb = self.cdb
 
         if reset_cui_count:
             # Get all CUIs
@@ -202,7 +207,7 @@ class CAT(object):
                         cuis.append(ann['cui'])
             for cui in set(cuis):
                 if cui in self.cdb.cui_count:
-                    self.cdb.cui_count[cui] = 1
+                    self.cdb.cui_count[cui] = 10
 
         # Remove entites that were terminated
         for project in data['projects']:
