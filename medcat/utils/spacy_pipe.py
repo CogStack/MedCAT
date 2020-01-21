@@ -41,6 +41,13 @@ class SpacyPipe(object):
         Span.set_extension('id', default=0, force=True)
 
 
+    def add_meta_cat(self, meta_cat, name):
+        self.nlp.add_pipe(meta_cat, name=name, last=True)
+
+        # Only the meta_anns field is needed, it will be a dictionary 
+        #of {category_name: value, ...}
+        Span.set_extension('meta_anns', default=None, force=True)
+
 
     def __call__(self, text):
         return self.nlp(text)

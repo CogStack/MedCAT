@@ -23,7 +23,7 @@ class CAT(object):
     NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
     KEEP_PUNCT = os.getenv("KEEP_PUNCT", ":|.").split("|")
 
-    def __init__(self, cdb, vocab=None, skip_stopwords=True):
+    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab
         # Build the required spacy pipeline
@@ -41,6 +41,9 @@ class CAT(object):
         self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
+        for meta_cat in meta_cats:
+            self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
+
 
     def __call__(self, text):
         return self.nlp(text)
@@ -56,12 +59,17 @@ class CAT(object):
 
     def unlink_concept_name(self, cui, name):
         # Unlink a concept from a name
-        p_name, _, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
+        p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
 
         # To be sure unlink the orignal and the processed name
         names = [name, p_name]
+
+        if tokens[-1].lower() == "s":
+            # Remove last 's'
+            names.append(p_name[0:-1])
+
         for name in names:
-            if name in self.cdb.cui2names[cui]:
+            if cui in self.cdb.cui2names and name in self.cdb.cui2names[cui]:
                 self.cdb.cui2names[cui].remove(name)
                 if len(self.cdb.cui2names[cui]) == 0:
                     del self.cdb.cui2names[cui]
@@ -108,12 +116,12 @@ class CAT(object):
         source_val:  Source value in the text
         text:  the text of a document where source_val was found
         """
-
         # First add the name
         self._add_name(cui, source_val, is_pref_name, only_new=only_new)
 
         # Now add context if text is present
-        if text is not None and (source_val in text or text_inds):
+        if (text is not None and (source_val in text or text_inds)) or \
+           (spacy_doc is not None and (text_inds or tkn_inds)):
             if spacy_doc is None:
                 spacy_doc = self(text)
 
@@ -126,8 +134,51 @@ class CAT(object):
                         negative=negative)
 
 
-    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, epochs=2, lr=None,
-                         anneal=None):
+    def _print_stats(self, data, epoch=0):
+        tp = 1
+        fp = 1
+        fn = 1
+        docs_with_problems = set()
+        # Stupid
+        for project in data['projects']:
+            for doc in project['documents']:
+                spacy_doc = self(doc['text'])
+                anns = doc['annotations']
+                p_anns = spacy_doc.ents
+
+                anns_norm = []
+                for ann in anns:
+                    if ann['validated'] and (not ann['killed'] and not ann['deleted']):
+                        anns_norm.append((ann['start'], ann['cui']))
+                p_anns_norm = []
+                for ann in p_anns:
+                    p_anns_norm.append((ann.start_char, ann._.cui))
+
+                for ann in p_anns_norm:
+                    if ann in anns_norm:
+                        tp += 1
+                    else:
+                        fp += 1
+                        docs_with_problems.add(doc['name'])
+
+                for ann in anns_norm:
+                    if ann not in p_anns_norm:
+                        fn += 1
+                        docs_with_problems.add(doc['name'])
+
+        try:
+            prec = tp / (tp + fp)
+            rec = tp / (tp + fn)
+            f1 = (prec + rec) / 2
+            print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
+            print("First 10 out of {} docs with problems: {}".format(len(docs_with_problems),
+                  "; ".join([str(x) for x in list(docs_with_problems)[0:10]])))
+        except Exception as e:
+            print(e)
+
+
+    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=10, lr=None,
+                         anneal=None, print_stats=False, test_set=None):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -136,33 +187,50 @@ class CAT(object):
         self.train = False
         data = json.load(open(data_path))
 
+        if print_stats:
+            if test_set:
+                self._print_stats(test_set)
+            else:
+                self._print_stats(data)
+
         if reset_cdb:
             self.cdb = CDB()
+            self.spacy_cat.cdb = self.cdb
+            self.spacy_cat.cat_ann.cdb = self.cdb
 
         if reset_cui_count:
             # Get all CUIs
             cuis = []
-            for doc in data['documents']:
-                for ann in doc['annotations']:
-                    cuis.append(ann['cui'])
+            for project in data['projects']:
+                for doc in project['documents']:
+                    for ann in doc['annotations']:
+                        cuis.append(ann['cui'])
             for cui in set(cuis):
                 if cui in self.cdb.cui_count:
-                    self.cdb.cui_count[cui] = 1
+                    self.cdb.cui_count[cui] = 10
 
-        for epoch in epochs:
-            log.info("Starting epoch: {}".format(epoch))
-            for doc in data['documents']:
-                spacy_doc = self(doc['text'])
-
+        # Remove entites that were terminated
+        for project in data['projects']:
+            for doc in project['documents']:
                 for ann in doc['annotations']:
-                    cui = ann['cui']
-                    start = ann['start']
-                    end = ann['end']
-                    deleted = ann['deleted']
+                    if ann['killed']:
+                        self.unlink_concept_name(ann['cui'], ann['value'])
 
-                    if deleted:
-                        # Add negatives only if they exist in the CDB
-                        if cui in self.cdb.cui2names:
+        for epoch in range(nepochs):
+            print("Starting epoch: {}".format(epoch))
+            log.info("Starting epoch: {}".format(epoch))
+            # Print acc before training
+
+            for project in data['projects']:
+                for doc in project['documents']:
+                    spacy_doc = self(doc['text'])
+                    for ann in doc['annotations']:
+                        if not ann['killed']:
+                            cui = ann['cui']
+                            start = ann['start']
+                            end = ann['end']
+                            deleted = ann['deleted']
+
                             self.add_name(cui=cui,
                                           source_val=ann['value'],
                                           spacy_doc=spacy_doc,
@@ -170,13 +238,12 @@ class CAT(object):
                                           negative=deleted,
                                           lr=lr,
                                           anneal=anneal)
-                    else:
-                        self.add_name(cui=cui,
-                                      source_val=ann['value'],
-                                      spacy_doc=spacy_doc,
-                                      text_inds=[start, end],
-                                      lr=lr,
-                                      anneal=anneal)
+            if print_stats:
+                if test_set:
+                    self._print_stats(test_set, epoch=epoch+1)
+                else:
+                    self._print_stats(data, epoch=epoch+1)
+
 
 
     @property
@@ -269,6 +336,11 @@ class CAT(object):
                 else:
                     out_ent['snomed'] = ''
 
+                if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
+                    out_ent['meta_anns'] = []
+                    for key in ent._.meta_anns.keys():
+                        one = {'name': key, 'value': ent._.meta_anns[key]}
+                        out_ent['meta_anns'].append(one) 
 
                 out.append(dict(out_ent))
             else:
