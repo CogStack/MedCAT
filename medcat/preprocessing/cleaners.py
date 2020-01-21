@@ -176,6 +176,7 @@ def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=[]):
         if TO_SKIP.match(token.lower_):
             token._.to_skip = True
 
+
         # Skip if stopword
         if skip_stopwords and token.is_stop:
             token._.to_skip = True
