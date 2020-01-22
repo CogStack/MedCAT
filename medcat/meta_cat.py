@@ -45,7 +45,8 @@ class MetaCAT(object):
 
         if model == 'lstm':
             from medcat.utils.models import LSTM
-            model = LSTM(self.embeddings, self.pad_id)
+            nclasses = len(self.category_values)
+            model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
 
         train_network(model, data, max_seq_len=(2*self.cntx_size+1), lr=lr, test_size=test_size,
                 pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device)

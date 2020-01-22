@@ -104,7 +104,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         print(classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
         print("Train Loss: {:5}\nTest Loss:  {:5}\n\n".format(train_loss, test_loss))
         print("\n\n\n")
-        f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1))
+        f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average='weighted')
         if f1 > best_f1:
             path = save_dir + "lstm.dat"
             torch.save(net.state_dict(), path)
