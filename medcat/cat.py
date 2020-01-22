@@ -139,20 +139,28 @@ class CAT(object):
         fp = 1
         fn = 1
         docs_with_problems = set()
-        _tui_filter = self.spacy_cat.TUI_FILTER
-        _cui_filter = self.spacy_cat.CUI_FILTER
+        if self.spacy_cat.TUI_FILTER is None:
+            _tui_filter = None
+        else:
+            _tui_filter = list(self.spacy_cat.TUI_FILTER)
+        if self.spacy_cat.CUI_FILTER is None:
+            _cui_filter = None
+        else:
+            _cui_filter = list(self.spacy_cat.CUI_FILTER)
 
         # Stupid
         for project in data['projects']:
             cui_filter = None
             tui_filter = None
-            if 'cuis' in project and len(project['cuis'].strip()) > 0:
-                cui_filter = [x.strip().upper() for x in project['cuis'].split(",")]
-            if 'tuis' in project and len(project['tuis'].strip()) > 0:
-                tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
 
-            self.spacy_cat.TUI_FILTER = tui_filter
-            self.spacy_cat.CUI_FILTER = cui_filter
+            if use_filters:
+                if 'cuis' in project and len(project['cuis'].strip()) > 0:
+                    cui_filter = [x.strip().upper() for x in project['cuis'].split(",")]
+                if 'tuis' in project and len(project['tuis'].strip()) > 0:
+                    tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
+
+                self.spacy_cat.TUI_FILTER = tui_filter
+                self.spacy_cat.CUI_FILTER = cui_filter
 
             for doc in project['documents']:
                 spacy_doc = self(doc['text'])
