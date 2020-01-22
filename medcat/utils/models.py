@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 
 class LSTM(nn.Module):
-    def __init__(self, embeddings, padding_idx):
+    def __init__(self, embeddings, padding_idx, nclasses=2):
         super(LSTM, self).__init__()
         self.padding_idx = padding_idx
         # Get the required sizes
@@ -26,7 +26,7 @@ class LSTM(nn.Module):
                            num_layers=2,
                            dropout=0.5,
                            bidirectional=bid)
-        self.fc1 = nn.Linear(hidden_size, 2)
+        self.fc1 = nn.Linear(hidden_size, nclasses)
 
         self.d1 = nn.Dropout(0.5)
 
