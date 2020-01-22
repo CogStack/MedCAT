@@ -39,6 +39,7 @@ class SpacyCat(object):
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
+    CUI_FILTER = os.getenv('CUI_FILTER', None)
     MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
     WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
@@ -321,7 +322,8 @@ class SpacyCat(object):
         name:  concept name
         """
         # Skip if tui filter
-        if self.TUI_FILTER is None or self.cdb.cui2tui[cui] in self.TUI_FILTER:
+        if (self.TUI_FILTER is None and self.CUI_FILTER is None) or (self.TUI_FILTER and self.cdb.cui2tui[cui] in self.TUI_FILTER) or \
+           (self.CUI_FILTER and cui in self.CUI_FILTER):
             if not is_disamb and cui in self.cdb.cui_disamb_always:
                 self.to_disamb.append((list(tkns), name))
             else:
