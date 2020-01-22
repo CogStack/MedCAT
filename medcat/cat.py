@@ -134,13 +134,26 @@ class CAT(object):
                         negative=negative)
 
 
-    def _print_stats(self, data, epoch=0):
+    def _print_stats(self, data, epoch=0, use_filters=False):
         tp = 1
         fp = 1
         fn = 1
         docs_with_problems = set()
+        _tui_filter = self.spacy_cat.TUI_FILTER
+        _cui_filter = self.spacy_cat.CUI_FILTER
+
         # Stupid
         for project in data['projects']:
+            cui_filter = None
+            tui_filter = None
+            if 'cuis' in project and len(project['cuis'].strip()) > 0:
+                cui_filter = [x.strip().upper() for x in project['cuis'].split(",")]
+            if 'tuis' in project and len(project['tuis'].strip()) > 0:
+                tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
+
+            self.spacy_cat.TUI_FILTER = tui_filter
+            self.spacy_cat.CUI_FILTER = cui_filter
+
             for doc in project['documents']:
                 spacy_doc = self(doc['text'])
                 anns = doc['annotations']
@@ -176,9 +189,12 @@ class CAT(object):
         except Exception as e:
             print(e)
 
+        self.spacy_cat.TUI_FILTER = _tui_filter
+        self.spacy_cat.CUI_FILTER = _cui_filter
+
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=10, lr=None,
-                         anneal=None, print_stats=False, test_set=None):
+                         anneal=None, print_stats=False, test_set=None, use_filters=False):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -189,9 +205,9 @@ class CAT(object):
 
         if print_stats:
             if test_set:
-                self._print_stats(test_set)
+                self._print_stats(test_set, use_filters=use_filters)
             else:
-                self._print_stats(data)
+                self._print_stats(data, use_filters=use_filters)
 
         if reset_cdb:
             self.cdb = CDB()
@@ -240,9 +256,9 @@ class CAT(object):
                                           anneal=anneal)
             if print_stats:
                 if test_set:
-                    self._print_stats(test_set, epoch=epoch+1)
+                    self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters)
                 else:
-                    self._print_stats(data, epoch=epoch+1)
+                    self._print_stats(data, epoch=epoch+1, use_filters=use_filters)
 
 
 
