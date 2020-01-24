@@ -24,7 +24,7 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name, model='lstm',lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, device='cpu', lowercase=True):
+              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
@@ -50,7 +50,8 @@ class MetaCAT(object):
             model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
 
         train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
-                pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device)
+                pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
+                class_weights=class_weights)
         self.model = model
 
 
