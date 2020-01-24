@@ -338,6 +338,8 @@ class SpacyCat(object):
                     lbl = "{} - {:.2}".format(self.cdb.tui2name.get(
                         self.cdb.cui2tui.get(cui, ''), ''),
                         float(acc))
+                elif self.LBL_STYLE == 'none':
+                    lbl = ""
                 else:
                     lbl = cui
 

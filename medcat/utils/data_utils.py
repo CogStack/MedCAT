@@ -1,8 +1,9 @@
-def prepare_from_json(data, cntx_size, tokenizer, lowercase=True):
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True):
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
-    cntx_size:  size of the context
+    cntx_left:  size of the context
+    cntx_right:  size of the context
     tokenizer:  instance of the <Tokenizer> class from huggingface
 
     return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
@@ -30,10 +31,10 @@ def prepare_from_json(data, cntx_size, tokenizer, lowercase=True):
                             if start >= pair[0] and start <= pair[1]:
                                 break
 
-                        _start = max(0, ind - cntx_size)
-                        _end = min(len(doc_text.tokens), ind + 1 + cntx_size)
+                        _start = max(0, ind - cntx_left)
+                        _end = min(len(doc_text.tokens), ind + 1 + cntx_right)
                         tkns = doc_text.tokens[_start:_end]
-                        cpos = cntx_size + min(0, ind-cntx_size)
+                        cpos = cntx_left + min(0, ind-cntx_left)
 
                         # If the annotation is validated
                         for meta_ann in ann['meta_anns']:
