@@ -322,8 +322,8 @@ class SpacyCat(object):
         name:  concept name
         """
         # Skip if tui filter
-        if (self.TUI_FILTER is None and self.CUI_FILTER is None) or (self.TUI_FILTER and self.cdb.cui2tui[cui] in self.TUI_FILTER) or \
-           (self.CUI_FILTER and cui in self.CUI_FILTER):
+        if (self.TUI_FILTER is None and self.CUI_FILTER is None) or (self.TUI_FILTER and cui in self.cdb.cui2tui and
+                self.cdb.cui2tui[cui] in self.TUI_FILTER) or (self.CUI_FILTER and cui in self.CUI_FILTER):
             if not is_disamb and cui in self.cdb.cui_disamb_always:
                 self.to_disamb.append((list(tkns), name))
             else:

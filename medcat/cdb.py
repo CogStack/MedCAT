@@ -50,6 +50,7 @@ class CDB(object):
         self._coo_matrix = None # cooccurrence matrix - scikit
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
 
+
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
                     is_pref_name=False, tui=None, pretty_name='',
                     desc=None, tokens_vocab=None, original_name=None,
@@ -469,3 +470,12 @@ class CDB(object):
                 del self.name2cui[name]
         print("Done all")
 
+
+    def print_stats(self):
+        """ Print basic statistics on the database
+        """
+        print("Number of concepts: {:,}".format(len(self.cui2names)))
+        print("Number of names:    {:,}".format(len(self.name2cui)))
+        print("Number of concepts that received training: {:,}".format(len(self.cui2context_vec)))
+        print("Number of seen training examples in total: {:,}".format(sum(self.cui_count.values())))
+        print("Average training examples per concept:     {:.1f}".format(np.average(list(self.cui_count.values()))))
