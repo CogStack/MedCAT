@@ -1,7 +1,7 @@
 from sklearn.model_selection import train_test_split
 import numpy as np
 from medcat.utils.models import LSTM as MODEL
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score, confusion_matrix
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -23,7 +23,7 @@ def get_batch(ind, batch_size, x, y, cpos, device):
 
 
 def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=30000, batch_size=100,
-                  nepochs=20, device='cpu', save_dir='./meta_cat/'):
+                  nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None):
     # Split data
     y = np.array([x[0] for x in data])
     x = [x[1] for x in data]
@@ -44,7 +44,11 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
     c_test = torch.tensor(c_test, dtype=torch.long)
 
     device = torch.device(device) # Create a torch device
-    criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+    if class_weights is not None:
+        class_weights = torch.FloatTensor(class_weights).to(device)
+        criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+    else:
+        criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
     parameters = filter(lambda p: p.requires_grad, net.parameters())
     optimizer = optim.Adam(parameters, lr=lr)
     net.to(device) # Move the network to device
@@ -104,7 +108,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         print(classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
         print("Train Loss: {:5}\nTest Loss:  {:5}\n\n".format(train_loss, test_loss))
         print("\n\n\n")
-        f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1))
+        f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average='weighted')
         if f1 > best_f1:
             path = save_dir + "lstm.dat"
             torch.save(net.state_dict(), path)
@@ -112,5 +116,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
 
             print("=" * 50)
             print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
+            print(confusion_matrix(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
+            print("\n\n")
 
 

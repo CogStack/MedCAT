@@ -430,9 +430,7 @@ class CAT(object):
         for key in out_dict.keys():
             if 'pid' in key:
                 data = out_dict[key]
-                print("Merging training data for proc: " + str(key))
                 out.extend(data)
-        print("Done processing {} documents\n".format(len(out)))
 
         # Sometimes necessary to free memory
         out_dict.clear()
@@ -448,7 +446,6 @@ class CAT(object):
             if not in_q.empty():
                 data = in_q.get()
                 if data is None:
-                    print("DONE " + str(pid))
                     out_dict['pid: {}'.format(pid)] = out
                     break
 
@@ -457,6 +454,7 @@ class CAT(object):
                         doc = json.loads(self.get_json(text, cat_filter, only_cui))
                         out.append((id, doc))
                     except Exception as e:
+                        print("Exception in _mp_cons")
                         print(e)
 
             sleep(1)
