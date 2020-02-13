@@ -7,11 +7,12 @@ import pickle
 
 class MetaCAT(object):
 
-    def __init__(self, tokenizer, embeddings, cntx_size=20,
+    def __init__(self, tokenizer, embeddings, cntx_left=20, cntx_right=20,
                  save_dir='./meta_cat/', pad_id=30000):
         self.tokenizer = tokenizer
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
-        self.cntx_size = cntx_size
+        self.cntx_left = cntx_left
+        self.cntx_right = cntx_right
         self.save_dir = save_dir
         self.pad_id = pad_id
 
@@ -23,11 +24,11 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name, model='lstm',lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, device='cpu', lowercase=True):
+              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_size, self.tokenizer, lowercase=lowercase)
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase)
 
         # Check is the name there
         if category_name not in data:
@@ -45,10 +46,12 @@ class MetaCAT(object):
 
         if model == 'lstm':
             from medcat.utils.models import LSTM
-            model = LSTM(self.embeddings, self.pad_id)
+            nclasses = len(self.category_values)
+            model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
 
-        train_network(model, data, max_seq_len=(2*self.cntx_size+1), lr=lr, test_size=test_size,
-                pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device)
+        train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
+                pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
+                class_weights=class_weights)
         self.model = model
 
 
@@ -62,10 +65,10 @@ class MetaCAT(object):
         for ind, pair in enumerate(doc_text.offsets):
             if start >= pair[0] and start <= pair[1]:
                 break
-        _start = max(0, ind - self.cntx_size)
-        _end = min(len(doc_text.tokens), ind + 1 + self.cntx_size)
+        _start = max(0, ind - self.cntx_left)
+        _end = min(len(doc_text.tokens), ind + 1 + self.cntx_right)
         tkns = doc_text.ids[_start:_end]
-        cpos = self.cntx_size + min(0, ind-self.cntx_size)
+        cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
         device = torch.device("cpu")
         x = torch.tensor([tkns], dtype=torch.long).to(device)
@@ -89,7 +92,8 @@ class MetaCAT(object):
         to_save = {'category_name': self.category_name,
                    'category_values': self.category_values,
                    'i_category_values': self.i_category_values,
-                   'cntx_size': self.cntx_size}
+                   'cntx_left': self.cntx_left,
+                   'cntx_right': self.cntx_right}
         with open(path, 'wb') as f:
             pickle.dump(to_save, f)
 
@@ -104,7 +108,8 @@ class MetaCAT(object):
         self.category_name = to_load['category_name']
         self.category_values = to_load['category_values']
         self.i_category_values = to_load['i_category_values']
-        self.cntx_size = to_load['cntx_size']
+        self.cntx_left = to_load['cntx_left']
+        self.cntx_right = to_load['cntx_right']
 
 
     def load(self, model='lstm'):
@@ -139,16 +144,16 @@ class MetaCAT(object):
             for ind, pair in enumerate(doc_text.offsets):
                 if start >= pair[0] and start <= pair[1]:
                     break
-            _start = max(0, ind - self.cntx_size)
-            _end = min(len(doc_text.tokens), ind + 1 + self.cntx_size)
+            _start = max(0, ind - self.cntx_left)
+            _end = min(len(doc_text.tokens), ind + 1 + self.cntx_left)
             _ids = doc_text.ids[_start:_end]
-            _cpos = self.cntx_size + min(0, ind-self.cntx_size)
+            _cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
             id2row[ent._.id] = len(x)
             x.append(_ids)
             cpos.append(_cpos)
 
-        max_seq_len = (2*self.cntx_size+1)
+        max_seq_len = (self.cntx_left+self.cntx_right+1)
         x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
                       for sample in x])
 
