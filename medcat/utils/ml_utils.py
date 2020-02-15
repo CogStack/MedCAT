@@ -1,7 +1,7 @@
 from sklearn.model_selection import train_test_split
 import numpy as np
 from medcat.utils.models import LSTM as MODEL
-from sklearn.metrics import classification_report, f1_score, confusion_matrix
+from sklearn.metrics import classification_report, f1_score, confusion_matrix, precision_score, recall_score
 import torch
 from torch import nn
 import torch.nn.functional as F
@@ -57,6 +57,8 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
     # Calculate the number of batches given training size len(x_train)
     num_batches = int(np.ceil(len(x_train) / batch_size))
     best_f1 = 0
+    best_p = 0
+    best_r = 0
     for epoch in range(nepochs):
         running_loss_train = []
         running_loss_test = []
@@ -109,14 +111,19 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         print("Train Loss: {:5}\nTest Loss:  {:5}\n\n".format(train_loss, test_loss))
         print("\n\n\n")
         f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average='weighted')
+        precision = precision_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average='weighted')
+        recall = recall_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average='weighted')
+
         if f1 > best_f1:
             path = save_dir + "lstm.dat"
             torch.save(net.state_dict(), path)
             best_f1 = f1
+            best_p = precision
+            best_r = recall
 
             print("=" * 50)
             print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
             print(confusion_matrix(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
             print("\n\n")
 
-
+    return (best_f1, best_p, best_r)
