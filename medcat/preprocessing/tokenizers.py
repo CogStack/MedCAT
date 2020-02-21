@@ -95,3 +95,33 @@ class WordpieceTokenizer(object):
       else:
         output_tokens.extend(sub_tokens)
     return output_tokens
+
+
+class SpacyHFTok(object):
+    import spacy
+    import numpy as np
+
+    def __init__(self, w2v):
+        self.nlp = spacy.load('en_core_sci_md', disable=['ner', 'parser'])
+        self.emb_map = {}
+        self.embs = []
+        for key in w2v.wv.vocab.keys():
+            self.emb_map[key] = len(self.embs)
+            self.embs.append(w2v[key])
+
+        # Add pad
+        self.embs.append([0.0] * 300)
+
+    def encode(self, text):
+        doc = self.nlp(text)
+        return SpacyHFDoc(doc)
+
+    def token_to_id(self, tok):
+        return self.emb_map.get(tok, len(self.emb_map) - 1)
+
+
+class SpacyHFDoc(object):
+    def __init__(self, doc):
+        self.doc = doc
+        self.tokens = [x.text for x in self.doc]
+        self.offsets = [(x.idx, x.idx+len(x.text)) for x in self.doc]
