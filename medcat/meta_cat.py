@@ -23,8 +23,8 @@ class MetaCAT(object):
         self.model = None
 
 
-    def train(self, json_path, category_name, model='lstm',lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None):
+    def train(self, json_path, category_name, model_name='lstm', lr=0.01, test_size=0.1,
+              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None, cv=0):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
@@ -44,14 +44,39 @@ class MetaCAT(object):
         # Convert data tkns to ids
         data = tkns_to_ids(data, self.tokenizer)
 
-        if model == 'lstm':
+        if model_name == 'lstm':
             from medcat.utils.models import LSTM
             nclasses = len(self.category_values)
             model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
 
-        train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
-                pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
-                class_weights=class_weights)
+        if cv == 0:
+            (f1, p, r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
+                    pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
+                    class_weights=class_weights)
+        elif cv > 0:
+            # Mainly for testing, not really used in a normal workflow
+            f1s = []
+            ps = []
+            rs = []
+            for i in range(cv):
+                # Reset the model
+                if model_name == 'lstm':
+                    from medcat.utils.models import LSTM
+                    nclasses = len(self.category_values)
+                    model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
+
+                (_f1, _p, _r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
+                        pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
+                        class_weights=class_weights)
+                f1s.append(_f1)
+                ps.append(_p)
+                rs.append(_r)
+            f1 = np.average(f1s)
+            p = np.average(ps)
+            r = np.average(rs)
+
+        print("Best/Average scores: F1: {}, P: {}, R: {}".format(f1, p, r))
+
         self.model = model
 
 
