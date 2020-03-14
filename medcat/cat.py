@@ -134,10 +134,10 @@ class CAT(object):
                         negative=negative)
 
 
-    def _print_stats(self, data, epoch=0, use_filters=False):
-        tp = 1
-        fp = 1
-        fn = 1
+    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False):
+        tp = 0
+        fp = 0
+        fn = 0
         docs_with_problems = set()
         if self.spacy_cat.TUI_FILTER is None:
             _tui_filter = None
@@ -165,7 +165,10 @@ class CAT(object):
             for doc in project['documents']:
                 spacy_doc = self(doc['text'])
                 anns = doc['annotations']
-                p_anns = spacy_doc.ents
+                if use_overlaps:
+                    p_anns = spacy_doc._.ents
+                else:
+                    p_anns = spacy_doc.ents
 
                 anns_norm = []
                 for ann in anns:
@@ -191,6 +194,7 @@ class CAT(object):
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
             f1 = (prec + rec) / 2
+            print(tp, fp, fn)
             print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
             print("First 10 out of {} docs with problems: {}".format(len(docs_with_problems),
                   "; ".join([str(x) for x in list(docs_with_problems)[0:10]])))
