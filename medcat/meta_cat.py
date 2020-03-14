@@ -24,7 +24,8 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name, model_name='lstm', lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None, cv=0):
+              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None, cv=0,
+              ignore_cpos=False, model_config={}):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
@@ -47,12 +48,20 @@ class MetaCAT(object):
         if model_name == 'lstm':
             from medcat.utils.models import LSTM
             nclasses = len(self.category_values)
-            model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
+            bid = model_config.get("bid", True)
+            print(bid)
+            num_layers = model_config.get("num_layers", 2)
+            input_size = model_config.get("input_size", 300)
+            hidden_size = model_config.get("hidden_size", 300)
+            dropout = model_config.get("dropout", 0.5)
+
+            model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses, bid=bid, num_layers=num_layers,
+                         input_size=input_size, hidden_size=hidden_size, dropout=dropout)
 
         if cv == 0:
             (f1, p, r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                     pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
-                    class_weights=class_weights)
+                    class_weights=class_weights, ignore_cpos=ignore_cpos)
         elif cv > 0:
             # Mainly for testing, not really used in a normal workflow
             f1s = []
@@ -67,7 +76,7 @@ class MetaCAT(object):
 
                 (_f1, _p, _r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                         pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
-                        class_weights=class_weights)
+                        class_weights=class_weights, ignore_cpos=ignore_cpos)
                 f1s.append(_f1)
                 ps.append(_p)
                 rs.append(_r)
@@ -78,6 +87,7 @@ class MetaCAT(object):
         print("Best/Average scores: F1: {}, P: {}, R: {}".format(f1, p, r))
 
         self.model = model
+        return {'f1':f1, 'p':p, 'r':r}
 
 
     def predicit_one(self, text, start, end):
