@@ -203,8 +203,8 @@ class MetaCAT(object):
             outputs = np.argmax(outputs, axis=1)
 
             for ent in doc.ents:
+                val = self.i_category_values[outputs[id2row[ent._.id]]]
                 if ent._.meta_anns is None:
-                    val = self.i_category_values[outputs[id2row[ent._.id]]]
                     ent._.meta_anns = {self.category_name: val}
                 else:
                     ent._.meta_anns[self.category_name] = val
