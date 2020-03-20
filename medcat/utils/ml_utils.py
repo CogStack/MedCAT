@@ -23,7 +23,7 @@ def get_batch(ind, batch_size, x, y, cpos, device):
 
 
 def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=30000, batch_size=100,
-                  nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None):
+                  nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None, ignore_cpos=False):
     # Split data
     y = np.array([x[0] for x in data])
     x = [x[1] for x in data]
@@ -73,7 +73,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
                                                                        y=y_train, cpos=c_train,
                                                                        device=device)
             optimizer.zero_grad()
-            outputs = net(x_train_batch, cpos_train_batch)
+            outputs = net(x_train_batch, cpos_train_batch, ignore_cpos=ignore_cpos)
             loss = criterion(outputs, y_train_batch)
             loss.backward()
             running_loss_train.append(loss.item())
@@ -97,7 +97,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
                                                                      y=y_test,
                                                                      cpos=c_test,
                                                                      device=device)
-            outputs_test = net(x_test_batch, cpos_test_batch)
+            outputs_test = net(x_test_batch, cpos_test_batch, ignore_cpos=ignore_cpos)
             test_outs.append(outputs_test.detach().cpu().numpy())
             running_loss_test.append(criterion(outputs_test, y_test_batch).item())
 

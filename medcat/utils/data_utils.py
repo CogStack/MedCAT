@@ -1,4 +1,4 @@
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True):
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False):
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
@@ -25,16 +25,21 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True):
                         start = ann['start']
                         end = ann['end']
 
-                        # Get the index of the center token
-                        ind = 0
-                        for ind, pair in enumerate(doc_text.offsets):
-                            if start >= pair[0] and start <= pair[1]:
-                                break
+                        if not cntx_in_chars:
+                            # Get the index of the center token
+                            ind = 0
+                            for ind, pair in enumerate(doc_text.offsets):
+                                if start >= pair[0] and start <= pair[1]:
+                                    break
 
-                        _start = max(0, ind - cntx_left)
-                        _end = min(len(doc_text.tokens), ind + 1 + cntx_right)
-                        tkns = doc_text.tokens[_start:_end]
-                        cpos = cntx_left + min(0, ind-cntx_left)
+                            _start = max(0, ind - cntx_left)
+                            _end = min(len(doc_text.tokens), ind + 1 + cntx_right)
+                            tkns = doc_text.tokens[_start:_end]
+                            cpos = cntx_left + min(0, ind-cntx_left)
+                        else:
+                            _start = max(0, start - cntx_left)
+                            _end = min(len(text), end + cntx_right)
+                            tkns = tokenizer.encode(text[_start:_end]).tokens
 
                         # If the annotation is validated
                         for meta_ann in ann['meta_anns']:

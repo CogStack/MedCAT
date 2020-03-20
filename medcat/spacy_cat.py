@@ -32,7 +32,7 @@ class SpacyCat(object):
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 9))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 3))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 30000))
-    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 5))
+    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
     # Just to be sure
     MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
     UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
@@ -40,8 +40,8 @@ class SpacyCat(object):
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
     TUI_FILTER = os.getenv('TUI_FILTER', None)
     CUI_FILTER = os.getenv('CUI_FILTER', None)
-    MAX_SKIP_TKN= int(os.getenv('MAX_SKIP_TKN', 2))
-    SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "true").lower() == 'true'
+    MAX_SKIP_TKN = int(os.getenv('MAX_SKIP_TKN', 2))
+    SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
     WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
 
     MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
