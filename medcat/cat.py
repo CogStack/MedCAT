@@ -89,7 +89,7 @@ class CAT(object):
 
 
 
-    def _add_name(self, cui, source_val, is_pref_name, only_new=False):
+    def _add_name(self, cui, source_val, is_pref_name, only_new=False, desc=None, tui=None):
         onto = 'def'
 
         if cui in self.cdb.cui2ontos and self.cdb.cui2ontos[cui]:
@@ -99,11 +99,11 @@ class CAT(object):
                 source_value=source_val,
                 nlp=self.nlp, version='clean')
         # This will add a new concept if the cui doesn't exist
-        #or link the name to an existing concept if it exists.
+        # or link the name to an existing concept if it exists.
         if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui]:
             if not only_new or p_name not in self.cdb.name2cui:
                 self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                        original_name=source_val, is_pref_name=False)
+                        original_name=source_val, is_pref_name=False, desc=desc, tui=tui)
 
         # Add the raw also if needed
         p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
@@ -112,7 +112,7 @@ class CAT(object):
         if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui] or is_pref_name:
             if not only_new or p_name not in self.cdb.name2cui:
                 self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
-                        original_name=source_val, is_pref_name=is_pref_name)
+                                     original_name=source_val, is_pref_name=is_pref_name, desc=desc, tui=tui)
 
         # Fix for ntkns in cdb
         if p_name in self.cdb.name2ntkns:
@@ -120,7 +120,8 @@ class CAT(object):
                 self.cdb.name2ntkns[p_name].add(len(tokens))
 
 
-    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=None, anneal=None, negative=False, only_new=False):
+    def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None,
+                 spacy_doc=None, lr=None, anneal=None, negative=False, only_new=False, desc=None, tui=None):
         """ Adds a new concept or appends the name to an existing concept
         if the cui already exists in the DB.
 
@@ -129,7 +130,7 @@ class CAT(object):
         text:  the text of a document where source_val was found
         """
         # First add the name
-        self._add_name(cui, source_val, is_pref_name, only_new=only_new)
+        self._add_name(cui, source_val, is_pref_name, only_new=only_new, desc=desc, tui=tui)
 
         # Now add context if text is present
         if (text is not None and (source_val in text or text_inds)) or \
