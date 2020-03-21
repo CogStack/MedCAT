@@ -57,29 +57,36 @@ class CAT(object):
                                      negative=negative, lr=lr, anneal=anneal)
 
 
-    def unlink_concept_name(self, cui, name):
+    def unlink_concept_name(self, cui, name, full_unlink=True):
         # Unlink a concept from a name
+        o_name = str(name)
         p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
 
         # To be sure unlink the orignal and the processed name
-        names = [name, p_name]
+        names = [o_name, name, p_name, o_name.lower()]
 
         if tokens[-1].lower() == "s":
             # Remove last 's'
             names.append(p_name[0:-1])
 
         for name in names:
-            if cui in self.cdb.cui2names and name in self.cdb.cui2names[cui]:
-                self.cdb.cui2names[cui].remove(name)
-                if len(self.cdb.cui2names[cui]) == 0:
-                    del self.cdb.cui2names[cui]
+            cuis = [cui]
+            if full_unlink and name in self.cdb.name2cui:
+                cuis = list(self.cdb.name2cui[name])
 
-            if name in self.cdb.name2cui:
-                if cui in self.cdb.name2cui[name]:
-                    self.cdb.name2cui[name].remove(cui)
+            for cui in cuis:
+                if cui in self.cdb.cui2names and name in self.cdb.cui2names[cui]:
+                    self.cdb.cui2names[cui].remove(name)
+                    if len(self.cdb.cui2names[cui]) == 0:
+                        del self.cdb.cui2names[cui]
 
-                    if len(self.cdb.name2cui[name]) == 0:
-                        del self.cdb.name2cui[name]
+                if name in self.cdb.name2cui:
+                    if cui in self.cdb.name2cui[name]:
+                        self.cdb.name2cui[name].remove(cui)
+
+                        if len(self.cdb.name2cui[name]) == 0:
+                            del self.cdb.name2cui[name]
+
 
 
     def _add_name(self, cui, source_val, is_pref_name, only_new=False):
@@ -106,6 +113,11 @@ class CAT(object):
             if not only_new or p_name not in self.cdb.name2cui:
                 self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
                         original_name=source_val, is_pref_name=is_pref_name)
+
+        # Fix for ntkns in cdb
+        if p_name in self.cdb.name2ntkns:
+            if len(tokens) not in self.cdb.name2ntkns[p_name]:
+                self.cdb.name2ntkns[p_name].add(len(tokens))
 
 
     def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None, spacy_doc=None, lr=None, anneal=None, negative=False, only_new=False):

@@ -43,7 +43,7 @@ class PrepareCDB(object):
         return [text]
 
     def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None, only_existing=False,
-            add_cleaner=None):
+            add_cleaner=None, only_new=False):
         """ Compile one or multiple CSVs into an internal CDB class
 
         csv_paths:  an array of paths to the csv files that should be processed
@@ -51,6 +51,7 @@ class PrepareCDB(object):
 
         return:  Compiled CDB class
         """
+        _new_cuis = set()
 
         for csv_path in csv_paths:
             df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar)
@@ -87,6 +88,15 @@ class PrepareCDB(object):
                     for version in self.VERSIONS:
                         # Get the cui
                         cui = str(df.iat[ind, cui_ind])
+
+                        if only_new:
+                            # Add only new concepts, skip exisitng ones
+                            #_tmp_name = clean_name(_name).lower().replace(" ", "")
+                            if (cui in self.cdb.cui2names and cui not in _new_cuis): #and _tmp_name in self.cdb.name2cui:
+                                continue
+                            else:
+                                if cui not in self.cdb.cui2names:
+                                    _new_cuis.add(cui)
 
                         if (version == "RAW" and skip_raw) or \
                            (only_existing and cui not in self.cdb.cui2names):
