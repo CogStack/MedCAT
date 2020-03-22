@@ -41,11 +41,11 @@ class Vocab(object):
             if vec is not None:
                 self.vec_index2word[ind] = word
         elif replace and vec is not None:
-            self.vocab[word].vec = vec
-            self.vocab[word].cnt = cnt
+            self.vocab[word]['vec'] = vec
+            self.vocab[word]['cnt'] = cnt
 
             # If this word didn't have a vector before
-            ind = self.vocab[word].ind
+            ind = self.vocab[word]['ind']
             if ind not in self.vec_index2word:
                 self.vec_index2word[ind] = word
 
