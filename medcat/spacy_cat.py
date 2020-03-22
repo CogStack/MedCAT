@@ -378,7 +378,8 @@ class SpacyCat(object):
         """
         doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
 
-        tkns_in = []
+        tkns_in = set()
+        main_anns = []
         for ent in doc._.ents:
             if tuis is None or ent._.tui in tuis:
                 to_add = True
@@ -387,8 +388,10 @@ class SpacyCat(object):
                         to_add = False
                 if to_add:
                     for tkn in ent:
-                        tkns_in.append(tkn)
-                    doc.ents = list(doc.ents) + [ent]
+                        tkns_in.add(tkn)
+                    main_anns.append(ent)
+
+        doc.ents = list(doc.ents) + main_anns
 
 
     def __call__(self, doc):

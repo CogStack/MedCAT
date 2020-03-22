@@ -185,7 +185,7 @@ class CAT(object):
 
                 anns_norm = []
                 for ann in anns:
-                    if ann['validated'] and (not ann['killed'] and not ann['deleted']):
+                    if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
                         anns_norm.append((ann['start'], ann['cui']))
                 p_anns_norm = []
                 for ann in p_anns:
@@ -254,7 +254,7 @@ class CAT(object):
         for project in data['projects']:
             for doc in project['documents']:
                 for ann in doc['annotations']:
-                    if ann['killed']:
+                    if ann.get('killed', False):
                         self.unlink_concept_name(ann['cui'], ann['value'])
 
         for epoch in range(nepochs):
@@ -263,15 +263,14 @@ class CAT(object):
             # Print acc before training
 
             for project in data['projects']:
-                for doc in project['documents']:
+                for i_doc, doc in enumerate(project['documents']):
                     spacy_doc = self(doc['text'])
                     for ann in doc['annotations']:
-                        if not ann['killed']:
+                        if not ann.get('killed', False):
                             cui = ann['cui']
                             start = ann['start']
                             end = ann['end']
-                            deleted = ann['deleted']
-
+                            deleted = ann.get('deleted', False)
                             self.add_name(cui=cui,
                                           source_val=ann['value'],
                                           spacy_doc=spacy_doc,
@@ -279,6 +278,7 @@ class CAT(object):
                                           negative=deleted,
                                           lr=lr,
                                           anneal=anneal)
+            print("Done epoch, printing stats.")
             if print_stats:
                 if test_set:
                     self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters)
