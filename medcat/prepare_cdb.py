@@ -80,10 +80,10 @@ class PrepareCDB(object):
 
             for ind in range(len(df)):
                 names = str(df.iat[ind, str_ind]).split(self.NAME_SEPARATOR)
-                for _name in names:
-                    if ind % 10000 == 0:
-                        print("Done: {}".format(ind))
+                if ind % 10000 == 0:
+                    print("Done: {}".format(ind))
 
+                for _name in names:
                     skip_raw = False
                     for version in self.VERSIONS:
                         # Get the cui
@@ -207,7 +207,7 @@ class PrepareCDB(object):
                             cntx = []
                             for word in doc:
                                 if not word._.to_skip:
-                                    for w in self.tokenizer(word._.norm):
+                                    for w in self.tokenizer(word.lower_):
                                         if w in self.vocab and self.vocab.vec(w) is not None:
                                             cntx.append(self.vocab.vec(w))
                             if len(cntx) > 1:
