@@ -58,15 +58,18 @@ class CAT(object):
 
 
     def unlink_concept_name(self, cui, name, full_unlink=True):
+        names = [name, name.lower()]
         # Unlink a concept from a name
-        o_name = str(name)
-        p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp)
-
-        # To be sure unlink the orignal and the processed name
-        names = [o_name, name, p_name, o_name.lower()]
+        p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp, version='clean')
+        # Add the clean version of the name
+        names.append(p_name)
+        # Get the raw version
+        p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp, version='raw')
+        # Append the raw evrsion
+        names.append(p_name)
 
         if tokens[-1].lower() == "s":
-            # Remove last 's'
+            # Remove last 's' - a stupid bug
             names.append(p_name[0:-1])
 
         for name in names:
@@ -88,12 +91,22 @@ class CAT(object):
                             del self.cdb.name2cui[name]
 
 
-
     def _add_name(self, cui, source_val, is_pref_name, only_new=False, desc=None, tui=None):
         onto = 'def'
+        all_cuis = []
 
         if cui in self.cdb.cui2ontos and self.cdb.cui2ontos[cui]:
             onto = list(self.cdb.cui2ontos[cui])[0]
+
+        # Add the original version of the name just lowercased
+        p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
+                source_value=source_val,
+                nlp=self.nlp, version='none')
+        if cui not in self.cdb.cui2names or p_name not in self.cdb.cui2names[cui]:
+            if not only_new or p_name not in self.cdb.name2cui:
+                self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
+                        original_name=source_val, is_pref_name=False, desc=desc, tui=tui)
+        all_cuis.extend(self.cdb.name2cui[p_name])
 
         p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
                 source_value=source_val,
@@ -104,6 +117,7 @@ class CAT(object):
             if not only_new or p_name not in self.cdb.name2cui:
                 self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
                         original_name=source_val, is_pref_name=False, desc=desc, tui=tui)
+        all_cuis.extend(self.cdb.name2cui[p_name])
 
         # Add the raw also if needed
         p_name, tokens, snames, tokens_vocab = get_all_from_name(name=source_val,
@@ -113,15 +127,19 @@ class CAT(object):
             if not only_new or p_name not in self.cdb.name2cui:
                 self.cdb.add_concept(cui, p_name, onto, tokens, snames, tokens_vocab=tokens_vocab,
                                      original_name=source_val, is_pref_name=is_pref_name, desc=desc, tui=tui)
+        all_cuis.extend(self.cdb.name2cui[p_name])
 
         # Fix for ntkns in cdb
         if p_name in self.cdb.name2ntkns:
             if len(tokens) not in self.cdb.name2ntkns[p_name]:
                 self.cdb.name2ntkns[p_name].add(len(tokens))
 
+        return list(set(all_cuis))
+
 
     def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None,
-                 spacy_doc=None, lr=None, anneal=None, negative=False, only_new=False, desc=None, tui=None):
+                 spacy_doc=None, lr=None, anneal=None, negative=False, only_new=False, desc=None, tui=None,
+                 manually_created=False):
         """ Adds a new concept or appends the name to an existing concept
         if the cui already exists in the DB.
 
@@ -129,8 +147,8 @@ class CAT(object):
         source_val:  Source value in the text
         text:  the text of a document where source_val was found
         """
-        # First add the name
-        self._add_name(cui, source_val, is_pref_name, only_new=only_new, desc=desc, tui=tui)
+        # First add the name, get bac all cuis that link to this name
+        all_cuis = self._add_name(cui, source_val, is_pref_name, only_new=only_new, desc=desc, tui=tui)
 
         # Now add context if text is present
         if (text is not None and (source_val in text or text_inds)) or \
@@ -145,6 +163,12 @@ class CAT(object):
             if tkn_inds is not None and len(tkn_inds) > 0:
                 self.add_concept_cntx(cui, text, tkn_inds, spacy_doc=spacy_doc, lr=lr, anneal=anneal,
                         negative=negative)
+
+                if manually_created:
+                    all_cuis.remove(cui)
+                    for _cui in all_cuis:
+                        self.add_concept_cntx(_cui, text, tkn_inds, spacy_doc=spacy_doc, lr=lr, anneal=anneal,
+                                negative=True)
 
 
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False):
