@@ -93,6 +93,11 @@ def prepare_name(cat, name, version='CLEAN'):
         tokens = [t.lower_ for t in sc_name if not t._.is_punct
                   and not (t._.to_skip and not t.is_stop)]
 
+    if version.lower() == 'none':
+        sc_name = cat(name)
+        tokens = [t.lower_ for t in sc_name]
+
+
     # Join everything and return name 
     name = "".join(tokens)
     return name, tokens
