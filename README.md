@@ -12,9 +12,13 @@ and contains a very small portion of UMLS (<1%).
 
 `pip install --upgrade medcat`
 
-2. Downlad the Vocabulary and CDB from the Models section bellow
+2. Get the scispacy models:
 
-3. How to use:
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz`
+
+3. Downlad the Vocabulary and CDB from the Models section bellow
+
+4. How to use:
 ```python
 from medcat.cat import CAT
 from medcat.utils.vocab import Vocab
