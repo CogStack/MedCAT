@@ -385,3 +385,13 @@ def remove_icd10_ranges(cdb):
                 cdb.cui2info[cui]['icd10'] = new_icd
             else:
                 del cdb.cui2info[cui]['icd10']
+
+
+def check_scispacy():
+    import spacy
+    try:
+        nlp = spacy.load("en_core_sci_md")
+    except:
+        print("Installing the missing models for scispacy")
+        pip.main(['install', 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz'])
+

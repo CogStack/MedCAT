@@ -16,6 +16,10 @@ from medcat.utils.loggers import basic_logger
 
 log = basic_logger("CAT")
 
+# Check scispacy models
+from medcat.utils.helpers import check_scispacy
+check_scispacy()
+
 class CAT(object):
     """ Annotate a dataset
     """

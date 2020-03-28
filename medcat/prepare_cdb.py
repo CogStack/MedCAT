@@ -13,6 +13,10 @@ from medcat.utils.spacy_pipe import SpacyPipe
 import numpy as np
 from functools import partial
 
+# Check scispacy models
+from medcat.utils.helpers import check_scispacy
+check_scispacy()
+
 class PrepareCDB(object):
     """ Prepares CDB data in csv format for annotations,
     after everything is done the result is in the cdb field.
