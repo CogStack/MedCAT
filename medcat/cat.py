@@ -175,6 +175,13 @@ class CAT(object):
         tp = 0
         fp = 0
         fn = 0
+        nprec = {}
+        nrec = {}
+        byc_tp = {}
+        cui_prec = {}
+        cui_rec = {}
+        cui_f1 = {}
+
         docs_with_problems = set()
         if self.spacy_cat.TUI_FILTER is None:
             _tui_filter = None
@@ -218,7 +225,16 @@ class CAT(object):
                 for ann in p_anns_norm:
                     if ann in anns_norm:
                         tp += 1
+
+                        if ann[1] in byc_tp:
+                            byc_tp[ann[1]] += 1
+                        else:
+                            byc_tp[ann[1]] = 1
                     else:
+                        if ann[1] in nprec:
+                            nprec[ann[1]] += 1
+                        else:
+                            nprec[ann[1]] = 1
                         fp += 1
                         docs_with_problems.add(doc['name'])
 
@@ -227,6 +243,10 @@ class CAT(object):
                         fn += 1
                         docs_with_problems.add(doc['name'])
 
+                        if ann[1] in nrec:
+                            nrec[ann[1]] += 1
+                        else:
+                            nrec[ann[1]] = 1
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
@@ -235,14 +255,42 @@ class CAT(object):
             print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
             print("First 10 out of {} docs with problems: {}".format(len(docs_with_problems),
                   "; ".join([str(x) for x in list(docs_with_problems)[0:10]])))
+
+            # Sort nrec & prec
+            nprec = {k: v for k, v in sorted(nprec.items(), key=lambda item: item[1], reverse=True)}
+            nrec = {k: v for k, v in sorted(nrec.items(), key=lambda item: item[1], reverse=True)}
+
+            # F1 per concept
+            for cui in byc_tp.keys():
+                prec = byc_tp[cui] / (byc_tp.get(cui, 0) + nprec.get(cui, 0))
+                rec = byc_tp[cui] / (byc_tp.get(cui, 0) + nrec.get(cui, 0))
+                f1 = (prec + rec) / 2
+                cui_prec[cui] = prec
+                cui_rec[cui] = rec
+                cui_f1[cui] = f1
+
+
+            # Get top 20
+            pr_nprec = [(self.cdb.cui2pretty_name[cui], cui, nprec[cui]) for cui in list(nprec.keys())[0:20]]
+            pr_nrec = [(self.cdb.cui2pretty_name[cui], cui, nrec[cui]) for cui in list(nrec.keys())[0:20]]
+
+            print("\n\nOverdone\n")
+            for one in pr_nprec:
+                print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+            print("\n\nMissed\n")
+            for one in pr_nrec:
+                print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+
         except Exception as e:
             print(e)
 
         self.spacy_cat.TUI_FILTER = _tui_filter
         self.spacy_cat.CUI_FILTER = _cui_filter
 
+        return nprec, nrec, byc_tp, cui_prec, cui_rec, cui_f1
 
-    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=10, lr=None,
+
+    def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
                          anneal=None, print_stats=False, test_set=None, use_filters=False):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
@@ -295,19 +343,22 @@ class CAT(object):
                             start = ann['start']
                             end = ann['end']
                             deleted = ann.get('deleted', False)
+                            manually_created = ann.get('manually_created', False)
                             self.add_name(cui=cui,
                                           source_val=ann['value'],
                                           spacy_doc=spacy_doc,
                                           text_inds=[start, end],
                                           negative=deleted,
                                           lr=lr,
-                                          anneal=anneal)
-            print("Done epoch, printing stats.")
-            if print_stats:
-                if test_set:
-                    self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters)
-                else:
-                    self._print_stats(data, epoch=epoch+1, use_filters=use_filters)
+                                          anneal=anneal,
+                                          manually_created=manually_created)
+            if epoch % 5 == 0:
+                print("Printing stats.")
+                if print_stats:
+                    if test_set:
+                        self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters)
+                    else:
+                        self._print_stats(data, epoch=epoch+1, use_filters=use_filters)
 
 
 
