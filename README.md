@@ -53,15 +53,15 @@ displacy.serve(doc_spacy, style='ent')
 #documents through MedCAT
 cat.train = True
 
-# To run cat on a large number of documents, this will
-#also run trainnig as the flag is set to True.
-data = [(<doc_id>, <text>), (<doc_id>, <text>), ...]
-docs = cat.multi_processing(data)
+# And now run cat again, it will train in the background
+data = [<text>, <text>, ...]
+for text in data:
+  _ = cat(text)
 
-# To explicitly run trainnig you can do
-f = open("<some file with a lot of medical text>", 'r')
-# If you want fine tune set it to True, old training will be preserved
-cat.run_training(f, fine_tune=True)
+# Save the new trained cdb
+cdb.save_dict(<save_path>)
+
+# Done
 ```
 
 
