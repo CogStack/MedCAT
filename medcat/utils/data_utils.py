@@ -26,7 +26,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
                         tui = ann['tui']
 
                     if not tui_filter or tui in tui_filter:
-                        if ann['validated'] and (not ann['deleted'] and not ann['killed']):
+                        if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)):
                             start = ann['start']
                             end = ann['end']
 
@@ -47,7 +47,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
                                 tkns = tokenizer.encode(text[_start:_end]).tokens
 
                             # If the annotation is validated
-                            for meta_ann in ann['meta_anns']:
+                            for meta_ann in ann.get('meta_anns', []):
                                 name = meta_ann['name']
                                 value = meta_ann['value']
 
