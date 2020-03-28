@@ -389,9 +389,12 @@ def remove_icd10_ranges(cdb):
 
 def check_scispacy():
     import spacy
+    import subprocess
+    import sys
     try:
         nlp = spacy.load("en_core_sci_md")
     except:
-        print("Installing the missing models for scispacy")
-        pip.main(['install', 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz'])
+        print("Installing the missing models for scispacy\n")
+        pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz'
+        subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
 
