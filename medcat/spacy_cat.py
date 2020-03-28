@@ -27,7 +27,7 @@ class SpacyCat(object):
     """
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     NORM_EMB = os.getenv('NORM_EMB', "false").lower() == 'true' # Should we normalize the w2v
-    PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "true").lower() == 'true'
+    PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "false").lower() == 'true'
     PREFER_ICD10 = os.getenv('PREFER_ICD10', "false").lower() == 'true'
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 9))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 3))

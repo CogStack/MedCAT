@@ -4,6 +4,7 @@ import torch
 from medcat.utils.ml_utils import train_network
 import numpy as np
 import pickle
+import os
 
 class MetaCAT(object):
 
@@ -27,6 +28,10 @@ class MetaCAT(object):
               batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, tui_filter=None):
         data = json.load(open(json_path, 'r'))
+
+        # Create directories if they don't exist
+        if not os.path.exists(self.save_dir):
+            os.makedirs(self.save_dir)
 
         # Prepare the data
         data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter)
@@ -61,7 +66,7 @@ class MetaCAT(object):
         if cv == 0:
             (f1, p, r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                     pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
-                    class_weights=class_weights, ignore_cpos=ignore_cpos)
+                    class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir)
         elif cv > 0:
             # Mainly for testing, not really used in a normal workflow
             f1s = []
@@ -76,7 +81,7 @@ class MetaCAT(object):
 
                 (_f1, _p, _r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                         pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
-                        class_weights=class_weights, ignore_cpos=ignore_cpos)
+                        class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir)
                 f1s.append(_f1)
                 ps.append(_p)
                 rs.append(_r)
