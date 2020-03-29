@@ -7,23 +7,9 @@ with open("./README.md", "r") as fh:
     long_description = fh.read()
 
 
-class PostInstallCommand(install):
-    """Post-installation for installation mode."""
-    def run(self):
-        import subprocess
-        import sys
-
-        install.run(self)
-
-        print("Installing the missing models for scispacy\n")
-        pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz'
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
-
-
-
 setuptools.setup(
     name="medcat",
-    version="0.3.1.1",
+    version="0.3.1.5",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
@@ -32,18 +18,19 @@ setuptools.setup(
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing'],
     install_requires=[
-        'numpy~=1.15',
-        'pandas~=0.23',
+        'numpy~=1.18',
+        'pandas~=1.0',
         'gensim~=3.7',
         'spacy==2.2.4',
-        'scipy~=1.1',],
+        'scipy~=1.4',
+        'tokenizers~=0.6.0',
+        'torch~=1.4.0',
+        'torchvision~=0.5.0',
+        'Flask~=1.1',
+        ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
-    cmdclass={
-        'install': PostInstallCommand,
-        },
-
 )
