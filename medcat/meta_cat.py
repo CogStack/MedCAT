@@ -13,7 +13,7 @@ class MetaCAT(object):
     def __init__(self, tokenizer=None, embeddings=None, cntx_left=20, cntx_right=20,
                  save_dir='./meta_cat/', pad_id=30000):
         self.tokenizer = tokenizer
-        if embeddings:
+        if embeddings is not None:
             self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
         else:
             self.embeddings = None
@@ -27,6 +27,10 @@ class MetaCAT(object):
         self.i_category_values = {}
 
         self.model = None
+
+        # TODO: A shitty solution, make right at some point
+        if not self.save_dir.endswith("/"):
+            self.save_dir = self.save_dir + "/"
 
 
     def train(self, json_path, category_name, model_name='lstm', lr=0.01, test_size=0.1,
@@ -126,9 +130,15 @@ class MetaCAT(object):
         return inv_map[int(np.argmax(outputs_test.detach().numpy()[0]))]
 
 
-    def save(self):
-        # The model is saved during training, don't do it here
-        #only save the config.
+    def save(self, full_save=False):
+        if full_save:
+            # Save tokenizer and embeddings, slightly redundant
+            self.tokenizer.save(self.save_dir, name='bbpe')
+            # Save embeddings
+            np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
+
+        # The lstm model is saved during training, don't do it here
+        #save the config.
         self.save_config()
 
 
@@ -137,6 +147,7 @@ class MetaCAT(object):
         to_save = {'category_name': self.category_name,
                    'category_values': self.category_values,
                    'i_category_values': self.i_category_values,
+                   'pad_id': self.pad_id,
                    'cntx_left': self.cntx_left,
                    'cntx_right': self.cntx_right}
         with open(path, 'wb') as f:
@@ -155,16 +166,18 @@ class MetaCAT(object):
         self.i_category_values = to_load['i_category_values']
         self.cntx_left = to_load['cntx_left']
         self.cntx_right = to_load['cntx_right']
+        self.pad_id = to_load.get('pad_id', 0)
 
 
-    def load(self, model='lstm'):
+
+    def load(self, model='lstm', tokenizer_name='bbpe'):
         """ Loads model and config for this meta annotation
         """
         # Load tokenizer if it is None
         if self.tokenizer is None:
-            vocab_file = self.save_dir + "vocab.json"
-            merges_file = self.save_dir + "merges.txt"
-            tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file)
+            vocab_file = self.save_dir + "{}-vocab.json".format(tokenizer_name)
+            merges_file = self.save_dir + "{}-merges.txt".format(tokenizer_name)
+            self.tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file)
         # Load embeddings if None
         if self.embeddings is None:
             embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'))

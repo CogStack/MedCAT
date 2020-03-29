@@ -41,8 +41,10 @@ class CAT(object):
         self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
+        self._meta_annotations = False
         for meta_cat in meta_cats:
             self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
+            self._meta_annotations = True
 
 
     def __call__(self, text):
@@ -485,6 +487,11 @@ class CAT(object):
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
+
+        if self._meta_annotations:
+            # Hack for torch using multithreading, which is not good here
+            import torch
+            torch.set_num_threads(1)
 
         # Create the input output for MP
         in_q = Queue(maxsize=4*nproc)
