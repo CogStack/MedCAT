@@ -1,17 +1,22 @@
-import json
-from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids
-import torch
-from medcat.utils.ml_utils import train_network
-import numpy as np
-import pickle
 import os
+import json
+import pickle
+import numpy as np
+import torch
+from tokenizers import ByteLevelBPETokenizer
+
+from medcat.utils.ml_utils import train_network
+from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids
 
 class MetaCAT(object):
 
-    def __init__(self, tokenizer, embeddings, cntx_left=20, cntx_right=20,
+    def __init__(self, tokenizer=None, embeddings=None, cntx_left=20, cntx_right=20,
                  save_dir='./meta_cat/', pad_id=30000):
         self.tokenizer = tokenizer
-        self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
+        if embeddings:
+            self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
+        else:
+            self.embeddings = None
         self.cntx_left = cntx_left
         self.cntx_right = cntx_right
         self.save_dir = save_dir
@@ -155,6 +160,16 @@ class MetaCAT(object):
     def load(self, model='lstm'):
         """ Loads model and config for this meta annotation
         """
+        # Load tokenizer if it is None
+        if self.tokenizer is None:
+            vocab_file = self.save_dir + "vocab.json"
+            merges_file = self.save_dir + "merges.txt"
+            tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file)
+        # Load embeddings if None
+        if self.embeddings is None:
+            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'))
+            self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
+
         self.load_config()
         # Load MODEL
         if model == 'lstm':
