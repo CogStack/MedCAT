@@ -11,7 +11,7 @@ from medcat.utils.data_utils import prepare_from_json, encode_category_values, t
 class MetaCAT(object):
 
     def __init__(self, tokenizer=None, embeddings=None, cntx_left=20, cntx_right=20,
-                 save_dir='./meta_cat/', pad_id=30000):
+                 save_dir='./meta_cat/', pad_id=30000, device='cpu'):
         self.tokenizer = tokenizer
         if embeddings is not None:
             self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
@@ -21,6 +21,8 @@ class MetaCAT(object):
         self.cntx_right = cntx_right
         self.save_dir = save_dir
         self.pad_id = pad_id
+        self.device = torch.device("cpu")
+
 
         self.category_name = None
         self.category_values = {}
@@ -34,7 +36,7 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name, model_name='lstm', lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, device='cpu', lowercase=True, class_weights=None, cv=0,
+              batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, tui_filter=None):
         data = json.load(open(json_path, 'r'))
 
@@ -74,7 +76,7 @@ class MetaCAT(object):
 
         if cv == 0:
             (f1, p, r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
-                    pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
+                    pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=self.device,
                     class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir)
         elif cv > 0:
             # Mainly for testing, not really used in a normal workflow
@@ -89,7 +91,7 @@ class MetaCAT(object):
                     model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
 
                 (_f1, _p, _r) = train_network(model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
-                        pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=device,
+                        pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=self.device,
                         class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir)
                 f1s.append(_f1)
                 ps.append(_p)
@@ -119,9 +121,8 @@ class MetaCAT(object):
         tkns = doc_text.ids[_start:_end]
         cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
-        device = torch.device("cpu")
-        x = torch.tensor([tkns], dtype=torch.long).to(device)
-        cpos = torch.tensor([cpos], dtype=torch.long).to(device)
+        x = torch.tensor([tkns], dtype=torch.long).to(self.device)
+        cpos = torch.tensor([cpos], dtype=torch.long).to(self.device)
 
         self.model.eval()
         outputs_test = self.model(x, cpos)
@@ -177,7 +178,7 @@ class MetaCAT(object):
         if self.tokenizer is None:
             vocab_file = self.save_dir + "{}-vocab.json".format(tokenizer_name)
             merges_file = self.save_dir + "{}-merges.txt".format(tokenizer_name)
-            self.tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file)
+            self.tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file, lowercase=True)
         # Load embeddings if None
         if self.embeddings is None:
             embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'))
@@ -225,9 +226,8 @@ class MetaCAT(object):
         x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
                       for sample in x])
 
-        device = torch.device("cpu")
-        x = torch.tensor(x, dtype=torch.long).to(device)
-        cpos = torch.tensor(cpos, dtype=torch.long).to(device)
+        x = torch.tensor(x, dtype=torch.long).to(self.device)
+        cpos = torch.tensor(cpos, dtype=torch.long).to(self.device)
 
         # Nearly impossible that we need batches, so I'll ignore it
         if len(x) >  0:
