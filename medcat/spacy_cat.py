@@ -53,6 +53,12 @@ class SpacyCat(object):
     LR = float(os.getenv('LR', 1))
     ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
 
+    # Convert filters tu sets
+    if TUI_FILTER is not None:
+        TUI_FILTER = set(TUI_FILTER)
+    if CUI_FILTER is not None:
+        CUI_FILTER = set(CUI_FILTER)
+
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
@@ -528,8 +534,23 @@ class SpacyCat(object):
                         new_cuis.append(cui)
                 cuis = new_cuis
             """
+            if self.TUI_FILTER is None and self.CUI_FILTER is None:
+                do_disamb = True
+            else:
+                # This will prevent disambiguation if no potential CUI/TUI is in the filter
+                do_disamb = False
+                if self.TUI_FILTER is not None:
+                    for cui in cuis:
+                        if self.cdb.cui2tui[cui] in self.TUI_FILTER:
+                            do_disamb = True
+                            break
+                if self.CUI_FILTER is not None and not do_disamb:
+                    for cui in cuis:
+                        if cui in self.CUI_FILTER:
+                            do_disamb = True
+                            break
 
-            if len(cuis) > 0:
+            if len(cuis) > 0 and do_disamb:
                 if len(cuis) > 1:
                     _min_acc = self.MIN_ACC
                 else:
