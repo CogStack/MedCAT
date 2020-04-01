@@ -65,7 +65,6 @@ class MetaCAT(object):
             from medcat.utils.models import LSTM
             nclasses = len(self.category_values)
             bid = model_config.get("bid", True)
-            print(bid)
             num_layers = model_config.get("num_layers", 2)
             input_size = model_config.get("input_size", 300)
             hidden_size = model_config.get("hidden_size", 300)

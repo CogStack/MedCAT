@@ -13,6 +13,7 @@ from medcat.utils.spacy_pipe import SpacyPipe
 from medcat.preprocessing.cleaners import spacy_tag_punct
 from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
 from medcat.utils.loggers import basic_logger
+import sys, traceback
 
 log = basic_logger("CAT")
 
@@ -273,18 +274,20 @@ class CAT(object):
 
 
             # Get top 20
-            pr_nprec = [(self.cdb.cui2pretty_name[cui], cui, nprec[cui]) for cui in list(nprec.keys())[0:20]]
-            pr_nrec = [(self.cdb.cui2pretty_name[cui], cui, nrec[cui]) for cui in list(nrec.keys())[0:20]]
+            pr_nprec = [(self.cdb.cui2pretty_name.get(cui,
+                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, nprec[cui]) for cui in list(nprec.keys())[0:20]]
+            pr_nrec = [(self.cdb.cui2pretty_name.get(cui,
+                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, nrec[cui]) for cui in list(nrec.keys())[0:20]]
 
-            print("\n\nOverdone\n")
+            print("\n\nFalse Positives\n")
             for one in pr_nprec:
                 print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
-            print("\n\nMissed\n")
+            print("\n\nFalse Negatives\n")
             for one in pr_nrec:
                 print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
 
         except Exception as e:
-            print(e)
+            traceback.print_exc()
 
         self.spacy_cat.TUI_FILTER = _tui_filter
         self.spacy_cat.CUI_FILTER = _cui_filter

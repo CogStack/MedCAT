@@ -541,7 +541,7 @@ class SpacyCat(object):
                 do_disamb = False
                 if self.TUI_FILTER is not None:
                     for cui in cuis:
-                        if self.cdb.cui2tui[cui] in self.TUI_FILTER:
+                        if self.cdb.cui2tui.get(cui, 'unk:unk') in self.TUI_FILTER:
                             do_disamb = True
                             break
                 if self.CUI_FILTER is not None and not do_disamb:
