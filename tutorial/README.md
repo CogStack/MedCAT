@@ -11,5 +11,5 @@ This, in some way, should be a definitive tutorial on how to use MedCAT. The blo
 | 3.2  | Unsupervised training and NER+L                                             | [Colab](https://colab.research.google.com/drive/1q29RbHlZoFK7TcvMKITi3ABbE-E_fw30) | -         |
 | 4.1  | Creating a tokenizer model (huggingface) and embeddings for MetaAnnotations | [Colab](https://colab.research.google.com/drive/1rxzBZCTDcqsIjRXZ3u4yRZFOkUCCuwyy) | -         |
 | 4.2  | Supervised training and fine-tuning + Meta-annotations                      | [Colab](https://colab.research.google.com/drive/1zzV3XzFJ9ihhCJ680DaQV2QZ5XnHa06X) | -         |
-| 4.3  | Annotating documents with the full MedCAT pipeline with MetaAnnotations | -                                                                                  | -         |
+| 4.3  | Annotating documents with the full MedCAT pipeline with MetaAnnotations | [Colab](https://colab.research.google.com/drive/18H_tsmobix7GFt2UGLUGTm9ZCKIzDmbu)                                                                                  | -         |
 | 5    | Analysing the results                                                       | -                                                                                  | -         |
