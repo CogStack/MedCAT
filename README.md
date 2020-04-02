@@ -39,12 +39,15 @@ cdb.load_dict('<path to the cdb file>')
 cat = CAT(cdb=cdb, vocab=vocab)
 
 # Test it
-doc = "My simple document with kidney failure"
-doc_spacy = cat(doc)
-# Entities are in
-doc_spacy._.ents
+text = "My simple document with kidney failure"
+doc_spacy = cat(text)
+# Print detected entities
+print(doc_spacy.ents)
+
 # Or to get a json
-doc_json = cat.get_json(doc)
+import json
+doc_json = json.loads(cat.get_json(text))
+print(doc_json)
 ```
 
 
