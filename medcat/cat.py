@@ -178,9 +178,9 @@ class CAT(object):
         tp = 0
         fp = 0
         fn = 0
-        nprec = {}
-        nrec = {}
-        byc_tp = {}
+        fps = {}
+        fns = {}
+        tps = {}
         cui_prec = {}
         cui_rec = {}
         cui_f1 = {}
@@ -229,15 +229,15 @@ class CAT(object):
                     if ann in anns_norm:
                         tp += 1
 
-                        if ann[1] in byc_tp:
-                            byc_tp[ann[1]] += 1
+                        if ann[1] in tps:
+                            tps[ann[1]] += 1
                         else:
-                            byc_tp[ann[1]] = 1
+                            tps[ann[1]] = 1
                     else:
-                        if ann[1] in nprec:
-                            nprec[ann[1]] += 1
+                        if ann[1] in fps:
+                            fps[ann[1]] += 1
                         else:
-                            nprec[ann[1]] = 1
+                            fps[ann[1]] = 1
                         fp += 1
                         docs_with_problems.add(doc['name'])
 
@@ -246,45 +246,54 @@ class CAT(object):
                         fn += 1
                         docs_with_problems.add(doc['name'])
 
-                        if ann[1] in nrec:
-                            nrec[ann[1]] += 1
+                        if ann[1] in fns:
+                            fns[ann[1]] += 1
                         else:
-                            nrec[ann[1]] = 1
+                            fns[ann[1]] = 1
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
             f1 = (prec + rec) / 2
-            print(tp, fp, fn)
             print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
             print("First 10 out of {} docs with problems: {}".format(len(docs_with_problems),
                   "; ".join([str(x) for x in list(docs_with_problems)[0:10]])))
 
-            # Sort nrec & prec
-            nprec = {k: v for k, v in sorted(nprec.items(), key=lambda item: item[1], reverse=True)}
-            nrec = {k: v for k, v in sorted(nrec.items(), key=lambda item: item[1], reverse=True)}
+            # Sort fns & prec
+            fps = {k: v for k, v in sorted(fps.items(), key=lambda item: item[1], reverse=True)}
+            fns = {k: v for k, v in sorted(fns.items(), key=lambda item: item[1], reverse=True)}
+            tps = {k: v for k, v in sorted(tps.items(), key=lambda item: item[1], reverse=True)}
+
 
             # F1 per concept
-            for cui in byc_tp.keys():
-                prec = byc_tp[cui] / (byc_tp.get(cui, 0) + nprec.get(cui, 0))
-                rec = byc_tp[cui] / (byc_tp.get(cui, 0) + nrec.get(cui, 0))
+            for cui in tps.keys():
+                prec = tps[cui] / (tps.get(cui, 0) + fps.get(cui, 0))
+                rec = tps[cui] / (tps.get(cui, 0) + fns.get(cui, 0))
                 f1 = (prec + rec) / 2
                 cui_prec[cui] = prec
                 cui_rec[cui] = rec
                 cui_f1[cui] = f1
 
 
-            # Get top 20
-            pr_nprec = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, nprec[cui]) for cui in list(nprec.keys())[0:20]]
-            pr_nrec = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, nrec[cui]) for cui in list(nrec.keys())[0:20]]
+            # Get top 10
+            pr_fps = [(self.cdb.cui2pretty_name.get(cui,
+                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, fps[cui]) for cui in list(fps.keys())[0:10]]
+            pr_fns = [(self.cdb.cui2pretty_name.get(cui,
+                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, fns[cui]) for cui in list(fns.keys())[0:10]]
+            pr_tps = [(self.cdb.cui2pretty_name.get(cui,
+                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, tps[cui]) for cui in list(tps.keys())[0:10]]
+
 
             print("\n\nFalse Positives\n")
-            for one in pr_nprec:
+            for one in pr_fps:
                 print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
             print("\n\nFalse Negatives\n")
-            for one in pr_nrec:
+            for one in pr_fns:
                 print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+            print("\n\nTrue Positives\n")
+            for one in pr_tps:
+                print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+            print("*"*110 + "\n")
+
 
         except Exception as e:
             traceback.print_exc()
@@ -292,7 +301,7 @@ class CAT(object):
         self.spacy_cat.TUI_FILTER = _tui_filter
         self.spacy_cat.CUI_FILTER = _cui_filter
 
-        return nprec, nrec, byc_tp, cui_prec, cui_rec, cui_f1
+        return fps, fns, tps, cui_prec, cui_rec, cui_f1
 
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
@@ -358,7 +367,6 @@ class CAT(object):
                                           anneal=anneal,
                                           manually_created=manually_created)
             if epoch % 5 == 0:
-                print("Printing stats.")
                 if print_stats:
                     if test_set:
                         self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters)
