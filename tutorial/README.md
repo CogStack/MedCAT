@@ -1,4 +1,4 @@
-### IN PROGRESS 
+### MedCAT Tutorial
 
 This, in some way, should be a definitive tutorial on how to use MedCAT. The blog posts are there to tell a story with short code snipets and explanations why is something necessary, while the Jupyter Notebooks are for those who don't give a shit about the story.
 
