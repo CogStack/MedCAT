@@ -7,7 +7,7 @@ A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). 
 and contains a very small portion of UMLS (<1%). 
 
 ## Tutorial
-A guide on how to use MedCAT is available in the [/tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder.
+A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder.
 
 
 ### Install using PIP
