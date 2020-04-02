@@ -6,6 +6,9 @@ A simple tool for concept annotation from UMLS/SNOMED or any other source. Paper
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
 and contains a very small portion of UMLS (<1%). 
 
+## Tutorial
+A guide on how to use MedCAT is available in the [/tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder.
+
 
 ### Install using PIP
 1. Install MedCAT 
@@ -18,7 +21,7 @@ and contains a very small portion of UMLS (<1%).
 
 3. Downlad the Vocabulary and CDB from the Models section bellow
 
-4. How to use:
+4. Quickstart:
 ```python
 from medcat.cat import CAT
 from medcat.utils.vocab import Vocab
@@ -34,7 +37,6 @@ cdb.load_dict('<path to the cdb file>')
 
 # create cat
 cat = CAT(cdb=cdb, vocab=vocab)
-cat.train = False
 
 # Test it
 doc = "My simple document with kidney failure"
@@ -43,70 +45,7 @@ doc_spacy = cat(doc)
 doc_spacy._.ents
 # Or to get a json
 doc_json = cat.get_json(doc)
-
-# To have a look at the results:
-from spacy import displacy
-# Note that this will not show all entites, but only the longest ones
-displacy.serve(doc_spacy, style='ent')
-
-# To train - unsupervised, set the train flag to True and run
-#documents through MedCAT
-cat.train = True
-
-# And now run cat again, it will train in the background
-data = [<text>, <text>, ...]
-for text in data:
-  _ = cat(text)
-
-# Save the new trained cdb
-cdb.save_dict(<save_path>)
-
-# Done
 ```
-
-
-### Building a new Concept Database
-
-```python
-from medcat.cat import CAT
-from medcat.utils.vocab import Vocab
-from medcat.cdb import CDB 
-
-vocab = Vocab()
-# Load the vocab model you downloaded
-vocab.load_dict('<path to the vocab file>')
-
-# If you have an existing CDB
-cdb = CDB()
-cdb.load_dict('<path to the cdb file>') 
-
-# You can now add concepts from a CSV file, examples of the files can be found in ./examples
-preparator = PrepareCDB(vocab=vocab)
-csv_paths = ['<path to your csv_file>', '<another one>', ...] 
-# e.g.
-csv_paths = ['./examples/simple_cdb.csv']
-cdb = preparator.prepare_csvs(csv_paths)
-
-# Save the new CDB for later
-cdb.save_dict("<path to a file where it will be saved>")
-# Done
-```
-
-## If building from source, the requirements are
-`python >= 3.5`
-
-All the rest can be instaled using `pip` from the requirements.txt file, by running:
-
-`pip install -r requirements.txt`
-
-
-## Results
-
-| Dataset | SoftF1 | Description |
-| --- | :---: | --- |
-| MedMentions | 0.84 | The whole MedMentions dataset without any modifications or supervised training |
-| MedMentions | 0.828 | MedMentions only for concepts that require disambiguation, or names that map to more CUIs |
-| MedMentions | 0.97 | Medmentions filterd by TUI to only concepts that are a disease |
 
 
 ## Models
