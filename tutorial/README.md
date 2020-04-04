@@ -5,7 +5,7 @@ This, in some way, should be a definitive tutorial on how to use MedCAT. The blo
 
 | Part | Title                                                                       | Google Colab                                                                       | Blog Post |
 |------|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------|-----------|
-| 1    | Introduction                                                                | -                                                                                  | -         |
+| 1    | Introduction                                                                | -                                                                                  | [TDS](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a)         |
 | 2    | Dataset Preparation and Basic Statistics                                    | [Colab](https://colab.research.google.com/drive/1iWvwqdqdSlwaUbAJTQuJNmqRlclKZfVy) | -         |
 | 3.1  | Building a new Concept Database (CDB) and Vocabulary (Vocab)                | [Colab](https://colab.research.google.com/drive/1nz2zMDQ3QrlTgpW7FfGaXeV1ZAtZeOe2) | -         |
 | 3.2  | Unsupervised training and NER+L                                             | [Colab](https://colab.research.google.com/drive/1q29RbHlZoFK7TcvMKITi3ABbE-E_fw30) | -         |
