@@ -44,8 +44,8 @@ class SpacyCat(object):
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
     WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
 
-    MIN_ACC = float(os.getenv('MIN_ACC', 0.1))
-    MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.1))
+    MIN_ACC = float(os.getenv('MIN_ACC', 0.2))
+    MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.2))
     MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 1))
     NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()

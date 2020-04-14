@@ -174,7 +174,7 @@ class CAT(object):
                                 negative=True)
 
 
-    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False):
+    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False):
         tp = 0
         fp = 0
         fn = 0
@@ -202,7 +202,7 @@ class CAT(object):
 
             if use_filters:
                 if 'cuis' in project and len(project['cuis'].strip()) > 0:
-                    cui_filter = [x.strip().upper() for x in project['cuis'].split(",")]
+                    cui_filter = [x.strip() for x in project['cuis'].split(",")]
                 if 'tuis' in project and len(project['tuis'].strip()) > 0:
                     tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
 
@@ -218,27 +218,33 @@ class CAT(object):
                     p_anns = spacy_doc.ents
 
                 anns_norm = []
+                anns_norm_cui = []
                 for ann in anns:
                     if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
                         anns_norm.append((ann['start'], ann['cui']))
+
+                    if ann.get("validated", True):
+                        # This is used to test was someone annotating for this CUI in this document
+                        anns_norm_cui.append(ann['cui'])
                 p_anns_norm = []
                 for ann in p_anns:
                     p_anns_norm.append((ann.start_char, ann._.cui))
 
                 for ann in p_anns_norm:
-                    if ann in anns_norm:
-                        tp += 1
+                    if not use_cui_doc_limit or ann[1] in anns_norm_cui:
+                        if ann in anns_norm:
+                            tp += 1
 
-                        if ann[1] in tps:
-                            tps[ann[1]] += 1
+                            if ann[1] in tps:
+                                tps[ann[1]] += 1
+                            else:
+                                tps[ann[1]] = 1
                         else:
-                            tps[ann[1]] = 1
-                    else:
-                        if ann[1] in fps:
-                            fps[ann[1]] += 1
-                        else:
-                            fps[ann[1]] = 1
-                        fp += 1
+                            if ann[1] in fps:
+                                fps[ann[1]] += 1
+                            else:
+                                fps[ann[1]] = 1
+                            fp += 1
                         docs_with_problems.add(doc['name'])
 
                 for ann in anns_norm:
@@ -305,7 +311,7 @@ class CAT(object):
 
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
-                         anneal=None, print_stats=False, test_set=None, use_filters=False):
+                         anneal=None, print_stats=False, test_set=None, use_filters=False, terminate_last=False, use_cui_doc_limit=False):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -316,9 +322,9 @@ class CAT(object):
 
         if print_stats:
             if test_set:
-                self._print_stats(test_set, use_filters=use_filters)
+                self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
             else:
-                self._print_stats(data, use_filters=use_filters)
+                self._print_stats(data, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
 
         if reset_cdb:
             self.cdb = CDB()
@@ -357,7 +363,9 @@ class CAT(object):
                             start = ann['start']
                             end = ann['end']
                             deleted = ann.get('deleted', False)
-                            manually_created = ann.get('manually_created', False)
+                            manually_created = False
+                            if ann.get('manually_created', False) or ann.get('alternative', False):
+                                manually_created = True
                             self.add_name(cui=cui,
                                           source_val=ann['value'],
                                           spacy_doc=spacy_doc,
@@ -366,12 +374,20 @@ class CAT(object):
                                           lr=lr,
                                           anneal=anneal,
                                           manually_created=manually_created)
+            if terminate_last:
+                # Remove entites that were terminated, but after all training is done
+                for project in data['projects']:
+                    for doc in project['documents']:
+                        for ann in doc['annotations']:
+                            if ann.get('killed', False):
+                                self.unlink_concept_name(ann['cui'], ann['value'])
+
             if epoch % 5 == 0:
                 if print_stats:
                     if test_set:
-                        self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters)
+                        self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
                     else:
-                        self._print_stats(data, epoch=epoch+1, use_filters=use_filters)
+                        self._print_stats(data, epoch=epoch+1, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
 
 
 
