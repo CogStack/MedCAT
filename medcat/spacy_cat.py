@@ -33,13 +33,12 @@ class SpacyCat(object):
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 3))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 30000))
     MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
-    # Just to be sure
-    MIN_CUI_COUNT = max(MIN_CUI_COUNT_STRICT, MIN_CUI_COUNT)
-    UPDATE_COO = os.getenv('UPDATE_COO', "false").lower() == 'true'
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
+
     TUI_FILTER = os.getenv('TUI_FILTER', None)
     CUI_FILTER = os.getenv('CUI_FILTER', None)
+
     MAX_SKIP_TKN = int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
     WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
@@ -481,10 +480,6 @@ class SpacyCat(object):
         if not self.train or self.force_train:
             self.disambiguate(self.to_disamb)
 
-        # Add coocurances
-        if not self.train and self.UPDATE_COO:
-            self.cdb.add_coos(list(self._cuis))
-
         # Create main annotations
         self._create_main_ann(doc)
 
@@ -551,11 +546,6 @@ class SpacyCat(object):
                             break
 
             if len(cuis) > 0 and do_disamb:
-                if len(cuis) > 1:
-                    _min_acc = self.MIN_ACC
-                else:
-                    _min_acc = self.MIN_ACC_TH
-
                 accs = []
                 cnts = []
                 MIN_COUNT = self.MIN_CUI_COUNT_STRICT
@@ -592,6 +582,6 @@ class SpacyCat(object):
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]
-                # Add only if acc > _min_acc 
-                if acc > _min_acc:
+                # Add only if acc > self.MIN_ACC 
+                if acc > self.MIN_ACC:
                     self._add_ann(cui, tkns[0].doc, tkns, acc, is_disamb=True)
