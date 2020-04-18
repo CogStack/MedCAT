@@ -398,3 +398,66 @@ def check_scispacy():
         pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz'
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
 
+
+
+
+def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, reset_cui_count=True, test_size=0.1):
+    from medcat.cat import CAT
+    from medcat.utils.vocab import Vocab
+    from medcat.cdb import CDB
+    import json
+
+    f1s = {}
+    ps = {}
+    rs = {}
+    tps = {}
+    fns = {}
+    fps = {}
+    cui_counts = {}
+    for i in range(cv):
+        cdb = CDB()
+        cdb.load_dict(cdb_path)
+        vocab = Vocab()
+        vocab.load_dict(path=vocab_path)
+        cat = CAT(cdb, vocab=vocab)
+        cat.train = False
+        cat.spacy_cat.MIN_ACC = 0.30
+        cat.spacy_cat.MIN_ACC_TH = 0.30
+
+        fp, fn, tp, p, r, f1, cui_counts = cat.train_supervised(data_path=data_path,
+                             lr=1, nepochs=nepochs, anneal=True, print_stats=True, use_filters=True, reset_cui_count=reset_cui_count,
+                             terminate_last=True, test_size=test_size)
+
+        for key in f1.keys():
+            if key in f1s:
+                f1s[key].append(f1[key])
+            else:
+                f1s[key] = [f1[key]]
+
+            if key in ps:
+                ps[key].append(p[key])
+            else:
+                ps[key] = [p[key]]
+
+            if key in rs:
+                rs[key].append(r[key])
+            else:
+                rs[key] = [r[key]]
+
+            if key in tps:
+                tps[key].append(tp.get(key, 0))
+            else:
+                tps[key] = [tp.get(key, 0)]
+
+            if key in fps:
+                fps[key].append(fp.get(key, 0))
+            else:
+                fps[key] = [fp.get(key, 0)]
+
+            if key in fns:
+                fns[key].append(fn.get(key, 0))
+            else:
+                fns[key] = [fn.get(key, 0)]
+
+
+    return fps, fns, tps, ps, rs, f1s, cui_counts

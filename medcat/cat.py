@@ -13,35 +13,56 @@ from medcat.utils.spacy_pipe import SpacyPipe
 from medcat.preprocessing.cleaners import spacy_tag_punct
 from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
 from medcat.utils.loggers import basic_logger
+from medcat.utils.data_utils import make_mc_train_test
 import sys, traceback
 
 log = basic_logger("CAT")
 
 class CAT(object):
-    """ Annotate a dataset
-    """
-    SEPARATOR = ""
-    NESTED_ENTITIES = os.getenv("NESTED_ENTITIES", 'false').lower() == 'true'
-    KEEP_PUNCT = os.getenv("KEEP_PUNCT", ":|.").split("|")
+    r'''
+    The main MedCAT class used to annotate documents, it is built on top of spaCy
+    and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
+    be used as a spacy nlp model.
 
-    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[]):
+    Args:
+        cdb (medcat.cdb.CDB):
+            The concept database that will be used for NER+L
+        vocab (medcat.utils.vocab.Vocab, optional):
+            Vocabulary used for vector embeddings and spelling. Default: None
+        skip_stopwords (bool, optional):
+            If True the stopwords will be ignored and not detected in the pipeline.
+            Default: True
+        meta_cats (list of medcat.meta_cat.MetaCAT, optional):
+            A list of models that will be applied sequentially on each
+            detected annotation.
+
+    Examples:
+        >>>cat = CAT(cdb, vocab)
+        >>>spacy_doc = cat("Put some text here")
+        >>>print(spacy_doc.ents) # Detected entites
+    '''
+    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[], config={}):
         self.cdb = cdb
         self.vocab = vocab
-        # Build the required spacy pipeline
+        self.config = config
+
+        # Build the spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)
+
         #self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct,
                                                  skip_stopwords=skip_stopwords,
-                                                 keep_punct=self.KEEP_PUNCT))
+                                                 keep_punct=self.config.get("keep_punct", [':', '.'])))
 
-        # Add spell checker pipe
+        # Add spell checker
         self.spell_checker = CustomSpellChecker(cdb_vocab=self.cdb.vocab, data_vocab=self.vocab)
         self.nlp.add_spell_checker(spell_checker=self.spell_checker)
 
-        # Add cat
+        # Add them cat class that does entity detection
         self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
+        # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
         for meta_cat in meta_cats:
             self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
@@ -49,6 +70,16 @@ class CAT(object):
 
 
     def __call__(self, text):
+        r'''
+        Push the text through the pipeline.
+
+        Args:
+            text (string):
+                The text to be annotated
+
+        Returns:
+            A spacy document with the extracted entities
+        '''
         return self.nlp(text)
 
 
@@ -184,6 +215,7 @@ class CAT(object):
         cui_prec = {}
         cui_rec = {}
         cui_f1 = {}
+        cui_counts = {}
 
         docs_with_problems = set()
         if self.spacy_cat.TUI_FILTER is None:
@@ -220,12 +252,20 @@ class CAT(object):
                 anns_norm = []
                 anns_norm_cui = []
                 for ann in anns:
-                    if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
-                        anns_norm.append((ann['start'], ann['cui']))
+                    if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
+                       (tui_filter is not None and self.cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
+                        if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
+                            anns_norm.append((ann['start'], ann['cui']))
 
-                    if ann.get("validated", True):
-                        # This is used to test was someone annotating for this CUI in this document
-                        anns_norm_cui.append(ann['cui'])
+                        if ann.get("validated", True):
+                            # This is used to test was someone annotating for this CUI in this document
+                            anns_norm_cui.append(ann['cui'])
+
+                            if ann['cui'] in cui_counts:
+                                cui_counts[ann['cui']] += 1
+                            else:
+                                cui_counts[ann['cui']] = 1
+
                 p_anns_norm = []
                 for ann in p_anns:
                     p_anns_norm.append((ann.start_char, ann._.cui))
@@ -307,11 +347,12 @@ class CAT(object):
         self.spacy_cat.TUI_FILTER = _tui_filter
         self.spacy_cat.CUI_FILTER = _cui_filter
 
-        return fps, fns, tps, cui_prec, cui_rec, cui_f1
+        return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts
 
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
-                         anneal=None, print_stats=False, test_set=None, use_filters=False, terminate_last=False, use_cui_doc_limit=False):
+                         anneal=None, print_stats=True, use_filters=False, terminate_last=False, use_cui_doc_limit=False,
+                         test_size=0, seed=17):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -319,12 +360,24 @@ class CAT(object):
         """
         self.train = False
         data = json.load(open(data_path))
+        cui_counts = {}
+
+        if test_size == 0:
+            test_set = data
+            train_set = data
+        else:
+            train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, seed=seed, test_size=test_size)
+
+            # Add all names, as we could have some in test set
+            for project in data['projects']:
+                for document in project['documents']:
+                    for ann in document['annotations']:
+                        if not ann.get('killed', False):
+                            self.add_name(ann['cui'], ann['value'])
 
         if print_stats:
-            if test_set:
-                self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
-            else:
-                self._print_stats(data, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
+            self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
+
 
         if reset_cdb:
             self.cdb = CDB()
@@ -334,7 +387,7 @@ class CAT(object):
         if reset_cui_count:
             # Get all CUIs
             cuis = []
-            for project in data['projects']:
+            for project in train_set['projects']:
                 for doc in project['documents']:
                     for ann in doc['annotations']:
                         cuis.append(ann['cui'])
@@ -343,7 +396,7 @@ class CAT(object):
                     self.cdb.cui_count[cui] = 10
 
         # Remove entites that were terminated
-        for project in data['projects']:
+        for project in train_set['projects']:
             for doc in project['documents']:
                 for ann in doc['annotations']:
                     if ann.get('killed', False):
@@ -354,7 +407,7 @@ class CAT(object):
             log.info("Starting epoch: {}".format(epoch))
             # Print acc before training
 
-            for project in data['projects']:
+            for project in train_set['projects']:
                 for i_doc, doc in enumerate(project['documents']):
                     spacy_doc = self(doc['text'])
                     for ann in doc['annotations']:
@@ -376,7 +429,7 @@ class CAT(object):
                                           manually_created=manually_created)
             if terminate_last:
                 # Remove entites that were terminated, but after all training is done
-                for project in data['projects']:
+                for project in train_set['projects']:
                     for doc in project['documents']:
                         for ann in doc['annotations']:
                             if ann.get('killed', False):
@@ -384,12 +437,10 @@ class CAT(object):
 
             if epoch % 5 == 0:
                 if print_stats:
-                    if test_set:
-                        self._print_stats(test_set, epoch=epoch+1, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
-                    else:
-                        self._print_stats(data, epoch=epoch+1, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
-
-
+                    fp, fn, tp, p, r, f1, cui_counts = self._print_stats(test_set, epoch=epoch+1,
+                                                             use_filters=use_filters,
+                                                             use_cui_doc_limit=use_cui_doc_limit)
+        return fp, fn, tp, p, r, f1, cui_counts
 
     @property
     def train(self):
@@ -443,7 +494,7 @@ class CAT(object):
             cat_filter(doc, self)
 
         out_ent = {}
-        if self.NESTED_ENTITIES:
+        if self.config.get('nested_entities', False):
             _ents = doc._.ents
         else:
             _ents = doc.ents
