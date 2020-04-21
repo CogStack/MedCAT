@@ -533,10 +533,11 @@ class CAT(object):
                     out_ent['snomed'] = ''
 
                 if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                    out_ent['meta_anns'] = []
+                    out_ent['meta_anns'] = {}
+
                     for key in ent._.meta_anns.keys():
                         one = {'name': key, 'value': ent._.meta_anns[key]}
-                        out_ent['meta_anns'].append(one) 
+                        out_ent['meta_anns'][key] = one
 
                 out.append(dict(out_ent))
             else:
