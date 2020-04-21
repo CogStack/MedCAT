@@ -49,7 +49,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
                                 tkns = tokenizer.encode(text[_start:_end]).tokens
 
                             # If the annotation is validated
-                            for meta_ann in ann.get('meta_anns', []):
+                            for meta_ann in ann.get('meta_anns', {}).values():
                                 name = meta_ann['name']
                                 value = meta_ann['value']
 
