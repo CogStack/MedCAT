@@ -48,8 +48,17 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
                                 _end = min(len(text), end + cntx_right)
                                 tkns = tokenizer.encode(text[_start:_end]).tokens
 
+
+                            # Backward compatibility if meta_anns is a list vs dict in the new approach
+                            meta_anns = []
+                            if 'meta_anns' in ann:
+                                meta_anns = ann['meta_anns']
+
+                                if type(meta_anns) == dict:
+                                    meta_anns = meta_anns.values()
+
                             # If the annotation is validated
-                            for meta_ann in ann.get('meta_anns', {}).values():
+                            for meta_ann in meta_anns:
                                 name = meta_ann['name']
                                 value = meta_ann['value']
 
