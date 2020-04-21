@@ -411,6 +411,7 @@ class CDB(object):
         self.cui_disamb_always = {}
         self.reset_coo_matrix()
 
+
     def filter_by_tui(self, tuis_to_keep):
         all_cuis = [c for c_list in [self.tui2cuis[tui] for tui in tuis_to_keep] for c in c_list]
         self.filter_by_cui(all_cuis)
