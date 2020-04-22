@@ -402,6 +402,52 @@ class CDB(object):
             self.__dict__ = pickle.load(f)
 
 
+    def import_training(self, cdb, overwrite=True):
+        """
+        This will import vector embeddings from another CDB. IMPORTANT it will not
+        import name maps (cui 2 name).
+
+        Args:
+            cdb (medcat.cdb.CDB):
+                Concept database from which to import training vectors
+            overwrite (boolean):
+                If True all training data in the existing CDB will be overwritten, else
+                the average between the two training vectors will be taken.
+
+        Examples:
+            >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
+        """
+        # Import vectors and counts
+        for cui in self.cui2names:
+            if cui in cdb.cui_count:
+                if overwrite or cui not in self.cui_count:
+                    self.cui_count[cui] = cdb.cui_count[cui]
+                else:
+                    self.cui_count[cui] = (self.cui_count[cui] + cdb.cui_count[cui]) / 2
+
+            if cui in cdb.cui2context_vec:
+                if overwrite or cui not in self.cui2context_vec:
+                    self.cui2context_vec[cui] = cdb.cui2context_vec[cui]
+                else:
+                    self.cui2context_vec[cui] = (cdb.cui2context_vec[cui] + self.cui2context_vec[cui]) / 2
+
+
+            if cui in cdb.cui2context_vec_short:
+                if overwrite or cui not in self.cui2context_vec_short:
+                    self.cui2context_vec_short[cui] = cdb.cui2context_vec_short[cui]
+                else:
+                    self.cui2context_vec_short[cui] = (cdb.cui2context_vec_short[cui] + self.cui2context_vec_short[cui]) / 2
+
+            if cui in cdb.cui2context_vec_long:
+                if overwrite or cui not in self.cui2context_vec_long:
+                    self.cui2context_vec_long[cui] = cdb.cui2context_vec_long[cui]
+                else:
+                    self.cui2context_vec_long[cui] = (cdb.cui2context_vec_long[cui] + self.cui2context_vec_long[cui]) / 2 
+
+            if cui in cdb.cui_disamb_always:
+                self.cui_disamb_always[cui] = cdb.cui_disamb_always
+
+
     def reset_training(self):
         self.cui_count = {}
         self.cui2context_vec = {}
