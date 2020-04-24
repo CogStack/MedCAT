@@ -162,6 +162,13 @@ def clean_snt(text):
 
     return text
 
+def clean_snomed_name(text):
+    # Remove () from end of string
+    text = text.strip()
+    text = re.sub("\([^\)]*\)$", " ", text).strip()
+
+    return text
+
 
 def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=[]):
     for token in doc:

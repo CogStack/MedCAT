@@ -36,6 +36,15 @@ class CAT(object):
             A list of models that will be applied sequentially on each
             detected annotation.
 
+    Attributes (limited):
+        cdb (medcat.cdb.CDB):
+            Concept database used with this CAT instance, please do not assign
+            this value directly.
+        vocab (medcat.utils.vocab.Vocab):
+            The vocabulary object used with this instance, please do not assign
+            this value directly.
+        config - WILL BE REMOVED - TEMPORARY PLACEHOLDER
+
     Examples:
         >>>cat = CAT(cdb, vocab)
         >>>spacy_doc = cat("Put some text here")
@@ -92,6 +101,23 @@ class CAT(object):
 
 
     def unlink_concept_name(self, cui, name, full_unlink=True):
+        r'''
+        Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
+        the Concept Database (CDB). As a consequence medcat will never again link the `name`
+        to this CUI - meaning the name will not be detected as a concept in the future.
+
+        Args:
+            cui (str):
+                The CUI from which the `name` will be removed
+            name (str):
+                The span of text to be removed from the linking dictionary
+            full_unlink (boolean):
+                If True, the `name` will not only be removed from the given `cui` but from
+                each concept in the database that is associated with this name.
+        Examples:
+            >>> # To never again link C0020538 to HTN
+            >>> cat.unlink_concept_name('C0020538', 'htn', False)
+        '''
         names = [name, name.lower()]
         # Unlink a concept from a name
         p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp, version='clean')
@@ -126,6 +152,29 @@ class CAT(object):
 
 
     def _add_name(self, cui, source_val, is_pref_name, only_new=False, desc=None, tui=None):
+        r'''
+        Please do not use directly. This function will add a name to a CUI (existing or new).
+
+        Args:
+            cui (str):
+                The CUI to which to add the name
+            source_val (str):
+                The `name` or span or source_value that will be linked to the cui
+            is_pref_name (boolean):
+                Is this source_val the prefered `name` for this CUI (concept)
+            only_new (bool):
+                Only add the name if it does not exist in the current CDB and is not linked
+                to any concept (CUI) in the current CDB.
+            desc (str):
+                Description for this concept
+            tui (str):
+                Semenantic Type identifer for this concept, should be a TUI that exisit in the
+                current CDB. Have a look at cdb.tui2names - for a list of all existing TUIs
+                in the current CDB.
+
+        Examples:
+            Do not use.
+        '''
         onto = 'def'
         all_cuis = []
 
@@ -174,13 +223,46 @@ class CAT(object):
     def add_name(self, cui, source_val, text=None, is_pref_name=False, tkn_inds=None, text_inds=None,
                  spacy_doc=None, lr=None, anneal=None, negative=False, only_new=False, desc=None, tui=None,
                  manually_created=False):
-        """ Adds a new concept or appends the name to an existing concept
-        if the cui already exists in the DB.
+        r'''
+        This function will add a `name` (source_val) to a CUI (existing or new). It will teach medcat
+        that this source_val is linked to this CUI.
 
-        cui:  Concept uniqe ID
-        source_val:  Source value in the text
-        text:  the text of a document where source_val was found
-        """
+        Args:
+            cui (str):
+                The CUI to which to add the name
+            source_val (str):
+                The `name` or span or source_value that will be linked to the cui
+            text (str, optional):
+                Text in which an example of this source_val can be found. Used for supervised/online
+                training. This is basically one sample in a dataset for supervised training.
+            is_pref_name (boolean):
+                Is this source_val the prefered `name` for this CUI (concept)
+            tkn_inds (list of ints, optional):
+                Should be in the form: [3, 4, 5, ...]. This should be used only if you are providing a spacy_doc also.
+                It gives the indicies of the tokens in a spacy document where the source_val can be found.
+            text_inds (list, optional):
+                A list that has only two values the start index for this `source_val` in the `text` and the end index.
+                Used if you are not providing a spacy_doc. But are providing a `text` - it is optional and if not provided
+                medcat will try to automatically find the start and end index.
+            spacy_doc ()
+            TODO:
+            lr (float):
+                The learning rate that will be used if you are providing the `text` that will be used for supervised/active
+                learning.
+
+            only_new (bool):
+                Only add the name if it does not exist in the current CDB and is not linked
+                to any concept (CUI) in the current CDB.
+            desc (str):
+                Description for this concept
+            tui (str):
+                Semenantic Type identifer for this concept, should be a TUI that exisit in the
+                current CDB. Have a look at cdb.tui2names - for a list of all existing TUIs
+                in the current CDB.
+
+        Examples:
+            Do not use.
+        '''
         # First add the name, get bac all cuis that link to this name
         all_cuis = self._add_name(cui, source_val, is_pref_name, only_new=only_new, desc=desc, tui=tui)
 
@@ -352,7 +434,7 @@ class CAT(object):
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
                          anneal=None, print_stats=True, use_filters=False, terminate_last=False, use_cui_doc_limit=False,
-                         test_size=0, seed=17):
+                         test_size=0, seed=17, force_manually_created=False):
         """ Given data learns vector embeddings for concepts
         in a suppervised way.
 
@@ -417,7 +499,7 @@ class CAT(object):
                             end = ann['end']
                             deleted = ann.get('deleted', False)
                             manually_created = False
-                            if ann.get('manually_created', False) or ann.get('alternative', False):
+                            if force_manually_created or ann.get('manually_created', False) or ann.get('alternative', False):
                                 manually_created = True
                             self.add_name(cui=cui,
                                           source_val=ann['value'],

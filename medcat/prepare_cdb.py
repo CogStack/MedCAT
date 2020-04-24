@@ -25,7 +25,8 @@ class PrepareCDB(object):
     NAME_SEPARATOR = "|"
     CONCEPT_LENGTH_LIMIT = 20
     SKIP_STOPWORDS = False
-    VERSIONS = ['CLEAN', 'RAW']
+    # It is important that CLEAN is last
+    VERSIONS = ['RAW', 'CLEAN']
 
     def __init__(self, vocab=None, pretrained_cdb=None, word_tokenizer=None):
         self.vocab = vocab
