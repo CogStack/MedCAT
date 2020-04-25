@@ -55,22 +55,43 @@ class CDB(object):
                     is_pref_name=False, tui=None, pretty_name='',
                     desc=None, tokens_vocab=None, original_name=None,
                     is_unique=None):
-        """ Add a concept to internal CDB representation
+        r'''
+        Add a concept to internal Concept Database (CDB). Depending on what you are providing
+        this will add a large number of properties for each concept.
 
-        cui:  Identifier
-        name:  Concept name
-        onto:  Ontology from which the concept is taken
-        tokens:  A list of words existing in the name
-        snames:  if name is "heart attack" snames is
-                 ['heart', 'heart attack']
-        isupper:  If name in the original ontology is upper_cased
-        is_pref_name:  If this is the prefered name for this CUI
-        tui:  Semantic type
-        pretty_name:  Pretty name for this concept
-        desc:  Description of this concept - can take a lot of space
-        tokens_vocab:  Tokens that should be added to the vocabulary, usually not normalized
-        original_name: As in UMLS or any other vocab
-        """
+        Args:
+            cui (str):
+                Concept ID or unique identifer in this database, all concepts that have
+                the same CUI will be merged internally.
+
+            name (str):
+                Name for this concept, or the value that if found in free text can be linked to this concept.
+            onto (str):
+                Ontology from which the concept is taken (e.g. SNOMEDCT)
+            tokens (str, list of str):
+                Tokenized version of the name. Usually done vai spacy
+            snames (str, list of str):
+                Subnames of this name, have a look at medcat.prepare_cdb.PrepareCDB for details on how
+                to provide `snames`.Example: if name is "heart attack" snames is ['heart', 'heart attack']
+            isupper (boolean, optional):
+                If name in the original ontology is upper_cased
+            is_pref_name (boolean, optional):
+                If this is the prefered name for this CUI
+            tui (str, optional):
+                Semantic type identifier (have a look at TUIs in UMLS or SNOMED-CT)
+            pretty_name (str, optional):
+                Pretty name for this concept, really just the pretty name for the concept if it exists.
+            desc (str, optinal):
+                Description of this concept.
+            tokens_vocab (list of str, optional):
+                Tokens that should be added to the vocabulary, usually not normalized version of tokens.
+            original_name (str, optinal):
+                The orignal name from the source vocabulary, without any normalization.
+            is_unique (boolean, optional):
+                If set to False - you can require disambiguation for a name even if it is unique inside
+                of the current CDB. If set to True - you are forcing medcat to make a decision without
+                disambiguation even if it is required. Do not set this arg unless you are sure.
+        '''
         # Add the info property
         if cui not in self.cui2info:
             self.cui2info[cui] = {}
@@ -403,9 +424,9 @@ class CDB(object):
 
 
     def import_training(self, cdb, overwrite=True):
-        """
-        This will import vector embeddings from another CDB. IMPORTANT it will not
-        import name maps (cui 2 name).
+        r'''
+        This will import vector embeddings from another CDB. No new concept swill be added.
+        IMPORTANT it will not import name maps (cui2name or name2cui or ...).
 
         Args:
             cdb (medcat.cdb.CDB):
@@ -416,7 +437,7 @@ class CDB(object):
 
         Examples:
             >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
-        """
+        '''
         # Import vectors and counts
         for cui in self.cui2names:
             if cui in cdb.cui_count:
@@ -448,7 +469,28 @@ class CDB(object):
                 self.cui_disamb_always[cui] = cdb.cui_disamb_always
 
 
+    def reset_cui_count(self, n=10):
+        r'''
+        Reset the CUI count for all concepts that received training, used when starting new unsupervised training
+        or for suppervised with annealing.
+
+        Args:
+            n (int, optional):
+                This will be set as the CUI count for all cuis in this CDB.
+
+        Examples:
+            >>> cdb.reset_cui_count()
+        '''
+        for cui in self.cui_count.keys():
+            self.cui_count[cui] = n
+
+
     def reset_training(self):
+        r'''
+        Will remove all training efforts - in other words all embeddings that are learnt
+        for concepts in the current CDB. Please note that this does not remove synonyms (names) that were
+        potentially added during supervised/online learning.
+        '''
         self.cui_count = {}
         self.cui2context_vec = {}
         self.cui2context_vec_short = {}
