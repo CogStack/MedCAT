@@ -380,10 +380,16 @@ class CAT(object):
                             # This is used to test was someone annotating for this CUI in this document
                             anns_norm_cui.append(ann['cui'])
 
-                            if ann['cui'] in cui_counts:
-                                cui_counts[ann['cui']] += 1
+                            if use_groups:
+                                # If there is no group use the CUI
+                                metrics_key = self.cdb.cui2info.get(ann['cui'], {}).get("group", ann['cui'])
                             else:
-                                cui_counts[ann['cui']] = 1
+                                metrics_key = ann['cui']
+
+                            if metrics_key in cui_counts:
+                                cui_counts[metrics_key] += 1
+                            else:
+                                cui_counts[metrics_key] = 1
 
                 p_anns_norm = []
                 for ann in p_anns:
@@ -462,13 +468,13 @@ class CAT(object):
 
             print("\n\nFalse Positives\n")
             for one in pr_fps:
-                print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+                print("{:70} - {:20} - {:10}".format(str(one[0])[0:69], str(one[1])[0:19], one[2]))
             print("\n\nFalse Negatives\n")
             for one in pr_fns:
-                print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+                print("{:70} - {:20} - {:10}".format(str(one[0])[0:69], str(one[1])[0:19], one[2]))
             print("\n\nTrue Positives\n")
             for one in pr_tps:
-                print("{:70} - {:20} - {:10}".format(one[0], one[1], one[2]))
+                print("{:70} - {:20} - {:10}".format(str(one[0])[0:69], str(one[1])[0:19], one[2]))
             print("*"*110 + "\n")
 
 
@@ -543,6 +549,8 @@ class CAT(object):
             cui_counts (dict):
                 Number of occurrence for each CUI
         '''
+        fp = fn = tp = p = r = f1 = cui_counts = {}
+
         self.train = False
         data = json.load(open(data_path))
         cui_counts = {}
