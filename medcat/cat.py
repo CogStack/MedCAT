@@ -29,7 +29,7 @@ class CAT(object):
             The concept database that will be used for NER+L
         vocab (medcat.utils.vocab.Vocab, optional):
             Vocabulary used for vector embeddings and spelling. Default: None
-        skip_stopwords (bool, optional):
+        skip_stopwords (bool):
             If True the stopwords will be ignored and not detected in the pipeline.
             Default: True
         meta_cats (list of medcat.meta_cat.MetaCAT, optional):
@@ -287,7 +287,44 @@ class CAT(object):
                                 negative=True)
 
 
-    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False):
+    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
+                     use_groups=False):
+        r'''
+        Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
+
+        Args:
+            data (list of dict):
+                The json object that we get from MedCATtrainer on export.
+            epoch (int):
+                Used during training, so we know what epoch is it.
+            use_filters (boolean):
+                Each project in medcattrainer can have filters, do we want to respect those filters
+                when calculating metrics.
+            use_overlaps (boolean):
+                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+            use_cui_doc_limit (boolean):
+                If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
+                if the document was annotated for that CUI. Useful in very specific situations when during the annotation
+                process the set of CUIs changed.
+            use_groups (boolean):
+                If True concepts that have groups will be combined and stats will be reported on groups.
+
+        Returns:
+            fps (dict):
+                False positives for each CUI
+            fns (dict):
+                False negatives for each CUI
+            tps (dict):
+                True positives for each CUI
+            cui_prec (dict):
+                Precision for each CUI
+            cui_rec (dict):
+                Recall for each CUI
+            cui_f1 (dict):
+                F1 for each CUI
+            cui_counts (dict):
+                Number of occurrence for each CUI
+        '''
         tp = 0
         fp = 0
         fn = 0
@@ -354,30 +391,42 @@ class CAT(object):
 
                 for ann in p_anns_norm:
                     if not use_cui_doc_limit or ann[1] in anns_norm_cui:
+                        if use_groups:
+                            # If there is no group use the CUI
+                            metrics_key = self.cdb.cui2info.get(ann[1], {}).get("group", ann[1])
+                        else:
+                            metrics_key = ann[1]
+
                         if ann in anns_norm:
                             tp += 1
 
-                            if ann[1] in tps:
-                                tps[ann[1]] += 1
+                            if metrics_key in tps:
+                                tps[metrics_key] += 1
                             else:
-                                tps[ann[1]] = 1
+                                tps[metrics_key] = 1
                         else:
-                            if ann[1] in fps:
-                                fps[ann[1]] += 1
+                            if metrics_key in fps:
+                                fps[metrics_key] += 1
                             else:
-                                fps[ann[1]] = 1
+                                fps[metrics_key] = 1
                             fp += 1
                         docs_with_problems.add(doc['name'])
 
                 for ann in anns_norm:
                     if ann not in p_anns_norm:
+                        if use_groups:
+                            # If there is no group use the CUI
+                            metrics_key = self.cdb.cui2info.get(ann[1], {}).get("group", ann[1])
+                        else:
+                            metrics_key = ann[1]
+
                         fn += 1
                         docs_with_problems.add(doc['name'])
 
-                        if ann[1] in fns:
-                            fns[ann[1]] += 1
+                        if metrics_key in fns:
+                            fns[metrics_key] += 1
                         else:
-                            fns[ann[1]] = 1
+                            fns[metrics_key] = 1
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
@@ -404,11 +453,11 @@ class CAT(object):
 
             # Get top 10
             pr_fps = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, fps[cui]) for cui in list(fps.keys())[0:10]]
+                list(self.cdb.cui2original_names.get(cui, [cui]))[0]), cui, fps[cui]) for cui in list(fps.keys())[0:10]]
             pr_fns = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, fns[cui]) for cui in list(fns.keys())[0:10]]
+                list(self.cdb.cui2original_names.get(cui, [cui]))[0]), cui, fns[cui]) for cui in list(fns.keys())[0:10]]
             pr_tps = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, ["UNK"]))[0]), cui, tps[cui]) for cui in list(tps.keys())[0:10]]
+                list(self.cdb.cui2original_names.get(cui, [cui]))[0]), cui, tps[cui]) for cui in list(tps.keys())[0:10]]
 
 
             print("\n\nFalse Positives\n")
@@ -433,13 +482,67 @@ class CAT(object):
 
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
-                         anneal=None, print_stats=True, use_filters=False, terminate_last=False, use_cui_doc_limit=False,
-                         test_size=0, seed=17, force_manually_created=False):
-        """ Given data learns vector embeddings for concepts
-        in a suppervised way.
+                         anneal=None, print_stats=True, use_filters=False, terminate_last=False, use_overlaps=False,
+                         use_cui_doc_limit=False, test_size=0, force_manually_created=False, use_groups=False):
+        r'''
+        Run supervised training on a dataset from MedCATtrainer.
 
-        data_path:  path to data in json format
-        """
+        Args:
+            data_path (str):
+                The path to the json file that we get from MedCATtrainer on export.
+            reset_cdb (boolean):
+                This will remove all concepts from the existing CDB and build a new CDB based on the
+                concepts that appear in the training data. It will be impossible to get back the removed
+                concepts.
+            reset_cui_count (boolean):
+                Used for training with weight_decay (annealing). Each concept has a count that is there
+                from the beginning of the CDB, that count is used for annealing. Resetting the count will
+                significantly incrase the training impact. This will reset the count only for concepts
+                that exist in the the training data.
+            nepochs (int):
+                Number of epochs for which to run the training.
+            lr (int):
+                If set it will overwrite the global LR from config.
+            anneal (boolean):
+                If true annealing will be used when training.
+            print_stats (boolean):
+                If true stats will be printed during training.
+            use_filters (boolean):
+                Each project in medcattrainer can have filters, do we want to respect those filters
+                when calculating metrics.
+            terminate_last (boolean):
+                If true, concept termination will be done after all training.
+            use_overlaps (boolean):
+                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+            use_cui_doc_limit (boolean):
+                If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
+                if the document was annotated for that CUI. Useful in very specific situations when during the annotation
+                process the set of CUIs changed.
+            test_size (float):
+                If > 0 the data set will be split into train test based on this ration. Should be between 0 and 1.
+                Usually 0.1 is fine.
+            force_manually_created (float):
+                Check add_name for more details, if true all concepts in the dataset will be treated as manually
+                created.
+            use_groups (boolean):
+                If True concepts that have groups will be combined and stats will be reported on groups.
+
+        Returns:
+            fp (dict):
+                False positives for each CUI
+            fn (dict):
+                False negatives for each CUI
+            tp (dict):
+                True positives for each CUI
+            p (dict):
+                Precision for each CUI
+            r (dict):
+                Recall for each CUI
+            f1 (dict):
+                F1 for each CUI
+            cui_counts (dict):
+                Number of occurrence for each CUI
+        '''
         self.train = False
         data = json.load(open(data_path))
         cui_counts = {}
@@ -448,18 +551,11 @@ class CAT(object):
             test_set = data
             train_set = data
         else:
-            train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, seed=seed, test_size=test_size)
-
-            # Add all names, as we could have some in test set
-            for project in data['projects']:
-                for document in project['documents']:
-                    for ann in document['annotations']:
-                        if not ann.get('killed', False):
-                            self.add_name(ann['cui'], ann['value'])
+            train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
 
         if print_stats:
-            self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit)
-
+            self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
+                    use_groups=use_groups)
 
         if reset_cdb:
             self.cdb = CDB()
@@ -521,7 +617,9 @@ class CAT(object):
                 if print_stats:
                     fp, fn, tp, p, r, f1, cui_counts = self._print_stats(test_set, epoch=epoch+1,
                                                              use_filters=use_filters,
-                                                             use_cui_doc_limit=use_cui_doc_limit)
+                                                             use_cui_doc_limit=use_cui_doc_limit,
+                                                             use_overlaps=use_overlaps,
+                                                             use_groups=use_groups)
         return fp, fn, tp, p, r, f1, cui_counts
 
     @property
@@ -584,6 +682,7 @@ class CAT(object):
         for ind, ent in enumerate(_ents):
             cui = str(ent._.cui)
             if not only_cui:
+                out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(cui, '')
                 out_ent['cui'] = cui
                 out_ent['tui'] = str(ent._.tui)
                 out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
@@ -591,28 +690,7 @@ class CAT(object):
                 out_ent['acc'] = str(ent._.acc)
                 out_ent['start'] = ent.start_char
                 out_ent['end'] = ent.end_char
-                out_ent['id'] = str(ent._.id)
-                out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(cui, '')
-
-                if cui in self.cdb.cui2info and 'icd10' in self.cdb.cui2info[cui]:
-                    icds = []
-                    for icd10 in self.cdb.cui2info[cui]['icd10']:
-                        icds.append(str(icd10['chapter']))
-                    out_ent['icd10'] = ",".join(icds)
-                else:
-                    out_ent['icd10'] = ""
-
-                if cui in self.cdb.cui2info and 'umls' in self.cdb.cui2info[cui]:
-                    umls = [str(u) for u in self.cdb.cui2info[cui]['umls']]
-                    out_ent['umls'] = ",".join(umls)
-                else:
-                    out_ent['umls'] = ''
-
-                if cui in self.cdb.cui2info and 'snomed' in self.cdb.cui2info[cui]:
-                    snomed = [str(u) for u in self.cdb.cui2info[cui]['snomed']]
-                    out_ent['snomed'] = ",".join(snomed)
-                else:
-                    out_ent['snomed'] = ''
+                out_ent['info'] = self.cdb.cui2info.get(cui, {})
 
                 if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
                     out_ent['meta_anns'] = {}
@@ -718,3 +796,30 @@ class CAT(object):
                         print(e)
 
             sleep(1)
+
+    def add_cui_to_group(self, cui, group_name, reset_all_groups=False):
+        r'''
+        Ads a CUI to a group, will appear in cdb.cui2info['group']
+
+        Args:
+            cui (str):
+                The concept to be added
+            group_name (str):
+                The group to whcih the concept will be added
+            reset_all_groups (boolean):
+                If True it will reset all existing groups and remove them.
+
+        Examples:
+            >>> cat.add_cui_to_group("S-17", 'pain')
+        '''
+
+        # Reset if needed
+        if reset_all_groups:
+            for _cui in self.cdb.cui2info.keys():
+                _ = self.cdb.cui2info[_cui].pop('group', None)
+
+        # Add
+        if cui in self.cdb.cui2info:
+            self.cdb.cui2info[cui]['group'] = group_name
+        else:
+            self.cdb.cui2info[cui] = {'group': group_name}
