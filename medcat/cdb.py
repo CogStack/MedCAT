@@ -350,6 +350,7 @@ class CDB(object):
             log.info("COO_DICT cleaned, size was: {} and now is {}. In total \
                       {} items were removed".format(old_size, new_size, old_size-new_size))
 
+
     @property
     def coo_matrix(self):
         """ Get the COO Matrix as scikit dok_matrix
@@ -368,34 +369,13 @@ class CDB(object):
         """
         raise AttributeError("Can not set attribute coo_matrix")
 
+
     def reset_coo_matrix(self):
         """ Remove the COO-Matrix
         """
         self.cui_count_ext = {}
         self.coo_dict = {}
         self._coo_matrix = None
-
-
-    def merge_run_only(self, coo_dict, cui_count_ext):
-        """ Merges only the coo matrix and cui_count_ext
-        """
-        # Reset the coo matrix as it is not valid anymore
-        self.reset_coo_matrix()
-
-        # Merge coo_dict
-        for key in coo_dict.keys():
-            if key in self.coo_dict:
-                self.coo_dict[key] += coo_dict[key]
-            else:
-                self.coo_dict[key] = coo_dict[key]
-
-
-        # Merge cui_count_ext
-        for key in cui_count_ext.keys():
-            if key in self.cui_count_ext:
-                self.cui_count_ext[key] += cui_count_ext[key]
-            else:
-                self.cui_count_ext[key] = cui_count_ext[key]
 
 
     def save(self, path):
