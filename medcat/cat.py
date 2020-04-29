@@ -491,7 +491,8 @@ class CAT(object):
                          anneal=None, print_stats=True, use_filters=False, terminate_last=False, use_overlaps=False,
                          use_cui_doc_limit=False, test_size=0, force_manually_created=False, use_groups=False):
         r'''
-        Run supervised training on a dataset from MedCATtrainer.
+        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simiulated
+        online training then supervised.
 
         Args:
             data_path (str):
@@ -512,7 +513,7 @@ class CAT(object):
             anneal (boolean):
                 If true annealing will be used when training.
             print_stats (boolean):
-                If true stats will be printed during training.
+                If true stats will be printed during training (prints stats every 5 epochs).
             use_filters (boolean):
                 Each project in medcattrainer can have filters, do we want to respect those filters
                 when calculating metrics.
