@@ -72,10 +72,11 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
     return out_data
 
 
-def encode_category_values(data):
+def encode_category_values(data, vals=None):
     data = list(data)
-    vals = set([x[0] for x in data])
-    vals = {name:i for i,name in enumerate(vals)}
+    if vals is None:
+        vals = set([x[0] for x in data])
+        vals = {name:i for i,name in enumerate(vals)}
 
     # Map values to numbers
     for i in range(len(data)):
