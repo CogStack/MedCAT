@@ -701,10 +701,10 @@ class CAT(object):
                 out_ent['start'] = ent.start_char
                 out_ent['end'] = ent.end_char
                 out_ent['info'] = self.cdb.cui2info.get(cui, {})
+                out_ent['id'] = str(ent._.id)
+                out_ent['meta_anns'] = {}
 
                 if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                    out_ent['meta_anns'] = {}
-
                     for key in ent._.meta_anns.keys():
                         one = {'name': key, 'value': ent._.meta_anns[key]}
                         out_ent['meta_anns'][key] = one
