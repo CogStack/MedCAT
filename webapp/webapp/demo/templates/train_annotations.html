@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load staticfiles %}
+{% load static %}
 
 {% block style %} 
 <link rel="stylesheet" href="{% static 'css/home.css' %}">
@@ -23,30 +23,34 @@
             <br />
             <br />
             <br />
-            <h5> Please note this is a limited version of MedCAT as the full version of UMLS models can not be made publicaly available. 
-                To access the full version you can either build it from UMLS source or contact the developers. As this is a built on a very small subset
-                of UMLS it can detect some strange concepts or give results that don't any sense.</h5>
+            <h5> Sample text </h5>
+            <pre>
+Description: Intracerebral hemorrhage (very acute clinical changes occurred immediately).
+CC: Left hand numbness on presentation; then developed lethargy later that day.
+
+HX: On the day of presentation, this 72 y/o RHM suddenly developed generalized weakness and lightheadedness, and could not rise from a chair. Four hours later he experienced sudden left hand numbness lasting two hours. There were no other associated symptoms except for the generalized weakness and lightheadedness. He denied vertigo.
+
+He had been experiencing falling spells without associated LOC up to several times a month for the past year.
+
+MEDS: procardia SR, Lasix, Ecotrin, KCL, Digoxin, Colace, Coumadin.
+
+PMH: 1)8/92 evaluation for presyncope (Echocardiogram showed: AV fibrosis/calcification, AV stenosis/insufficiency, MV stenosis with annular calcification and regurgitation, moderate TR, Decreased LV systolic function, severe LAE. MRI brain: focal areas of increased T2 signal in the left cerebellum and in the brainstem probably representing microvascular ischemic disease. IVG (MUGA scan)revealed: global hypokinesis of the LV and biventricular dysfunction, RV ejection Fx 45% and LV ejection Fx 39%. He was subsequently placed on coumadin severe valvular heart disease), 2)HTN, 3)Rheumatic fever and heart disease, 4)COPD, 5)ETOH abuse, 6)colonic polyps, 7)CAD, 8)CHF, 9)Appendectomy, 10)Junctional tachycardia.
+            </pre>
+            <br />
+            <br />
+            <h5> Please note this is a limited version of MedCAT and it is not trained or validated by clinicans.</h5>
             </form>
         </div>
 	{% else %}
         <div class='container-fluid train-annotations' id='train-annotations'>
             <h6 v-show="elementVisible" class="posfed" v-text='msg'></h6>
 
-            <form method='POST' style='display: inline-block'>
-                {% csrf_token %}
-                <button type="submit" class="btn btn-outline-success btn-sm btns-a"> Rerun the Annotator </button>
-                <input type='hidden' name="text" value="{{text}}"></input>
-            </form>
             <div class="row">
                 <div class='col-8 annotations'>
                     {{ doc_html|safe }}
                 </div>
                 <div class='col-4 concept-info' id='info'>
                     <div id='cinfo' v-if="!show && selected_concept">
-                        <div class='icons'>
-                            <i v-on:click='concept_feedback(0)' class="far green fa-check-circle"></i>
-                            <i v-on:click='concept_feedback(1)' class="far red fa-times-circle"></i>
-                        </div>
                         <h5> [[selected_concept.pretty_name]] </h5>
                         <table class="table table-hover info">
                             <tbody v-for="(value, name) in selected_concept">

@@ -1,6 +1,8 @@
 import numpy as np
 from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
+import html
+from medcat.utils.other import TPL_ENT, TPL_ENTS
 
 
 def to_json_simple(docs, cdb):
@@ -39,14 +41,14 @@ def doc2html(doc):
         fragments = text[offset:start].split("\n")
 
         for i, fragment in enumerate(fragments):
-            markup += escape_html(fragment)
+            markup += html.escape(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.acc * span._.acc + 0.12), 'text': escape_html(span.text)}
+        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.acc * span._.acc + 0.12), 'text': html.escape(span.text)}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
-    markup += escape_html(text[offset:])
+    markup += html.escape(text[offset:])
 
     out = TPL_ENTS.format(content=markup, dir='ltr')
 
@@ -64,14 +66,14 @@ def json2html(doc):
         fragments = text[offset:start].split("\n")
 
         for i, fragment in enumerate(fragments):
-            markup += escape_html(fragment)
+            markup += html.escape(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(1 * 1 + 0.12), 'text': escape_html(span['str'])}
+        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(1 * 1 + 0.12), 'text': html.escape(span['str'])}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
-    markup += escape_html(text[offset:])
+    markup += html.escape(text[offset:])
 
     out = TPL_ENTS.format(content=markup, dir='ltr')
 
