@@ -23,7 +23,8 @@ def get_batch(ind, batch_size, x, y, cpos, device):
 
 
 def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=30000, batch_size=100,
-                  nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None, ignore_cpos=False):
+                  nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None, ignore_cpos=False,
+                  auto_save_model=True):
     # Split data
     y = np.array([x[0] for x in data])
     x = [x[1] for x in data]
@@ -115,14 +116,17 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         recall = recall_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average='weighted')
 
         if f1 > best_f1:
-            path = save_dir + "lstm.dat"
-            torch.save(net.state_dict(), path)
+            print("=" * 50)
+            if auto_save_model:
+                path = save_dir + "lstm.dat"
+                torch.save(net.state_dict(), path)
+                print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
+
             best_f1 = f1
             best_p = precision
             best_r = recall
 
-            print("=" * 50)
-            print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
+            # Print some stats
             print(confusion_matrix(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
             print("\n\n")
 

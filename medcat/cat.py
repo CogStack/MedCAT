@@ -336,7 +336,8 @@ class CAT(object):
         cui_f1 = {}
         cui_counts = {}
 
-        docs_with_problems = set()
+        fp_docs = set()
+        fn_docs = set()
         if self.spacy_cat.TUI_FILTER is None:
             _tui_filter = None
         else:
@@ -416,7 +417,7 @@ class CAT(object):
                             else:
                                 fps[metrics_key] = 1
                             fp += 1
-                        docs_with_problems.add(doc['name'])
+                            fp_docs.add(doc['name'])
 
                 for ann in anns_norm:
                     if ann not in p_anns_norm:
@@ -427,7 +428,7 @@ class CAT(object):
                             metrics_key = ann[1]
 
                         fn += 1
-                        docs_with_problems.add(doc['name'])
+                        fn_docs.add(doc['name'])
 
                         if metrics_key in fns:
                             fns[metrics_key] += 1
@@ -437,9 +438,9 @@ class CAT(object):
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
             f1 = (prec + rec) / 2
-            print("Epoch: {}, Prec: {}, Rec: {}, F1: {}".format(epoch, prec, rec, f1))
-            print("First 10 out of {} docs with problems: {}".format(len(docs_with_problems),
-                  "; ".join([str(x) for x in list(docs_with_problems)[0:10]])))
+            print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(epoch, prec, rec, f1))
+            print("Docs with false positives: {}\n".format("; ".join([str(x) for x in list(fp_docs)[0:10]])))
+            print("Docs with false negatives: {}\n".format("; ".join([str(x) for x in list(fn_docs)[0:10]])))
 
             # Sort fns & prec
             fps = {k: v for k, v in sorted(fps.items(), key=lambda item: item[1], reverse=True)}
