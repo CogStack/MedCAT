@@ -75,3 +75,16 @@ that data is not publicaly available.)
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
 The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words
+
+## Citation
+If you are using MedCAT please give your best to also cite it. 
+```
+@misc{kraljevic2019medcat,
+    title={MedCAT -- Medical Concept Annotation Tool},
+    author={Zeljko Kraljevic and Daniel Bean and Aurelie Mascio and Lukasz Roguski and Amos Folarin and Angus Roberts and Rebecca Bendayan and Richard Dobson},
+    year={2019},
+    eprint={1912.10166},
+    archivePrefix={arXiv},
+    primaryClass={cs.CL}
+}
+```
