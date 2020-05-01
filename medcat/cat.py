@@ -374,66 +374,43 @@ class CAT(object):
                 for ann in anns:
                     if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                        (tui_filter is not None and self.cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
+                        cui = ann['cui']
+                        if use_groups:
+                            cui = self.cdb.cui2info.get(cui, {}).get("group", cui)
+
                         if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
-                            anns_norm.append((ann['start'], ann['cui']))
+                            anns_norm.append((ann['start'], cui))
 
                         if ann.get("validated", True):
                             # This is used to test was someone annotating for this CUI in this document
-                            anns_norm_cui.append(ann['cui'])
-
-                            if use_groups:
-                                # If there is no group use the CUI
-                                metrics_key = self.cdb.cui2info.get(ann['cui'], {}).get("group", ann['cui'])
-                            else:
-                                metrics_key = ann['cui']
-
-                            if metrics_key in cui_counts:
-                                cui_counts[metrics_key] += 1
-                            else:
-                                cui_counts[metrics_key] = 1
+                            anns_norm_cui.append(cui)
+                            cui_counts[cui] = cui_counts.get(cui, 0) + 1
 
                 p_anns_norm = []
                 for ann in p_anns:
-                    p_anns_norm.append((ann.start_char, ann._.cui))
+                    cui = ann._.cui
+                    if use_groups:
+                        cui = self.cdb.cui2info.get(cui, {}).get("group", cui)
+                    p_anns_norm.append((ann.start_char, cui))
 
                 for ann in p_anns_norm:
                     if not use_cui_doc_limit or ann[1] in anns_norm_cui:
-                        if use_groups:
-                            # If there is no group use the CUI
-                            metrics_key = self.cdb.cui2info.get(ann[1], {}).get("group", ann[1])
-                        else:
-                            metrics_key = ann[1]
-
+                        cui = ann[1]
                         if ann in anns_norm:
                             tp += 1
-
-                            if metrics_key in tps:
-                                tps[metrics_key] += 1
-                            else:
-                                tps[metrics_key] = 1
+                            tps[cui] = tps.get(cui, 0) + 1
                         else:
-                            if metrics_key in fps:
-                                fps[metrics_key] += 1
-                            else:
-                                fps[metrics_key] = 1
                             fp += 1
+                            fps[cui] = fps.get(cui, 0) + 1
                             fp_docs.add(doc['name'])
 
                 for ann in anns_norm:
                     if ann not in p_anns_norm:
-                        if use_groups:
-                            # If there is no group use the CUI
-                            metrics_key = self.cdb.cui2info.get(ann[1], {}).get("group", ann[1])
-                        else:
-                            metrics_key = ann[1]
-
+                        cui = ann[1]
                         fn += 1
                         fn_docs.add(doc['name'])
 
-                        if metrics_key in fns:
-                            fns[metrics_key] += 1
-                        else:
-                            fns[metrics_key] = 1
+                        fns[cui] = fns.get(cui, 0) + 1
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
