@@ -51,10 +51,10 @@ doc_spacy = cat(text)
 # Print detected entities
 print(doc_spacy.ents)
 
-# Or to get a json
-import json
-doc_json = json.loads(cat.get_json(text))
-print(doc_json)
+# Or to get an array of entities, this will return much more information
+#and usually easier to use unless you know a lot about spaCy
+doc = cat.get_entities(text)
+print(doc)
 ```
 
 
