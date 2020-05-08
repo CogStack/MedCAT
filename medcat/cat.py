@@ -335,6 +335,7 @@ class CAT(object):
         cui_rec = {}
         cui_f1 = {}
         cui_counts = {}
+        examples = {'fp': {}, 'fn': {}}
 
         fp_docs = set()
         fn_docs = set()
@@ -348,7 +349,7 @@ class CAT(object):
             _cui_filter = list(self.spacy_cat.CUI_FILTER)
 
         # Stupid
-        for project in data['projects']:
+        for pind, project in enumerate(data['projects']):
             cui_filter = None
             tui_filter = None
 
@@ -361,7 +362,7 @@ class CAT(object):
                 self.spacy_cat.TUI_FILTER = tui_filter
                 self.spacy_cat.CUI_FILTER = cui_filter
 
-            for doc in project['documents']:
+            for dind, doc in enumerate(project['documents']):
                 spacy_doc = self(doc['text'])
                 anns = doc['annotations']
                 if use_overlaps:
@@ -370,6 +371,7 @@ class CAT(object):
                     p_anns = spacy_doc.ents
 
                 anns_norm = []
+                anns_examples = []
                 anns_norm_cui = []
                 for ann in anns:
                     if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
@@ -380,6 +382,12 @@ class CAT(object):
 
                         if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
                             anns_norm.append((ann['start'], cui))
+                            anns_examples.append({"text": doc['text'][max(0, ann['start']-60):ann['end']+60],
+                                                  "cui": cui,
+                                                  "source value": ann['value'],
+                                                  "acc": 1,
+                                                  "project index": pind,
+                                                  "document inedex": dind})
 
                         if ann.get("validated", True):
                             # This is used to test was someone annotating for this CUI in this document
@@ -387,13 +395,22 @@ class CAT(object):
                             cui_counts[cui] = cui_counts.get(cui, 0) + 1
 
                 p_anns_norm = []
+                p_anns_examples = []
                 for ann in p_anns:
                     cui = ann._.cui
                     if use_groups:
                         cui = self.cdb.cui2info.get(cui, {}).get("group", cui)
                     p_anns_norm.append((ann.start_char, cui))
+                    p_anns_examples.append({"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
+                                          "cui": cui,
+                                          "source value": ann.text,
+                                          "acc": float(ann._.acc),
+                                          "project index": pind,
+                                          "document inedex": dind})
 
-                for ann in p_anns_norm:
+
+
+                for iann, ann in enumerate(p_anns_norm):
                     if not use_cui_doc_limit or ann[1] in anns_norm_cui:
                         cui = ann[1]
                         if ann in anns_norm:
@@ -403,14 +420,16 @@ class CAT(object):
                             fp += 1
                             fps[cui] = fps.get(cui, 0) + 1
                             fp_docs.add(doc['name'])
+                            examples['fp'][cui] = examples['fp'].get(cui, []) + [p_anns_examples[iann]]
 
-                for ann in anns_norm:
+                for iann, ann in enumerate(anns_norm):
                     if ann not in p_anns_norm:
                         cui = ann[1]
                         fn += 1
                         fn_docs.add(doc['name'])
 
                         fns[cui] = fns.get(cui, 0) + 1
+                        examples['fn'][cui] = examples['fn'].get(cui, []) + [anns_examples[iann]]
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
@@ -462,7 +481,7 @@ class CAT(object):
         self.spacy_cat.TUI_FILTER = _tui_filter
         self.spacy_cat.CUI_FILTER = _cui_filter
 
-        return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts
+        return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
@@ -527,8 +546,10 @@ class CAT(object):
                 F1 for each CUI
             cui_counts (dict):
                 Number of occurrence for each CUI
+            examples (dict):
+                FP/FN examples of sentences for each CUI
         '''
-        fp = fn = tp = p = r = f1 = cui_counts = {}
+        fp = fn = tp = p = r = f1 = cui_counts = examples = {}
 
         self.train = False
         data = json.load(open(data_path))
@@ -602,12 +623,12 @@ class CAT(object):
 
             if epoch % 5 == 0:
                 if print_stats:
-                    fp, fn, tp, p, r, f1, cui_counts = self._print_stats(test_set, epoch=epoch+1,
+                    fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, epoch=epoch+1,
                                                              use_filters=use_filters,
                                                              use_cui_doc_limit=use_cui_doc_limit,
                                                              use_overlaps=use_overlaps,
                                                              use_groups=use_groups)
-        return fp, fn, tp, p, r, f1, cui_counts
+        return fp, fn, tp, p, r, f1, cui_counts, examples
 
     @property
     def train(self):
