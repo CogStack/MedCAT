@@ -28,7 +28,7 @@ class SpacyCat(object):
     DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
     NORM_EMB = os.getenv('NORM_EMB', "false").lower() == 'true' # Should we normalize the w2v
     PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "false").lower() == 'true'
-    PREFER_ICD10 = os.getenv('PREFER_ICD10', "false").lower() == 'true'
+    PREFER_CONCEPTS_WITH = os.getenv('PREFER_CONCEPTS_WITH', None)
     CNTX_SPAN = int(os.getenv('CNTX_SPAN', 9))
     CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 3))
     MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 30000))
@@ -571,10 +571,10 @@ class SpacyCat(object):
 
                     accs = accs * mps
 
-                if self.PREFER_ICD10:
+                if self.PREFER_CONCEPTS_WITH is not None:
                     # Prefer concepts that have ICD10
                     mps = np.array([1] * len(cnts), dtype=np.float)
-                    noicd = [False if 'icd10' in self.cdb.cui2info.get(cui, {}) else
+                    noicd = [False if self.PREFER_CONCEPTS_WITH in self.cdb.cui2info.get(cui, {}) else
                              True for cui in cuis]
                     mps[noicd] = 0.5
                     accs = accs * mps
