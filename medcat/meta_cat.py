@@ -187,7 +187,9 @@ class MetaCAT(object):
         # Load MODEL
         if model == 'lstm':
             from medcat.utils.models import LSTM
-            self.model = LSTM(self.embeddings, self.pad_id)
+            nclasses = len(self.category_values)
+            self.model = LSTM(self.embeddings, self.pad_id,
+                              nclasses=nclasses)
             path = self.save_dir + "lstm.dat"
 
         self.model.load_state_dict(torch.load(path))
