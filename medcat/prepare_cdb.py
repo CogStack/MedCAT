@@ -59,13 +59,16 @@ class PrepareCDB(object):
         _new_cuis = set()
 
         for csv_path in csv_paths:
-            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar)
+            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=False)
             cols = list(df.columns)
             str_ind = cols.index('str')
             cui_ind = cols.index('cui')
             tui_ind = -1
             if 'tui' in cols:
                 tui_ind = cols.index('tui')
+            tui_name_ind = -1
+            if 'sty' in cols:
+                tui_name_ind = cols.index('sty')
             tty_ind = -1
             if 'tty' in cols:
                 tty_ind = cols.index('tty')
@@ -182,6 +185,11 @@ class PrepareCDB(object):
                                 if len(tui.split(',')) > 1:
                                     tui = tui.split(',')[0]
 
+                        tui_name = None
+                        if 'sty' in df.columns:
+                            _sty = str(df.iat[ind, tui_name_ind]).strip()
+                            if len(_sty) > 0 and _sty != "nan":
+                                tui_name = _sty
 
                         # Get the concept description
                         desc = None
@@ -196,7 +204,7 @@ class PrepareCDB(object):
                                 tui=tui, pretty_name=pretty_name,
                                 tokens_vocab=tokens_vocab, is_unique=is_unique,
                                 desc=desc, original_name=original_name,
-                                is_pref_name=is_pref_name)
+                                is_pref_name=is_pref_name, tui_name=tui_name)
 
                         # Process examples if we have them
                         examples = []

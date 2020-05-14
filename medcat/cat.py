@@ -371,6 +371,7 @@ class CAT(object):
                     p_anns = spacy_doc.ents
 
                 anns_norm = []
+                anns_norm_neg = []
                 anns_examples = []
                 anns_norm_cui = []
                 for ann in anns:
@@ -388,6 +389,9 @@ class CAT(object):
                                                   "acc": 1,
                                                   "project index": pind,
                                                   "document inedex": dind})
+                        elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
+                            anns_norm_neg.append((ann['start'], cui))
+
 
                         if ann.get("validated", True):
                             # This is used to test was someone annotating for this CUI in this document
@@ -420,7 +424,14 @@ class CAT(object):
                             fp += 1
                             fps[cui] = fps.get(cui, 0) + 1
                             fp_docs.add(doc['name'])
-                            examples['fp'][cui] = examples['fp'].get(cui, []) + [p_anns_examples[iann]]
+
+                            # Add example for this FP prediction
+                            example = p_anns_examples[iann]
+                            if ann in anns_norm_neg:
+                                # Means that it really was annotated as negative
+                                example['real_fp'] = True
+
+                            examples['fp'][cui] = examples['fp'].get(cui, []) + [example]
 
                 for iann, ann in enumerate(anns_norm):
                     if ann not in p_anns_norm:

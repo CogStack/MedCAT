@@ -54,7 +54,7 @@ class CDB(object):
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
                     is_pref_name=False, tui=None, pretty_name='',
                     desc=None, tokens_vocab=None, original_name=None,
-                    is_unique=None):
+                    is_unique=None, tui_name=None):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
@@ -91,6 +91,8 @@ class CDB(object):
                 If set to False - you can require disambiguation for a name even if it is unique inside
                 of the current CDB. If set to True - you are forcing medcat to make a decision without
                 disambiguation even if it is required. Do not set this arg unless you are sure.
+            tui_name (str, optional):
+                The name for the TUI
         '''
         # Add the info property
         if cui not in self.cui2info:
@@ -134,6 +136,9 @@ class CDB(object):
                 self.tui2cuis[tui].add(cui)
             else:
                 self.tui2cuis[tui] = set([cui])
+
+            if tui_name is not None:
+                self.tui2name[tui] = tui_name
 
         if is_unique is not None:
             self.name_isunique[name] = is_unique
