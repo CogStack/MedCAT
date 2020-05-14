@@ -224,11 +224,11 @@ class CDB(object):
                     self.cui2words[cui][token] = 1
 
 
-    def add_tui_names(self, csv_path):
+    def add_tui_names(self, csv_path, sep="|"):
         """ Fils the tui2name dict
 
         """
-        df = pd.read_csv(csv_path)
+        df = pd.read_csv(csv_path, sep=sep)
 
         for index, row in df.iterrows():
             tui = row['tui']
