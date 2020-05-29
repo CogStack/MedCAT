@@ -70,6 +70,9 @@ CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built f
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
 
+### SNOMED-CT and UMLS
+If you have access to UMLS or SNOMED-CT and can prove it, contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+
 
 ## Acknowledgement
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
