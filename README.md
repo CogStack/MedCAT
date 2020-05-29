@@ -72,7 +72,7 @@ CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built f
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can prove it, contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+If you have access to UMLS or SNOMED-CT and can provide some proof, contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
 ## Acknowledgement
@@ -81,7 +81,6 @@ Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg
 The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words
 
 ## Citation
-If you are using MedCAT please give your best to also cite it. 
 ```
 @misc{kraljevic2019medcat,
     title={MedCAT -- Medical Concept Annotation Tool},
