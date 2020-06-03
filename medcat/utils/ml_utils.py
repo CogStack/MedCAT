@@ -7,6 +7,9 @@ from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
 
+from medcat.utils.loggers import basic_logger
+log = basic_logger("utils")
+
 
 def get_batch(ind, batch_size, x, y, cpos, device):
     # Get the start/end index for this batch
@@ -131,3 +134,48 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
             print("\n\n")
 
     return (best_f1, best_p, best_r)
+
+
+def load_hf_tokenizer(tokenizer_name):
+    try:
+        from transformers import AutoTokenizer
+        hf_tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    except Exception as e:
+        log.exception("The Huggingface tokenizer could not be created")
+
+    return hf_tokenizer
+
+
+def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
+    rebuild = False
+    # Check is it necessary
+    for i in range(hf_tokenizer.vocab_size):
+        tkn = hf_tokenizer.ids_to_tokens[i]
+        if tkn not in vocab:
+            rebuild = True
+
+    if rebuild:
+        log.info("Rebuilding vocab")
+        try:
+            from transformers import AutoModel
+            model = AutoModel.from_pretrained(model_name)
+            if 'xlnet' in model_name.lower():
+                embs = model.get_input_embeddings().weight.cpu().detach().numpy()
+            else:
+                embs = model.embeddings.word_embeddings.weight.cpu().detach().numpy()
+
+            # Reset all vecs in current vocab
+            vocab.vec_index2word = {}
+            for ind in vocab.index2word.keys():
+                vocab.vocab[vocab.index2word[ind]]['vec'] = None
+
+            for i in range(hf_tokenizer.vocab_size):
+                tkn = hf_tokenizer.ids_to_tokens[i]
+                vec = embs[i]
+                vocab.add_word(word=tkn, vec=vec, replace=True)
+
+            # Crate the new unigram table
+            vocab.reset_counts()
+            vocab.make_unigram_table()
+        except Exception as e:
+            log.exception("The Huggingface model could not be loaded")

@@ -24,6 +24,16 @@ class Vocab(object):
         self.vocab[word]['vec'] = vec
 
 
+    def reset_counts(self):
+        for word in self.vocab.keys():
+            self.vocab[word]['cnt'] = 1
+
+    def update_counts(self, tokens):
+        for token in tokens:
+            if token in self:
+                self.vocab[token]['cnt'] += 1
+
+
     def add_word(self, word, cnt=1, vec=None, replace=True):
         """Add a word to the vocabulary
 
@@ -95,10 +105,15 @@ class Vocab(object):
         self.unigram_table = np.array(self.unigram_table)
 
 
-    def get_negative_samples(self, n=6):
+    def get_negative_samples(self, n=6, ignore_punct_and_num=False, stopwords=[]):
         inds = np.random.randint(0, len(self.unigram_table), n)
+        inds = self.unigram_table[inds]
 
-        return self.unigram_table[inds]
+        if ignore_punct_and_num:
+            # Do not return anything that does not have letters in it
+            inds = [ind for ind in inds if self.index2word[ind].upper().isupper() and self.index2word[ind].lower() not in stopwords]
+
+        return inds
 
 
     def __getitem__(self, word):
