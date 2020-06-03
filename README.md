@@ -12,6 +12,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 ## Papers that use MedCAT
 - [Treatment with ACE-inhibitors is not associated with early severe SARS-Covid-19 infection in a multi-site UK acute Hospital Trust](https://www.researchgate.net/publication/340261837_Treatment_with_ACE-inhibitors_is_not_associated_with_early_severe_SARS-Covid-19_infection_in_a_multi-site_UK_acute_Hospital_Trust)
 - [Supplementing the National Early Warning Score (NEWS2) for anticipating early deterioration among patients with COVID-19 infection](https://www.medrxiv.org/content/10.1101/2020.04.24.20078006v1)
+- [Comparative Analysis of Text Classification Approaches in Electronic Health Records](https://www.researchgate.net/publication/341396173_Comparative_Analysis_of_Text_Classification_Approaches_in_Electronic_Health_Records)
 
 ## Related Projects
 - [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
@@ -70,6 +71,9 @@ CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built f
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
 
+### SNOMED-CT and UMLS
+If you have access to UMLS or SNOMED-CT and can provide some proof, contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+
 
 ## Acknowledgement
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
@@ -77,7 +81,6 @@ Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg
 The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words
 
 ## Citation
-If you are using MedCAT please give your best to also cite it. 
 ```
 @misc{kraljevic2019medcat,
     title={MedCAT -- Medical Concept Annotation Tool},
