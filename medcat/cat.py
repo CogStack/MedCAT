@@ -14,7 +14,9 @@ from medcat.preprocessing.cleaners import spacy_tag_punct
 from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
 from medcat.utils.loggers import basic_logger
 from medcat.utils.data_utils import make_mc_train_test
+import time
 import sys, traceback
+from tqdm.autonotebook import tqdm
 
 log = basic_logger("CAT")
 
@@ -50,7 +52,7 @@ class CAT(object):
         >>>spacy_doc = cat("Put some text here")
         >>>print(spacy_doc.ents) # Detected entites
     '''
-    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[], config={}):
+    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[], config={}, tokenizer=None):
         self.cdb = cdb
         self.vocab = vocab
         self.config = config
@@ -68,7 +70,7 @@ class CAT(object):
         self.nlp.add_spell_checker(spell_checker=self.spell_checker)
 
         # Add them cat class that does entity detection
-        self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab)
+        self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab, tokenizer=tokenizer)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
         # Add meta_annotaiton classes if they exist
@@ -348,21 +350,21 @@ class CAT(object):
         else:
             _cui_filter = list(self.spacy_cat.CUI_FILTER)
 
-        # Stupid
-        for pind, project in enumerate(data['projects']):
+        for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             cui_filter = None
             tui_filter = None
 
             if use_filters:
                 if 'cuis' in project and len(project['cuis'].strip()) > 0:
-                    cui_filter = [x.strip() for x in project['cuis'].split(",")]
+                    cui_filter = set([x.strip() for x in project['cuis'].split(",")])
                 if 'tuis' in project and len(project['tuis'].strip()) > 0:
-                    tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
+                    tui_filter = set([x.strip().upper() for x in project['tuis'].split(",")])
 
                 self.spacy_cat.TUI_FILTER = tui_filter
                 self.spacy_cat.CUI_FILTER = cui_filter
 
-            for dind, doc in enumerate(project['documents']):
+            start_time = time.time()
+            for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
                 spacy_doc = self(doc['text'])
                 anns = doc['annotations']
                 if use_overlaps:
@@ -413,7 +415,6 @@ class CAT(object):
                                           "document inedex": dind})
 
 
-
                 for iann, ann in enumerate(p_anns_norm):
                     if not use_cui_doc_limit or ann[1] in anns_norm_cui:
                         cui = ann[1]
@@ -441,6 +442,7 @@ class CAT(object):
 
                         fns[cui] = fns.get(cui, 0) + 1
                         examples['fn'][cui] = examples['fn'].get(cui, []) + [anns_examples[iann]]
+
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
@@ -599,13 +601,10 @@ class CAT(object):
                     if ann.get('killed', False):
                         self.unlink_concept_name(ann['cui'], ann['value'])
 
-        for epoch in range(nepochs):
-            print("Starting epoch: {}".format(epoch))
-            log.info("Starting epoch: {}".format(epoch))
+        for epoch in tqdm(range(nepochs), desc='Epoch', leave=False):
             # Print acc before training
-
-            for project in train_set['projects']:
-                for i_doc, doc in enumerate(project['documents']):
+            for project in tqdm(train_set['projects'], desc='Project', leave=False, total=len(train_set['projects'])):
+                for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
                     for ann in doc['annotations']:
                         if not ann.get('killed', False):

@@ -3,8 +3,10 @@ import numpy as np
 import operator
 from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
+from medcat.utils.ml_utils import load_hf_tokenizer, build_vocab_from_hf
+from spacy.lang.en.stop_words import STOP_WORDS
 import os
-log = basic_logger("cat_spacycat")
+log = basic_logger("spacycat")
 
 # IF UMLS it includes specific rules that are only good for the Full UMLS version
 if os.getenv('TYPE', 'other').lower() == 'umls':
@@ -69,17 +71,31 @@ class SpacyCat(object):
 
         if self.vocab is None:
             self.vocab = self.cdb.vocab
-
         if tokenizer is None:
             self.tokenizer = self._tok
+        elif type(tokenizer) == str:
+            self.hf_tokenizer = load_hf_tokenizer(tokenizer_name=tokenizer)
+            self.tokenizer = self._tok_hf
+
+            # Build hf vocab from BERT/Transofmer models
+            build_vocab_from_hf(model_name=tokenizer, hf_tokenizer=self.hf_tokenizer, vocab=self.vocab)
         else:
             self.tokenizer = tokenizer
 
         # Weight drops for average
-        self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2] + [0.1] * 300
+        self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.4, 0.4] + [0.3] * 300
 
 
-    def _tok(self, text):
+    def _tok_hf(self, token):
+        text = token.text
+        return self.hf_tokenizer.tokenize(text)
+
+    def _tok(self, token):
+        if self.NORM_EMB:
+            text = token._.norm
+        else:
+            text = token.text.lower()
+
         return [text]
 
 
@@ -101,32 +117,33 @@ class SpacyCat(object):
         add_weight = True
         while(n < span and i >= 0):
             word = doc[i]
-            if self.NORM_EMB:
-                _word = word._.norm
-            else:
-                _word = word.text.lower()
-
-            if self.WEIGHTED_AVG:
-                if add_weight:
-                    weights = [self.wdrops[n]] + weights
-                    add_weight = False
-            else:
-                weights.append(1.0)
+            new_words = []
 
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
-                    words = self.tokenizer(_word) + words
+                    new_words = self.tokenizer(word)
+                    words = new_words + words
 
                     n += 1
                     add_weight = True
             else:
-                words = self.tokenizer(_word) + words
+                new_words = self.tokenizer(word)
+                words = new_words + words
 
                 n += 1
                 add_weight = True
 
-            i = i - 1
+            if self.WEIGHTED_AVG:
+                if add_weight:
+                    nwords = len(new_words)
+                    weights = [self.wdrops[n]] * nwords + weights
+                    add_weight = False
+            else:
+                nwords = len(new_words)
+                weights = weights + [1.0] * nwords
 
+
+            i = i - 1
         # Add tokens if not skip_current
         if not skip_current:
             for tkn in tkns:
@@ -139,27 +156,30 @@ class SpacyCat(object):
         add_weight = True
         while(n < span and i < len(doc)):
             word = doc[i]
-            if self.NORM_EMB:
-                _word = word._.norm
-            else:
-                _word = word.text.lower()
-
-            if self.WEIGHTED_AVG:
-                if add_weight:
-                    weights.append(self.wdrops[n])
-                    add_weight = False
-            else:
-                weights.append(1.0)
+            new_words = []
 
             if skip_words:
                 if not word._.to_skip and not word.is_digit:
-                    words = words + self.tokenizer(_word)
+                    new_words = self.tokenizer(word)
+                    words = words + new_words
                     n += 1
                     add_weight = True
             else:
-                words = words + self.tokenizer(_word)
+                new_words = self.tokenizer(word)
+                words = words + new_words
+
                 n += 1
                 add_weight = True
+
+            if self.WEIGHTED_AVG:
+                if add_weight:
+                    nwords = len(new_words)
+                    weights = weights + [self.wdrops[n]] * nwords
+                    add_weight = False
+            else:
+                nwords = len(new_words)
+                weights = weights + [1.0] * nwords
+
 
             i = i + 1
 
@@ -287,8 +307,9 @@ class SpacyCat(object):
                     negative=negative, lr=lr, anneal=anneal)
 
         if np.random.rand() < self.NEG_PROB and not negative:
+            log.debug("Adding NEGATIVE for: " + str(cui))
             # Add only if probability and 'not' negative input
-            negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2)
+            negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2, ignore_punct_and_num=True, stopwords=STOP_WORDS)
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
@@ -559,7 +580,6 @@ class SpacyCat(object):
                         # If not just set the accuracy to -1
                         accs.append(-1)
                         cnts.append(-1)
-
                 # TODO: SEPARATE INTO A CLASS THAT MODIFIES THE SCORES
                 if self.PREFER_FREQUENT and cnts and max(cnts) > 100:
                     # Prefer frequent concepts, only in cases when cnt > 100
@@ -578,7 +598,6 @@ class SpacyCat(object):
                              True for cui in cuis]
                     mps[noicd] = 0.5
                     accs = accs * mps
-
                 ind = np.argmax(accs)
                 cui = cuis[ind]
                 acc = accs[ind]
