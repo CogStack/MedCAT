@@ -337,7 +337,7 @@ class CAT(object):
         cui_rec = {}
         cui_f1 = {}
         cui_counts = {}
-        examples = {'fp': {}, 'fn': {}}
+        examples = {'fp': {}, 'fn': {}, 'tp': {}}
 
         fp_docs = set()
         fn_docs = set()
@@ -421,6 +421,9 @@ class CAT(object):
                         if ann in anns_norm:
                             tp += 1
                             tps[cui] = tps.get(cui, 0) + 1
+
+                            example = p_anns_examples[iann]
+                            examples['tp'][cui] = examples['tp'].get(cui, []) + [example]
                         else:
                             fp += 1
                             fps[cui] = fps.get(cui, 0) + 1

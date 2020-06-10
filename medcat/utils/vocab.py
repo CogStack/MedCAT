@@ -111,7 +111,8 @@ class Vocab(object):
 
         if ignore_punct_and_num:
             # Do not return anything that does not have letters in it
-            inds = [ind for ind in inds if self.index2word[ind].upper().isupper() and self.index2word[ind].lower() not in stopwords]
+            inds = [ind for ind in inds if (self.index2word[ind].upper().isupper() or "##" in self.index2word[ind])
+                    and self.index2word[ind].lower() not in stopwords]
 
         return inds
 

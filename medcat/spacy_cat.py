@@ -83,7 +83,7 @@ class SpacyCat(object):
             self.tokenizer = tokenizer
 
         # Weight drops for average
-        self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.4, 0.4] + [0.3] * 300
+        self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2] + [0.1] * 300
 
 
     def _tok_hf(self, token):
@@ -147,8 +147,9 @@ class SpacyCat(object):
         # Add tokens if not skip_current
         if not skip_current:
             for tkn in tkns:
-                words.append(tkn._.norm)
-                weights.append(1.0)
+                new_words = self.tokenizer(tkn)
+                words = words + new_words
+                weights = weights + [1.0] * len(new_words)
 
         # Go right
         i = tkns[-1].i + 1
