@@ -80,6 +80,11 @@ Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg
 
 The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words
 
+
+## Powered By
+A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.
+
+
 ## Citation
 ```
 @misc{kraljevic2019medcat,
