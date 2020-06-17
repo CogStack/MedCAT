@@ -72,7 +72,7 @@ CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built f
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof, contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
 ## Acknowledgement
