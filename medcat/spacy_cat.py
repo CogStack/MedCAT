@@ -597,7 +597,7 @@ class SpacyCat(object):
                     mps = np.array([1] * len(cnts), dtype=np.float)
                     noicd = [False if self.PREFER_CONCEPTS_WITH in self.cdb.cui2info.get(cui, {}) else
                              True for cui in cuis]
-                    mps[noicd] = 0.5
+                    mps[noicd] = 0.8
                     accs = accs * mps
                 ind = np.argmax(accs)
                 cui = cuis[ind]
