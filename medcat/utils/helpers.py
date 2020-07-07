@@ -403,11 +403,15 @@ def check_scispacy():
 
 
 
-def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, reset_cui_count=True, test_size=0.1):
+def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, lr=1, groups=None, **kwargs):
     from medcat.cat import CAT
     from medcat.utils.vocab import Vocab
     from medcat.cdb import CDB
     import json
+
+    use_groups = False
+    if groups is not None:
+        use_groups = True
 
     f1s = {}
     ps = {}
@@ -427,9 +431,18 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, reset_cui_count=
         cat.spacy_cat.MIN_ACC = 0.30
         cat.spacy_cat.MIN_ACC_TH = 0.30
 
+        # Add groups if they exist
+        if groups is not None:
+            for cui in cdb.cui2info.keys():
+                if "group" in cdb.cui2info[cui]:
+                    del cdb.cui2info[cui]['group']
+            groups = json.load(open("./groups.json"))
+            for k,v in groups.items():
+                for val in v:
+                    cat.add_cui_to_group(val, k)
+
         fp, fn, tp, p, r, f1, cui_counts, examples = cat.train_supervised(data_path=data_path,
-                             lr=1, nepochs=nepochs, anneal=True, print_stats=True, use_filters=True, reset_cui_count=reset_cui_count,
-                             terminate_last=True, test_size=test_size)
+                             lr=1, test_size=test_size, use_groups=use_groups, nepochs=nepochs, **kwargs)
 
         for key in f1.keys():
             if key in f1s:
