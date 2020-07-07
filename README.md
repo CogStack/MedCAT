@@ -17,6 +17,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 ## Related Projects
 - [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
 - [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
+- [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
 ## Install using PIP (Requires Python 3.6.1+)
 1. Install MedCAT 
