@@ -416,6 +416,7 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, reset_cui_count=
     fns = {}
     fps = {}
     cui_counts = {}
+    examples = {}
     for i in range(cv):
         cdb = CDB()
         cdb.load_dict(cdb_path)
@@ -426,7 +427,7 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, reset_cui_count=
         cat.spacy_cat.MIN_ACC = 0.30
         cat.spacy_cat.MIN_ACC_TH = 0.30
 
-        fp, fn, tp, p, r, f1, cui_counts = cat.train_supervised(data_path=data_path,
+        fp, fn, tp, p, r, f1, cui_counts, examples = cat.train_supervised(data_path=data_path,
                              lr=1, nepochs=nepochs, anneal=True, print_stats=True, use_filters=True, reset_cui_count=reset_cui_count,
                              terminate_last=True, test_size=test_size)
 
@@ -461,5 +462,4 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, reset_cui_count=
             else:
                 fns[key] = [fn.get(key, 0)]
 
-
-    return fps, fns, tps, ps, rs, f1s, cui_counts
+    return fps, fns, tps, ps, rs, f1s, cui_counts, examples

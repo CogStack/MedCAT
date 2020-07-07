@@ -502,7 +502,8 @@ class CAT(object):
 
     def train_supervised(self, data_path, reset_cdb=False, reset_cui_count=False, nepochs=30, lr=None,
                          anneal=None, print_stats=True, use_filters=False, terminate_last=False, use_overlaps=False,
-                         use_cui_doc_limit=False, test_size=0, force_manually_created=False, use_groups=False):
+                         use_cui_doc_limit=False, test_size=0, force_manually_created=False, use_groups=False,
+                         never_terminate=False):
         r'''
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simiulated
         online training then supervised.
@@ -546,6 +547,8 @@ class CAT(object):
                 created.
             use_groups (boolean):
                 If True concepts that have groups will be combined and stats will be reported on groups.
+            never_terminate (boolean):
+                If True no termination will be applied
 
         Returns:
             fp (dict):
@@ -598,11 +601,12 @@ class CAT(object):
                     self.cdb.cui_count[cui] = 10
 
         # Remove entites that were terminated
-        for project in train_set['projects']:
-            for doc in project['documents']:
-                for ann in doc['annotations']:
-                    if ann.get('killed', False):
-                        self.unlink_concept_name(ann['cui'], ann['value'])
+        if not never_terminate:
+            for project in train_set['projects']:
+                for doc in project['documents']:
+                    for ann in doc['annotations']:
+                        if ann.get('killed', False):
+                            self.unlink_concept_name(ann['cui'], ann['value'])
 
         for epoch in tqdm(range(nepochs), desc='Epoch', leave=False):
             # Print acc before training
@@ -626,7 +630,7 @@ class CAT(object):
                                           lr=lr,
                                           anneal=anneal,
                                           manually_created=manually_created)
-            if terminate_last:
+            if terminate_last and not never_terminate:
                 # Remove entites that were terminated, but after all training is done
                 for project in train_set['projects']:
                     for doc in project['documents']:
