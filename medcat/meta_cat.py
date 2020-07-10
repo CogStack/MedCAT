@@ -85,7 +85,7 @@ class MetaCAT(object):
                              input_size=input_size, hidden_size=hidden_size, dropout=dropout)
 
         if cv == 0:
-            (f1, p, r) = train_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
+            (f1, p, r, cls_report) = train_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                     pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=self.device,
                     class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir,
                     auto_save_model=auto_save_model, score_average=score_average)
@@ -94,6 +94,7 @@ class MetaCAT(object):
             f1s = []
             ps = []
             rs = []
+            cls_reports = []
             for i in range(cv):
                 # Reset the model
                 if fine_tune:
@@ -104,19 +105,30 @@ class MetaCAT(object):
                         nclasses = len(self.category_values)
                         self.model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses)
 
-                (_f1, _p, _r) = train_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
+                (_f1, _p, _r, _cls_report) = train_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                         pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=self.device,
                         class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir, score_average=score_average)
                 f1s.append(_f1)
                 ps.append(_p)
                 rs.append(_r)
+                cls_reports.append(_cls_report)
             f1 = np.average(f1s)
             p = np.average(ps)
             r = np.average(rs)
 
+            # Average cls reports
+            cls_report = {}
+            _cls_report = cls_reports[0]
+            for label in _cls_report.keys():
+                cls_report[label] = {}
+                if type(_cls_report[label]) == dict:
+                    for score in _cls_report[label].keys():
+                        cls_report[label][score] = sum([r[label][score] for r in cls_reports]) / len(cls_reports)
+
+
         print("Best/Average scores: F1: {}, P: {}, R: {}".format(f1, p, r))
 
-        return {'f1':f1, 'p':p, 'r':r}
+        return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
 
 
     def predicit_one(self, text, start, end):

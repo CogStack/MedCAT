@@ -63,6 +63,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
     best_f1 = 0
     best_p = 0
     best_r = 0
+    best_cls_report = None
     for epoch in range(nepochs):
         running_loss_train = []
         running_loss_test = []
@@ -117,6 +118,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average=score_average)
         precision = precision_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average=score_average)
         recall = recall_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average=score_average)
+        cls_report = classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), output_dict=True)
 
         if f1 > best_f1:
             print("=" * 50)
@@ -128,12 +130,13 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
             best_f1 = f1
             best_p = precision
             best_r = recall
+            best_cls_report = cls_report
 
             # Print some stats
             print(confusion_matrix(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
             print("\n\n")
 
-    return (best_f1, best_p, best_r)
+    return (best_f1, best_p, best_r, best_cls_report)
 
 
 def load_hf_tokenizer(tokenizer_name):
