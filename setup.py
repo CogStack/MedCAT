@@ -9,7 +9,7 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="0.3.4.5",
+    version="0.3.4.7",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
@@ -23,7 +23,7 @@ setuptools.setup(
         'gensim~=3.7',
         'spacy==2.2.4',
         'scipy~=1.4',
-        'tokenizers~=0.6.0',
+        'tokenizers~=0.7.0',
         'torch~=1.4.0',
         'torchvision~=0.5.0',
         'Flask~=1.1',
