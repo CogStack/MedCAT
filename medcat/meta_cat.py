@@ -39,7 +39,7 @@ class MetaCAT(object):
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, tui_filter=None, fine_tune=False,
-              auto_save_model=True):
+              auto_save_model=True, score_average='weighted'):
         r''' TODO: Docs
         '''
         data = json.load(open(json_path, 'r'))
@@ -88,7 +88,7 @@ class MetaCAT(object):
             (f1, p, r) = train_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                     pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=self.device,
                     class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir,
-                    auto_save_model=auto_save_model)
+                    auto_save_model=auto_save_model, score_average=score_average)
         elif cv > 0:
             # Mainly for testing, not really used in a normal workflow
             f1s = []
@@ -106,7 +106,7 @@ class MetaCAT(object):
 
                 (_f1, _p, _r) = train_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), lr=lr, test_size=test_size,
                         pad_id=self.pad_id, batch_size=batch_size, nepochs=nepochs, device=self.device,
-                        class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir)
+                        class_weights=class_weights, ignore_cpos=ignore_cpos, save_dir=self.save_dir, score_average=score_average)
                 f1s.append(_f1)
                 ps.append(_p)
                 rs.append(_r)
