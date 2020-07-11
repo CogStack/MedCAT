@@ -141,11 +141,11 @@ class FastEmbMimicCSV(object):
                     yield doc
 
 
-
 class SimpleIter(object):
     def __init__(self, text_path):
-        self.data = open(text_path)
+        self.text_path = text_path
 
     def __iter__(self):
-        for line in self.data:
+        data = open(self.text_path)
+        for line in data:
             yield str(line).strip().split(" ")
