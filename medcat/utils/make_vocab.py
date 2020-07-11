@@ -38,7 +38,7 @@ class MakeVocab(object):
 
 
 
-    def make(self, iter_data, out_folder, join_cdb=True):
+    def make(self, iter_data, out_folder, join_cdb=True, normalize_tkn=False):
         # Save the preprocessed data, used for emb training
         out_path = out_folder + "data.txt"
         vocab_path = out_folder + "vocab.dat"
@@ -61,7 +61,10 @@ class MakeVocab(object):
                     if token._.norm != token.lower_:
                         self.vocab.inc_or_add(token.lower_)
 
-                line = line + " " + "_".join(token._.norm.split(" "))
+                if normalize_tkn:
+                    line = line + " " + "_".join(token._.norm.split(" "))
+                else:
+                    line = line + " " + "_".join(token.text.lower().split(" "))
 
             out.write(line.strip())
             out.write("\n")
@@ -79,9 +82,9 @@ class MakeVocab(object):
         self.vocab.save_dict(path=vocab_path)
 
 
-    def add_vectors(self, in_path, overwrite=False):
+    def add_vectors(self, in_path, overwrite=False, workers=8, niter=2, min_count=10, window=10, vsize=300):
         data = SimpleIter(in_path)
-        w2v = Word2Vec(data, window=10, min_count=10, workers=8, size=300, iter=2)
+        w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
 
         for word in w2v.wv.vocab.keys():
             if word in self.vocab:
