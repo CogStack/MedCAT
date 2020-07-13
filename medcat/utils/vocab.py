@@ -16,12 +16,42 @@ class Vocab(object):
             self.inc_wc(word)
 
 
+    def remove_all_vectors(self):
+        self.vec_index2word = {}
+
+        for word in self.vocab:
+            self.vocab[word]['vec'] = None
+
+
+    def remove_words_below_cnt(self, cnt):
+        print("Words before removal: " + str(len(self.vocab)))
+        for word in list(self.vocab.keys()):
+            if self.vocab[word]['cnt'] < cnt:
+                del self.vocab[word]
+        print("Words after removal : " + str(len(self.vocab)))
+
+        # Rebuild index2word and vec_index2word
+        self.index2word = {}
+        self.vec_index2word = {}
+        for word in self.vocab.keys():
+            ind = len(self.index2word)
+            self.index2word[ind] = word
+            self.vocab[word]['ind'] = ind
+
+            if self.vocab[word]['vec'] is not None:
+                self.vec_index2word[ind] = word
+
+
     def inc_wc(self, word):
         self.item(word)['cnt'] += 1
 
 
     def add_vec(self, word, vec):
         self.vocab[word]['vec'] = vec
+
+        ind = self.vocab[word]['ind']
+        if ind not in self.vec_index2word:
+            self.vec_index2word[ind] = word
 
 
     def reset_counts(self):
@@ -100,12 +130,14 @@ class Vocab(object):
             word = self.vec_index2word[ind]
             f_ind = words.index(word)
             p = freqs[f_ind] / sm
-            self.unigram_table.extend([ind] * int(p * 10000000))
+            self.unigram_table.extend([ind] * int(p * 100000000))
 
         self.unigram_table = np.array(self.unigram_table)
 
 
     def get_negative_samples(self, n=6, ignore_punct_and_num=False, stopwords=[]):
+        if not self.unigram_table:
+            raise Exception("No unigram table present, please run the function vocab.make_unigram_table() first")
         inds = np.random.randint(0, len(self.unigram_table), n)
         inds = self.unigram_table[inds]
 
