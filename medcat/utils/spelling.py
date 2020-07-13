@@ -53,7 +53,7 @@ class CustomSpellChecker(object):
         if word in self.vocab:
             return True
         elif self.data_vocab is not None and word in self.data_vocab:
-            return True
+            return False
         else:
             return False
 
@@ -125,7 +125,7 @@ class SpacySpellChecker(object):
             # Fix the token if necessary
             if not token._.is_punct and not CONTAINS_NUMBER.search(token.lower_):
                 # Check is it in the vocab
-                if len(token.lower_) > 6 and token.lower_ not in self.spell_checker:
+                if len(token.lower_) > 5 and token.lower_ not in self.spell_checker:
                     fix = self.spell_checker.fix(token.lower_)
                     if fix is not None:
                         token._.verified = True

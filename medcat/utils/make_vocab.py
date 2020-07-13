@@ -8,10 +8,11 @@ from functools import partial
 from medcat.utils.spelling import CustomSpellChecker
 from gensim.models import Word2Vec
 from medcat.preprocessing.iterators import SimpleIter
+from medcat.utils.loggers import basic_logger
+
+log = basic_logger("CAT")
 
 class MakeVocab(object):
-    SKIP_STOPWORDS = False
-
     def __init__(self, cdb, vocab=None, word_tokenizer=None):
         self.cdb = cdb
 
@@ -23,9 +24,6 @@ class MakeVocab(object):
 
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser', 'vectors', 'textcat'])
-        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=self.SKIP_STOPWORDS))
-        self.spell_checker = CustomSpellChecker(cdb_vocab=cdb.vocab, data_vocab=vocab)
-        self.nlp.add_spell_checker(spell_checker=self.spell_checker)
 
         # Get the tokenizer
         if word_tokenizer is not None:
@@ -38,7 +36,7 @@ class MakeVocab(object):
 
 
 
-    def make(self, iter_data, out_folder, join_cdb=True, normalize_tkn=False):
+    def make(self, iter_data, out_folder, join_cdb=True):
         # Save the preprocessed data, used for emb training
         out_path = out_folder + "data.txt"
         vocab_path = out_folder + "vocab.dat"
@@ -46,25 +44,20 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
+                log.info("Vocab builder at: " + str(ind))
                 print(ind)
 
-            doc = self.nlp(doc)
+            doc = self.nlp.nlp.tokenizer(doc)
             line = ""
 
             for token in doc:
-                if token._.to_skip:
+                if token.is_space or token.is_punct:
                     continue
 
-                if len(token._.norm) > 1:
-                    self.vocab.inc_or_add(token._.norm)
-                    # Add also the unnormalized version if it is different
-                    if token._.norm != token.lower_:
-                        self.vocab.inc_or_add(token.lower_)
+                if len(token.lower_) > 0:
+                    self.vocab.inc_or_add(token.lower_)
 
-                if normalize_tkn:
-                    line = line + " " + "_".join(token._.norm.split(" "))
-                else:
-                    line = line + " " + "_".join(token.text.lower().split(" "))
+                line = line + " " + "_".join(token.lower_.split(" "))
 
             out.write(line.strip())
             out.write("\n")
@@ -82,9 +75,10 @@ class MakeVocab(object):
         self.vocab.save_dict(path=vocab_path)
 
 
-    def add_vectors(self, in_path, overwrite=False, workers=8, niter=2, min_count=10, window=10, vsize=300):
-        data = SimpleIter(in_path)
-        w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, workers=8, niter=2, min_count=10, window=10, vsize=300):
+        if w2v is None:
+            data = SimpleIter(in_path)
+            w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
 
         for word in w2v.wv.vocab.keys():
             if word in self.vocab:
