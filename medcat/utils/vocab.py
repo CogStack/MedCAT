@@ -136,7 +136,7 @@ class Vocab(object):
 
 
     def get_negative_samples(self, n=6, ignore_punct_and_num=False, stopwords=[]):
-        if not self.unigram_table:
+        if len(self.unigram_table) == 0:
             raise Exception("No unigram table present, please run the function vocab.make_unigram_table() first")
         inds = np.random.randint(0, len(self.unigram_table), n)
         inds = self.unigram_table[inds]

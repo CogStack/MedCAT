@@ -49,6 +49,7 @@ class CDB(object):
         self.vocab = {} # Vocabulary of all words ever, hopefully 
         self._coo_matrix = None # cooccurrence matrix - scikit
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
+        self._sim_vectors = None
 
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
@@ -483,6 +484,7 @@ class CDB(object):
         self.coo_dict = {}
         self.cui_disamb_always = {}
         self.reset_coo_matrix()
+        self.reset_similarity_matrix()
 
 
     def filter_by_tui(self, tuis_to_keep):
@@ -553,3 +555,84 @@ class CDB(object):
         print("Number of concepts that received training: {:,}".format(len(self.cui2context_vec)))
         print("Number of seen training examples in total: {:,}".format(sum(self.cui_count.values())))
         print("Average training examples per concept:     {:.1f}".format(np.average(list(self.cui_count.values()))))
+
+
+    def reset_similarity_matrix(self):
+        self.sim_vectors = None
+        self.sim_vectors_counts = None
+        self.sim_vectors_tuis = None
+        self.sim_vectors_cuis = None
+
+
+    def most_similar(self, cui, tui_filter=[], min_cnt=0, topn=50):
+        r'''
+        Given a concept it will calculat what other concepts in this CDB have the most similar
+        embedding.
+
+        Args:
+            cui (str):
+                The concept ID for the base concept for which you want to get the most similar concepts.
+            tui_filter (list):
+                A list of TUIs that will be used to filterout the returned results. Using this it is possible
+                to limit the similarity calculation to only disorders/symptoms/drugs/...
+            min_cnt (int):
+                Minimum training examples (unsupervised+supervised) that a concept must have to be considered
+                for the similarity calculation.
+            topn (int):
+                How many results to return
+
+        Return:
+            results (dict):
+                A dictionary with topn results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'tui_name': <tui_name>,
+                                                              'tui': <tui>, 'cnt': <number of training examples the concept has seen>}, ...}
+
+        '''
+        # Create the matrix if necessary
+        if not hasattr(self, 'sim_vectors') or self.sim_vectors is None or len(self.sim_vectors) < len(self.cui2context_vec):
+            print("Building similarity matrix")
+            log.info("Building similarity matrix")
+
+            sim_vectors = []
+            sim_vectors_counts = []
+            sim_vectors_tuis = []
+            sim_vectors_cuis = []
+            for _cui in self.cui2context_vec:
+                sim_vectors.append(unitvec(self.cui2context_vec[_cui]))
+                sim_vectors_counts.append(self.cui_count[_cui])
+                sim_vectors_tuis.append(self.cui2tui.get(_cui, 'unk'))
+                sim_vectors_cuis.append(_cui)
+
+            self.sim_vectors = np.array(sim_vectors)
+            self.sim_vectors_counts = np.array(sim_vectors_counts)
+            self.sim_vectors_tuis = np.array(sim_vectors_tuis)
+            self.sim_vectors_cuis = np.array(sim_vectors_cuis)
+
+        # Select appropirate concepts
+        tui_inds = np.arange(0, len(self.sim_vectors_tuis))
+        if len(tui_filter) > 0:
+            tui_inds = np.array([], dtype=np.int32)
+            for tui in tui_filter:
+                tui_inds = np.union1d(np.where(self.sim_vectors_tuis == tui)[0], tui_inds)
+        cnt_inds = np.arange(0, len(self.sim_vectors_counts))
+        if min_cnt > 0:
+            cnt_inds = np.where(self.sim_vectors_counts >= min_cnt)[0]
+
+        # Intersect cnt and tui
+        inds = np.intersect1d(tui_inds, cnt_inds)
+
+        mtrx = self.sim_vectors[inds]
+        cuis = self.sim_vectors_cuis[inds]
+
+        sims = np.dot(mtrx, unitvec(self.cui2context_vec[cui]))
+
+        sims_srt = np.argsort(-1*sims)
+
+        # Create the return dict
+        res = {}
+        for ind, _cui in enumerate(cuis[sims_srt[0:topn]]):
+            res[_cui] = {'name': self.cui2pretty_name[_cui], 'sim': sims[sims_srt][ind],
+                         'tui_name': self.tui2name.get(self.cui2tui.get(_cui, 'unk'), 'unk'),
+                         'tui': self.cui2tui.get(_cui, 'unk'),
+                         'cnt': self.cui_count[_cui]}
+
+        return res
