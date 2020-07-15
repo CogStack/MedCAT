@@ -49,7 +49,7 @@ class CDB(object):
         self.vocab = {} # Vocabulary of all words ever, hopefully 
         self._coo_matrix = None # cooccurrence matrix - scikit
         self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
-        self._sim_vectors = None
+        self.sim_vectors = None
 
 
     def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
