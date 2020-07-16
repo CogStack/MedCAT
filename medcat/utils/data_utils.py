@@ -1,4 +1,189 @@
 import numpy as np
+import json
+
+def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if_already_done=False):
+    """ Please just ignore this function, I'm afraid to even look at it
+    """
+    data = json.load(open(data_path))
+    name2cui = {}
+    cui2status = {}
+
+    print("This will overwrite the original data, make sure you've a backup")
+    print("If something is completely wrong or you do not know what to do, chose the [s]kip option, you can also skip by leaving input blank.")
+    print("If you want to [q]uit write  q  your progress will be saved to the json and you can continue later")
+
+    for project in data['projects']:
+        for document in project['documents']:
+            for ann in document['annotations']:
+                name = str(ann['value']).lower()
+                cui = ann['cui']
+                status = None
+
+                if ann['correct']:
+                    status = 'Correct'
+                else:
+                    status = "Other"
+
+                if name in name2cui:
+                    name2cui[name][cui] = name2cui[name].get(cui, 0) + 1
+                else:
+                    name2cui[name] = {cui: 1}
+
+                if cui in cui2status:
+                    if name in cui2status[cui]:
+                        cui2status[cui][name][status] = cui2status[cui][name].get(status, 0) + 1
+                    else:
+                        cui2status[cui][name] = {status: 1}
+                else:
+                    cui2status[cui] = {name: {status: 1}}
+
+    quit = False
+
+    if not status_only:
+        for project in data['projects']:
+            for document in project['documents']:
+                text = str(document['text'])
+                for ann in document['annotations']:
+                    name = str(ann['value']).lower()
+                    cui = ann['cui']
+                    status = None
+                    start = ann['start']
+                    end = ann['end']
+
+                    if 'manul_verification_mention' not in ann or ignore_if_already_done:
+                        if ann['correct']:
+                            status = 'Correct'
+                        else:
+                            status = "Other"
+
+                        # First check name
+                        if len(name2cui[name]) > 1:
+                            cuis = list(name2cui[name].keys())
+                            print("\n\nThis name was annotated with multiple CUIs\n")
+                            b = text[max(0, start-cntx_size):start].replace("\n", " ")
+                            m = text[start:end].replace("\n", " ")
+                            e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
+                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
+                            print()
+                            print("C | {:3} | {:20} | {:70} | {}".format("ID", "CUI", "Concept", "Number of annotations in the dataset"))
+                            print("-"*110)
+                            for id, _cui in enumerate(cuis):
+                                if _cui == cui:
+                                    c = "+"
+                                else:
+                                    c = " "
+                                print("{} | {:3} | {:20} | {:70} | {}".format(c, id, _cui, cdb.cui2pretty_name.get(_cui, 'unk')[:69], name2cui[name][_cui]))
+                            print()
+                            d = str(input("###Change to ([s]kip/[q]uit/id): "))
+
+                            if d == 'q':
+                                quit = True
+                                break
+                            if d == 's':
+                                continue
+
+                            if d.isnumeric():
+                                d = int(d)
+                                ann['cui'] = cuis[d]
+                            else:
+                                continue
+
+                            ann['manul_verification_mention'] = True
+                if quit:
+                    break
+            if quit:
+                break
+
+    if not quit:
+        # Re-calculate
+        for project in data['projects']:
+            for document in project['documents']:
+                for ann in document['annotations']:
+                    name = str(ann['value']).lower()
+                    cui = ann['cui']
+                    status = None
+
+                    if ann['correct']:
+                        status = 'Correct'
+                    else:
+                        status = "Other"
+
+                    if name in name2cui:
+                        name2cui[name][cui] = name2cui[name].get(cui, 0) + 1
+                    else:
+                        name2cui[name] = {cui: 1}
+
+                    if cui in cui2status:
+                        if name in cui2status[cui]:
+                            cui2status[cui][name][status] = cui2status[cui][name].get(status, 0) + 1
+                        else:
+                            cui2status[cui][name] = {status: 1}
+                    else:
+                        cui2status[cui] = {name: {status: 1}}
+
+
+        for project in data['projects']:
+            for document in project['documents']:
+                text = str(document['text'])
+                for ann in document['annotations']:
+                    name = str(ann['value']).lower()
+                    cui = ann['cui']
+                    status = None
+                    start = ann['start']
+                    end = ann['end']
+
+                    if 'manual_verification_status' not in ann or ignore_if_already_done:
+                        if ann['correct']:
+                            status = 'correct'
+                        elif ann['deleted']:
+                            status = 'incorrect'
+                        elif ann['killed']:
+                            status = 'terminated'
+                        else:
+                            status = 'unk'
+
+                        if len(cui2status[cui][name]) > 1:
+                            ss = list(cui2status[cui][name].keys())
+                            print("This name was annotated with different status\n")
+                            b = text[max(0, start-cntx_size):start].replace("\n", " ")
+                            m = text[start:end].replace("\n", " ")
+                            e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
+                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
+                            print("CURRENT STATUS: {}".format(status))
+                            print("CURRENT ANNOTATION: {} - {}".format(cui, cdb.cui2pretty_name.get(cui, 'unk')))
+                            print()
+                            d = str(input("###Change to ([q]uit/[s]kip/[c]orrect/[i]ncorrect/[t]erminate): "))
+
+                            if d == 'q':
+                                quit = True
+                                break
+                            if d == 's':
+                                continue
+                            elif d == 'c':
+                                ann['correct'] = True
+                                ann['killed'] = False
+                                ann['deleted'] = False
+                            elif d == 'i':
+                                ann['correct'] = False
+                                ann['killed'] = False
+                                ann['deleted'] = True
+                            elif d == 't':
+                                ann['correct'] = False
+                                ann['killed'] = True
+                                ann['deleted'] = False
+                            else:
+                                continue
+                            print()
+                            print()
+                            ann['manual_verification_status'] = True
+                if quit:
+                    break
+            if quit:
+                break
+
+    json.dump(data, open(data_path, 'w'))
+
+
 
 def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False, tui_filter=None):
     """ Convert the data from a json format into a CSV-like format for training.
