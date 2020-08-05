@@ -159,7 +159,12 @@ class MetaCAT(object):
     def save(self, full_save=False):
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
-            self.tokenizer.save(self.save_dir, name='bbpe')
+            if hasattr(self.tokenizer, 'save_model'):
+                # Support the new save in tokenizer 0.8.2+
+                self.tokenizer.save_model(self.save_dir, name='bbpe')
+            else:
+                # Old way of saving models
+                self.tokenizer.save(self.save_dir, name='bbpe')
             # Save embeddings
             np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
 

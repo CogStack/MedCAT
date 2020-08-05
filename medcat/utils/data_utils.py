@@ -1,5 +1,242 @@
 import numpy as np
 import json
+import copy
+from sklearn.metrics import cohen_kappa_score
+
+
+def count_annotations_project(project):
+    cnt = 0
+    for doc in project['documents']:
+        for ann in doc['annotations']:
+            # Only validated
+            if ann['validated']:
+                cnt += 1
+    return cnt
+
+
+def load_data(data_path, require_annotations=True, order_by_num_ann=True):
+    data_candidates = json.load(open(data_path))
+    if require_annotations:
+        data = {'projects': []}
+        # Keep only projects that have annotations
+        for project in data_candidates['projects']:
+            keep = False
+            for document in project['documents']:
+                if len(document['annotations']) > 0:
+                    keep = True
+                    break
+            if keep:
+                data['projects'].append(project)
+    else:
+        data = data_candidates
+
+
+    cnts = []
+    if order_by_num_ann:
+        for project in data['projects']:
+            cnt = count_annotations_project(project)
+            cnts.append(cnt)
+    srt = np.argsort(-np.array(cnts))
+    data['projects'] = [data['projects'][i] for i in srt]
+
+    return data
+
+
+def count_annotations(data_path):
+    data = load_data(data_path, require_annotations=True)
+
+    g_cnt = 0
+    for project in data['projects']:
+        cnt = count_annotations_project(project)
+        g_cnt += cnt
+        print("Number of annotations in '{}' is: {}".format(project['name'], cnt))
+
+    print("Total number of annotations is: {}".format(g_cnt))
+
+
+def get_doc_from_project(project, doc_id):
+    for document in project['documents']:
+        if document['id'] == doc_id:
+            return document
+    return None
+
+
+def get_ann_from_doc(document, start, end):
+    for ann in document['annotations']:
+        if ann['start'] == start and ann['end'] == end:
+            return ann
+    return None
+
+
+def meta_ann_from_ann(ann, meta_name):
+    meta_anns = ann['meta_anns']
+    # need for old versions of data
+    if type(meta_anns) == dict:
+        return meta_anns.get(meta_name, None)
+    else:
+        for meta_ann in meta_anns:
+            if meta_ann['name'] == meta_name:
+                return meta_ann
+    return None
+
+
+def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
+    if ann['cui'] == ann2['cui'] and \
+       ann['correct'] == ann2['correct'] and \
+       ann['deleted'] == ann2['deleted'] and \
+       ann['alternative'] == ann2['alternative'] and \
+       ann['killed'] == ann2['killed'] and \
+       ann['manually_created'] == ann2['manually_created'] and \
+       ann['validated'] == ann2['validated']:
+        #Check are meta anns the same if exist
+        for meta_name in meta_names:
+            meta_ann = meta_ann_from_ann(ann, meta_name)
+            meta_ann2 = meta_ann_from_ann(ann2, meta_name)
+            if meta_ann is not None and meta_ann2 is not None:
+                if meta_ann['value'] != meta_ann2['value']:
+                    return False
+            elif (meta_ann is None) != (meta_ann2 is None):
+                if require_double_inner:
+                    return False
+    else:
+        return False
+
+    return True
+
+
+def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], meta_names=[]):
+    are_same = True
+    new_document = copy.deepcopy(document)
+    new_document['annotations'] = []
+
+    for ann in document['annotations']:
+        # Take only validated anns
+        if ann['validated']:
+            ann2 = get_ann_from_doc(document2, ann['start'], ann['end'])
+
+            if ann2 is not None:
+                if not are_anns_same(ann, ann2, meta_names):
+                    ann_stats.append((1, 0))
+                    are_same = False
+                else:
+                    ann_stats.append((1, 1))
+                    new_document['annotations'].append(ann)
+            elif not require_double_inner:
+                ann_stats.append((1, 1))
+                new_document['annotations'].append(ann)
+            else:
+                ann_stats.append((1, 0))
+                are_same = False
+
+    # Check the reverse also, but only ann2 if not in first doc
+    for ann2 in document2['annotations']:
+        ann = get_ann_from_doc(document, ann2['start'], ann2['end'])
+
+        if ann is None:
+            if not require_double_inner:
+                ann_stats.append((1, 1))
+                # Also append this annotation to the document, because it is missing from it
+                new_document['annotations'].append(ann2)
+            else:
+                ann_stats.append((0, 1))
+                are_same = False
+
+    return new_document
+
+
+
+def print_consolid_stats(ann_stats=[]):
+    if ann_stats:
+        ann_stats = np.array(ann_stats)
+        ck = 0 #TODO: cohen_kappa_score(ann_stats[:, 0], ann_stats[:, 1])
+        t = 0
+        for i in range(len(ann_stats)):
+            if ann_stats[i, 0] == ann_stats[i, 1]:
+                t += 1
+        agr = t / len(ann_stats)
+        print("Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr)) 
+        print("InAgreement vs Total: {} / {}".format(t, len(ann_stats)))
+
+
+def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=True, meta_anns_to_match=[]):
+    """ Consolidated a dataset that was multi-annotated (same documents two times).
+
+    data_path:
+        Output from MedCATtrainer - projects containig the same documents must have the same name.
+    out_path:
+        The consolidated data will be saved here - usually only annotations where both annotators agre
+            out_path:
+            The consolidated data will be saved here - usually only annotations where both annotators agreee
+    require_double (boolean):
+        If True everything must be double annotated, meaning there have to be two projects of the same name for each name. Else, it will
+            also use projects that do not have double annotiations. If this is False, projects that do not have double anns will be
+            included as is, and projects that have will still be checked.
+    require_double_inner (boolean):
+        If False - this will allow some entities to be annotated by only one annotator and not the other, while still requiring
+            annotations to be the same if they exist.
+    meta_anns_to_match (boolean):
+        List of meta annotations that must match for two annotations to be the same. If empty only the mention
+            level will be checked.
+    """
+    data = load_data(data_path, require_annotations=True)
+    out_data = {'projects': []}
+    projects_done = set()
+    ann_stats = [] # This will keep score for agreement
+    # Consolidate
+    for project in data['projects']:
+        id = project['id']
+        new_documents = []
+        ann_stats_project = []
+        new_project = None
+        if id not in projects_done:
+            projects_done.add(id)
+            name = project['name']
+            documents = project['documents']
+
+            if not require_double:
+                new_project = copy.deepcopy(project)
+                projects_done.add(id)
+            else:
+                # Means we need double annotations
+                has_double = False
+                for project2 in data['projects']:
+                    id2 = project2['id']
+                    name2 = project2['name']
+
+                    if name == name2 and id != id2:
+                        has_double = True
+                        projects_done.add(id2)
+                        break
+
+                if has_double:
+                    for document in documents:
+                        document2 = get_doc_from_project(project2, document['id'])
+
+                        if document2 is not None:
+                            new_document = get_same_anns(document, document2, require_double_inner=require_double_inner, ann_stats=ann_stats_project, meta_names=meta_anns_to_match)
+                            new_documents.append(new_document)
+                        elif not require_double_inner:
+                            # Use the base document if we are allowing no double anns
+                            new_documents.append(document)
+
+                    new_project = copy.deepcopy(project)
+                    new_project['documents'] = new_documents
+
+            if new_project is not None:
+                ann_stats.extend(ann_stats_project)
+                out_data['projects'].append(new_project)
+
+            if ann_stats_project:
+                print("**Printing stats for project: {}".format(project['name']))
+                print_consolid_stats(ann_stats_project)
+                print("\n\n")
+            else:
+                print("**Project '{}' did not have double annotations\n\n".format(project['name']))
+
+    # Save
+    json.dump(out_data, open(out_path, 'w'))
+    print("**Overall stats")
+    print_consolid_stats(ann_stats)
 
 def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if_already_done=False):
     """ Please just ignore this function, I'm afraid to even look at it
@@ -79,16 +316,14 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                             if d == 'q':
                                 quit = True
                                 break
+
+                            ann['manul_verification_mention'] = True
                             if d == 's':
                                 continue
-
                             if d.isnumeric():
                                 d = int(d)
                                 ann['cui'] = cuis[d]
-                            else:
-                                continue
 
-                            ann['manul_verification_mention'] = True
                 if quit:
                     break
             if quit:
@@ -96,6 +331,8 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
 
     if not quit:
         # Re-calculate
+        name2cui = {}
+        cui2status = {}
         for project in data['projects']:
             for document in project['documents']:
                 for ann in document['annotations']:
@@ -139,43 +376,51 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                             status = 'incorrect'
                         elif ann['killed']:
                             status = 'terminated'
+                        elif ann['alternative']:
+                            status = 'alternative'
                         else:
                             status = 'unk'
 
                         if len(cui2status[cui][name]) > 1:
                             ss = list(cui2status[cui][name].keys())
-                            print("This name was annotated with different status\n")
+                            print("\n\nThis name was annotated with different status\n")
                             b = text[max(0, start-cntx_size):start].replace("\n", " ")
                             m = text[start:end].replace("\n", " ")
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
-                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                            print("CURRENT STATUS: {}".format(status))
+                            print("SNIPPET           : {} <<<{}>>> {}".format(b, m, e))
+                            print("CURRENT STATUS    : {}".format(status))
                             print("CURRENT ANNOTATION: {} - {}".format(cui, cdb.cui2pretty_name.get(cui, 'unk')))
+                            print("ANNS TOTAL        :")
+                            for k,v in cui2status[cui][name].items():
+                                print("        {}: {}".format(str(k), str(v)))
                             print()
+
                             d = str(input("###Change to ([q]uit/[s]kip/[c]orrect/[i]ncorrect/[t]erminate): "))
 
                             if d == 'q':
                                 quit = True
                                 break
+
+                            ann['manual_verification_status'] = True
                             if d == 's':
                                 continue
                             elif d == 'c':
                                 ann['correct'] = True
                                 ann['killed'] = False
                                 ann['deleted'] = False
+                                ann['alternative'] = False
                             elif d == 'i':
                                 ann['correct'] = False
                                 ann['killed'] = False
                                 ann['deleted'] = True
+                                ann['alternative'] = False
                             elif d == 't':
                                 ann['correct'] = False
                                 ann['killed'] = True
                                 ann['deleted'] = False
-                            else:
-                                continue
+                                ann['alternative'] = False
                             print()
                             print()
-                            ann['manual_verification_status'] = True
                 if quit:
                     break
             if quit:
