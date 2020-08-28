@@ -25,6 +25,50 @@ def get_batch(ind, batch_size, x, y, cpos, device):
     return x_batch.to(device), y_batch.to(device), c_batch.to(device)
 
 
+def eval_network(net, data, max_seq_len=41, pad_id=30000, batch_size=100, device='cpu', ignore_cpos=False, score_average='weighted'):
+    # TODO: It is simply wrong to do things this way (whole function)
+    y = np.array([x[0] for x in data])
+    x = [x[1] for x in data]
+    cent = np.array([x[2] for x in data])
+
+    # Pad X and convert to array
+    x = np.array([(sample + [pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len] for sample in x])
+
+    x_test = torch.tensor(x, dtype=torch.long)
+    y_test = torch.tensor(y, dtype=torch.long)
+    c_test = torch.tensor(cent, dtype=torch.long)
+
+    device = torch.device(device) # Create a torch device
+
+    num_batches_test = int(np.ceil(len(x_test) / batch_size))
+    test_outs = []
+    running_loss_test = []
+    criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+
+    for j in range(num_batches_test):
+        net.eval()
+        x_test_batch, y_test_batch, cpos_test_batch = get_batch(ind=j,
+                                                                 batch_size=batch_size,
+                                                                 x=x_test,
+                                                                 y=y_test,
+                                                                 cpos=c_test,
+                                                                 device=device)
+        outputs_test = net(x_test_batch, cpos_test_batch, ignore_cpos=ignore_cpos)
+        test_outs.append(outputs_test.detach().cpu().numpy())
+        running_loss_test.append(criterion(outputs_test, y_test_batch).item())
+
+    test_loss = np.average(running_loss_test)
+
+
+    print("*"*50 + "  Test")
+    print(classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
+    print("Test Loss:  {:5}\n\n".format(test_loss))
+    print("\n\n\n")
+
+    cls_report = classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), output_dict=True)
+    return cls_report
+
+
 def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=30000, batch_size=100,
                   nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None, ignore_cpos=False,
                   auto_save_model=True, score_average='weighted'):
@@ -91,7 +135,6 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
 
 
         # TEST PHASE
-
         num_batches_test = int(np.ceil(len(x_test) / batch_size))
         test_outs = []
         for j in range(num_batches_test):
