@@ -5,7 +5,7 @@ import numpy as np
 import torch
 from tokenizers import ByteLevelBPETokenizer
 
-from medcat.utils.ml_utils import train_network
+from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids
 
 class MetaCAT(object):
@@ -39,7 +39,7 @@ class MetaCAT(object):
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, tui_filter=None, fine_tune=False,
-              auto_save_model=True, score_average='weighted'):
+              auto_save_model=True, score_average='weighted', replace_center=None):
         r''' TODO: Docs
         '''
         data = json.load(open(json_path, 'r'))
@@ -49,14 +49,16 @@ class MetaCAT(object):
             os.makedirs(self.save_dir)
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter)
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter, 
+                replace_center=replace_center)
 
         if category_name is not None:
             self.category_name = category_name
 
         # Check is the name there
         if self.category_name not in data:
-            raise Exception("The category name does not exist in this json file.")
+            raise Exception("The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
+                self.category_name, " | ".join(list(data.keys()))))
 
         data = data[self.category_name]
 
@@ -131,6 +133,33 @@ class MetaCAT(object):
         return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
 
 
+    def eval(self, json_path, batch_size=100, lowercase=True, ignore_cpos=False, tui_filter=None, score_average='weighted',
+            replace_center=None):
+        data = json.load(open(json_path, 'r'))
+
+        # Prepare the data
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter,
+                replace_center=replace_center)
+
+        # Check is the name there
+        if self.category_name not in data:
+            raise Exception("The category name does not exist in this json file.")
+
+        data = data[self.category_name]
+
+        # We already have everything, just get the data
+        data, _ = encode_category_values(data, vals=self.category_values)
+
+        # Convert data tkns to ids
+        data = tkns_to_ids(data, self.tokenizer)
+
+        # Run evaluation
+        result = eval_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), pad_id=self.pad_id,
+                batch_size=batch_size, device=self.device, ignore_cpos=ignore_cpos, score_average=score_average)
+
+        return result
+
+
     def predicit_one(self, text, start, end):
         """ A test function, not useful in any other case
         """
@@ -174,6 +203,7 @@ class MetaCAT(object):
 
 
     def save_config(self):
+        # TODO: Add other parameters, e.g replace_center, ignore_cpos etc.
         path = self.save_dir + "vars.dat"
         to_save = {'category_name': self.category_name,
                    'category_values': self.category_values,
@@ -209,7 +239,7 @@ class MetaCAT(object):
                               nclasses=nclasses)
             path = self.save_dir + "lstm.dat"
 
-        self.model.load_state_dict(torch.load(path))
+        self.model.load_state_dict(torch.load(path, map_location=self.device))
 
 
     def load(self, model='lstm', tokenizer_name='bbpe'):
@@ -252,7 +282,7 @@ class MetaCAT(object):
                 if start >= pair[0] and start <= pair[1]:
                     break
             _start = max(0, ind - self.cntx_left)
-            _end = min(len(doc_text.tokens), ind + 1 + self.cntx_left)
+            _end = min(len(doc_text.tokens), ind + 1 + self.cntx_right)
             _ids = doc_text.ids[_start:_end]
             _cpos = self.cntx_left + min(0, ind-self.cntx_left)
 

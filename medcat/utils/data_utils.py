@@ -158,7 +158,7 @@ def print_consolid_stats(ann_stats=[]):
         print("InAgreement vs Total: {} / {}".format(t, len(ann_stats)))
 
 
-def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=True, meta_anns_to_match=[]):
+def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=False, meta_anns_to_match=[]):
     """ Consolidated a dataset that was multi-annotated (same documents two times).
 
     data_path:
@@ -430,13 +430,14 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
 
 
 
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False, tui_filter=None):
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False, tui_filter=None, replace_center=None):
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
     cntx_left:  size of the context
     cntx_right:  size of the context
     tokenizer:  instance of the <Tokenizer> class from huggingface
+    replace_center:  if not None the center word (concept) will be replaced with whatever is set
 
     return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
     """
@@ -466,17 +467,31 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
                                 # Get the index of the center token
                                 ind = 0
                                 for ind, pair in enumerate(doc_text.offsets):
-                                    if start >= pair[0] and start <= pair[1]:
+                                    if start >= pair[0] and start < pair[1]:
                                         break
 
                                 _start = max(0, ind - cntx_left)
                                 _end = min(len(doc_text.tokens), ind + 1 + cntx_right)
                                 tkns = doc_text.tokens[_start:_end]
                                 cpos = cntx_left + min(0, ind-cntx_left)
+
+                                if replace_center is not None:
+                                    for p_ind, pair in enumerate(doc_text.offsets):
+                                        if start >= pair[0] and start < pair[1]:
+                                            s_ind = p_ind
+                                        if end > pair[0] and end <= pair[1]:
+                                            e_ind = p_ind
+
+                                    ln = e_ind - s_ind
+                                    tkns[cpos:cpos+ln+1] = [replace_center]
+
                             else:
+                                # TODO: Currently not working properly 
                                 _start = max(0, start - cntx_left)
                                 _end = min(len(text), end + cntx_right)
                                 tkns = tokenizer.encode(text[_start:_end]).tokens
+
+                                raise Exception("Not working properly for now")
 
 
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
