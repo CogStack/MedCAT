@@ -51,6 +51,8 @@ class SpacyCat(object):
     NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
     LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
 
+    IS_TRAINER = False # Are we using the trainer or not
+
     LR = float(os.getenv('LR', 1))
     ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
 
@@ -542,15 +544,16 @@ class SpacyCat(object):
             name = concept[1]
             cuis = list(self.cdb.name2cui[name])
 
-            # Remove cuis if tui filter
-            """
-            if self.TUI_FILTER is not None:
+            # Remove cuis if tui/cui filter - but only if trainer
+            if self.IS_TRAINER and (self.TUI_FILTER is not None or self.CUI_FILTER is not None):
                 new_cuis = []
                 for cui in cuis:
-                    if self.cdb.cui2tui[cui] in self.TUI_FILTER:
+                    if self.TUI_FILTER is not None and self.cdb.cui2tui[cui] in self.TUI_FILTER:
+                        new_cuis.append(cui)
+                    if self.CUI_FILTER is not None and cui in self.CUI_FILTER:
                         new_cuis.append(cui)
                 cuis = new_cuis
-            """
+
             if self.TUI_FILTER is None and self.CUI_FILTER is None:
                 do_disamb = True
             else:
@@ -597,7 +600,7 @@ class SpacyCat(object):
                     mps = np.array([1] * len(cnts), dtype=np.float)
                     noicd = [False if self.PREFER_CONCEPTS_WITH in self.cdb.cui2info.get(cui, {}) else
                              True for cui in cuis]
-                    mps[noicd] = 0.8
+                    mps[noicd] = 0.5
                     accs = accs * mps
                 ind = np.argmax(accs)
                 cui = cuis[ind]
