@@ -9,14 +9,14 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="0.3.7.9",
+    version="0.3.8.5",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
-    packages=['medcat', 'medcat.utils', 'medcat.preprocessing'],
+    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack'],
     install_requires=[
         'numpy~=1.18',
         'pandas~=1.0',
@@ -28,6 +28,7 @@ setuptools.setup(
         'torchvision~=0.5.0',
         'Flask~=1.1',
         'sklearn~=0.0',
+        'elasticsearch==7.9.1',
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

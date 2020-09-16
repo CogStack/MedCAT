@@ -31,7 +31,7 @@ class MakeVocab(object):
             Default: None
     '''
 
-    def __init__(self, cdb, vocab=None, word_tokenizer=None):
+    def __init__(self, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
         self.w2v = None
         self.vocab_path = "./vocab.dat"
@@ -49,17 +49,17 @@ class MakeVocab(object):
         else:
             self.tokenizer = self._tok
 
-            
+
     def _tok(self, text):
         return [text]
-    
+
 
     def make(self, iter_data, out_folder, join_cdb=True):
         r'''
         Make a vocab - without vectors initially. This will create two files in the out_folder:
         - vocab.dat -> The vocabulary without vectors
         - data.txt -> The tokenized dataset prepared for training of word2vec or similar embeddings. 
-        
+
         Args:
             iter_data (Iterator):
                 An iterator over sentences or documents. Can also be a simple array of text documents/sentences.
@@ -110,7 +110,7 @@ class MakeVocab(object):
     def add_vectors(self, in_path=None, w2v=None, overwrite=False, workers=8, niter=2, min_count=10, window=10, vsize=300):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path. 
-        
+
         Args:
             in_path (String):
                 Path to the data.txt that was created by the MakeVocab.make() function.
@@ -119,7 +119,7 @@ class MakeVocab(object):
             overwrite (bool):
                 If True it will overwrite existing vectors in the vocabulary. Default: False
             **: Word2Vec arguments
-        
+
         Returns:
             A trained word2vec model.
         '''
@@ -134,7 +134,8 @@ class MakeVocab(object):
                 else:
                     if self.vocab.vec(word) is None:
                         self.vocab.add_vec(word, w2v.wv.get_vector(word))
-        
+
         # Save the vocab again, now with vectors
-        self.vocab.save_dict(path=self.vocab_path)        
+        self.vocab.make_unigram_table()
+        self.vocab.save_dict(path=self.vocab_path)
         return w2v
