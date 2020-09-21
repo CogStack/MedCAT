@@ -158,6 +158,141 @@ def print_consolid_stats(ann_stats=[]):
         print("InAgreement vs Total: {} / {}".format(t, len(ann_stats)))
 
 
+def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False):
+    data = load_data(data_path, require_annotations=True)
+    for pid, project in enumerate(data['projects']):
+        print("Starting: {} / {}".format(pid, len(data['projects'])))
+        cui_filter = None
+        tui_filter = None
+        if 'cuis' in project and len(project['cuis'].strip()) > 0:
+            cui_filter = set([x.strip() for x in project['cuis'].split(",")])
+        if 'tuis' in project and len(project['tuis'].strip()) > 0:
+            tui_filter = set([x.strip().upper() for x in project['tuis'].split(",")])
+        cat.spacy_cat.TUI_FILTER = tui_filter
+        cat.spacy_cat.CUI_FILTER = cui_filter
+
+        cat.spacy_cat.MIN_ACC = -5
+        cat.spacy_cat.IS_TRAINER = True
+        cat.train = False
+
+        for did, doc in enumerate(project['documents']):
+            print("Starting: {} / {}".format(did, len(project['documents'])))
+            text = doc['text']
+
+            if not doc.get('_verified', False) or ignore_already_done:
+                # Get annotations with medcat
+                s_doc = cat(text)
+
+                t_anns_norm = []
+                p_anns_norm = []
+                t_anns_start = []
+                p_anns_start = []
+                for ann in doc['annotations']:
+                    t_anns_norm.append((ann['start'], ann['cui']))
+                    t_anns_start.append(ann['start'])
+                for ann in s_doc.ents:
+                    p_anns_norm.append((ann.start_char, ann._.cui))
+                    p_anns_start.append(ann.start_char)
+
+                print("__________________")
+                print("T: ", t_anns_norm)
+                print()
+                print("P: ", p_anns_norm)
+
+
+                print("\n\nSTARTING MC TO GT")
+                for id, p_ann in enumerate(p_anns_norm):
+                    if (only_start and p_ann[0] not in t_anns_start) or (not only_start and p_ann not in t_anns_norm):
+                        ann = s_doc.ents[id]
+                        print("\n\nThis does not exist in gt annotations")
+                        start = ann.start_char
+                        end = ann.end_char
+                        cui = ann._.cui
+                        b = text[max(0, start-cntx_size):start].replace("\n", " ").replace('\r', ' ')
+                        m = text[start:end].replace("\n", " ").replace('\r', ' ')
+                        e = text[end:min(len(text), end+cntx_size)].replace("\n", " ").replace('\r', ' ')
+                        print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
+                        print(cui, " | ", cat.cdb.cui2pretty_name.get(cui, ''), " | ", cat.cdb.cui2tui.get(cui, ''), " | ", ann.start_char)
+                        print(ann._.acc)
+                        d = str(input("###Add as (or empty for skip): 1-Correct, 2-Incorrect: "))
+
+                        if d:
+                            new_ann = {}
+                            new_ann['id'] = 0 #ignore
+                            new_ann['user'] = 'auto'
+                            new_ann['validated'] = True
+                            new_ann['last_modified'] = ''
+                            new_ann['manually_created'] = False
+                            new_ann['acc'] = ann._.acc
+                            new_ann['start'] = ann.start_char
+                            new_ann['end'] = ann.end_char
+                            new_ann['cui'] = ann._.cui
+                            new_ann['value'] = ann.text
+                            new_ann['killed'] = False
+                            new_ann['alternative'] = False
+                            if d == '1':
+                                new_ann['correct'] = True
+                                new_ann['deleted'] = False
+                            if d == '2':
+                                new_ann['correct'] = False
+                                new_ann['deleted'] = True
+                            if d == 'x':
+                                # Save annotations and return
+                                json.dump(data, open(data_path, 'w'))
+                                return
+
+                            doc['annotations'].append(new_ann)
+
+                print("\n\nSTARTING GT TO MC")
+                # Redo
+                t_anns_norm = []
+                for ann in doc['annotations']:
+                    t_anns_norm.append((ann['start'], ann['cui']))
+                    t_anns_start.append(ann['start'])
+                new_doc_anns = []
+                for id, t_ann in enumerate(t_anns_norm):
+                    add_ann = True
+                    ann = doc['annotations'][id]
+                    if (not only_start and t_ann not in p_anns_norm) or (only_start and t_ann[0] not in p_anns_start):
+                        # Check is it correct
+                        if not ann.get('_verified', False) or ignore_already_done:
+                            print("\n\nThis does not exist in mc annotations")
+                            b = text[max(0, ann['start']-cntx_size):ann['start']].replace("\n", " ").replace('\r', ' ')
+                            m = text[ann['start']:ann['end']].replace("\n", " ").replace('\r', ' ')
+                            e = text[ann['end']:min(len(text), ann['end']+cntx_size)].replace("\n", " ").replace('\r', ' ')
+                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
+                            print(ann['cui'], " | ", cat.cdb.cui2pretty_name.get(ann['cui'], ''), " | ", ann['start'])
+                            print("Current status")
+                            print("  Correct:     " + str(ann['correct']))
+                            print("  Incorrect:   " + str(ann['deleted']))
+                            print("  Alternative: " + str(ann['alternative']))
+                            print("  Killed:      " + str(ann['killed']))
+                            d = str(input("###Change to (or empty for skip): 1-Correct, 2-Incorrect, d-delete: "))
+
+                            if d == '1':
+                                ann['correct'] = True
+                                ann['deleted'] = False
+                                ann['killed'] = False
+                                ann['alternative'] = False
+                            elif d == '2':
+                                ann['correct'] = False
+                                ann['deleted'] = True
+                                ann['killed'] = False
+                                ann['alternative'] = False
+                            elif d == 'd':
+                                add_ann = False
+                            elif d == 'x':
+                                # Save annotations and return
+                                json.dump(data, open(data_path, 'w'))
+                                return
+                            ann['_verified'] = True
+                    if add_ann:
+                        new_doc_anns.append(ann)
+                doc['annotations'] = new_doc_anns
+                doc['_verified'] = True
+
+    json.dump(data, open(data_path, 'w'))
+
 def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=False, meta_anns_to_match=[]):
     """ Consolidated a dataset that was multi-annotated (same documents two times).
 

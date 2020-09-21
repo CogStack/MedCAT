@@ -360,8 +360,8 @@ class SpacyCat(object):
                     lbl = "{} - {} - {} - {} - {:.2}".format(
                             cui,
                             self.cdb.cui2pretty_name.get(cui, ''),
-                            self.cdb.cui2tui.get(cui, ''),
-                            self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, ''), ''),
+                            self.cdb.cui2tui.get(cui, 'unk:unk'),
+                            self.cdb.tui2name.get(self.cdb.cui2tui.get(cui, 'unk:unk'), 'unk:unk'),
                             float(acc))
                 elif self.LBL_STYLE == 'ent':
                     lbl = "{} - {:.2}".format(self.cdb.tui2name.get(
@@ -548,7 +548,7 @@ class SpacyCat(object):
             if self.IS_TRAINER and (self.TUI_FILTER is not None or self.CUI_FILTER is not None):
                 new_cuis = []
                 for cui in cuis:
-                    if self.TUI_FILTER is not None and self.cdb.cui2tui[cui] in self.TUI_FILTER:
+                    if self.TUI_FILTER is not None and self.cdb.cui2tui.get(cui, 'unk:unk') in self.TUI_FILTER:
                         new_cuis.append(cui)
                     if self.CUI_FILTER is not None and cui in self.CUI_FILTER:
                         new_cuis.append(cui)
