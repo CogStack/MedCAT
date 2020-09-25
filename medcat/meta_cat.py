@@ -6,7 +6,7 @@ import torch
 from tokenizers import ByteLevelBPETokenizer
 
 from medcat.utils.ml_utils import train_network, eval_network
-from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids
+from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
 
 class MetaCAT(object):
     r''' TODO: Add documentation
@@ -39,9 +39,10 @@ class MetaCAT(object):
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, tui_filter=None, fine_tune=False,
-              auto_save_model=True, score_average='weighted', replace_center=None):
+              auto_save_model=True, score_average='weighted', replace_center=None, seed=11):
         r''' TODO: Docs
         '''
+        set_all_seeds(seed)
         data = json.load(open(json_path, 'r'))
 
         # Create directories if they don't exist
@@ -49,7 +50,7 @@ class MetaCAT(object):
             os.makedirs(self.save_dir)
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter, 
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter,
                 replace_center=replace_center)
 
         if category_name is not None:

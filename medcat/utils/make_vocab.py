@@ -107,7 +107,7 @@ class MakeVocab(object):
         self.vocab.save_dict(path=vocab_path)
 
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, workers=8, niter=2, min_count=10, window=10, vsize=300):
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=8, niter=2, min_count=10, window=10, vsize=300):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path. 
 
@@ -118,13 +118,18 @@ class MakeVocab(object):
                 An existing word2vec instance. Default: None
             overwrite (bool):
                 If True it will overwrite existing vectors in the vocabulary. Default: False
+            data_iter (iterator):
+                If you want to provide a customer iterator over the data use this. If yes, then in_path is not needed.
             **: Word2Vec arguments
 
         Returns:
             A trained word2vec model.
         '''
         if w2v is None:
-            data = SimpleIter(in_path)
+            if data_iter is None:
+                data = SimpleIter(in_path)
+            else:
+                data = data_iter
             w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
 
         for word in w2v.wv.vocab.keys():
