@@ -4,6 +4,13 @@ import copy
 from sklearn.metrics import cohen_kappa_score
 
 
+def set_all_seeds(seed):
+    import numpy as np
+    import torch
+
+    torch.manual_seed(seed)
+    np.random.seed(seed)
+
 def count_annotations_project(project):
     cnt = 0
     for doc in project['documents']:
@@ -95,9 +102,9 @@ def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
             if meta_ann is not None and meta_ann2 is not None:
                 if meta_ann['value'] != meta_ann2['value']:
                     return False
-            elif (meta_ann is None) != (meta_ann2 is None):
-                if require_double_inner:
-                    return False
+            elif require_double_inner:
+                # Remove all annotations that do not have the required meta_anns
+                return False
     else:
         return False
 
@@ -109,23 +116,34 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
     new_document = copy.deepcopy(document)
     new_document['annotations'] = []
 
+    if not ann_stats:
+        ann_stats.append([])
+        ann_stats.append([])
+
     for ann in document['annotations']:
         # Take only validated anns
         if ann['validated']:
             ann2 = get_ann_from_doc(document2, ann['start'], ann['end'])
 
             if ann2 is not None:
+                pair = [0, 0]
+                if ann['correct']:
+                    pair[0] = 1
+                if ann2['correct']:
+                    pair[1] = 1
+                ann_stats[1].append(pair)
+
                 if not are_anns_same(ann, ann2, meta_names):
-                    ann_stats.append((1, 0))
+                    ann_stats[0].append((1, 0))
                     are_same = False
                 else:
-                    ann_stats.append((1, 1))
+                    ann_stats[0].append((1, 1))
                     new_document['annotations'].append(ann)
             elif not require_double_inner:
-                ann_stats.append((1, 1))
+                ann_stats[0].append((1, 1))
                 new_document['annotations'].append(ann)
             else:
-                ann_stats.append((1, 0))
+                ann_stats[0].append((1, 0))
                 are_same = False
 
     # Check the reverse also, but only ann2 if not in first doc
@@ -134,11 +152,11 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
 
         if ann is None:
             if not require_double_inner:
-                ann_stats.append((1, 1))
+                ann_stats[0].append((1, 1))
                 # Also append this annotation to the document, because it is missing from it
                 new_document['annotations'].append(ann2)
             else:
-                ann_stats.append((0, 1))
+                ann_stats[0].append((0, 1))
                 are_same = False
 
     return new_document
@@ -147,18 +165,20 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
 
 def print_consolid_stats(ann_stats=[]):
     if ann_stats:
-        ann_stats = np.array(ann_stats)
-        ck = 0 #TODO: cohen_kappa_score(ann_stats[:, 0], ann_stats[:, 1])
+        _ann_stats = np.array(ann_stats[1])
+        ck = cohen_kappa_score(_ann_stats[:, 0], _ann_stats[:, 1])
+
+        _ann_stats = np.array(ann_stats[0])
         t = 0
-        for i in range(len(ann_stats)):
-            if ann_stats[i, 0] == ann_stats[i, 1]:
+        for i in range(len(_ann_stats)):
+            if _ann_stats[i, 0] == _ann_stats[i, 1]:
                 t += 1
-        agr = t / len(ann_stats)
-        print("Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr)) 
-        print("InAgreement vs Total: {} / {}".format(t, len(ann_stats)))
+        agr = t / len(_ann_stats)
+        print("Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
+        print("InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
 
 
-def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False):
+def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False):
     data = load_data(data_path, require_annotations=True)
     for pid, project in enumerate(data['projects']):
         print("Starting: {} / {}".format(pid, len(data['projects'])))
@@ -179,7 +199,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
             print("Starting: {} / {}".format(did, len(project['documents'])))
             text = doc['text']
 
-            if not doc.get('_verified', False) or ignore_already_done:
+            if not doc.get('_verified', False) or ignore_already_done or only_saved:
                 # Get annotations with medcat
                 s_doc = cat(text)
 
@@ -204,44 +224,50 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
                 for id, p_ann in enumerate(p_anns_norm):
                     if (only_start and p_ann[0] not in t_anns_start) or (not only_start and p_ann not in t_anns_norm):
                         ann = s_doc.ents[id]
-                        print("\n\nThis does not exist in gt annotations")
-                        start = ann.start_char
-                        end = ann.end_char
-                        cui = ann._.cui
-                        b = text[max(0, start-cntx_size):start].replace("\n", " ").replace('\r', ' ')
-                        m = text[start:end].replace("\n", " ").replace('\r', ' ')
-                        e = text[end:min(len(text), end+cntx_size)].replace("\n", " ").replace('\r', ' ')
-                        print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                        print(cui, " | ", cat.cdb.cui2pretty_name.get(cui, ''), " | ", cat.cdb.cui2tui.get(cui, ''), " | ", ann.start_char)
-                        print(ann._.acc)
-                        d = str(input("###Add as (or empty for skip): 1-Correct, 2-Incorrect: "))
+                        if not only_saved:
+                            print("\n\nThis does not exist in gt annotations")
+                            start = ann.start_char
+                            end = ann.end_char
+                            cui = ann._.cui
+                            b = text[max(0, start-cntx_size):start].replace("\n", " ").replace('\r', ' ')
+                            m = text[start:end].replace("\n", " ").replace('\r', ' ')
+                            e = text[end:min(len(text), end+cntx_size)].replace("\n", " ").replace('\r', ' ')
+                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
+                            print(cui, " | ", cat.cdb.cui2pretty_name.get(cui, ''), " | ", cat.cdb.cui2tui.get(cui, ''), " | ", ann.start_char)
+                            print(ann._.acc)
+                            d = str(input("###Add as (or empty for skip): 1-Correct, 2-Incorrect, s-save: "))
 
-                        if d:
-                            new_ann = {}
-                            new_ann['id'] = 0 #ignore
-                            new_ann['user'] = 'auto'
-                            new_ann['validated'] = True
-                            new_ann['last_modified'] = ''
-                            new_ann['manually_created'] = False
-                            new_ann['acc'] = ann._.acc
-                            new_ann['start'] = ann.start_char
-                            new_ann['end'] = ann.end_char
-                            new_ann['cui'] = ann._.cui
-                            new_ann['value'] = ann.text
-                            new_ann['killed'] = False
-                            new_ann['alternative'] = False
-                            if d == '1':
-                                new_ann['correct'] = True
-                                new_ann['deleted'] = False
-                            if d == '2':
-                                new_ann['correct'] = False
-                                new_ann['deleted'] = True
-                            if d == 'x':
-                                # Save annotations and return
-                                json.dump(data, open(data_path, 'w'))
-                                return
+                            if d:
+                                new_ann = {}
+                                new_ann['id'] = 0 #ignore
+                                new_ann['user'] = 'auto'
+                                new_ann['validated'] = True
+                                new_ann['last_modified'] = ''
+                                new_ann['manually_created'] = False
+                                new_ann['acc'] = ann._.acc
+                                new_ann['start'] = ann.start_char
+                                new_ann['end'] = ann.end_char
+                                new_ann['cui'] = ann._.cui
+                                new_ann['value'] = ann.text
+                                new_ann['killed'] = False
+                                new_ann['alternative'] = False
+                                if d == '1':
+                                    new_ann['correct'] = True
+                                    new_ann['deleted'] = False
+                                if d == '2':
+                                    new_ann['correct'] = False
+                                    new_ann['deleted'] = True
+                                if d == 'x':
+                                    # Save annotations and return
+                                    json.dump(data, open(data_path, 'w'))
+                                    return
+                                if d == 's':
+                                    # Save
+                                    new_ann['correct'] = False
+                                    new_ann['deleted'] = False
+                                    new_ann['_saved'] = True
 
-                            doc['annotations'].append(new_ann)
+                                doc['annotations'].append(new_ann)
 
                 print("\n\nSTARTING GT TO MC")
                 # Redo
@@ -253,10 +279,12 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
                 for id, t_ann in enumerate(t_anns_norm):
                     add_ann = True
                     ann = doc['annotations'][id]
-                    if (not only_start and t_ann not in p_anns_norm) or (only_start and t_ann[0] not in p_anns_start):
+                    if (not only_saved and not only_start and t_ann not in p_anns_norm) or \
+                       (not only_saved and only_start and t_ann[0] not in p_anns_start) or \
+                       (only_saved and ann.get("_saved", False)):
                         # Check is it correct
-                        if not ann.get('_verified', False) or ignore_already_done:
-                            print("\n\nThis does not exist in mc annotations")
+                        if not ann.get('_verified', False) or ignore_already_done or (only_saved and ann.get('_saved', False)):
+                            print("\n\nThis does not exist in mc annotations or it is a saved item")
                             b = text[max(0, ann['start']-cntx_size):ann['start']].replace("\n", " ").replace('\r', ' ')
                             m = text[ann['start']:ann['end']].replace("\n", " ").replace('\r', ' ')
                             e = text[ann['end']:min(len(text), ann['end']+cntx_size)].replace("\n", " ").replace('\r', ' ')
@@ -267,7 +295,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
                             print("  Incorrect:   " + str(ann['deleted']))
                             print("  Alternative: " + str(ann['alternative']))
                             print("  Killed:      " + str(ann['killed']))
-                            d = str(input("###Change to (or empty for skip): 1-Correct, 2-Incorrect, d-delete: "))
+                            d = str(input("###Change to (or empty for skip): 1-Correct, 2-Incorrect, d-delete, s-save: "))
 
                             if d == '1':
                                 ann['correct'] = True
@@ -281,11 +309,18 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
                                 ann['alternative'] = False
                             elif d == 'd':
                                 add_ann = False
+                            elif d == 's':
+                                # Save for later
+                                ann['_saved'] = True
                             elif d == 'x':
                                 # Save annotations and return
                                 json.dump(data, open(data_path, 'w'))
                                 return
                             ann['_verified'] = True
+
+                            if only_saved and ann.get('_saved', False) and d in ['1', '2']:
+                                # Remove if it was saved but now it is done
+                                del ann['_saved']
                     if add_ann:
                         new_doc_anns.append(ann)
                 doc['annotations'] = new_doc_anns
@@ -358,7 +393,11 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
                     new_project['documents'] = new_documents
 
             if new_project is not None:
-                ann_stats.extend(ann_stats_project)
+                if not ann_stats:
+                    for one in ann_stats_project:
+                        ann_stats.append([])
+                for irow, one in enumerate(ann_stats_project):
+                    ann_stats[irow].extend(one)
                 out_data['projects'].append(new_project)
 
             if ann_stats_project:
