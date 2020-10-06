@@ -1,6 +1,6 @@
 # Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
-MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [research-gate](https://www.researchgate.net/publication/344270949_Multi-domain_Clinical_Natural_Language_Processing_with_MedCAT_the_Medical_Concept_Annotation_Toolkit). 
+MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
 
 ## Demo [currently not available]
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
