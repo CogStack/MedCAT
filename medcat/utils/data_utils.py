@@ -103,7 +103,9 @@ def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
                 if meta_ann['value'] != meta_ann2['value']:
                     return False
             elif require_double_inner:
-                # Remove all annotations that do not have the required meta_anns
+                # Remove all annotations that do not have the required meta_anns, this
+                #will basically remove double_anns on the meta_level that are marked as incorrect. 
+                #We want this, so all good.
                 return False
     else:
         return False
@@ -120,18 +122,34 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
         ann_stats.append([])
         ann_stats.append([])
 
+        for meta_name in meta_names:
+            ann_stats.append([])
+
+    # Add some stats
     for ann in document['annotations']:
         # Take only validated anns
         if ann['validated']:
             ann2 = get_ann_from_doc(document2, ann['start'], ann['end'])
+            pair = [0, 0]
+            if ann['correct']:
+                pair[0] = 1
 
             if ann2 is not None:
-                pair = [0, 0]
-                if ann['correct']:
-                    pair[0] = 1
+                # Only do meta_anns if both anns exist
+                for id, meta_name in enumerate(meta_names):
+                    ann_stats[id+2].append(['unk', 'unk'])
+
+                    # For ann1
+                    meta_ann = meta_ann_from_ann(ann, meta_name)
+                    if meta_ann is not None:
+                        ann_stats[id+2][-1][0] = meta_ann['value']
+                    # For ann2
+                    meta_ann = meta_ann_from_ann(ann2, meta_name)
+                    if meta_ann is not None:
+                        ann_stats[id+2][-1][1] = meta_ann['value']
+
                 if ann2['correct']:
                     pair[1] = 1
-                ann_stats[1].append(pair)
 
                 if not are_anns_same(ann, ann2, meta_names):
                     ann_stats[0].append((1, 0))
@@ -146,11 +164,17 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
                 ann_stats[0].append((1, 0))
                 are_same = False
 
+            # Append for NER+L stats
+            ann_stats[1].append(pair)
+
     # Check the reverse also, but only ann2 if not in first doc
     for ann2 in document2['annotations']:
         ann = get_ann_from_doc(document, ann2['start'], ann2['end'])
 
-        if ann is None:
+        if ann is None and ann2['validated']:
+            # Add a negative example to the stats
+            ann_stats[1].append([0, 1])
+
             if not require_double_inner:
                 ann_stats[0].append((1, 1))
                 # Also append this annotation to the document, because it is missing from it
@@ -163,19 +187,42 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
 
 
 
-def print_consolid_stats(ann_stats=[]):
+def print_consolid_stats(ann_stats=[], meta_names=[]):
     if ann_stats:
-        _ann_stats = np.array(ann_stats[1])
-        ck = cohen_kappa_score(_ann_stats[:, 0], _ann_stats[:, 1])
-
         _ann_stats = np.array(ann_stats[0])
         t = 0
         for i in range(len(_ann_stats)):
             if _ann_stats[i, 0] == _ann_stats[i, 1]:
                 t += 1
+        print("Overall given the parameters (scores here can be strange, be sure to know what they mean)")
+        print("   In Agreement vs Total: {} / {}\n\n".format(t, len(_ann_stats)))
+
+        _ann_stats = np.array(ann_stats[1])
+        ck = cohen_kappa_score(_ann_stats[:, 0], _ann_stats[:, 1])
+        t = 0
+        for i in range(len(_ann_stats)):
+            if _ann_stats[i, 0] == _ann_stats[i, 1]:
+                t += 1
         agr = t / len(_ann_stats)
-        print("Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
-        print("InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
+        print("NER + L")
+        print("   Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
+        print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
+
+        for id, meta_name in enumerate(meta_names):
+            if len(ann_stats) > id + 2:
+                _ann_stats = np.array(ann_stats[id+2])
+
+                ck = cohen_kappa_score(_ann_stats[:, 0], _ann_stats[:, 1])
+
+                t = 0
+                for i in range(len(_ann_stats)):
+                    if _ann_stats[i, 0] == _ann_stats[i, 1]:
+                        t += 1
+                agr = t / len(_ann_stats)
+                print("Stats for: {}".format(meta_name))
+                print("   Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
+                print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
+
 
 
 def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False):
@@ -348,6 +395,7 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
         List of meta annotations that must match for two annotations to be the same. If empty only the mention
             level will be checked.
     """
+    d_stats_proj = {}
     data = load_data(data_path, require_annotations=True)
     out_data = {'projects': []}
     projects_done = set()
@@ -401,16 +449,18 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
                 out_data['projects'].append(new_project)
 
             if ann_stats_project:
-                print("**Printing stats for project: {}".format(project['name']))
-                print_consolid_stats(ann_stats_project)
+                print("** Printing stats for project: {}".format(project['name']))
+                print_consolid_stats(ann_stats_project, meta_names=meta_anns_to_match)
+                d_stats_proj[project['name']] = ann_stats_project
                 print("\n\n")
             else:
-                print("**Project '{}' did not have double annotations\n\n".format(project['name']))
+                print("** Project '{}' did not have double annotations\n\n".format(project['name']))
 
     # Save
     json.dump(out_data, open(out_path, 'w'))
-    print("**Overall stats")
-    print_consolid_stats(ann_stats)
+    print("** Overall stats")
+    print_consolid_stats(ann_stats, meta_names=meta_anns_to_match)
+    return d_stats_proj
 
 def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if_already_done=False):
     """ Please just ignore this function, I'm afraid to even look at it

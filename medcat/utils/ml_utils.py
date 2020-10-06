@@ -152,9 +152,9 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         train_loss = np.average(running_loss_train)
         test_loss = np.average(running_loss_test)
 
-        print("*"*50 + "  Train")
+        print(f'Epoch: {epoch} ' + "*"*50 + "  Train")
         print(classification_report(y_train, np.argmax(np.concatenate(train_outs, axis=0), axis=1)))
-        print("*"*50 + "  Test")
+        print(f'Epoch: {epoch} ' + "*"*50 + "  Test")
         print(classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
         print("Train Loss: {:5}\nTest Loss:  {:5}\n\n".format(train_loss, test_loss))
         print("\n\n\n")
