@@ -686,7 +686,7 @@ class CAT(object):
         self.train = False
 
 
-    def get_entities(self, text, cat_filter=None, only_cui=False):
+    def get_entities(self, text, cat_filter=None, only_cui=False, skip_info=False):
         """ Get entities
 
         text:  text to be annotated
@@ -715,7 +715,8 @@ class CAT(object):
                 out_ent['acc'] = str(ent._.acc)
                 out_ent['start'] = ent.start_char
                 out_ent['end'] = ent.end_char
-                out_ent['info'] = self.cdb.cui2info.get(cui, {})
+                if not skip_info:
+                    out_ent['info'] = self.cdb.cui2info.get(cui, {})
                 out_ent['id'] = str(ent._.id)
                 out_ent['meta_anns'] = {}
 
@@ -731,19 +732,19 @@ class CAT(object):
         return out
 
 
-    def get_json(self, text, cat_filter=None, only_cui=False):
+    def get_json(self, text, cat_filter=None, only_cui=False, skip_info=False):
         """ Get output in json format
 
         text:  text to be annotated
         return:  json with fields {'entities': <>, 'text': text}
         """
-        ents = self.get_entities(text, cat_filter, only_cui)
+        ents = self.get_entities(text, cat_filter, only_cui, skip_info=skip_info)
         out = {'entities': ents, 'text': text}
 
         return json.dumps(out)
 
 
-    def multi_processing(self, in_data, nproc=8, batch_size=100, cat_filter=None, only_cui=False):
+    def multi_processing(self, in_data, nproc=8, batch_size=100, cat_filter=None, only_cui=False, skip_info=False):
         """ Run multiprocessing NOT FOR TRAINING
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
@@ -766,7 +767,7 @@ class CAT(object):
         # Create processes
         procs = []
         for i in range(nproc):
-            p = Process(target=self._mp_cons, args=(in_q, out_dict, i, cat_filter, only_cui))
+            p = Process(target=self._mp_cons, args=(in_q, out_dict, i, cat_filter, only_cui, skip_info))
             p.start()
             procs.append(p)
 
@@ -802,7 +803,7 @@ class CAT(object):
         return out
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0, cat_filter=None, only_cui=False):
+    def _mp_cons(self, in_q, out_dict, pid=0, cat_filter=None, only_cui=False, skip_info=False):
         cnt = 0
         out = []
         while True:
@@ -814,7 +815,7 @@ class CAT(object):
 
                 for id, text in data:
                     try:
-                        doc = json.loads(self.get_json(text, cat_filter, only_cui))
+                        doc = json.loads(self.get_json(text, cat_filter, only_cui, skip_info))
                         out.append((id, doc))
                     except Exception as e:
                         print("Exception in _mp_cons")
