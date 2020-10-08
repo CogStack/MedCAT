@@ -7,14 +7,16 @@ from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
 from medcat.utils.vocab import Vocab
 from urllib.request import urlretrieve
-from medcat.meta_cat import MetaCAT
+#from medcat.meta_cat import MetaCAT
 from .models import *
 import os
 import json
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
-neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
+
+# TODO
+#neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
 
 try:
     if not os.path.exists(vocab_path):
@@ -31,9 +33,10 @@ try:
     vocab.load_dict(vocab_path)
     cdb = CDB()
     cdb.load_dict(cdb_path)
-    mc_negated = MetaCAT(save_dir=neg_path)
-    mc_negated.load()
-    cat = CAT(cdb=cdb, vocab=vocab, meta_cats=[mc_negated])
+#    mc_negated = MetaCAT(save_dir=neg_path)
+#    mc_negated.load()
+#    cat = CAT(cdb=cdb, vocab=vocab, meta_cats=[mc_negated])
+    cat = CAT(cdb=cdb, vocab=vocab)
     cat.spacy_cat.MIN_ACC = 0.30
     cat.spacy_cat.MIN_ACC_TH = 0.30
     cat.spacy_cat.ACC_ALWAYS = True
