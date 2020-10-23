@@ -16,37 +16,36 @@ from functools import partial
 SEPARATOR = ""
 CONCEPT_LENGTH_LIMIT = 6
 
-class PrepareUMLS(object):
-    """ Prepares UMLS data in csv format for annotations,
-    after everything is done the result is in the umls field.
-    """
-    def __init__(self, vocab=None, pretrained_cdb=None, tokenizer=None):
-        self.vocab = vocab
-        if pretrained_cdb is None:
+class CDBMaker(object):
+    r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB.
+
+        Args:
+            cdb (`medcat.cdb.CDB`, optional):
+                If set the `CDBMaker` will updat the existing `CDB` with new concepts in the CSV.
+
+    '''
+    def __init__(self, cdb=None):
+        if cdb is None:
             self.cdb = CDB()
         else:
-            self.cdb = pretrained_cdb
+            self.cdb = cdb
+
         # Build the required spacy pipeline
-        self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser'])
+        self.nlp = SpacyPipe(spacy_split_all)
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=False))
-        # Get the tokenizer
-        if tokenizer is not None:
-            self.tokenizer = tokenizer
-        else:
-            self.tokenizer = self._tok #BertTokenizer.from_pretrained('bert-base-uncased')
 
-
-    def _tok(self, text):
-        return [text]
 
     def prepare_csvs(self, csv_paths, sep=','):
-        """ Compile one or multiple CSVs into an internal UMLS class
+        r''' Compile one or multipe CSVs into a CDB.
 
-        csv_paths:  an array of paths to the csv files that should be processed
-        sep:  if necessarya a custom separator for the csv files
+        Args:
+            csv_paths (`List[str]`):
+                An array of paths to the csv files that should be processed
+            sep (`str`, optional, defaults to `,`):
+                If necessarya a custom separator for the csv files
 
         return:  Compiled UMLS class
-        """
+        '''
         for csv_path in csv_paths:
             df = pandas.read_csv(csv_path, sep=sep)
             for ind in range(len(df)):
