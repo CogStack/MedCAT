@@ -170,7 +170,7 @@ def clean_snomed_name(text):
     return text
 
 
-def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=[]):
+def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=set()):
     for token in doc:
         if IS_PUNCT.match(token.text):
             # There can't be punct in a token

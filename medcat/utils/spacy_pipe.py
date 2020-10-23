@@ -30,15 +30,30 @@ class SpacyPipe(object):
         Token.set_extension('lower', default=None, force=True)
 
 
-    def add_cat(self, spacy_cat):
-        self.nlp.add_pipe(spacy_cat, name='cat', last=True)
+    def add_ner(self, ner):
+        r''' Add NER from CAT to the pipeline, will also add the necessary fields
+        to the document and Span objects.
 
-        # Add custom fields needed for this usecase
+        '''
+        self.nlp.add_pipe(ner, name='ner', last=True)
+
         Doc.set_extension('ents', default=None, force=True)
         Span.set_extension('acc', default=-1, force=True)
-        Span.set_extension('cui', default=-1, force=True)
-        Span.set_extension('tui', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
+        Span.set_extension('detected_name', default=None, force=True)
+        Span.set_extension('link_candidates', default=None, force=True)
+
+
+    def add_linker(self, linker):
+        r''' Add entity linker to the pipeline, will also add the necessary fields
+        to Span object.
+
+        linker (object/function):
+            Any object/function created based on the requirements for a spaCy pipeline components. Have
+            a look at https://spacy.io/usage/processing-pipelines#custom-components
+        '''
+        self.nlp.add_pipe(linker, name='linker', last=True)
+        Span.set_extension('cui', default=-1, force=True)
 
 
     def add_meta_cat(self, meta_cat, name):
