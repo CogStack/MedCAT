@@ -59,7 +59,7 @@ class PrepareCDB(object):
         _new_cuis = set()
 
         for csv_path in csv_paths:
-            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=False)
+            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=False, dtype=str)
             cols = list(df.columns)
             str_ind = cols.index('str')
             cui_ind = cols.index('cui')
