@@ -29,7 +29,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz`
 
-3. Downlad the Vocabulary and CDB from the Models section bellow
+3. Download the Vocabulary and CDB from the Models section below
 
 4. Quickstart:
 ```python

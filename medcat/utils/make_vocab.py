@@ -1,4 +1,5 @@
 from medcat.utils.vocab import Vocab
+import os
 import numpy as np
 import pandas
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -69,8 +70,8 @@ class MakeVocab(object):
                 Should the words from the CDB be added to the Vocab. Default: True
         '''
         # Save the preprocessed data, used for emb training
-        out_path = out_folder + "data.txt"
-        vocab_path = out_folder + "vocab.dat"
+        out_path = os.path.join(out_folder, "data.txt")
+        vocab_path = os.path.join(out_folder, "vocab.dat")
         self.vocab_path = vocab_path
         out = open(out_path, 'w')
 
