@@ -146,6 +146,6 @@ class SimpleIter(object):
         self.text_path = text_path
 
     def __iter__(self):
-        data = open(self.text_path)
+        data = open(self.text_path, encoding='utf-8')
         for line in data:
             yield str(line).strip().split(" ")
