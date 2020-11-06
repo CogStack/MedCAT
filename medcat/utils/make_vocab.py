@@ -78,7 +78,7 @@ class MakeVocab(object):
         out_path = out_folder + "data.txt"
         vocab_path = out_folder + "vocab.dat"
         self.vocab_path = vocab_path
-        out = open(out_path, 'w')
+        out = open(out_path, 'w', encoding='utf-8')
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
