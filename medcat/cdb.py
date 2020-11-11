@@ -1,244 +1,211 @@
 """ Representation class for CDB data
 """
+
+import os
 import pickle
 import numpy as np
+import pandas as pd
 from scipy.sparse import dok_matrix
-#from gensim.matutils import unitvec
+from typing import Dict, List
+
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.attr_dict import AttrDict
 from medcat.utils.loggers import basic_logger
-import os
-import pandas as pd
 
-log = basic_logger("cdb")
+
 class CDB(object):
-    """ Holds all the CDB data required for annotation
+    """ Concept DataBase - holds all information necessary for NER+L.
+
+    Properties:
+        name2cuis (`Dict[str, List[str]]`):
+            Map fro concept name to CUIs - one name can map to multiple CUIs.
+        name2cuis2status (`Dict[str, Dict[str, str]]`):
+            What is the status for a given name and cui pair - each name can be:
+                P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
+        snames (`Set[str]`):
+            All possible subnames for all concepts
+        cui2names (`Dict[str, Set[str]]`):
+            From cui to all names assigned to it. Mainly used for subsetting (maybe even only).
+        cui2snames (`Dict[str, Set[str]]`):
+            From cui to all sub-names assigned to it. Only used for subsetting.
+        cui2context_vector (`Dict[str, Dict[str, np.array]]`):
+            From cui to a dictionary of different kinds of context vectors. Normally you would have here
+            a short and a long context vector - they are calculated separately.
+        cui2count_train (`Dict[str, int]`):
+            From CUI to the number of training examples seen.
+        cui2tags (`Dict[str, List[str]]`):
+            From CUI to a list of tags. This can be used to tag concepts for grouping of whatever.
+        cui2type_ids (`Dict[str, Set[str]]`):
+            From CUI to type id (e.g. TUI in UMLS).
+        cui2preferred_name (`Dict[str, str]`):
+            From CUI to the preferred name for this concept.
+        addl_info (`Dict[str, Dict[]]`):
+            Any additional maps that are not part of the core CDB. These are usually not needed
+            for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
+        vocab (`Dict[str, int]`):
+            Stores all the words tha appear in this CDB and the count for each one.
+
+
     """
     MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
     MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
 
     def __init__(self):
-        self.index2cui = [] # A list containing all CUIs 
-        self.cui2index = {} # Map from cui to index in the index2cui list
-        self.name2cui = {} # Converts a normalized concept name to a cui
-        self.name2cnt = {} # Converts a normalized concept name to a count
-        self.name_isunique = {} # Should this name be skipped
-        self.name2original_name = {} # Holds the two versions of a name
-        self.name2ntkns = {} # Number of tokens for this name
-        self.name_isupper = {} # Checks was this name all upper case in cdb 
-        self.cui2desc = {} # Map between a CUI and its cdb description
-        self.cui_count = {} # TRAINING - How many times this this CUI appear until now
-        self.cui_count_ext = {} # Always - counter for cuis that can be reset, destroyed..
-        self.cui2ontos = {} # Cui to ontology from where it comes
-        self.cui2names = {} # CUI to all the different names it can have
-        self.cui2original_names = {} # CUI to all the different original names it can have
-        self.original_name2cuis = {} # Original name to cuis it can be assigned to
-        self.cui2tui = {} # CUI to the semantic type ID
-        self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
-        self.tui2name = {} # Semnatic tpye id to its name
-        self.cui2pref_name = {} # Get the prefered name for a CUI - taken from CDB 
-        self.cui2pretty_name = {} # Get the pretty name for a CUI - taken from CDB 
-        self.sname2name = set() # Internal - subnames to nam
-        self.cui2words = {} # CUI to all the words that can describe it
-        self.onto2cuis = {} # Ontology to all the CUIs contained in it
-        self.cui2context_vec = {} # CUI to context vector
-        self.cui2context_vec_short = {} # CUI to context vector - short
-        self.cui2context_vec_long = {} # CUI to context vector - long
-        self.cui2info = {} # Additional info for a concept
-        self.cui_disamb_always = {} # Should this CUI be always disambiguated
-        self.vocab = {} # Vocabulary of all words ever, hopefully 
-        self._coo_matrix = None # cooccurrence matrix - scikit
-        self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
-        self.sim_vectors = None
+        self.name2cuis = {}
+        self.name2cuis2status = {}
+
+        self.snames = set()
+
+        self.cui2names = {}
+        self.cui2snames = {}
+        self.cui2context_vector = {}
+        self.cui2count_train = {}
+        self.cui2tags = {} # Used to add custom tags to CUIs
+        self.cui2type_ids = {}
+        self.cui2preferred_name = {}
+
+        self.addl_info = {
+                'sim_vectors': None,
+                'cui2icd10': {},
+                'cui2opcs4': {},
+                'cui2ontologies': {},
+                'cui2original_names': {},
+                'cui2description': {},
+                'type_id2name': {},
+                # Can be extended with whatever is necessary
+                }
+        self.vocab = {} # Vocabulary of all words ever in our cdb
 
 
-    def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
-                    is_pref_name=False, tui=None, pretty_name='',
-                    desc=None, tokens_vocab=None, original_name=None,
-                    is_unique=None, tui_name=None):
+    def add_name(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
+        r''' Adds a name to an existing concept.
+
+        Args:
+            cui
+            names
+            name_status
+            full_build
+        '''
+        name_status = name_status.upper()
+        if name_status not in ['P', 'A', 'N']:
+            # Name status must be one of the three
+            name_status = 'A'
+
+        self.add_concept(cui=cui, names=names, ontology='', name_status=name_status, type_ids=set(), description='', full_build=full_build)
+
+
+    def add_concept(self, cui: str, names: Dict, ontology: str, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
 
         Args:
-            cui (str):
+            cui (`str`):
                 Concept ID or unique identifer in this database, all concepts that have
                 the same CUI will be merged internally.
-
-            name (str):
-                Name for this concept, or the value that if found in free text can be linked to this concept.
-            onto (str):
+            names (`Dict[str, <object>]`):
+                Names for this concept, or the value that if found in free text can be linked to this concept.
+                Names is an array like: `[{'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...]`
+            ontology (`str`):
                 Ontology from which the concept is taken (e.g. SNOMEDCT)
-            tokens (str, list of str):
-                Tokenized version of the name. Usually done vai spacy
-            snames (str, list of str):
-                Subnames of this name, have a look at medcat.prepare_cdb.PrepareCDB for details on how
-                to provide `snames`.Example: if name is "heart attack" snames is ['heart', 'heart attack']
-            isupper (boolean, optional):
-                If name in the original ontology is upper_cased
-            is_pref_name (boolean, optional):
-                If this is the prefered name for this CUI
-            tui (str, optional):
+            type_ids (`Set[str]`):
                 Semantic type identifier (have a look at TUIs in UMLS or SNOMED-CT)
-            pretty_name (str, optional):
-                Pretty name for this concept, really just the pretty name for the concept if it exists.
-            desc (str, optinal):
+            description (`str`):
                 Description of this concept.
-            tokens_vocab (list of str, optional):
-                Tokens that should be added to the vocabulary, usually not normalized version of tokens.
-            original_name (str, optinal):
-                The orignal name from the source vocabulary, without any normalization.
-            is_unique (boolean, optional):
-                If set to False - you can require disambiguation for a name even if it is unique inside
-                of the current CDB. If set to True - you are forcing medcat to make a decision without
-                disambiguation even if it is required. Do not set this arg unless you are sure.
-            tui_name (str, optional):
-                The name for the TUI
+            full_build (`bool`, defaults to `False`):
+                If True the dictionary self.addl_info will also be populated, contains a lot of extra information
+                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
         '''
-        # Add the info property
-        if cui not in self.cui2info:
-            self.cui2info[cui] = {}
-
-        # Add is name upper
-        if name in self.name_isupper:
-            self.name_isupper[name] = self.name_isupper[name] or isupper
-            self.name_isupper[name] = self.name_isupper[name] or isupper
-        else:
-            self.name_isupper[name] = isupper
-
-        # Add original name
-        if original_name is not None:
-            self.name2original_name[name] = original_name
-
-            if original_name in self.original_name2cuis:
-                self.original_name2cuis[original_name].add(cui)
-            else:
-                self.original_name2cuis[original_name] = {cui}
-
-            if cui in self.cui2original_names:
-                self.cui2original_names[cui].add(original_name)
-            else:
-                self.cui2original_names[cui] = {original_name}
-
-
-        # Add prefered name 
-        if is_pref_name:
-            self.cui2pref_name[cui] = name
-            if pretty_name:
-                self.cui2pretty_name[cui] = pretty_name
-
-        if cui not in self.cui2pretty_name and pretty_name:
-            self.cui2pretty_name[cui] = pretty_name
-
-        if tui is not None:
-            self.cui2tui[cui] = tui
-
-            if tui in self.tui2cuis:
-                self.tui2cuis[tui].add(cui)
-            else:
-                self.tui2cuis[tui] = set([cui])
-
-            if tui_name is not None:
-                self.tui2name[tui] = tui_name
-
-        if is_unique is not None:
-            self.name_isunique[name] = is_unique
-
-        # Add name to cnt
-        if name not in self.name2cnt:
-            self.name2cnt[name] = {}
-        if cui in self.name2cnt[name]:
-            self.name2cnt[name][cui] += 1
-        else:
-            self.name2cnt[name][cui] = 1
-
-        # Add description
-        if desc is not None:
-            if cui not in self.cui2desc:
-                self.cui2desc[cui] = str(desc)
-            elif str(desc) not in str(self.cui2desc[cui]):
-                self.cui2desc[cui] = str(self.cui2desc[cui]) + "\n\n" + str(desc)
-
-        # Add cui to a list of cuis
-        if cui not in self.index2cui:
-            self.index2cui.append(cui)
-            self.cui2index[cui] = len(self.index2cui) - 1
-
-            # Expand coo matrix if it is used
-            if self._coo_matrix is not None:
-                s = self._coo_matrix.shape[0] + 1
-                self._coo_matrix.resize((s, s))
-
-        # Add words to vocab
-        for token in tokens_vocab:
-            if token in self.vocab:
-                self.vocab[token] += 1
-            else:
-                self.vocab[token] = 1
-        # Add also the normalized tokens, why not
-        for token in tokens:
-            if token in self.vocab:
-                self.vocab[token] += 1
-            else:
-                self.vocab[token] = 1
-
-        # Add number of tokens for this name
-        if name in self.name2ntkns:
-            self.name2ntkns[name].add(len(tokens))
-        else:
-            self.name2ntkns[name] = {len(tokens)}
-
-        # Add mappings to onto2cuis
-        if onto not in self.onto2cuis:
-            self.onto2cuis[onto] = set([cui])
-        else:
-            self.onto2cuis[onto].add(cui)
-
-        if cui in self.cui2ontos:
-            self.cui2ontos[cui].add(onto)
-        else:
-            self.cui2ontos[cui] = {onto}
-
-        # Add mappings to name2cui
-        if name not in self.name2cui:
-            self.name2cui[name] = set([cui])
-        else:
-            self.name2cui[name].add(cui)
-
-        # Add snames to set
-        self.sname2name.update(snames)
-
-        # Add mappings to cui2names
+        # Add CUI to the required dictionaries
         if cui not in self.cui2names:
-            self.cui2names[cui] = {name}
+            # Create placeholders 
+            self.cui2names[cui] = set()
+            self.cui2snames[cui] = set()
+            self.cui2context_vector[cui] = {}
+            self.cui2count_train[cui] = 0
+            self.cui2tags[cui] = []
+
+            # Add type_ids
+            type_ids: self.cui2type_ids[cui] = type_ids
+
         else:
+            # If the CUI is already in update the type_ids
+            type_ids: self.cui2type_ids[cui].update(type_ids)
+
+        # Add names to the required dictionaries
+        name_info = None
+        for name in names:
+            name_info = names[name]
+            # Extend snames
+            self.snames.update(name_info['snames'])
+
+            # Add name to cui2names
             self.cui2names[cui].add(name)
+            # Extend cui2snames
+            self.cui2snames[cui].update(name_info['snames'])
 
-        # Add mappings to cui2words
-        if cui not in self.cui2words:
-            self.cui2words[cui] = {}
-        for token in tokens:
-            if not token.isdigit() and len(token) > 1:
-                if token in self.cui2words[cui]:
-                    self.cui2words[cui][token] += 1
+            if name in self.name2cuis:
+                # Means we have alrady seen this name
+                if cui not in self.name2cuis[name]:
+                    # If CUI is not already linked do it
+                    self.name2cuis[name].append(cui)
+
+                    # At the same time it means the cui is also missing from name2cuis2status, but the 
+                    #name is there
+                    self.name2cuis2status[name][cui] = name_status
+            else:
+                # Means we never saw this name
+                self.name2cuis[name] = [cui]
+
+               # Add name2cuis2status
+                self.name2cuis2status[name] = {cui: name_status}
+
+
+            # Add tokens to vocab
+            for token in name_info['tokens']:
+                if token in self.vocab:
+                    self.vocab[token] += 1
                 else:
-                    self.cui2words[cui][token] = 1
+                    self.vocab[token] = 1
+
+        # Check is this a preferred name for the concept, this takes the name_info
+        #dict which must have a value (but still have to check it, just in case).
+        if name_info is not None:
+            if name_status == 'P':
+                self.cui2preferred_name[cui] = name_info['raw_name']
+            elif cui not in self.cui2preferred_name:
+                # Add the name if it does not exist, this makes the preferred name random
+                #for concepts that do not have it.
+                self.cui2preferred_name[cui] = name_info['raw_name']
+
+        # Add other fields if full_build
+        if full_build:
+            # Use ontologies as the base check, anything can be used for this
+            if cui not in self.addl_info['cui2ontologies']:
+                if ontology: self.addl_info['cui2ontologies'][cui] = set([ontology])
+                if description: self.addl_info['cui2description'][cui] = description
+                self.addl_info['cui2original_names'][cui] = set([v['raw_name'] for k,v in names.items()])
+            else:
+                # Update existing ones
+                if ontology: self.addl_info['cui2ontologies'][cui].add(ontology)
+                if description: self.addl_info['cui2description'][cui] = description
+                self.addl_info['cui2original_names'][cui].update([v['raw_name'] for k,v in names.items()])
 
 
-    def add_tui_names(self, csv_path, sep="|"):
-        """ Fils the tui2name dict
+    def add_type_names(self, type_id2name, reset_existing=False):
+        r''' Add type names.
 
-        """
-        df = pd.read_csv(csv_path, sep=sep)
+        Args:
+            type_id2name (`Dict[str, str]`):
+                One or many type_id2name that will be added to this CDB.
+        '''
+        if reset_existing:
+            self.addl_info['type_id2name'] = {}
 
-        for index, row in df.iterrows():
-            tui = row['tui']
-            name = row['name']
-            if tui not in self.tui2name:
-                self.tui2name[tui] = name
+        self.addl_info['type_id2name'].update(type_id2name)
 
 
-    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True, anneal=True, lr=0.5):
+    def update_context_vector(self, cui, vector, config, cntx_type='LONG', inc_cui_count=True, negative=False):
         """ Add the vector representation of a context for this CUI
 
         cui:  The concept in question

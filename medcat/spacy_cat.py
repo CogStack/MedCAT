@@ -38,8 +38,8 @@ class SpacyCat(object):
     ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
     DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
 
-    TUI_FILTER = os.getenv('TUI_FILTER', None)
-    CUI_FILTER = os.getenv('CUI_FILTER', None)
+    TUI_FILTER = os.getenv('TUI_FILTER', None) - # Must be dictionary cannot be None
+    CUI_FILTER = os.getenv('CUI_FILTER', None) - # Must be dictionary cannot be None
 
     MAX_SKIP_TKN = int(os.getenv('MAX_SKIP_TKN', 2))
     SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
@@ -451,7 +451,7 @@ class SpacyCat(object):
                 # Add annotation
                 if not self.train or not self._train_skip(raw_name) or self.force_train:
                     if not _doc[i].is_stop:
-                        if self.DISAMB_EVERYTHING:
+                        if self.DISAMB_EVERYTHING: # Not needed, just move the disambiguation limit to 100
                             self.to_disamb.append((list(tkns), raw_name))
                         else:
                             self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
