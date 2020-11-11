@@ -3,10 +3,42 @@ pretty much everything that is not a word.
 """
 import re
 
-# Anthing that is not a letter or number is punct,
-#for other languages we need to include other letters or normalize input
-IS_PUNCT = re.compile(r'[^A-Za-z0-9]+')
-TO_SKIP = re.compile(r'^(and|or|nos)$')
+
+def prepare_name(raw_name, nlp, names, config):
+    r''' Generates different forms of a name. Will edit the provided `names` dictionary
+    and add information generated from the `name`.
+
+    Args:
+        nlp (`spacy.lang.<lng>`):
+            Spacy nlp model.
+        names (`dict`):
+            Dictionary of existing names for this concept in this row of a CSV. The new generated
+            name versions and other required information will be added here.
+        config (`medcat.config.Config`):
+            Global config for medcat.
+    '''
+    sc_name = nlp(raw_name)
+
+    for version in config.cdb_maker['name_versions']:
+        tokens = None
+
+        if version == "LOWER":
+            tokens = [t.lower_ for t in sc_name if not t._.to_skip]
+        if version == "CLEAN" and len(raw_name) > config.preprocessing['min_len_normalize']:
+            tokens = [t.lemma_.lower() for t in sc_name if not t._.to_skip]
+
+        if tokens is not None:
+            snames = set()
+            name = config.cdb_maker['separator'].join(tokens)
+
+            if name not in names:
+                sname = ""
+                for token in tokens:
+                    sname = sname + token + config.cdb_maker['separator']
+                    snames.add(sname.strip())
+
+                names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}
+
 
 def basic_clean(text):
     """ Remove almost everything from text
@@ -168,24 +200,3 @@ def clean_snomed_name(text):
     text = re.sub("\([^\)]*\)$", " ", text).strip()
 
     return text
-
-
-def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=set()):
-    for token in doc:
-        if IS_PUNCT.match(token.text):
-            # There can't be punct in a token
-            #if it also has text
-            if token.text not in keep_punct:
-                token._.is_punct = True
-                token._.to_skip = True
-
-        # Skip if specific strings
-        if TO_SKIP.match(token.lower_):
-            token._.to_skip = True
-
-
-        # Skip if stopword
-        if skip_stopwords and token.is_stop:
-            token._.to_skip = True
-
-    return doc

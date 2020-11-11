@@ -1,23 +1,45 @@
-from medcat.preprocessing.cleaners import spacy_tag_punct
 from spacy.tokens import Token, Doc, Span
 from medcat.utils.spelling import SpacySpellChecker
 import spacy
 import os
 
-class SpacyPipe(object):
-    SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
-    def __init__(self, tokenizer, disable=['ner', 'parser', 'vectors', 'textcat']):
-        self.nlp = spacy.load(self.SPACY_MODEL, disable=disable)
+class Pipe(object):
+    r''' A wrapper around the standard spacy pipeline.
+
+    Args:
+        tokenizer (`spacy.tokenizer.Tokenizer`):
+            What will be used to split text into tokens, can be anything built as a spacy tokenizer.
+        config (`medcat.config.Config`):
+            Global config for medcat.
+
+    Properties:
+        nlp (spacy.language.<lng>):
+            The base spacy NLP pipeline.
+    ''' 
+    def __init__(self, tokenizer, config):
+        self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         self.nlp.tokenizer = tokenizer(self.nlp)
 
 
-    def add_punct_tagger(self, tagger):
-        """ Tagging for punct
-        """
-        self.nlp.add_pipe(tagger, name='tag_punct', first=True)
+    def add_tagger(self, tagger, name, additional_fields=[]):
+        r''' Add any kind of a tagger for tokens.
+
+        Args:
+            tagger (`object/function`):
+                Any object/function that takes a spacy doc as an input, does something
+                and returns the same doc.
+            name (`str`):
+                Name for this component in the pipeline.
+            additional_fields (`List[str]`):
+                Fields to be added to the `_` properties of a token.
+        '''
+        self.nlp.add_pipe(tagger, name='tag_' + name, first=True)
         # Add custom fields needed for this usecase
-        Token.set_extension('is_punct', default=False, force=True)
         Token.set_extension('to_skip', default=False, force=True)
+
+        # Add any additional fields that are required
+        for field in additional_fields:
+            Token.set_extension(field, default=False, force=True)
 
 
     def add_spell_checker(self, spell_checker):
