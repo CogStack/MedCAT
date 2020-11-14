@@ -43,12 +43,17 @@ class Config(object):
                 }
 
         self.linking = {
-                'learning_rate': 1,
-                'anneal': True,
+                # Linear anneal
+                'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.0005},
+                # 'optim': {'standard': 'lr': 1},
+                # 'optim': {'moving_avg': 'alpha': 0.99, 'e': 1e-4, 'size': 100},
+                # Useful only if we have anneal
+                'min_learning_rate': 1e-5,
                 # All concepts below this will always be disambiguated
                 'disamb_length_limit': 4,
                 # Context vector sizes that will be calculated and used for linking
                 'context_vector_sizes': {'long': 18, 'medium': 9, 'short': 3},
+                #TODO: What to do with weights for each vector in the similarity score??????
                 }
 
 
