@@ -27,13 +27,13 @@ class CDBMaker(object):
         self.config = config
 
         # Get the logger
-        self.logger = basic_logger(name='cdb_maker', config=config)
+        self.log = basic_logger(name='cdb_maker', config=config)
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker
 
         if cdb is None:
-            self.cdb = CDB()
+            self.cdb = CDB(config=self.config)
         else:
             self.cdb = cdb
 
@@ -90,8 +90,9 @@ class CDBMaker(object):
                     cols.append(col)
 
             _time = None # Used to check speed
+            _logging_freq = np.ceil(len(df[cols]) / 100)
             for row_id, row in enumerate(df[cols].values):
-                if row_id % 10000 == 0:
+                if row_id % _logging_freq == 0:
                     # Print some stats
                     if _time is None:
                         # Add last time if it does not exist
@@ -100,7 +101,8 @@ class CDBMaker(object):
                     ctime = datetime.datetime.now()
                     # Get time difference
                     timediff = ctime - _time
-                    self.logger.info("Current progress: {:.2f}% at {}s per 10k".format((row_id / len(df)) * 100, timediff.seconds))
+                    self.log.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format((row_id / len(df)) * 100, timediff.microseconds / 10**6,
+                                                                                                (len(df[cols]) // 100)))
 
                     # Set previous time to current time
                     _time = ctime
@@ -146,5 +148,9 @@ class CDBMaker(object):
 
                 self.cdb.add_concept(cui, names, ontology, name_status, type_ids,
                                      description, full_build=full_build)
+                # DEBUG
+                self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontology: {}\n Name status: {}\n" + \
+                               " Type IDs: {}\n Description: {}\n Is full build: {}".format(
+                               cui, names, ontology, name_status, type_ids, description, full_build))
 
         return self.cdb
