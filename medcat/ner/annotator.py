@@ -3,8 +3,40 @@ once the software is trained the main thing are the context vectors.
 """
 import numpy as np
 import operator
+from spacy.tokens import Span
 
-class BaseAnnotationChecker(object):
+def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
+    r''' Given a name it will check should it be annotated based on config rules. If yes
+    the annotation will be added to the doc._.ents array.
+
+    Args:
+        name (`str`):
+            The name found in the text
+        tkns (`List[fds):
+            bla
+        doc
+        cdb.
+        config
+        label
+    '''
+    if len(name) > config.ner['min_name_len']:
+        # Check the upper case limit, last part checks is it one token and uppercase
+        if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
+            # Everything is fine, mark name
+            entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
+            entity._.detected_name = name
+            entity._.link_candidates = cdb.name2cuis[name]
+            entity._.id = len(doc._.ents)
+            # Append the entity to the document
+            doc._.ents.append(entity)
+
+            # Not necessary, but why not
+            return entity
+
+    return None
+
+"""
+class (object):
     def __init__(self, cdb, spacy_cat):
         self.cdb = cdb
         self._cat = spacy_cat
@@ -14,20 +46,11 @@ class BaseAnnotationChecker(object):
     def CheckAnnotation(self, name, tkns, doc, to_disamb, doc_words):
         # Do not add annotations here, but just return what needs to be done
 
-        # Must be one token, multiple is very dangerous
-        if len(name) < config.general['min_name_len']:
-            # Skip names below the limit
-            return 'skip'
+
 
         # Is the detected name uppercase and only one token
-        one_tkn_upper = False
-        if len(tkns) == 1 and tkns[0].is_upper:
-            one_tkn_upper = True
-
+        # Must be one token, multiple is very dangerous
         # First check length limit and uppercase limit
-        if len(name) < config.upper_case_limit_len and not one_tkn_upper:
-            # Skip this detection
-            return 'skip'
         elif len(name) < config.length_limit:
             # Disambiguate
             return 'disambiguate'
@@ -113,3 +136,4 @@ class BaseAnnotationChecker(object):
                     # For now ignore
                     #to_disamb.append((list(tkns), name))
                     pass
+"""

@@ -16,6 +16,10 @@ def prepare_name(raw_name, nlp, names, config):
             name versions and other required information will be added here.
         config (`medcat.config.Config`):
             Global config for medcat.
+
+    Return:
+        names (`dict`):
+            The new dictionary of prepared names.
     '''
     sc_name = nlp(raw_name)
 
@@ -38,6 +42,8 @@ def prepare_name(raw_name, nlp, names, config):
                     snames.add(sname.strip())
 
                 names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}
+
+    return names
 
 
 def basic_clean(text):

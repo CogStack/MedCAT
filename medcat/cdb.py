@@ -46,12 +46,11 @@ class CDB(object):
         vocab (`Dict[str, int]`):
             Stores all the words tha appear in this CDB and the count for each one.
 
-
+    Args:
+        config (`medcat.config.Config`, optional):
+            Main MedACT configuration. It is not required, but nothing works without it.
     """
-    MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
-    MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
-
-    def __init__(self, config):
+    def __init__(self, config=None):
         self.config = config
         self.name2cuis = {}
         self.name2cuis2status = {}
@@ -79,16 +78,36 @@ class CDB(object):
         self.log = basic_logger(name='cdb', config=self.config)
         self._optim_params = None
 
-    def add_name(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
+
+    def remove_names(self, cui: str, names: Dict):
+        r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
+        This will only remove the name from the linker (namely name2cuis), the name will still be present everywhere else.
+        Why? Because it is bothersome to remove it from everywhere, but
+        could also be useful to keep the removed names in e.g. cui2names.
+
+        Args:
+            cui (`str`):
+                Concept ID or unique identifer in this database.
+            names (`Dict[str, Dict]`):
+                Names to be removed, should look like: `{'name': {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
+        '''
+        for name in names.keys():
+            if cui in self.name2cuis[name]:
+                self.name2cuis[name].remove(cui)
+            if len(self.name2cuis[name]) == 0:
+                del self.name2cuis[name]
+
+
+    def add_names(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
         r''' Adds a name to an existing concept.
 
         Args:
             cui (`str`):
                 Concept ID or unique identifer in this database, all concepts that have
                 the same CUI will be merged internally.
-            names (`Dict[str, <object>]`):
+            names (`Dict[str, Dict]`):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
-                Names is an array like: `[{'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...]`
+                Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
             name_status (`str`):
                 One of `P`, `N`, `A`
             full_build (`bool`, defaults to `False`):
@@ -112,9 +131,9 @@ class CDB(object):
             cui (`str`):
                 Concept ID or unique identifer in this database, all concepts that have
                 the same CUI will be merged internally.
-            names (`Dict[str, <object>]`):
+            names (`Dict[str, Dict]`):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
-                Names is an array like: `[{'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...]`
+                Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
             ontology (`str`):
                 Ontology from which the concept is taken (e.g. SNOMEDCT)
             name_status (`str`):
@@ -276,14 +295,25 @@ class CDB(object):
 
 
     def save(self, path):
+        r''' Saves model to file (in fact it saves vairables of this class). 
+
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+        '''
         with open(path, 'wb') as f:
-            pickle.dump(self, f)
+            pickle.dump(self.__dict__, f)
 
 
-    @classmethod
     def load(cls, path):
+        r''' Load data into this object from a save file.
+
+        Args:
+            path (`str`):
+                Path to a `cdb.dat` from which to load data.
+        '''
         with open(path, 'rb') as f:
-            return pickle.load(f)
+            self.__dict__ = pickle.load(f)
 
 
     def import_training(self, cdb, overwrite=True):
@@ -318,7 +348,7 @@ class CDB(object):
         or for suppervised with annealing.
 
         Args:
-            n (int, optional, defaults to 10):
+            n (`int`, optional, defaults to 10):
                 This will be set as the CUI count for all cuis in this CDB.
 
         Examples:
