@@ -7,32 +7,10 @@ import os
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
 
-class SpellChecker(object):
-    """ Spellchecks words using hunspell
 
-    words:  Additional words to load apart from the en dict
-    """
-    def __init__(self, words=[]):
-        self.spellchecker = hunspell.HunSpell('/usr/share/hunspell/en_US.dic', '/usr/share/hunspell/en_US.aff')
-
-        # Add words to hunspell
-        for word in words:
-            self.spellchecker.add(word)
-
-
-    def __contains__(self, word):
-        return self.spellchecker.spell(word)
-
-
-    def fix(self, word):
-        sugg = self.spellchecker.suggest(word)
-        if sugg:
-            return sugg[0]
-        else:
-            return None
-
-
-class CustomSpellChecker(object):
+class BasicSpellChecker(object):
+    r'''
+    '''
     def __init__(self, cdb_vocab, data_vocab=None):
         self.vocab = cdb_vocab
         self.data_vocab = data_vocab
@@ -104,32 +82,35 @@ class CustomSpellChecker(object):
         pass
 
 
-class SpacySpellChecker(object):
-    SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
-    def __init__(self, spell_checker):
+class TokenNormalizer(object):
+    r''' Will normalize all tokens in a spacy document.
+
+    Args:
+        config
+        spell_checker
+    '''
+
+    def __init__(self, config, spell_checker=None):
+        self.config = config
         self.spell_checker = spell_checker
-        self.nlp = spacy.load(self.SPACY_MODEL, disable=['ner', 'parser'])
+        self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
 
     def __call__(self, doc):
         for token in doc:
-            if token.lemma_ == '-PRON-' or len(token.lower_) < 3:
-                if token.lemma_ == '-PRON-':
-                    token._.norm = 'skipskip'
-                    token._.to_skip = True
-                else:
-                    token._.norm = token.lower_
+            if token.lemma_ == '-PRON-':
+                token._.norm = token.lemma_
+                token._.to_skip = True
+            elif len(token.lower_) < self.config.preprocessing['min_len_normalize']:
+                token._.norm = token.lower_
             else:
                 token._.norm = token.lemma_.lower()
-            token._.lower = token.lower_
 
-            # Fix the token if necessary
-            if not token._.is_punct and not CONTAINS_NUMBER.search(token.lower_):
-                # Check is it in the vocab
-                if len(token.lower_) > 5 and token.lower_ not in self.spell_checker:
+            if self.config.general['spell_check']:
+                # Fix the token if necessary
+                if len(token.text) >= self.config.general['spell_check_len_limit'] and not token._.is_punct \
+                        and token.lower_ not in self.spell_checker and not CONTAINS_NUMBER.search(token.lower_):
                     fix = self.spell_checker.fix(token.lower_)
                     if fix is not None:
-                        token._.verified = True
                         tmp = self.nlp(fix)[0]
                         token._.norm = tmp.lemma_.lower()
-                        token._.lower = tmp.lower_
         return doc

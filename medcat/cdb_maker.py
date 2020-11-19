@@ -38,7 +38,7 @@ class CDBMaker(object):
             self.cdb = cdb
 
         # Build the required spacy pipeline
-        self.nlp = Pipe(spacy_split_all, config)
+        self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
         self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
                             name='skip_and_punct',
                             additional_fields=['is_punct'])

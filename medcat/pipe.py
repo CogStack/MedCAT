@@ -1,5 +1,5 @@
 from spacy.tokens import Token, Doc, Span
-from medcat.utils.spelling import SpacySpellChecker
+from medcat.utils.normalizers import TokenNormalizer
 import spacy
 import os
 
@@ -15,9 +15,11 @@ class Pipe(object):
     Properties:
         nlp (spacy.language.<lng>):
             The base spacy NLP pipeline.
-    ''' 
+    '''
     def __init__(self, tokenizer, config):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
+        if config.preprocessing['stopwords'] is not None:
+            self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
         self.nlp.tokenizer = tokenizer(self.nlp)
 
 
@@ -42,14 +44,12 @@ class Pipe(object):
             Token.set_extension(field, default=False, force=True)
 
 
-    def add_spell_checker(self, spell_checker):
-        spacy_spell_checker = SpacySpellChecker(spell_checker=spell_checker)
-        self.nlp.add_pipe(spacy_spell_checker, name='spell_checker', last=True)
+    def add_token_normalizer(self, config, spell_checker=None):
+        token_normalizer = TokenNormalizer(spell_checker=spell_checker, config=config)
+        self.nlp.add_pipe(token_normalizer, name='token_normalizer', last=True)
 
         # Add custom fields needed for this usecase
-        Token.set_extension('verified', default=False, force=True)
         Token.set_extension('norm', default=None, force=True)
-        Token.set_extension('lower', default=None, force=True)
 
 
     def add_ner(self, ner):
@@ -59,7 +59,7 @@ class Pipe(object):
         '''
         self.nlp.add_pipe(ner, name='ner', last=True)
 
-        Doc.set_extension('ents', default=None, force=True)
+        Doc.set_extension('ents', default=[], force=True)
         Span.set_extension('acc', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
         Span.set_extension('detected_name', default=None, force=True)

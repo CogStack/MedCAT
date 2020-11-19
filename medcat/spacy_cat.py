@@ -27,35 +27,6 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    DEBUG = os.getenv('DEBUG', "false").lower() == 'true'
-    NORM_EMB = os.getenv('NORM_EMB', "false").lower() == 'true' # Should we normalize the w2v
-    PREFER_FREQUENT = os.getenv('PREFER_FREQUENT', "false").lower() == 'true'
-    PREFER_CONCEPTS_WITH = os.getenv('PREFER_CONCEPTS_WITH', None)
-    CNTX_SPAN = int(os.getenv('CNTX_SPAN', 9))
-    CNTX_SPAN_SHORT = int(os.getenv('CNTX_SPAN_SHORT', 3))
-    MIN_CUI_COUNT = int(os.getenv('MIN_CUI_COUNT', 30000))
-    MIN_CUI_COUNT_STRICT = int(os.getenv('MIN_CUI_COUNT_STRICT', 1))
-    ACC_ALWAYS = os.getenv('ACC_ALWAYS', "false").lower() == 'true'
-    DISAMB_EVERYTHING = os.getenv('DISAMB_EVERYTHING', 'false').lower() == 'true'
-
-    TUI_FILTER = os.getenv('TUI_FILTER', None) - # Must be dictionary cannot be None
-    CUI_FILTER = os.getenv('CUI_FILTER', None) - # Must be dictionary cannot be None
-
-    MAX_SKIP_TKN = int(os.getenv('MAX_SKIP_TKN', 2))
-    SKIP_STOPWORDS = os.getenv('SKIP_STOPWORDS', "false").lower() == 'true'
-    WEIGHTED_AVG = os.getenv('WEIGHTED_AVG', "true").lower() == 'true'
-
-    MIN_ACC = float(os.getenv('MIN_ACC', 0.2))
-    MIN_ACC_TH = float(os.getenv('MIN_ACC_TH', 0.2))
-    MIN_CONCEPT_LENGTH = int(os.getenv('MIN_CONCEPT_LENGTH', 1))
-    NEG_PROB = float(os.getenv('NEG_PROB', 0.5))
-    LBL_STYLE = os.getenv('LBL_STYLE', 'long').lower()
-
-    IS_TRAINER = False # Are we using the trainer or not
-
-    LR = float(os.getenv('LR', 1))
-    ANNEAL = os.getenv('ANNEAL', 'true').lower() == 'true'
-
     # Convert filters tu sets
     if TUI_FILTER is not None:
         TUI_FILTER = set(TUI_FILTER)
