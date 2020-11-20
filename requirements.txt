@@ -1,11 +1,1 @@
-spacy==2.2.4
-gensim~=3.7
-scipy~=1.4
-Flask~=1.1
-numpy~=1.18
-pandas~=1.0
-tokenizers~=0.7
-torch~=1.4.0
-torchvision~=0.5.0
-sklearn~=0.0
-elasticsearch==7.9.1
+.

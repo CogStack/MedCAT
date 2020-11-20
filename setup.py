@@ -23,7 +23,7 @@ setuptools.setup(
         'gensim~=3.7',
         'spacy==2.2.4',
         'scipy~=1.4',
-        'tokenizers~=0.8',
+        'tokenizers~=0.8.0',
         'torch~=1.4.0',
         'torchvision~=0.5.0',
         'Flask~=1.1',
