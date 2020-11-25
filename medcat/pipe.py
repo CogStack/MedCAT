@@ -62,6 +62,8 @@ class Pipe(object):
         Doc.set_extension('ents', default=[], force=True)
         Span.set_extension('acc', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
+        # Do not set this property if a vocabulary apporach is not used, this name must
+        #refer to a name2cuis in the cdb.
         Span.set_extension('detected_name', default=None, force=True)
         Span.set_extension('link_candidates', default=None, force=True)
 
@@ -76,6 +78,7 @@ class Pipe(object):
         '''
         self.nlp.add_pipe(linker, name='linker', last=True)
         Span.set_extension('cui', default=-1, force=True)
+        Span.set_extension('context_similarity', default=-1, force=True)
 
 
     def add_meta_cat(self, meta_cat, name):

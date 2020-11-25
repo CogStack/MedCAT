@@ -283,7 +283,7 @@ class SpacyCat(object):
         if np.random.rand() < self.NEG_PROB and not negative:
             log.debug("Adding NEGATIVE for: " + str(cui))
             # Add only if probability and 'not' negative input
-            negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2, ignore_punct_and_num=True, stopwords=STOP_WORDS)
+            negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2, ignore_punct_and_num=True, stopwords=STOP_WORDS) # TODO stopwords
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
             self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',

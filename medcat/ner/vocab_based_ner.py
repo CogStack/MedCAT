@@ -1,4 +1,4 @@
-from medcat.ner.annotator import maybe_annotate_name
+from medcat.ner.vocab_based_annotator import maybe_annotate_name
 
 class NER(object):
     def __init__(self, cdb, config):

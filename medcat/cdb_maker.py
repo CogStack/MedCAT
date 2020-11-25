@@ -44,7 +44,7 @@ class CDBMaker(object):
                             additional_fields=['is_punct'])
 
 
-    def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None, index_col=False, full_build=False, **kwargs):
+    def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None, index_col=False, full_build=False, only_existing_cuis=False, **kwargs):
         r''' Compile one or multipe CSVs into a CDB.
 
         Args:
@@ -63,6 +63,9 @@ class CDBMaker(object):
                 Escapechar for the CSV
             index_col (`bool`, defaults_to `False`):
                 Index column for pandas read_csv
+            only_existing_cuis (`bool`, defaults to False):
+                If True no new CUIs will be added, but only linked names will be extended. Mainly used when
+                enriching names of a CDB (e.g. SNOMED with UMLS terms).
         Return:
             `medcat.cdb.CDB` with the new concepts added.
 
@@ -110,47 +113,48 @@ class CDBMaker(object):
                 # This must exist
                 cui = row[col2ind['cui']].strip().upper()
 
-                if 'ontology' in col2ind:
-                    ontology = row[col2ind['ontology']].upper()
-                else:
-                    ontology = 'DEFAULT'
+                if not only_existing_cuis or (only_existing_cuis and cui in self.cdb.cui2names):
+                    if 'ontology' in col2ind:
+                        ontology = row[col2ind['ontology']].upper()
+                    else:
+                        ontology = 'DEFAULT'
 
-                if 'name_status' in col2ind:
-                    name_status = row[col2ind['name_status']].strip().upper()
+                    if 'name_status' in col2ind:
+                        name_status = row[col2ind['name_status']].strip().upper()
 
-                    # Must be allowed
-                    if name_status not in name_status_options:
+                        # Must be allowed
+                        if name_status not in name_status_options:
+                            name_status = 'A'
+                    else:
+                        # Defaults to A - meaning automatic
                         name_status = 'A'
-                else:
-                    # Defaults to A - meaning automatic
-                    name_status = 'A'
 
-                if 'type_ids' in col2ind:
-                    type_ids = set([type_id.strip() for type_id in row[col2ind['type_ids']].upper().split(self.cnf_cm['multi_separator']) if
-                                    len(type_id.strip()) > 0])
-                else:
-                    type_ids = {'DEFAULT'}
+                    if 'type_ids' in col2ind:
+                        type_ids = set([type_id.strip() for type_id in row[col2ind['type_ids']].upper().split(self.cnf_cm['multi_separator']) if
+                                        len(type_id.strip()) > 0])
+                    else:
+                        type_ids = {'DEFAULT'}
 
-                # Get the ones that do not need any changing
-                if 'description' in col2ind:
-                    description = row[col2ind['description']].strip()
-                else:
-                    description = ""
+                    # Get the ones that do not need any changing
+                    if 'description' in col2ind:
+                        description = row[col2ind['description']].strip()
+                    else:
+                        description = ""
 
-                # We can have multiple versions of a name
-                names = {} # {'name': {'tokens': [<str>], 'snames': [<str>]}}
+                    # We can have multiple versions of a name
+                    names = {} # {'name': {'tokens': [<str>], 'snames': [<str>]}}
 
-                raw_names = [raw_name.strip() for raw_name in row[col2ind['name']].split(self.cnf_cm['multi_separator']) if 
-                             len(raw_name.strip()) > 0]
-                for raw_name in raw_names:
-                    raw_name = raw_name.strip()
-                    prepare_name(raw_name, self.nlp, names, self.config)
+                    raw_names = [raw_name.strip() for raw_name in row[col2ind['name']].split(self.cnf_cm['multi_separator']) if 
+                                 len(raw_name.strip()) > 0]
+                    for raw_name in raw_names:
+                        raw_name = raw_name.strip()
+                        prepare_name(raw_name, self.nlp, names, self.config)
 
-                self.cdb.add_concept(cui, names, ontology, name_status, type_ids,
-                                     description, full_build=full_build)
-                # DEBUG
-                self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontology: {}\n Name status: {}\n" + \
-                               " Type IDs: {}\n Description: {}\n Is full build: {}".format(
-                               cui, names, ontology, name_status, type_ids, description, full_build))
+                    self.cdb.add_concept(cui, names, ontology, name_status, type_ids,
+                                         description, full_build=full_build)
+                    # DEBUG
+                    self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontology: {}\n Name status: {}\n" + \
+                                   " Type IDs: {}\n Description: {}\n Is full build: {}".format(
+                                   cui, names, ontology, name_status, type_ids, description, full_build))
 
         return self.cdb

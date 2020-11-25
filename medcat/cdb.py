@@ -200,7 +200,7 @@ class CDB(object):
         # Check is this a preferred name for the concept, this takes the name_info
         #dict which must have a value (but still have to check it, just in case).
         if name_info is not None:
-            if name_status == 'P':
+            if name_status == 'P' and cui not in self.cui2preferred_name:
                 self.cui2preferred_name[cui] = name_info['raw_name']
             elif cui not in self.cui2preferred_name:
                 # Add the name if it does not exist, this makes the preferred name random
@@ -267,7 +267,7 @@ class CDB(object):
                     if negative:
                         # Add negative context
                         b = max(0, similarity) * lr
-                        self.cui2context_vectors[cui][context_type] = cv*(1-b) - vector*b
+                        self.cui3context_vectors[cui][context_type] = cv*(1-b) - vector*b
                     else:
                         b = (1 - max(0, similarity)) * lr
                         self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
