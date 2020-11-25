@@ -11,19 +11,25 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
 
     Args:
         name (`str`):
-            The name found in the text
-        tkns (`List[fds):
-            bla
-        doc
-        cdb.
-        config
-        label
+            The name found in the text of the document.
+        tkns (`List[spacy.tokens.Token]`):
+            Tokens that belong to this name in the spacy document.
+        doc (`spacy.tokens.Doc`):
+            Spacy document to be annotated with named entities.
+        cdb (`medcat.cdb.CDB`):
+            Concept database.
+        config (`medcat.config.Config`):
+            Global config for medcat.
+        label (`str`):
+            Label for this name (usually `concept` if we are using a vocab based approach).
     '''
     if len(name) > config.ner['min_name_len']:
         # Check the upper case limit, last part checks is it one token and uppercase
         if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
             # Everything is fine, mark name
             entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
+            # Only set this property when using a vocab approach and where this name
+            #fits a name in the cdb. All standard name entity recognition models will not set this.
             entity._.detected_name = name
             entity._.link_candidates = cdb.name2cuis[name]
             entity._.id = len(doc._.ents)
@@ -34,6 +40,19 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             return entity
 
     return None
+
+def check_disambiguation_status(name, cuis, config):
+    if len(name) < config.linking['disamb_len_limit']:
+        return True
+    elif len(cuis) == 1:
+        if cdb.name2cui2status[name][cuis[0]] != 'N':
+            return True
+        else:
+            return False
+    else:
+        for cui in cuis:
+            if self.cdb.name2cui2status[name][cui] == 'P':
+
 
 """
 class (object):

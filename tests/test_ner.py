@@ -1,5 +1,3 @@
-from medcat.ner.vocab_based_ner import NER
-from functools import partial
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.pipe import Pipe
@@ -67,3 +65,36 @@ for i in range(50):
     d = nlp(text)
 end = timer()
 print("Time: ", end - start)
+
+
+# Test for linker
+
+import numpy as np
+
+config = Config()
+config.general['log_level'] = logging.INFO
+cdb = CDB(config=config)
+
+# Add a couple of names
+cdb.add_names(cui='S-229004', names=prepare_name('Movar', maker.nlp, {}, config))
+cdb.add_names(cui='S-229004', names=prepare_name('Movar viruses', maker.nlp, {}, config))
+cdb.add_names(cui='S-229005', names=prepare_name('CDB', maker.nlp, {}, config))
+# Check
+assert cdb.cui2names == {'S-229004': {'movar', 'movarvirus', 'movarviruses'}, 'S-229005': {'cdb'}}
+
+cuis = list(cdb.cui2names.keys())
+for cui in cuis[0:50]:
+    vectors = {'short': np.random.rand(300),
+              'long': np.random.rand(300)
+              }
+    cdb.update_context_vector(cui, vectors, negative=False)
+
+vocab = Vocab()
+ac = AnnotationChecker(cdb, vocab, config)
+ac.train_using_negative_sampling('S-229004')
+
+
+ac.train('S-229004', d._.ents[1], d)
+
+
+ac.calculate_similarity('S-229004', d._.ents[1], d)

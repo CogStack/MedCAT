@@ -42,7 +42,7 @@ class Config(object):
                 'keep_punct': {'.', ':'},
                 # Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case
                 'min_len_normalize': 5,
-                # If None the default set of stowords will be used. This must be a Set or List.
+                # If None the default set of stowords from spacy will be used. This must be a Set.
                 'stopwords': None,
                 }
 
@@ -58,7 +58,7 @@ class Config(object):
 
         self.linking = {
                 # Linear anneal
-                'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.0005},
+                'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005},
                 # 'optim': {'standard': 'lr': 1},
                 # 'optim': {'moving_avg': 'alpha': 0.99, 'e': 1e-4, 'size': 100},
                 # Useful only if we have anneal
@@ -67,27 +67,29 @@ class Config(object):
                 'disamb_length_limit': 4,
                 # Context vector sizes that will be calculated and used for linking
                 'context_vector_sizes': {'long': 18, 'medium': 9, 'short': 3},
-                # Weight of each vector in the similarity score - make trainable at some point
+                # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
                 'context_vector_weights': {'long': 0.2, 'medium': 0.6, 'short': 0.2},
-                # Should the embedding be for the normalized or unnormalized version of the token.
-                'emb_norm_tokens': False,
                 # Do we prefer frequent concepts over others
-                'prefer_frequent': False,
+                'prefer_frequent_concepts': False,
                 # Concepts with this tag/tags will be prefered
-                'prefer_concepts_with_tag': [],
-                # Concepts that see more training examples than the limit will be sub-sampled.
-                'train_cui_soft_limit': 30000,
-                # Concepts that have seen less training examples than below will not be used for
-                #similarity calculation.
-                'train_count_limit': 20,
+                'prefer_concepts_with_tag': [], # e.g. ['my_super_tag', 'and_one_more']
+
+                'prefer_concepts_with_primary_name': 1,
+                'devalue_short_names': 1,
+
+                # Concepts that have seen less training examples than this will not be used for
+                #similarity calculation and will have a similarity of -1.
+                'train_count_threshold': 20,
                 # Do we want to calculate context similarity even for concepts that are not ambigous.
                 'always_calculate_similarity': False,
-                # Do we want a weighted average of tokens in the context - weight is linear drop from 1 to 0.1
-                'weighted_average': False,
+                # Weights for a weighted average
+                'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
                 # Concepts below this similarity will be ignored
-                'similarity_limit': 0.2,
-                # Probability for the negative context when adding a positive one
+                'similarity_threshold': 0.2,
+                # Probability for the negative context to be added for each positive addition
                 'negative_probability': 1,
+                # Do we ignore punct/num when negative sampling
+                'negative_ignore_punct_and_num': True,
 
                 # REMOVE
                 'filters': {

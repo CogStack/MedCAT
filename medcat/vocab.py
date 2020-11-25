@@ -135,16 +135,15 @@ class Vocab(object):
         self.unigram_table = np.array(self.unigram_table)
 
 
-    def get_negative_samples(self, n=6, ignore_punct_and_num=False, stopwords=[]):
+    def get_negative_samples(self, n=6, ignore_punct_and_num=False):
         if len(self.unigram_table) == 0:
-            raise Exception("No unigram table present, please run the function vocab.make_unigram_table() first")
+            raise Exception("No unigram table present, please run the function vocab.make_unigram_table() first.")
         inds = np.random.randint(0, len(self.unigram_table), n)
         inds = self.unigram_table[inds]
 
         if ignore_punct_and_num:
             # Do not return anything that does not have letters in it
-            inds = [ind for ind in inds if (self.index2word[ind].upper().isupper() or "##" in self.index2word[ind])
-                    and self.index2word[ind].lower() not in stopwords]
+            inds = [ind for ind in inds if self.index2word[ind].upper().isupper()]
 
         return inds
 
