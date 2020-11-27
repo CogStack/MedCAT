@@ -89,12 +89,12 @@ A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://hu
 
 ## Citation
 ```
-@misc{kraljevic2019medcat,
-    title={MedCAT -- Medical Concept Annotation Tool},
-    author={Zeljko Kraljevic and Daniel Bean and Aurelie Mascio and Lukasz Roguski and Amos Folarin and Angus Roberts and Rebecca Bendayan and Richard Dobson},
-    year={2019},
-    eprint={1912.10166},
-    archivePrefix={arXiv},
-    primaryClass={cs.CL}
+@misc{kraljevic2020multidomain,
+      title={Multi-domain Clinical Natural Language Processing with MedCAT: the Medical Concept Annotation Toolkit}, 
+      author={Zeljko Kraljevic and Thomas Searle and Anthony Shek and Lukasz Roguski and Kawsar Noor and Daniel Bean and Aurelie Mascio and Leilei Zhu and Amos A Folarin and Angus Roberts and Rebecca Bendayan and Mark P Richardson and Robert Stewart and Anoop D Shah and Wai Keong Wong and Zina Ibrahim and James T Teo and Richard JB Dobson},
+      year={2020},
+      eprint={2010.01165},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
