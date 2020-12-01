@@ -2,7 +2,8 @@
 """
 
 import os
-import pickle
+import dill
+import logging
 import numpy as np
 import pandas as pd
 from scipy.sparse import dok_matrix
@@ -10,8 +11,8 @@ from typing import Dict, List, Set
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.attr_dict import AttrDict
-from medcat.utils.loggers import basic_logger
 from medcat.utils.ml_utils import get_lr_linking
+from medcat.config import Config
 
 
 class CDB(object):
@@ -45,12 +46,9 @@ class CDB(object):
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
         vocab (`Dict[str, int]`):
             Stores all the words tha appear in this CDB and the count for each one.
-
-    Args:
-        config (`medcat.config.Config`, optional):
-            Main MedACT configuration. It is not required, but nothing works without it.
     """
-    def __init__(self, config=None):
+    log = logging.getLogger(__name__)
+    def __init__(self, config):
         self.config = config
         self.name2cuis = {}
         self.name2cuis2status = {}
@@ -72,16 +70,17 @@ class CDB(object):
                 'cui2original_names': {},
                 'cui2description': {},
                 'type_id2name': {},
+                'type_id2cuis': {},
+                'cui2group': {},
                 # Can be extended with whatever is necessary
                 }
         self.vocab = {} # Vocabulary of all words ever in our cdb
-        self.log = basic_logger(name='cdb', config=self.config)
         self._optim_params = None
 
 
     def remove_names(self, cui: str, names: Dict):
         r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
-        This will only remove the name from the linker (namely name2cuis), the name will still be present everywhere else.
+        This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
         could also be useful to keep the removed names in e.g. cui2names.
 
@@ -92,10 +91,18 @@ class CDB(object):
                 Names to be removed, should look like: `{'name': {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
         '''
         for name in names.keys():
-            if cui in self.name2cuis[name]:
-                self.name2cuis[name].remove(cui)
-            if len(self.name2cuis[name]) == 0:
-                del self.name2cuis[name]
+            if name in self.name2cuis:
+                if cui in self.name2cuis[name]:
+                    self.name2cuis[name].remove(cui)
+                if len(self.name2cuis[name]) == 0:
+                    del self.name2cuis[name]
+
+            # Remove from name2cuis2status
+            if name in self.name2cuis2status:
+                if cui in self.name2cuis2status[name]:
+                    _ = self.name2cuis2status[name].pop(cui)
+                if len(self.name2cuis2status[name]) == 0:
+                    del self.name2cuis2status[name]
 
 
     def add_names(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
@@ -119,10 +126,10 @@ class CDB(object):
             # Name status must be one of the three
             name_status = 'A'
 
-        self.add_concept(cui=cui, names=names, ontology='', name_status=name_status, type_ids=set(), description='', full_build=full_build)
+        self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
 
-    def add_concept(self, cui: str, names: Dict, ontology: str, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
+    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
@@ -134,8 +141,8 @@ class CDB(object):
             names (`Dict[str, Dict]`):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
                 Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
-            ontology (`str`):
-                Ontology from which the concept is taken (e.g. SNOMEDCT)
+            ontologies(`Set[str]`):
+                ontologies in which the concept exists (e.g. SNOMEDCT, HPO)
             name_status (`str`):
                 One of `P`, `N`, `A`
             type_ids (`Set[str]`):
@@ -182,6 +189,9 @@ class CDB(object):
                     # At the same time it means the cui is also missing from name2cuis2status, but the 
                     #name is there
                     self.name2cuis2status[name][cui] = name_status
+                elif name_status == 'P':
+                    # If name_status is P overwrite whatever was the old status
+                    self.name2cuis2status[name][cui] = name_status
             else:
                 # Means we never saw this name
                 self.name2cuis[name] = [cui]
@@ -201,24 +211,28 @@ class CDB(object):
         #dict which must have a value (but still have to check it, just in case).
         if name_info is not None:
             if name_status == 'P' and cui not in self.cui2preferred_name:
-                self.cui2preferred_name[cui] = name_info['raw_name']
-            elif cui not in self.cui2preferred_name:
-                # Add the name if it does not exist, this makes the preferred name random
-                #for concepts that do not have it.
+                # Do not overwrite old preferred names
                 self.cui2preferred_name[cui] = name_info['raw_name']
 
         # Add other fields if full_build
         if full_build:
-            # Use ontologies as the base check, anything can be used for this
-            if cui not in self.addl_info['cui2ontologies']:
-                if ontology: self.addl_info['cui2ontologies'][cui] = set([ontology])
+            # Use original_names as the base check because they must be added
+            if cui not in self.addl_info['cui2original_names']:
+                if ontologies: self.addl_info['cui2ontologies'][cui] = ontologies
                 if description: self.addl_info['cui2description'][cui] = description
                 self.addl_info['cui2original_names'][cui] = set([v['raw_name'] for k,v in names.items()])
             else:
                 # Update existing ones
-                if ontology: self.addl_info['cui2ontologies'][cui].add(ontology)
+                if ontologies: self.addl_info['cui2ontologies'][cui].update(ontologies)
                 if description: self.addl_info['cui2description'][cui] = description
                 self.addl_info['cui2original_names'][cui].update([v['raw_name'] for k,v in names.items()])
+
+            for type_id in type_ids:
+                # Add type_id2cuis link
+                if type_id in self.addl_info['type_id2cuis']:
+                    self.addl_info['type_id2cuis'][type_id].add(cui)
+                else:
+                    self.addl_info['type_id2cuis'][type_id] = {cui}
 
 
     def add_addl_info(self, name, data, reset_existing=False):
@@ -250,9 +264,6 @@ class CDB(object):
         negative (`bool`, defaults to `False`):
             Is this negative context of positive.
         '''
-        cnf_l = self.config.linking
-
-
         similarity = None
         if cui in self.cui2context_vectors:
             for context_type, vector in vectors.items():
@@ -267,7 +278,7 @@ class CDB(object):
                     if negative:
                         # Add negative context
                         b = max(0, similarity) * lr
-                        self.cui3context_vectors[cui][context_type] = cv*(1-b) - vector*b
+                        self.cui2context_vectors[cui][context_type] = cv*(1-b) - vector*b
                     else:
                         b = (1 - max(0, similarity)) * lr
                         self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
@@ -302,18 +313,35 @@ class CDB(object):
                 Path to a file where the model will be saved
         '''
         with open(path, 'wb') as f:
-            pickle.dump(self.__dict__, f)
+            # No idea how to this correctly
+            to_save = {}
+            to_save['config'] = self.config.__dict__
+            to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
+            dill.dump(to_save, f)
 
 
-    def load(cls, path):
-        r''' Load data into this object from a save file.
+    @classmethod
+    def load(cls, path, config=None):
+        r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
             path (`str`):
                 Path to a `cdb.dat` from which to load data.
         '''
         with open(path, 'rb') as f:
-            self.__dict__ = pickle.load(f)
+            # Again no idea
+            data = dill.load(f)
+            if config is None:
+                config = Config.from_dict(data['config'])
+            # Create an instance of the CDB (empty)
+            cdb = cls(config=config)
+
+            # Load data into the new cdb instance
+            for k in cdb.__dict__:
+                if k in data['cdb']:
+                    cdb.__dict__[k] = data['cdb'][k]
+
+        return cdb
 
 
     def import_training(self, cdb, overwrite=True):
@@ -526,7 +554,7 @@ class CDB(object):
         res = {}
         print()
         for ind, _cui in enumerate(cuis[sims_srt[0:topn]]):
-            res[_cui] = {'name': self.cui2preferred_name[_cui], 'sim': sims[sims_srt][ind],
+            res[_cui] = {'name': self.cui2preferred_name.get(_cui, list(self.cui2names[_cui])[0]), 'sim': sims[sims_srt][ind],
                          'type_names': [self.addl_info['type_id2name'].get(cui, 'unk') for cui in self.cui2type_ids.get(_cui, ['unk'])],
                          'type_ids': self.cui2type_ids.get(_cui, 'unk'),
                          'cnt': self.cui2count_train[_cui]}

@@ -2,6 +2,11 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.pipe import Pipe
 from medcat.utils.normalizers import BasicSpellChecker
+from medcat.vocab import Vocab
+from medcat.preprocessing.cleaners import prepare_name
+from medcat.linking.check_name_links import AnnotationChecker
+from functools import partial
+from medcat.linking.context_based_linker import Linker
 
 config = Config()
 config.general['log_level'] = logging.INFO
@@ -11,18 +16,26 @@ cdb = CDB(config=config)
 cdb.add_names(cui='S-229004', names=prepare_name('Movar', maker.nlp, {}, config))
 cdb.add_names(cui='S-229004', names=prepare_name('Movar viruses', maker.nlp, {}, config))
 cdb.add_names(cui='S-229005', names=prepare_name('CDB', maker.nlp, {}, config))
+cdb.add_names(cui='S-2290045', names=prepare_name('Movar', maker.nlp, {}, config))
 # Check
 assert cdb.cui2names == {'S-229004': {'movar', 'movarvirus', 'movarviruses'}, 'S-229005': {'cdb'}}
+
+vocab = Vocab()
+vocab.load_dict("/home/ubuntu/data/vocabs/vocab.dat")
 
 # Make the pipeline
 nlp = Pipe(tokenizer=spacy_split_all, config=config)
 nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=config),
                name='skip_and_punct',
                additional_fields=['is_punct'])
-spell_checker = BasicSpellChecker(cdb_vocab=cdb.vocab, data_vocab=cdb.vocab)
+spell_checker = BasicSpellChecker(cdb_vocab=cdb.vocab, data_vocab=vocab)
 nlp.add_token_normalizer(spell_checker=spell_checker, config=config)
 ner = NER(cdb, config)
 nlp.add_ner(ner)
+
+# Add Linker
+link = Linker(cdb, vocab, config)
+nlp.add_linker(link)
 
 # Test limits for tokens and uppercase
 config.ner['max_skip_tokens'] = 1
@@ -72,29 +85,34 @@ print("Time: ", end - start)
 import numpy as np
 
 config = Config()
-config.general['log_level'] = logging.INFO
+config.general['log_level'] = logging.DEBUG
 cdb = CDB(config=config)
 
 # Add a couple of names
 cdb.add_names(cui='S-229004', names=prepare_name('Movar', maker.nlp, {}, config))
 cdb.add_names(cui='S-229004', names=prepare_name('Movar viruses', maker.nlp, {}, config))
 cdb.add_names(cui='S-229005', names=prepare_name('CDB', maker.nlp, {}, config))
+cdb.add_names(cui='S-2290045', names=prepare_name('Movar', maker.nlp, {}, config))
 # Check
 assert cdb.cui2names == {'S-229004': {'movar', 'movarvirus', 'movarviruses'}, 'S-229005': {'cdb'}}
 
 cuis = list(cdb.cui2names.keys())
 for cui in cuis[0:50]:
     vectors = {'short': np.random.rand(300),
-              'long': np.random.rand(300)
+              'long': np.random.rand(300),
+              'medium': np.random.rand(300)
               }
     cdb.update_context_vector(cui, vectors, negative=False)
 
 vocab = Vocab()
+vocab.load_dict("/home/ubuntu/data/vocabs/vocab.dat")
 ac = AnnotationChecker(cdb, vocab, config)
 ac.train_using_negative_sampling('S-229004')
-
+config.linking['train_count_threshold'] = 0
 
 ac.train('S-229004', d._.ents[1], d)
 
 
 ac.calculate_similarity('S-229004', d._.ents[1], d)
+
+ac.disambiguate(['S-2290045', 'S-229004'], d._.ents[1], 'movar', d)

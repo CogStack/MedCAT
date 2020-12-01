@@ -1,24 +1,26 @@
 import os
+import sys
+import traceback
 import json
 import pandas
 import spacy
+import time
 from time import sleep
 from functools import partial
+from copy import deepcopy
 from multiprocessing import Process, Manager, Queue, Pool, Array
-from medcat.cdb import CDB
-from medcat.spacy_cat import SpacyCat
-from medcat.preprocessing.tokenizers import spacy_split_all
-from medcat.utils.spelling import CustomSpellChecker
-from medcat.utils.spacy_pipe import SpacyPipe
-from medcat.preprocessing.cleaners import spacy_tag_punct
-from medcat.utils.helpers import get_all_from_name, tkn_inds_from_doc
-from medcat.utils.loggers import basic_logger
-from medcat.utils.data_utils import make_mc_train_test
-import time
-import sys, traceback
 from tqdm.autonotebook import tqdm
+import logging
 
-log = basic_logger("CAT")
+from medcat.cdb import CDB
+from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.pipe import Pipe
+from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.utils.loggers import add_handlers
+from medcat.utils.data_utils import make_mc_train_test
+from medcat.utils.normalizers import BasicSpellChecker
+from medcat.ner.vocab_based_ner import NER
+from medcat.linking.context_based_linker import Linker
 
 class CAT(object):
     r'''
@@ -52,26 +54,31 @@ class CAT(object):
         >>>spacy_doc = cat("Put some text here")
         >>>print(spacy_doc.ents) # Detected entites
     '''
-    def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[], config={}, tokenizer=None):
+    log = logging.getLogger(__package__)
+    # Add file and console handlers
+    log = add_handlers(log)
+    def __init__(self, cdb, config, vocab=None, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab
+        # Take config from the cdb
         self.config = config
 
-        # Build the spacy pipeline
-        self.nlp = SpacyPipe(spacy_split_all)
+        # Build the pipeline
+        self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
+        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
+                            name='skip_and_punct',
+                            additional_fields=['is_punct'])
 
-        #self.nlp.add_punct_tagger(tagger=spacy_tag_punct)
-        self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct,
-                                                 skip_stopwords=skip_stopwords,
-                                                 keep_punct=self.config.get("keep_punct", [':', '.'])))
+        spell_checker = BasicSpellChecker(cdb_vocab=cdb.vocab, data_vocab=vocab)
+        self.nlp.add_token_normalizer(spell_checker=spell_checker, config=config)
 
-        # Add spell checker
-        self.spell_checker = CustomSpellChecker(cdb_vocab=self.cdb.vocab, data_vocab=self.vocab)
-        self.nlp.add_spell_checker(spell_checker=self.spell_checker)
+        # Add NER
+        ner = NER(cdb, config)
+        self.nlp.add_ner(ner)
 
-        # Add them cat class that does entity detection
-        self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab, tokenizer=tokenizer)
-        self.nlp.add_cat(spacy_cat=self.spacy_cat)
+        # Add LINKER
+        linker = Linker(cdb, vocab, config)
+        self.nlp.add_linker(linker)
 
         # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
@@ -341,27 +348,15 @@ class CAT(object):
 
         fp_docs = set()
         fn_docs = set()
-        if self.spacy_cat.TUI_FILTER is None:
-            _tui_filter = None
-        else:
-            _tui_filter = list(self.spacy_cat.TUI_FILTER)
-        if self.spacy_cat.CUI_FILTER is None:
-            _cui_filter = None
-        else:
-            _cui_filter = list(self.spacy_cat.CUI_FILTER)
+        _filters = deepcopy(self.config.linking['filters'])
+
+        # Reset all filters
+        self.config.linking['filters']['cuis'] = set()
 
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            cui_filter = None
-            tui_filter = None
-
             if use_filters:
-                if 'cuis' in project and len(project['cuis'].strip()) > 0:
-                    cui_filter = set([x.strip() for x in project['cuis'].split(",")])
-                if 'tuis' in project and len(project['tuis'].strip()) > 0:
-                    tui_filter = set([x.strip().upper() for x in project['tuis'].split(",")])
-
-                self.spacy_cat.TUI_FILTER = tui_filter
-                self.spacy_cat.CUI_FILTER = cui_filter
+                self.config.linking['filters']['cuis'] = process_old_project_filters(
+                        project.get('cuis', None), project.get('tuis', None), self.cdb)
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
@@ -377,11 +372,10 @@ class CAT(object):
                 anns_examples = []
                 anns_norm_cui = []
                 for ann in anns:
-                    if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
-                       (tui_filter is not None and self.cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
-                        cui = ann['cui']
+                    cui = ann['cui']
+                    if not use_filters or check_filters(cui, self.config.linking['filters']):
                         if use_groups:
-                            cui = self.cdb.cui2info.get(cui, {}).get("group", cui)
+                            cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
                         if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
                             anns_norm.append((ann['start'], cui))
@@ -405,12 +399,13 @@ class CAT(object):
                 for ann in p_anns:
                     cui = ann._.cui
                     if use_groups:
-                        cui = self.cdb.cui2info.get(cui, {}).get("group", cui)
+                        cui = self.cdb.addl_info['cui2group'].get(cui, cui)
+
                     p_anns_norm.append((ann.start_char, cui))
                     p_anns_examples.append({"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
                                           "cui": cui,
                                           "source value": ann.text,
-                                          "acc": float(ann._.acc),
+                                          "acc": float(ann._.context_similarity),
                                           "project index": pind,
                                           "document inedex": dind})
 
@@ -427,7 +422,7 @@ class CAT(object):
                         else:
                             fp += 1
                             fps[cui] = fps.get(cui, 0) + 1
-                            fp_docs.add(doc['name'])
+                            fp_docs.add(doc.get('name', 'unk'))
 
                             # Add example for this FP prediction
                             example = p_anns_examples[iann]
@@ -441,7 +436,7 @@ class CAT(object):
                     if ann not in p_anns_norm:
                         cui = ann[1]
                         fn += 1
-                        fn_docs.add(doc['name'])
+                        fn_docs.add(doc.get('name', 'unk'))
 
                         fns[cui] = fns.get(cui, 0) + 1
                         examples['fn'][cui] = examples['fn'].get(cui, []) + [anns_examples[iann]]
@@ -471,12 +466,12 @@ class CAT(object):
 
 
             # Get top 10
-            pr_fps = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, [cui]))[0]), cui, fps[cui]) for cui in list(fps.keys())[0:10]]
-            pr_fns = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, [cui]))[0]), cui, fns[cui]) for cui in list(fns.keys())[0:10]]
-            pr_tps = [(self.cdb.cui2pretty_name.get(cui,
-                list(self.cdb.cui2original_names.get(cui, [cui]))[0]), cui, tps[cui]) for cui in list(tps.keys())[0:10]]
+            pr_fps = [(self.cdb.cui2preferred_name.get(cui,
+                list(self.cdb.cui2names.get(cui, [cui]))[0]), cui, fps[cui]) for cui in list(fps.keys())[0:10]]
+            pr_fns = [(self.cdb.cui2preferred_name.get(cui,
+                list(self.cdb.cui2names.get(cui, [cui]))[0]), cui, fns[cui]) for cui in list(fns.keys())[0:10]]
+            pr_tps = [(self.cdb.cui2preferred_name.get(cui,
+                list(self.cdb.cui2names.get(cui, [cui]))[0]), cui, tps[cui]) for cui in list(tps.keys())[0:10]]
 
 
             print("\n\nFalse Positives\n")
@@ -494,8 +489,7 @@ class CAT(object):
         except Exception as e:
             traceback.print_exc()
 
-        self.spacy_cat.TUI_FILTER = _tui_filter
-        self.spacy_cat.CUI_FILTER = _cui_filter
+        self.config.linking['filters'] = _filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
@@ -841,11 +835,7 @@ class CAT(object):
 
         # Reset if needed
         if reset_all_groups:
-            for _cui in self.cdb.cui2info.keys():
-                _ = self.cdb.cui2info[_cui].pop('group', None)
+            self.cdb.addl_info['cui2group'] = {}
 
-        # Add
-        if cui in self.cdb.cui2info:
-            self.cdb.cui2info[cui]['group'] = group_name
-        else:
-            self.cdb.cui2info[cui] = {'group': group_name}
+        # Add group_name
+        self.cdb.addl_info['cui2group'][cui] = group_name
