@@ -24,8 +24,6 @@ class Config(object):
                                               'merge_entities', 'merge_subtokens'],
                 # What model will be used for tokenization
                 'spacy_model': 'en_core_sci_md',
-                # Is MedCATtrainer running MedCAT
-                'is_trainer': False,
                 # Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
                 #for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language.
                 'spell_check': True,
@@ -57,44 +55,40 @@ class Config(object):
                 }
 
         self.linking = {
+                # Should it train or not
+                'train': True,
                 # Linear anneal
                 'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005},
                 # 'optim': {'standard': 'lr': 1},
                 # 'optim': {'moving_avg': 'alpha': 0.99, 'e': 1e-4, 'size': 100},
-                # Useful only if we have anneal
-                'min_learning_rate': 1e-5,
                 # All concepts below this will always be disambiguated
                 'disamb_length_limit': 4,
                 # Context vector sizes that will be calculated and used for linking
                 'context_vector_sizes': {'long': 18, 'medium': 9, 'short': 3},
                 # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
                 'context_vector_weights': {'long': 0.2, 'medium': 0.6, 'short': 0.2},
-                # Do we prefer frequent concepts over others
-                'prefer_frequent_concepts': False,
-                # Concepts with this tag/tags will be prefered
-                'prefer_concepts_with_tag': [], # e.g. ['my_super_tag', 'and_one_more']
-
-                'prefer_concepts_with_primary_name': 1,
-                'devalue_short_names': 1,
-
+                # If True it will filter before doing disamb.
+                'filter_before_disamb': False,
                 # Concepts that have seen less training examples than this will not be used for
                 #similarity calculation and will have a similarity of -1.
-                'train_count_threshold': 20,
+                'train_count_threshold': 2,
                 # Do we want to calculate context similarity even for concepts that are not ambigous.
                 'always_calculate_similarity': False,
                 # Weights for a weighted average
                 'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
                 # Concepts below this similarity will be ignored
-                'similarity_threshold': 0.2,
+                'similarity_threshold': 0.25,
                 # Probability for the negative context to be added for each positive addition
-                'negative_probability': 1,
+                'negative_probability': 0.5,
                 # Do we ignore punct/num when negative sampling
                 'negative_ignore_punct_and_num': True,
+                # If True concepts for which a detection is its primary name will be preferred
+                'prefer_primary_name': True,
+
 
                 # REMOVE
                 'filters': {
-                    'exclude': set(), # CUIs in this filter will be excluded, everything else included - will be ignored if 'include'
-                    'include': set(), # CUIs in this filter will be included, everything else excluded
+                    'cuis': set(), # CUIs in this filter will be included, everything else excluded
                     }
                 }
 
@@ -103,3 +97,11 @@ class Config(object):
         self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
+
+
+    @classmethod
+    def from_dict(cls, d):
+        config = cls()
+        config.__dict__ = d
+
+        return config

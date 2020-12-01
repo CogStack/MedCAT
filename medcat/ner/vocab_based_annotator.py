@@ -33,6 +33,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             entity._.detected_name = name
             entity._.link_candidates = cdb.name2cuis[name]
             entity._.id = len(doc._.ents)
+            entity._.confidence = -1 #  This does not calculate confidence
             # Append the entity to the document
             doc._.ents.append(entity)
 
@@ -41,6 +42,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
 
     return None
 
+"""
 def check_disambiguation_status(name, cuis, config):
     if len(name) < config.linking['disamb_len_limit']:
         return True
@@ -53,7 +55,7 @@ def check_disambiguation_status(name, cuis, config):
         for cui in cuis:
             if self.cdb.name2cui2status[name][cui] == 'P':
 
-
+"""
 """
 class (object):
     def __init__(self, cdb, spacy_cat):

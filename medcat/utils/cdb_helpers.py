@@ -1,4 +1,5 @@
 import pandas as pd
+import json
 
 def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None, sep='|', lng='ENG', output_path=None, use_umls_primary_names=False, **kwargs):
     r''' Prepare the MRCONSO.RRF to be used for extansion of SNOMED. Will output a CSV that can
@@ -67,7 +68,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     return df
 
 
-def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, **kwargs):
+def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=False, **kwargs):
     r''' Given paths to the snomed files with concepts e.g. `sct2_Concept_Snapshot_INT_20180731.txt` this will
     build a CSV required by the cdb_maker.py
 
@@ -80,11 +81,17 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
             The separator used in the snomed files.
         output_path (`str`, optional):
             Where to save the built CSV - fullpath
+        output_path_type_names (`str`, optional):
+            Where to save the dictionary that maps from type_id to name
+        strip_fqn (bool, defaults to `True`):
+            If True all Fully Qualified Names will be striped of the semantic type e.g. (disorder)
+            and that cleaned name will be appended as an additional row in the CSV.
         kwargs:
             Will be forwarded to pandas.read_csv
     Return:
-        snomed_cdb_df (pandas.DataFrame):
-            Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
+        Touple[snomed_cdb_df (pandas.DataFrame), type_id2name (Dict)]:
+            - snomed_cdb_df - Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
+            - type_id2name - map from type_id to name, can be used to extend a CDB.
     '''
 
     # Process terms
@@ -106,21 +113,31 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
     snomed_cdb_df = snomed_descs[['conceptId', 'term', 'typeId']]
     snomed_cdb_df = snomed_cdb_df.rename(columns={"conceptId": "cui", "term": "name", 'typeId': 'name_status'})
     # Ontology is always SNOMED
-    snomed_cdb_df['ontology'] = ['SNOMED'] * len(snomed_cdb_df)
+    snomed_cdb_df['ontologies'] = ['SNOMED'] * len(snomed_cdb_df)
     # Take primary names
     snomed_cdb_df['name_status'] = ['P' if name_status == '900000000000003001' else 'A' for name_status in snomed_cdb_df.name_status.values]
 
-    # Add type_names and IDs, there is no real way to do this, so I'll invent a TUI
-    cui2semantic_type_name = {cui:name[name.rfind("(")+1:name.rfind(")")] for cui, name in
+    # Get type names and IDs, there is no real way to do this, so I'll invent a type ID
+    cui2type_name = {cui:name[name.rfind("(")+1:name.rfind(")")] for cui, name in
             snomed_cdb_df[snomed_cdb_df['name_status'] == 'P'][['cui', 'name']].values if name.endswith(")")}
     # Create map from name2id
-    semantic_type_name2id = {semantic_type_name: 'T-{}'.format(id) for id, semantic_type_name in enumerate(sorted(set(cui2semantic_type_name.values())))}
+    type_name2id = {type_name: 'T-{}'.format(id) for id, type_name in enumerate(sorted(set(cui2type_name.values())))}
 
-    # Add columns to the output df
-    snomed_cdb_df['semantic_type_name'] = [cui2semantic_type_name.get(cui, 'unk') for cui in snomed_cdb_df.cui]
-    snomed_cdb_df['semantic_type_id'] = [semantic_type_name2id.get(type_name, 'unk') for type_name in snomed_cdb_df.semantic_type_name]
+    # Add stripped FQNs if necessary, they will be appended at the end of the dataframe
+    if strip_fqn:
+        fqn_stripped = snomed_cdb_df[[True if name_status == 'P' and name.endswith(")") else False
+                                      for name,name_status in snomed_cdb_df[['name', 'name_status']].values]]
+        fqn_stripped['name'] = [name[0:name.rfind("(")].strip() for name in fqn_stripped['name'].values]
+        snomed_cdb_df = pd.concat([snomed_cdb_df, fqn_stripped])
+
+    # Add type_ids column to the output df
+    snomed_cdb_df['type_ids'] = [type_name2id.get(cui2type_name.get(cui, 'unk'), 'unk') for cui in snomed_cdb_df.cui]
 
     if output_path is not None:
         snomed_cdb_df.to_csv(output_path, index=False)
 
-    return snomed_cdb_df
+    if output_path_type_names is not None:
+        # Reverse tje type 2 id nad save
+        json.dump({v:k for k,v in type_name2id.items()}, open(output_path_type_names, 'w'))
+
+    return snomed_cdb_df, {v:k for k,v in type_name2id.items()}

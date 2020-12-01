@@ -57,10 +57,10 @@ class Pipe(object):
         to the document and Span objects.
 
         '''
-        self.nlp.add_pipe(ner, name='ner', last=True)
+        self.nlp.add_pipe(ner, name='cat_ner', last=True)
 
         Doc.set_extension('ents', default=[], force=True)
-        Span.set_extension('acc', default=-1, force=True)
+        Span.set_extension('confidence', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
         # Do not set this property if a vocabulary apporach is not used, this name must
         #refer to a name2cuis in the cdb.
@@ -76,7 +76,7 @@ class Pipe(object):
             Any object/function created based on the requirements for a spaCy pipeline components. Have
             a look at https://spacy.io/usage/processing-pipelines#custom-components
         '''
-        self.nlp.add_pipe(linker, name='linker', last=True)
+        self.nlp.add_pipe(linker, name='cat_linker', last=True)
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('context_similarity', default=-1, force=True)
 

@@ -9,7 +9,7 @@ from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
-from medcat.utils.loggers import basic_logger
+from medcat.utils.loggers import add_handlers
 
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
@@ -23,6 +23,8 @@ class CDBMaker(object):
         name_max_words (`int`, defaults to `20`):
             Names with more words will be skipped during the build of a CDB
     '''
+    log = logging.getLogger(__package__)
+    add_handlers(log)
     def __init__(self, config, cdb=None, name_max_words=20):
         self.config = config
 
@@ -76,7 +78,7 @@ class CDBMaker(object):
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)
         '''
 
-        useful_columns = ['cui', 'name', 'ontology', 'name_status', 'type_ids', 'description']
+        useful_columns = ['cui', 'name', 'ontologies', 'name_status', 'type_ids', 'description']
         name_status_options = {'A', 'P', 'N'}
 
         for csv_path in csv_paths:
@@ -92,6 +94,7 @@ class CDBMaker(object):
                     col2ind[str(col).lower().strip()] = len(cols)
                     cols.append(col)
 
+            self.log.info("Started importing concepts from: {}".format(csv_path))
             _time = None # Used to check speed
             _logging_freq = np.ceil(len(df[cols]) / 100)
             for row_id, row in enumerate(df[cols].values):
@@ -104,9 +107,8 @@ class CDBMaker(object):
                     ctime = datetime.datetime.now()
                     # Get time difference
                     timediff = ctime - _time
-                    self.log.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format((row_id / len(df)) * 100, timediff.microseconds / 10**6,
-                                                                                                (len(df[cols]) // 100)))
-
+                    self.log.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format(
+                        (row_id / len(df)) * 100, timediff.microseconds/10**6 + timediff.seconds, (len(df[cols]) // 100)))
                     # Set previous time to current time
                     _time = ctime
 
@@ -114,10 +116,11 @@ class CDBMaker(object):
                 cui = row[col2ind['cui']].strip().upper()
 
                 if not only_existing_cuis or (only_existing_cuis and cui in self.cdb.cui2names):
-                    if 'ontology' in col2ind:
-                        ontology = row[col2ind['ontology']].upper()
+                    if 'ontologies' in col2ind:
+                        ontologies = set([ontology.strip() for ontology in row[col2ind['ontologies']].upper().split(self.cnf_cm['multi_separator']) if
+                                         len(ontology.strip()) > 0])
                     else:
-                        ontology = 'DEFAULT'
+                        ontologies = set()
 
                     if 'name_status' in col2ind:
                         name_status = row[col2ind['name_status']].strip().upper()
@@ -133,7 +136,7 @@ class CDBMaker(object):
                         type_ids = set([type_id.strip() for type_id in row[col2ind['type_ids']].upper().split(self.cnf_cm['multi_separator']) if
                                         len(type_id.strip()) > 0])
                     else:
-                        type_ids = {'DEFAULT'}
+                        type_ids = set()
 
                     # Get the ones that do not need any changing
                     if 'description' in col2ind:
@@ -149,12 +152,11 @@ class CDBMaker(object):
                     for raw_name in raw_names:
                         raw_name = raw_name.strip()
                         prepare_name(raw_name, self.nlp, names, self.config)
-
-                    self.cdb.add_concept(cui, names, ontology, name_status, type_ids,
-                                         description, full_build=full_build)
+                    self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
+                                         description=description, full_build=full_build)
                     # DEBUG
-                    self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontology: {}\n Name status: {}\n" + \
+                    self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontologies: {}\n Name status: {}\n".format(cui, names, ontologies, name_status) + \
                                    " Type IDs: {}\n Description: {}\n Is full build: {}".format(
-                                   cui, names, ontology, name_status, type_ids, description, full_build))
+                                   type_ids, description, full_build))
 
         return self.cdb

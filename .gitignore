@@ -16,6 +16,7 @@ db.sqlite3
 
 #tmp and similar files
 .nfs*
+*.log
 *.pyc
 *.out
 *.swp
