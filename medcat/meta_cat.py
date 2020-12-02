@@ -262,6 +262,7 @@ class MetaCAT(object):
 
         # Load MODEL
         self.load_model(model=model)
+        self.model.to(self.device)
 
     def __call__(self, doc, lowercase=True):
         """ Spacy pipe method """
@@ -301,7 +302,7 @@ class MetaCAT(object):
         # Nearly impossible that we need batches, so I'll ignore it
         if len(x) >  0:
             self.model.eval()
-            outputs = self.model(x, cpos).detach().numpy()
+            outputs = self.model(x, cpos).detach().to('cpu').numpy()
             outputs = np.argmax(outputs, axis=1)
 
             for ent in doc.ents:
