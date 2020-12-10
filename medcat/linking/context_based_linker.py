@@ -92,6 +92,7 @@ class Linker(object):
                         entity._.cui = cui
                         entity._.context_similarity = context_similarity
                         linked_entities.append(entity)
+
         doc._.ents = linked_entities
         self._create_main_ann(doc)
         return doc

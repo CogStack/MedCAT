@@ -161,6 +161,7 @@ class ContextModel(object):
             # While it should be size*2 it is already too many negative examples, so we leave it at size
             inds = self.vocab.get_negative_samples(size, ignore_punct_and_num=self.config.linking['negative_ignore_punct_and_num'])
             values = [self.vocab.vec(self.vocab.index2word[ind]) for ind in inds]
-            vectors[context_type] = np.average(values, axis=0)
+            if len(values) > 0:
+                vectors[context_type] = np.average(values, axis=0)
 
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=True)

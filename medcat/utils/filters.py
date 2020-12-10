@@ -23,10 +23,10 @@ def process_old_project_filters(cuis, type_ids, cdb):
     cui_filter = set()
     if cuis is not None:
         cui_filter.update([x.strip() for x in cuis.split(",")])
-    if tuis is not None:
+    if type_ids is not None:
         type_ids = [x.strip().upper() for x in type_ids.split(",")]
 
-        # Convert tuis to cuis
+        # Convert type_ids to cuis
         if 'type_id2cuis' in cdb.addl_info:
             for type_id in type_ids:
                 if type_id in cdb.addl_info['type_id2cuis']:

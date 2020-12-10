@@ -461,11 +461,11 @@ class CDB(object):
     def print_stats(self):
         r'''Print basic statistics for the CDB.
         '''
-        print("Number of concepts: {:,}".format(len(self.cui2names)))
-        print("Number of names:    {:,}".format(len(self.name2cuis)))
-        print("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
-        print("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
-        print("Average training examples per concept:     {:.1f}".format(np.average(
+        self.log.info("Number of concepts: {:,}".format(len(self.cui2names)))
+        self.log.info("Number of names:    {:,}".format(len(self.name2cuis)))
+        self.log.info("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
+        self.log.info("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
+        self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
             [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
 
 

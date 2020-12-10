@@ -10,5 +10,4 @@ If a concept has mutliple names it can appear in multiple rows, each time with t
 `ontologies` - from where is this concept coming (e.g. SNOMED/UMLS or whatever you want).
 `name_status` - can be `['P', 'N', 'A']`. `P` - this name is the preffered name of this concept and when we find it in text in >95% pf cases it links to this concept. `N` - this name should always be disambiguated. `A` - I've no idea how often this name links, let MedCAT decide this automatically. Whenever possible please try to assing this value, it is very important. 
 `semantic_type_id` - ID of the semantic type for this concept (sematic type is to some extent equivalent to `group`, in other words you can use it as such).
-`semantic_type_name` - Fully qualified naem for the sematic type of this concept
 `description` - Description of this concept, if multiple rows are associated to the same concept then only one should contain the description (mainly because of the size).

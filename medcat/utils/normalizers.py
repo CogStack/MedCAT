@@ -11,8 +11,9 @@ CONTAINS_NUMBER = re.compile('[0-9]+')
 class BasicSpellChecker(object):
     r'''
     '''
-    def __init__(self, cdb_vocab, data_vocab=None):
+    def __init__(self, cdb_vocab, config, data_vocab=None):
         self.vocab = cdb_vocab
+        self.config = config
         self.data_vocab = data_vocab
 
 
@@ -46,13 +47,12 @@ class BasicSpellChecker(object):
 
     def candidates(self, word):
         "Generate possible spelling corrections for word."
-        """
-        if len(word) > 5:
-            # Do two
-            print(self.known(self.edits2(word)))
+        if self.config.general['spell_check_deep']:
+            # This will check a two letter edit distance
             return (self.known([word]) or self.known(self.edits1(word)) or self.known(self.edits2(word)) or [word])
-        """
-        return (self.known([word]) or self.known(self.edits1(word))  or [word])
+        else:
+            # Will check only one letter edit distance
+            return (self.known([word]) or self.known(self.edits1(word))  or [word])
 
 
     def known(self, words):
@@ -97,11 +97,11 @@ class TokenNormalizer(object):
 
     def __call__(self, doc):
         for token in doc:
-            if token.lemma_ == '-PRON-':
+            if len(token.lower_) < self.config.preprocessing['min_len_normalize']:
+                token._.norm = token.lower_
+            elif token.lemma_ == '-PRON-':
                 token._.norm = token.lemma_
                 token._.to_skip = True
-            elif len(token.lower_) < self.config.preprocessing['min_len_normalize']:
-                token._.norm = token.lower_
             else:
                 token._.norm = token.lemma_.lower()
 
@@ -112,5 +112,8 @@ class TokenNormalizer(object):
                     fix = self.spell_checker.fix(token.lower_)
                     if fix is not None:
                         tmp = self.nlp(fix)[0]
-                        token._.norm = tmp.lemma_.lower()
+                        if len(token.lower_) < self.config.preprocessing['min_len_normalize']:
+                            token._.norm = tmp.lower_
+                        else:
+                            token._.norm = tmp.lemma_.lower()
         return doc

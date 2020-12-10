@@ -389,7 +389,8 @@ def remove_icd10_ranges(cdb):
                 del cdb.cui2info[cui]['icd10']
 
 
-def check_scispacy():
+def dep_check_scispacy():
+    # IGNORE FUNCTION
     import spacy
     import subprocess
     import sys
