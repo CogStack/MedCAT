@@ -1,8 +1,9 @@
 import pandas
 import spacy
 import numpy as np
-from functools import partial
 import datetime
+import logging
+from functools import partial
 
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
@@ -24,12 +25,11 @@ class CDBMaker(object):
             Names with more words will be skipped during the build of a CDB
     '''
     log = logging.getLogger(__package__)
-    add_handlers(log)
+    log = add_handlers(log)
     def __init__(self, config, cdb=None, name_max_words=20):
         self.config = config
-
-        # Get the logger
-        self.log = basic_logger(name='cdb_maker', config=config)
+        # Set log level
+        self.log.setLevel(self.config.general['log_level'])
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker

@@ -28,7 +28,7 @@ nlp = Pipe(tokenizer=spacy_split_all, config=config)
 nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=config),
                name='skip_and_punct',
                additional_fields=['is_punct'])
-spell_checker = BasicSpellChecker(cdb_vocab=cdb.vocab, data_vocab=vocab)
+spell_checker = BasicSpellChecker(cdb_vocab=cdb.vocab, config=config, data_vocab=vocab)
 nlp.add_token_normalizer(spell_checker=spell_checker, config=config)
 ner = NER(cdb, config)
 nlp.add_ner(ner)

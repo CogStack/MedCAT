@@ -17,25 +17,28 @@ class Config(object):
 
         self.general = {
                 # Logging config for everything
-                'log_level': logging.DEBUG,
+                'log_level': logging.INFO,
                 'log_format': '%(asctime)s: %(message)s',
                 'spacy_disabled_components': ['tagger', 'ner', 'parser', 'vectors', 'textcat',
                                               'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                               'merge_entities', 'merge_subtokens'],
                 # What model will be used for tokenization
-                'spacy_model': 'en_core_sci_md',
+                'spacy_model': 'en_core_sci_lg',
                 # Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
                 #for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language.
-                'spell_check': True,
-                # Spelling will not be checked for words with less than the limit below
-                'spell_check_len_limit': 5,
+                'spell_check': False,
+                # If True the spell checker will try harder to find mistakes, this can slow down
+                #things drastically.
+                'spell_check_deep': False,
+                # Spelling will not be checked for words with length less than this
+                'spell_check_len_limit': 7,
                 }
 
         self.preprocessing = {
                 # Should stopwords be skipped/ingored when processing input
                 'skip_stopwords': False,
                 # This words will be completly ignored from concepts and from the text (must be a Set)
-                'words_to_skip': set(['and', 'or', 'nos']),
+                'words_to_skip': set(['nos']),
                 # All punct will be skipped by default, here you can set what will be kept
                 'keep_punct': {'.', ':'},
                 # Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case
@@ -46,11 +49,12 @@ class Config(object):
 
         self.ner = {
                 # Do not detect names below this limit, skip them
-                'min_name_len': 1,
+                'min_name_len': 3,
                 # When checkng tokens for concepts you can have skipped tokens inbetween
                 #used ones (usually spaces, new lines etc). This number tells you how many skipped can you have.
                 'max_skip_tokens': 2,
-                # Any name shorter than this must be uppercase in the text to be considered.
+                # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
+                #it will be skipped.
                 'upper_case_limit_len': 4,
                 }
 
@@ -64,9 +68,9 @@ class Config(object):
                 # All concepts below this will always be disambiguated
                 'disamb_length_limit': 4,
                 # Context vector sizes that will be calculated and used for linking
-                'context_vector_sizes': {'long': 18, 'medium': 9, 'short': 3},
+                'context_vector_sizes': {'xxxlong': 60, 'xxlong': 45, 'xlong': 27, 'long': 18, 'medium': 9, 'short': 3},
                 # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
-                'context_vector_weights': {'long': 0.2, 'medium': 0.6, 'short': 0.2},
+                'context_vector_weights': {'xxxlong': 0, 'xxlong': 0, 'xlong': 0, 'long': 0.4, 'medium': 0.4, 'short': 0.2},
                 # If True it will filter before doing disamb.
                 'filter_before_disamb': False,
                 # Concepts that have seen less training examples than this will not be used for
@@ -77,7 +81,7 @@ class Config(object):
                 # Weights for a weighted average
                 'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
                 # Concepts below this similarity will be ignored
-                'similarity_threshold': 0.25,
+                'similarity_threshold': 0.2,
                 # Probability for the negative context to be added for each positive addition
                 'negative_probability': 0.5,
                 # Do we ignore punct/num when negative sampling
@@ -105,3 +109,9 @@ class Config(object):
         config.__dict__ = d
 
         return config
+
+    def rebuild_re(self):
+        # Some regex that we will need
+        self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
+        # Very agressive punct checker, input will be lowercased
+        self.punct_checker = re.compile(r'[^a-z0-9]+')

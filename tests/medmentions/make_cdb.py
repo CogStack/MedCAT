@@ -16,9 +16,10 @@ cdb.save("./tmp_cdb.dat")
 
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
+from medcat.cat import CAT
 
 cdb = CDB.load("./tmp_cdb.dat")
 vocab = Vocab()
 vocab.load_dict("/home/ubuntu/data/vocabs/vocab.dat")
 
-cat = CAT(cdb, cdb.config, vocab)
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)

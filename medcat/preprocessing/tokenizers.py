@@ -101,10 +101,6 @@ class SpacyHFTok(object):
     import spacy
     import numpy as np
 
-    # Check scispacy models
-    from medcat.utils.helpers import check_scispacy
-    check_scispacy()
-
     def __init__(self, w2v):
         self.nlp = spacy.load('en_core_sci_md', disable=['ner', 'parser'])
         self.emb_map = {}

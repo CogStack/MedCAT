@@ -23,7 +23,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
         label (`str`):
             Label for this name (usually `concept` if we are using a vocab based approach).
     '''
-    if len(name) > config.ner['min_name_len']:
+    if len(name) >= config.ner['min_name_len']:
         # Check the upper case limit, last part checks is it one token and uppercase
         if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
             # Everything is fine, mark name
