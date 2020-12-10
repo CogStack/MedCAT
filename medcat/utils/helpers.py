@@ -139,6 +139,15 @@ def tkn_inds_from_doc(spacy_doc, text_inds=None, source_val=None):
     return tkn_inds
 
 
+def tkns_from_doc(spacy_doc, start, end):
+    tkns = []
+    for tkn in spacy_doc:
+        if tkn.idx >= start and tkn.idx <= end:
+            tkns.append(tkn)
+
+    return tkns
+
+
 def filter_cdb_by_icd10(cdb: CDB) -> CDB:
     """
     Filters an existing CDB to only contain concepts that have an associated ICD-10 code.

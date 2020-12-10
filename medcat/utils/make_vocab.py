@@ -1,4 +1,4 @@
-from medcat.utils.vocab import Vocab
+from medcat.vocab import Vocab
 import numpy as np
 import pandas
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -8,7 +8,6 @@ from medcat.utils.spelling import CustomSpellChecker
 from gensim.models import Word2Vec
 from medcat.preprocessing.iterators import SimpleIter
 from medcat.utils.loggers import basic_logger
-from medcat.
 
 class MakeVocab(object):
     r'''
@@ -116,7 +115,7 @@ class MakeVocab(object):
                     self.cdb.vocab[word] += self.vocab[word]
 
         # Save the vocab also
-        self.vocab.save_dict(path=self.vocab_path)
+        self.vocab.save(path=self.vocab_path)
 
 
     def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=8, niter=2, min_count=10, window=10, vsize=300):
@@ -154,5 +153,5 @@ class MakeVocab(object):
 
         # Save the vocab again, now with vectors
         self.vocab.make_unigram_table()
-        self.vocab.save_dict(path=self.vocab_path)
+        self.vocab.save(path=self.vocab_path)
         return w2v

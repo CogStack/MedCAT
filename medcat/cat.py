@@ -1,16 +1,11 @@
-import os
-import sys
 import traceback
 import json
-import pandas
-import spacy
 import time
-from time import sleep
+import logging
 from functools import partial
 from copy import deepcopy
-from multiprocessing import Process, Manager, Queue, Pool, Array
 from tqdm.autonotebook import tqdm
-import logging
+from multiprocessing import Process, Manager, Queue, Pool, Array
 
 from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -22,6 +17,9 @@ from medcat.utils.normalizers import BasicSpellChecker
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import process_old_project_filters, check_filters
+from medcat.preprocessing.cleaners import prepare_name
+from medcat.utils.helpers import tkns_from_doc
+
 
 class CAT(object):
     r'''
@@ -32,7 +30,9 @@ class CAT(object):
     Args:
         cdb (medcat.cdb.CDB):
             The concept database that will be used for NER+L
-        vocab (medcat.utils.vocab.Vocab, optional):
+        config (medcat.config.Config):
+            Global configuration for medcat
+        vocab (medcat.vocab.Vocab, optional):
             Vocabulary used for vector embeddings and spelling. Default: None
         meta_cats (list of medcat.meta_cat.MetaCAT, optional):
             A list of models that will be applied sequentially on each
@@ -73,16 +73,16 @@ class CAT(object):
                             name='skip_and_punct',
                             additional_fields=['is_punct'])
 
-        spell_checker = BasicSpellChecker(cdb_vocab=cdb.vocab, config=self.config, data_vocab=vocab)
+        spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=self.config, data_vocab=vocab)
         self.nlp.add_token_normalizer(spell_checker=spell_checker, config=self.config)
 
         # Add NER
-        ner = NER(cdb, self.config)
-        self.nlp.add_ner(ner)
+        self.ner = NER(self.cdb, self.config)
+        self.nlp.add_ner(self.ner)
 
         # Add LINKER
-        linker = Linker(cdb, vocab, self.config)
-        self.nlp.add_linker(linker)
+        self.linker = Linker(self.cdb, vocab, self.config)
+        self.nlp.add_linker(self.linker)
 
         # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
@@ -178,8 +178,15 @@ class CAT(object):
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
-                spacy_doc = self(doc['text'])
                 anns = doc['annotations']
+
+                # Apply document level filtering if
+                if use_cui_doc_limit:
+                    _cuis = set([ann['cui'] for ann in anns])
+                    self.config.linking['filters']['cuis'] = _cuis
+
+                spacy_doc = self(doc['text'])
+
                 if use_overlaps:
                     p_anns = spacy_doc._.ents
                 else:
@@ -229,26 +236,25 @@ class CAT(object):
 
 
                 for iann, ann in enumerate(p_anns_norm):
-                    if not use_cui_doc_limit or ann[1] in anns_norm_cui:
-                        cui = ann[1]
-                        if ann in anns_norm:
-                            tp += 1
-                            tps[cui] = tps.get(cui, 0) + 1
+                    cui = ann[1]
+                    if ann in anns_norm:
+                        tp += 1
+                        tps[cui] = tps.get(cui, 0) + 1
 
-                            example = p_anns_examples[iann]
-                            examples['tp'][cui] = examples['tp'].get(cui, []) + [example]
-                        else:
-                            fp += 1
-                            fps[cui] = fps.get(cui, 0) + 1
-                            fp_docs.add(doc.get('name', 'unk'))
+                        example = p_anns_examples[iann]
+                        examples['tp'][cui] = examples['tp'].get(cui, []) + [example]
+                    else:
+                        fp += 1
+                        fps[cui] = fps.get(cui, 0) + 1
+                        fp_docs.add(doc.get('name', 'unk'))
 
-                            # Add example for this FP prediction
-                            example = p_anns_examples[iann]
-                            if ann in anns_norm_neg:
-                                # Means that it really was annotated as negative
-                                example['real_fp'] = True
+                        # Add example for this FP prediction
+                        example = p_anns_examples[iann]
+                        if ann in anns_norm_neg:
+                            # Means that it really was annotated as negative
+                            example['real_fp'] = True
 
-                            examples['fp'][cui] = examples['fp'].get(cui, []) + [example]
+                        examples['fp'][cui] = examples['fp'].get(cui, []) + [example]
 
                 for iann, ann in enumerate(anns_norm):
                     if ann not in p_anns_norm:
@@ -368,3 +374,206 @@ class CAT(object):
 
         # Add group_name
         self.cdb.addl_info['cui2group'][cui] = group_name
+
+
+    def unlink_concept_name(self, cui, name, full_unlink=False):
+        r'''
+        Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
+        the Concept Database (CDB). As a consequence medcat will never again link the `name`
+        to this CUI - meaning the name will not be detected as a concept in the future.
+
+        Args:
+            cui (str):
+                The CUI from which the `name` will be removed
+            name (str):
+                The span of text to be removed from the linking dictionary
+            full_unlink (boolean):
+                If True, the `name` will not only be removed from the given `cui` but from
+                each concept in the database that is associated with this name.
+        Examples:
+            >>> # To never again link C0020538 to HTN
+            >>> cat.unlink_concept_name('C0020538', 'htn', False)
+        '''
+
+        cuis = [cui]
+        names = prepare_name(name, self, {}, self.config)
+        if full_unlink:
+            for name in names:
+                cuis.extend(self.cdb.name2cuis.get(name, []))
+        # Remove name from all CUIs
+        for cui in cuis:
+            self.cdb.remove_names(cui=cui, names=names)
+
+
+    def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
+                              description='', full_build=True, negative=False, devalue_others=False):
+        r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name and concept alraedy exist. Perform
+        training if spacy_entity and spacy_doc are set.
+
+        Args:
+            cui (str):
+                CUI of the concept
+            name (str):
+                Name to be linked to the concept (in the case of MedCATtrainer this is simply the
+                selected value in text, no preprocessing or anything needed).
+            spacy_doc (spacy.tokens.Doc):
+                Spacy represenation of the document that was manually annotated.
+            spacy_entity (List[spacy.tokens.Token]):
+                Given the spacy document, this is the annotated span of text - list of annotated tokens that are marked with this CUI.
+            negative (bool):
+                Is this a negative or positive example.
+            devalue_others:
+                If set, cuis to which this name is assigned and are not `cui` will receive negative training given
+                that negative=False.
+
+            **other:
+                Refer to CDB.add_concept
+        '''
+
+        names = prepare_name(name, self, {}, self.config)
+        self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
+                             full_build=full_build)
+
+        if spacy_entity is not None and spacy_doc is not None:
+            # Train Linking
+            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative)
+
+        if not negative and devalue_others:
+            # Find all cuis
+            cuis = set()
+            for name in names:
+                cuis.update(self.cdb.name2cuis.get(name, []))
+            # Remove the cui for which we just added positive training
+            cuis.remove(cui)
+            # Add negative training for all other CUIs that link to these names
+            for _cui in cuis:
+                self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
+
+
+
+    def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
+                         print_stats=True, use_filters=False, terminate_last=False, use_overlaps=False,
+                         use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
+                         never_terminate=False):
+        r''' TODO: Refactor, left from old
+        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simiulated
+        online training then supervised.
+
+        Args:
+            data_path (str):
+                The path to the json file that we get from MedCATtrainer on export.
+            reset_cui_count (boolean):
+                Used for training with weight_decay (annealing). Each concept has a count that is there
+                from the beginning of the CDB, that count is used for annealing. Resetting the count will
+                significantly incrase the training impact. This will reset the count only for concepts
+                that exist in the the training data.
+            nepochs (int):
+                Number of epochs for which to run the training.
+            print_stats (boolean):
+                If true stats will be printed during training (prints stats every 5 epochs).
+            use_filters (boolean):
+                Each project in medcattrainer can have filters, do we want to respect those filters
+                when calculating metrics.
+            terminate_last (boolean):
+                If true, concept termination will be done after all training.
+            use_overlaps (boolean):
+                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+            use_cui_doc_limit (boolean):
+                If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
+                if the document was annotated for that CUI. Useful in very specific situations when during the annotation
+                process the set of CUIs changed.
+            test_size (float):
+                If > 0 the data set will be split into train test based on this ration. Should be between 0 and 1.
+                Usually 0.1 is fine.
+            devalue_others(bool):
+                Check add_name for more details.
+            use_groups (boolean):
+                If True concepts that have groups will be combined and stats will be reported on groups.
+            never_terminate (boolean):
+                If True no termination will be applied
+
+        Returns:
+            fp (dict):
+                False positives for each CUI
+            fn (dict):
+                False negatives for each CUI
+            tp (dict):
+                True positives for each CUI
+            p (dict):
+                Precision for each CUI
+            r (dict):
+                Recall for each CUI
+            f1 (dict):
+                F1 for each CUI
+            cui_counts (dict):
+                Number of occurrence for each CUI
+            examples (dict):
+                FP/FN examples of sentences for each CUI
+        '''
+        fp = fn = tp = p = r = f1 = cui_counts = examples = {}
+        data = json.load(open(data_path))
+        cui_counts = {}
+
+        if test_size == 0:
+            test_set = data
+            train_set = data
+        else:
+            train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
+
+        if print_stats:
+            self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
+                    use_groups=use_groups)
+
+        if reset_cui_count:
+            # Get all CUIs
+            cuis = []
+            for project in train_set['projects']:
+                for doc in project['documents']:
+                    for ann in doc['annotations']:
+                        cuis.append(ann['cui'])
+            for cui in set(cuis):
+                if cui in self.cdb.cui2count_train:
+                    self.cdb.cui2count_train[cui] = 10
+
+        # Remove entites that were terminated
+        if not never_terminate:
+            for project in train_set['projects']:
+                for doc in project['documents']:
+                    for ann in doc['annotations']:
+                        if ann.get('killed', False):
+                            self.unlink_concept_name(ann['cui'], ann['value'])
+
+        for epoch in tqdm(range(nepochs), desc='Epoch', leave=False):
+            # Print acc before training
+            for project in tqdm(train_set['projects'], desc='Project', leave=False, total=len(train_set['projects'])):
+                for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
+                    spacy_doc = self(doc['text'])
+                    for ann in doc['annotations']:
+                        if not ann.get('killed', False):
+                            cui = ann['cui']
+                            start = ann['start']
+                            end = ann['end']
+                            spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
+                            deleted = ann.get('deleted', False)
+                            self.add_and_train_concept(cui=cui,
+                                          name=ann['value'],
+                                          spacy_doc=spacy_doc,
+                                          spacy_entity=spacy_entity,
+                                          negative=deleted,
+                                          devalue_others=devalue_others)
+            if terminate_last and not never_terminate:
+                # Remove entites that were terminated, but after all training is done
+                for project in train_set['projects']:
+                    for doc in project['documents']:
+                        for ann in doc['annotations']:
+                            if ann.get('killed', False):
+                                self.unlink_concept_name(ann['cui'], ann['value'])
+
+            if epoch % 5 == 0:
+                if print_stats:
+                    fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, epoch=epoch+1,
+                                                             use_filters=use_filters,
+                                                             use_cui_doc_limit=use_cui_doc_limit,
+                                                             use_overlaps=use_overlaps,
+                                                             use_groups=use_groups)
+        return fp, fn, tp, p, r, f1, cui_counts, examples
