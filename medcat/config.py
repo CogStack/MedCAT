@@ -92,7 +92,7 @@ class Config(object):
 
                 # REMOVE
                 'filters': {
-                    'cuis': set(), # CUIs in this filter will be included, everything else excluded
+                    'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set
                     }
                 }
 

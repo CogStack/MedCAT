@@ -29,11 +29,13 @@ class ContextModel(object):
         start_ind = entity[0].i
         end_ind = entity[-1].i
 
-        tokens_left = [tkn for tkn in doc[max(0, start_ind-size):start_ind] if not tkn._.to_skip and not tkn.is_stop and not tkn.is_digit and not tkn.is_punct]
+        tokens_left = [tkn for tkn in doc[max(0, start_ind-size):start_ind] if not tkn._.to_skip
+                and not tkn.is_stop and not tkn.is_digit and not tkn.is_punct]
         # Reverse because the first token should be the one closest to center
         tokens_left.reverse()
         tokens_center = list(entity)
-        tokens_right = [tkn for tkn in doc[end_ind+1:end_ind + 1 + size] if not tkn._.to_skip and not tkn.is_stop and not tkn.is_digit and not tkn.is_punct]
+        tokens_right = [tkn for tkn in doc[end_ind+1:end_ind + 1 + size] if not tkn._.to_skip
+                and not tkn.is_stop and not tkn.is_digit and not tkn.is_punct]
 
         return tokens_left, tokens_center, tokens_right
 
@@ -52,16 +54,16 @@ class ContextModel(object):
             size = self.config.linking['context_vector_sizes'][context_type]
             tokens_left, tokens_center, tokens_right = self.get_context_tokens(entity, doc, size)
 
-            values = [] # TODO: Test with token norm
+            values = []
             # Add left
-            values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn._.norm)
-                           for step, tkn in enumerate(tokens_left) if tkn._.norm in self.vocab and self.vocab.vec(tkn._.norm) is not None])
-            # Add center
+            values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
+                           for step, tkn in enumerate(tokens_left) if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
+            # Add center - used normalized
             values.extend([self.vocab.vec(tkn._.norm) for tkn in tokens_center if tkn._.norm in self.vocab and self.vocab.vec(tkn._.norm) is not None])
 
             # Add right
-            values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn._.norm)
-                           for step, tkn in enumerate(tokens_right) if tkn._.norm in self.vocab and self.vocab.vec(tkn._.norm) is not None])
+            values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
+                           for step, tkn in enumerate(tokens_right) if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
             if len(values) > 0:
                 value = np.average(values, axis=0)
@@ -152,6 +154,8 @@ class ContextModel(object):
         # Context vectors to be calculated
         vectors = self.get_context_vectors(entity, doc)
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
+        # Debug
+        self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
 
 
     def train_using_negative_sampling(self, cui):
@@ -163,5 +167,7 @@ class ContextModel(object):
             values = [self.vocab.vec(self.vocab.index2word[ind]) for ind in inds]
             if len(values) > 0:
                 vectors[context_type] = np.average(values, axis=0)
+            # Debug
+            self.log.debug("Updating CUI: {}, with {} negative words".format(cui, len(inds)))
 
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=True)

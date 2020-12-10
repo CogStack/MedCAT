@@ -99,7 +99,8 @@ class Linker(object):
 
 
     def _create_main_ann(self, doc, tuis=None):
-        """ Only used for testing. Creates annotation in the spacy ents list
+        # TODO: Separate into another piece of the pipeline
+        """ Creates annotation in the spacy ents list
         from all the annotations for this document.
 
         doc:  spacy document
