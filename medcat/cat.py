@@ -6,6 +6,7 @@ from functools import partial
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, Pool, Array
+from time import sleep
 
 from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -577,3 +578,144 @@ class CAT(object):
                                                              use_overlaps=use_overlaps,
                                                              use_groups=use_groups)
         return fp, fn, tp, p, r, f1, cui_counts, examples
+
+
+    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
+        r''' Get entities
+
+        text:  text to be annotated
+        return:  entities
+        ''' 
+        doc = self(text)
+        out = []
+
+        out_ent = {}
+        if self.config.general.get('show_nested_entities', False):
+            _ents = doc._.ents
+        else:
+            _ents = doc.ents
+
+        for ind, ent in enumerate(_ents):
+            cui = str(ent._.cui)
+            if not only_cui:
+                out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
+                out_ent['cui'] = cui
+                out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
+                out_ent['type'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                out_ent['source_value'] = ent.text
+                out_ent['acc'] = float(ent._.context_similarity)
+                out_ent['context_similarity'] = float(ent._.context_similarity)
+                out_ent['start'] = ent.start_char
+                out_ent['end'] = ent.end_char
+                for addl in addl_info:
+                    tmp = self.cdb.addl_info[addl].get(cui, [])
+                    out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
+                out_ent['id'] = ent._.id
+                out_ent['meta_anns'] = {}
+
+                if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
+                    for key in ent._.meta_anns.keys():
+                        one = {'name': key, 'value': ent._.meta_anns[key]}
+                        out_ent['meta_anns'][key] = one
+
+                out.append(dict(out_ent))
+            else:
+                out.append(cui)
+
+        return out
+
+
+    def get_json(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
+        """ Get output in json format
+
+        text:  text to be annotated
+        return:  json with fields {'entities': <>, 'text': text}
+        """
+        ents = self.get_entities(text, only_cui, addl_info=addl_info)
+        out = {'entities': ents, 'text': text}
+
+        return json.dumps(out)
+
+
+    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[], doc_len_limit=1000000):
+        r''' Run multiprocessing NOT FOR TRAINING
+
+        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
+        nproc:  number of processors
+        batch_size:  obvious
+
+        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
+        '''
+
+        if self._meta_annotations:
+            # Hack for torch using multithreading, which is not good here
+            import torch
+            torch.set_num_threads(1)
+
+        # Create the input output for MP
+        in_q = Queue(maxsize=4*nproc)
+        manager = Manager()
+        out_dict = manager.dict()
+        out_dict['processed'] = []
+
+        # Create processes
+        procs = []
+        for i in range(nproc):
+            p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
+                                                      'addl_info': addl_info, 'doc_len_limit': doc_len_limit})
+            p.start()
+            procs.append(p)
+
+        data = []
+        for id, text in in_data:
+            data.append((id, str(text)))
+            if len(data) == batch_size:
+                in_q.put(data)
+                data = []
+        # Put the last batch if it exists
+        if len(data) > 0:
+            in_q.put(data)
+
+        for _ in range(nproc):  # tell workers we're done
+            in_q.put(None)
+
+        for p in procs:
+            p.join()
+
+        # Close the queue as it can cause memory leaks
+        in_q.close()
+
+        out = []
+        for key in out_dict.keys():
+            if 'pid' in key:
+                data = out_dict[key]
+                out.extend(data)
+
+        # Sometimes necessary to free memory
+        out_dict.clear()
+        del out_dict
+
+        return out
+
+
+    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], doc_len_limit=1000000):
+        cnt = 0
+        out = []
+        while True:
+            if not in_q.empty():
+                data = in_q.get()
+                if data is None:
+                    out_dict['pid: {}'.format(pid)] = out
+                    break
+
+                for id, text in data:
+                    try:
+                        doc = {}
+                        doc['entities'] = self.get_entities(text=text[0:doc_len_limit], only_cui=only_cui, addl_info=addl_info)
+                        doc['text'] = text
+                        out.append((id, doc))
+                    except Exception as e:
+                        self.log.warning("Exception in _mp_cons")
+                        self.log.warning(e, stack_info=True)
+
+            sleep(1)
