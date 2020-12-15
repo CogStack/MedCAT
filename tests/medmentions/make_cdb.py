@@ -2,6 +2,7 @@ from medcat.cdb_maker import CDBMaker
 from medcat.config import Config
 import numpy as np
 import logging
+import os
 
 config = Config()
 config.general['log_level'] = logging.INFO
@@ -18,8 +19,15 @@ from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.cat import CAT
 
+vocab_path = "./tmp_vocab.dat"
+if not os.path.exists(vocab_path):
+    import requests
+    tmp = requests.get("https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat")
+    with open(vocab_path, 'wb') as f:
+        f.write(tmp.content)
+
 cdb = CDB.load("./tmp_cdb.dat")
-vocab = Vocab.load("/home/ubuntu/data/vocabs/vocab.dat")
+vocab = Vocab.load(vocab_path)
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 
 # Train
@@ -31,7 +39,7 @@ _ = cat._print_stats(json.load(open("tmp_test.csv")))
 
 # RUN SUPER
 cdb = CDB.load("./tmp_cdb.dat")
-vocab = Vocab.load("/home/ubuntu/data/vocabs/vocab.dat")
+vocab = Vocab.load(vocab_path)
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 
 # Train supervised

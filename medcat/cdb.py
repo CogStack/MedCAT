@@ -1,16 +1,12 @@
 """ Representation class for CDB data
 """
 
-import os
 import dill
 import logging
 import numpy as np
-import pandas as pd
-from scipy.sparse import dok_matrix
 from typing import Dict, List, Set
 
 from medcat.utils.matutils import unitvec, sigmoid
-from medcat.utils.attr_dict import AttrDict
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config
 
