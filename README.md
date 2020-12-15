@@ -75,17 +75,18 @@ that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
 If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases.
+
 Alternatively, you can build the CDBs for scratch from source data. We have used the below steps to build UMLS and SNOMED-CT (UK) for our experiments
 
 #### Building Concept Databases from Scratch
-We provide details to build both UMLS and SNOMED-CT concept databases. In both cases once the CSV files are obtained 
-we can use the scripts available in the MedCAT repository to build a CDB 
-(https://github.com/CogStack/MedCAT/blob/master/medcat/prepare_cdb.py).
+We provide details to build both UMLS and SNOMED-CT concept databases. In both cases CSV files containing the source
+data with required columns (column descriptions are provided in the [tutorial](https://colab.research.google.com/drive/1nz2zMDQ3QrlTgpW7FfGaXeV1ZAtZeOe2#scrollTo=ptRmHln9k7hG). 
+Given the CSV files the [prepare_cdb.py](https://github.com/CogStack/MedCAT/blob/master/medcat/prepare_cdb.py) script can be used to build a CDB.
  
 ##### Building a UMLS Concept Database
-The UMLS can be downloaded from https://www.nlm.nih.gov/research/umls/index.html, once done it is available in the 
+The UMLS can be downloaded from https://www.nlm.nih.gov/research/umls/index.html in the 
 Rich Release Format (RRF). To make subsetting and filtering easier we import UMLS RRF into a PostgreSQL database 
-(scripts available at [https://github.com/w-is-h/umls](https://github.com/w-is-h/umls).
+(scripts available at [here](https://github.com/w-is-h/umls)).
 
 Once the data is in the database we can use the following SQL script to download the CSV files containing all concepts 
 that will form our CDB.
