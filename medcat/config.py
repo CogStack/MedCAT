@@ -32,6 +32,8 @@ class Config(object):
                 'spell_check_deep': False,
                 # Spelling will not be checked for words with length less than this
                 'spell_check_len_limit': 7,
+                # If set to True functions like get_entities and get_json will return nested_entities and overlaps
+                'show_nested_entities': False,
                 }
 
         self.preprocessing = {
@@ -88,7 +90,6 @@ class Config(object):
                 'negative_ignore_punct_and_num': True,
                 # If True concepts for which a detection is its primary name will be preferred
                 'prefer_primary_name': True,
-
 
                 # REMOVE
                 'filters': {
