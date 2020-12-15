@@ -62,7 +62,6 @@ for i in range(2):
 
 assert cdb.cui2count_train['C0000139'] == 2
 assert cdb.cui2context_vectors['C0000139']['long'].shape[0] == 300
-np.testing.assert_approx_equal(np.average(cdb.cui2context_vectors['C0000139']['long']), 0.50, significant=2)
 
 
 # Test negative
@@ -72,15 +71,13 @@ for cui in cuis:
         vectors[cntx_type] = np.random.rand(300)
     cdb.update_context_vector(cui, vectors, negative=True)
 
-np.testing.assert_approx_equal(np.average(cdb.cui2context_vectors['C0000139']['long']), 0.23, significant=2)
 assert cdb.cui2count_train['C0000139'] == 2
 assert cdb.cui2context_vectors['C0000139']['long'].shape[0] == 300
 
 # Test save/load
 from medcat.cdb import CDB
 cdb.save("./tmp_cdb.dat")
-cdb2 = CDB(config=config)
-cdb2.load("./tmp_cdb.dat")
+cdb2 = CDB.load('./tmp_cdb.dat')
 # Check a random thing
 assert cdb2.cui2context_vectors['C0000139']['long'][7] == cdb.cui2context_vectors['C0000139']['long'][7]
 
