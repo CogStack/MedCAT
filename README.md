@@ -2,9 +2,9 @@
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
 
-## Demo
+## SNOMED Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
-and contains a small portion of UMLS.
+and uses SNOMED for the CDB.
 
 ## Interest Group, Q&A
 Please use [Discussions](https://github.com/CogStack/MedCAT/discussions) as type of interest group, or place where to ask questions and write suggestions without opening an Issue.
