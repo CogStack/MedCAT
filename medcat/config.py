@@ -13,8 +13,6 @@ class Config(object):
                 }
 
         self.general = {
-                # Separator that will be used to merge tokens of a name.
-                'separator': '~',
                 # Logging config for everything
                 'log_level': logging.INFO,
                 'log_format': '%(asctime)s: %(message)s',
@@ -23,6 +21,9 @@ class Config(object):
                                               'merge_entities', 'merge_subtokens'],
                 # What model will be used for tokenization
                 'spacy_model': 'en_core_sci_lg',
+                # Separator that will be used to merge tokens of a name. Once a CDB is built this should
+                #always stay the same.
+                'separator': '~',
                 # Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
                 #for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language.
                 'spell_check': False,
@@ -67,7 +68,7 @@ class Config(object):
                 # 'optim': {'standard': 'lr': 1},
                 # 'optim': {'moving_avg': 'alpha': 0.99, 'e': 1e-4, 'size': 100},
                 # All concepts below this will always be disambiguated
-                'disamb_length_limit': 4,
+                'disamb_length_limit': 5,
                 # Context vector sizes that will be calculated and used for linking
                 'context_vector_sizes': {'xxxlong': 60, 'xxlong': 45, 'xlong': 27, 'long': 18, 'medium': 9, 'short': 3},
                 # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.

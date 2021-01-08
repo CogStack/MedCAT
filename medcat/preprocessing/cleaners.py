@@ -38,7 +38,10 @@ def prepare_name(raw_name, nlp, names, config):
             if name not in names:
                 sname = ""
                 for token in tokens:
-                    sname = sname + token + config.general['separator']
+                    if sname:
+                        sname = sname + config.general['separator'] + token
+                    else:
+                        sname = token
                     snames.add(sname.strip())
 
                 names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}
