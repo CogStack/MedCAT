@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import torch
 from tokenizers import ByteLevelBPETokenizer
+from scipy.special import softmax
 
 from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
@@ -250,7 +251,7 @@ class MetaCAT(object):
         if self.tokenizer is None:
             vocab_file = self.save_dir + "{}-vocab.json".format(tokenizer_name)
             merges_file = self.save_dir + "{}-merges.txt".format(tokenizer_name)
-            self.tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file, lowercase=True)
+            self.tokenizer = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=True)
 
         # Load embeddings if None
         if self.embeddings is None:
@@ -302,13 +303,17 @@ class MetaCAT(object):
         if len(x) >  0:
             self.model.eval()
             outputs = self.model(x, cpos).detach().numpy()
+            confidences = softmax(outputs, axis=1)
             outputs = np.argmax(outputs, axis=1)
 
             for ent in doc.ents:
                 val = self.i_category_values[outputs[id2row[ent._.id]]]
+                confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
                 if ent._.meta_anns is None:
-                    ent._.meta_anns = {self.category_name: val}
+                    ent._.meta_anns = {self.category_name: {'value': val,
+                                                            'confidence': confidence}}
                 else:
-                    ent._.meta_anns[self.category_name] = val
+                    ent._.meta_anns[self.category_name] = {'value': val,
+                                                           'confidence': confidence}
 
         return doc

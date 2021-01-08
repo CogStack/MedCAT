@@ -27,7 +27,11 @@ class NER(object):
 
             for name_version in name_versions:
                 if name_version in self.cdb.snames:
-                    name += name_version
+                    if name:
+                        name = name + self.config.general['separator'] + name_version
+                    else:
+                        name = name_version
+
                     break
             if name in self.cdb.name2cuis and not tkn.is_stop:
                 maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
@@ -43,7 +47,7 @@ class NER(object):
 
                     name_changed = False
                     for name_version in name_versions:
-                        _name = name + name_version
+                        _name = name + self.config.general['separator'] + name_version
                         if _name in self.cdb.snames:
                             # Append the name and break
                             name = _name

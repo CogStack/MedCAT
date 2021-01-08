@@ -42,7 +42,7 @@ def original2pure_text(data_path, out_path):
                 # Text row
                 parts = row.split("|a|")
                 text = parts[1].strip()
-                out.write(title + " " + text + " ")
+                out.write(title + " " + text + " " + "\n")
     out.close()
 
 def original2json(data_path, out_path):

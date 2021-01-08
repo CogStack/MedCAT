@@ -184,7 +184,8 @@ class CAT(object):
                 # Apply document level filtering if
                 if use_cui_doc_limit:
                     _cuis = set([ann['cui'] for ann in anns])
-                    self.config.linking['filters']['cuis'] = _cuis
+                    if _cuis:
+                        self.config.linking['filters']['cuis'] = _cuis
 
                 spacy_doc = self(doc['text'])
 
@@ -319,7 +320,7 @@ class CAT(object):
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
 
-    def train(self, data_iterator, fine_tune=True):
+    def train(self, data_iterator, fine_tune=True, progress_print=1000):
         """ Runs training on the data, note that the maximum lenght of a line
         or document is 1M characters. Anything longer will be trimmed.
 
@@ -328,11 +329,11 @@ class CAT(object):
             or an array or anything that we can use in a for loop.
         fine_tune:
             If False old training will be removed
+        progress_print:
+            Print progress after N lines
         """
-        self.config.linking['train'] = True
-
         if not fine_tune:
-            log.info("Removing old training data!")
+            self.log.info("Removing old training data!")
             self.cdb.reset_training()
 
         cnt = 0
@@ -342,11 +343,11 @@ class CAT(object):
                 line = str(line).strip()[0:1000000]
 
                 try:
-                    _ = self(line)
+                    _ = self(line, do_train=True)
                 except Exception as e:
                     self.log.warning("LINE: '{}...' \t WAS SKIPPED".format(line[0:100]))
                     self.log.warning("BECAUSE OF: " + str(e))
-                if cnt % 1000 == 0:
+                if cnt % progress_print == 0:
                     self.log.info("DONE: " + str(cnt))
                 cnt += 1
 

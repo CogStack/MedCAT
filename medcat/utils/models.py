@@ -68,7 +68,6 @@ class LSTM(nn.Module):
 
         # Push x through the fc network and add dropout
         x = self.d1(x)
-        #x = self.fc1(x)
         x = self.fc1(x)
 
         return x

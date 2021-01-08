@@ -33,20 +33,18 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 
 4. Quickstart:
 ```python
+from medcat.vocab import Vocab
+from medcat.cdb import CDB
 from medcat.cat import CAT
-from medcat.utils.vocab import Vocab
-from medcat.cdb import CDB 
 
-vocab = Vocab()
 # Load the vocab model you downloaded
-vocab.load_dict('<path to the vocab file>')
-
+vocab = Vocab.load(vocab_path)
 # Load the cdb model you downloaded
-cdb = CDB()
-cdb.load_dict('<path to the cdb file>') 
+cdb = CDB.load('<path to the cdb file>') 
 
-# create cat
-cat = CAT(cdb=cdb, vocab=vocab)
+# Create cat - each cdb comes with a config that was used
+#to train it. You can change that config in any way you want, before or after creating cat.
+cat = CAT(cdb=cdb, cdb.config, vocab=vocab)
 
 # Test it
 text = "My simple document with kidney failure"
@@ -67,7 +65,7 @@ so the performance might not be the best.
 
 Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
 
-CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built from MedMentions
+CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-v1.dat) - Built from MedMentions
 
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as

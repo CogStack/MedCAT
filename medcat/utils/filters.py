@@ -21,9 +21,9 @@ def check_filters(cui, filters):
 
 def process_old_project_filters(cuis, type_ids, cdb):
     cui_filter = set()
-    if cuis is not None:
+    if cuis is not None and cuis:
         cui_filter.update([x.strip() for x in cuis.split(",")])
-    if type_ids is not None:
+    if type_ids is not None and type_ids:
         type_ids = [x.strip().upper() for x in type_ids.split(",")]
 
         # Convert type_ids to cuis
