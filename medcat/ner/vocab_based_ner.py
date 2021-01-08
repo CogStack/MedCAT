@@ -31,7 +31,6 @@ class NER(object):
                         name = name + self.config.general['separator'] + name_version
                     else:
                         name = name_version
-
                     break
             if name in self.cdb.name2cuis and not tkn.is_stop:
                 maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
