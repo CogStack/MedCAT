@@ -33,12 +33,12 @@ def prepare_name(raw_name, nlp, names, config):
 
         if tokens is not None:
             snames = set()
-            name = config.cdb_maker['separator'].join(tokens)
+            name = config.general['separator'].join(tokens)
 
             if name not in names:
                 sname = ""
                 for token in tokens:
-                    sname = sname + token + config.cdb_maker['separator']
+                    sname = sname + token + config.general['separator']
                     snames.add(sname.strip())
 
                 names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}

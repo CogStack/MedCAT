@@ -5,17 +5,16 @@ class Config(object):
     def __init__(self):
         # CDB Maker
         self.cdb_maker = {
-                # Separator that will be used to merge tokens of a name.
-                'separator': '',
-                # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
+               # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
                 #by the character below.
                 'multi_separator': '|',
                 # Name versions to be generated.
                 'name_versions': ['CLEAN', 'LOWER'],
-
                 }
 
         self.general = {
+                # Separator that will be used to merge tokens of a name.
+                'separator': '~',
                 # Logging config for everything
                 'log_level': logging.INFO,
                 'log_format': '%(asctime)s: %(message)s',
@@ -61,7 +60,7 @@ class Config(object):
                 }
 
         self.linking = {
-                # Should it train or not
+                # Should it train or not, this is set automatically ignore in 99% of cases and do not set manually
                 'train': True,
                 # Linear anneal
                 'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005},
@@ -90,10 +89,11 @@ class Config(object):
                 'negative_ignore_punct_and_num': True,
                 # If True concepts for which a detection is its primary name will be preferred
                 'prefer_primary_name': True,
-
-                # REMOVE
+                # Subsample during unsupervised training if a concept has received more than 
+                'subsample_after': 30000,
+                # Filters
                 'filters': {
-                    'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set
+                    'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
                     }
                 }
 

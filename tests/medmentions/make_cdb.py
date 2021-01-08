@@ -26,7 +26,8 @@ if not os.path.exists(vocab_path):
     with open(vocab_path, 'wb') as f:
         f.write(tmp.content)
 
-cdb = CDB.load("./tmp_cdb.dat")
+config = Config()
+cdb = CDB.load("./tmp_cdb.dat", config=config)
 vocab = Vocab.load(vocab_path)
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 

@@ -1,6 +1,6 @@
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
-import numpy as np
+import random
 
 class Linker(object):
     r''' Link to a biomedical database.
@@ -15,12 +15,24 @@ class Linker(object):
         self.vocab = vocab
         self.config = config
         self.context_model = ContextModel(self.cdb, self.vocab, self.config)
+        # Counter for how often did a pair (name,cui) appear and was used during training
+        self.train_counter = {}
 
 
-    def _train(self, cui, entity, doc, negative=False, add_negative=True):
-        self.context_model.train(cui, entity, doc, negative=negative)
-        if add_negative and self.config.linking['negative_probability'] >= np.random.rand():
-            self.context_model.train_using_negative_sampling(cui)
+    def _train(self, cui, entity, doc, add_negative=True):
+        name = "{} - {}".format(entity._.detected_name, cui)
+        if self.train_counter.get(name, 0) > self.config.linking['subsample_after']:
+            if random.random() < 1 / (self.train_counter.get(name) - self.config.linking['subsample_after']):
+                self.context_model.train(cui, entity, doc, negative=False)
+                if add_negative and self.config.linking['negative_probability'] >= random.random():
+                    self.context_model.train_using_negative_sampling(cui)
+                self.train_counter[name] = self.train_counter.get(name, 0) + 1
+        else:
+            # Always train
+            self.context_model.train(cui, entity, doc, negative=False)
+            if add_negative and self.config.linking['negative_probability'] >= random.random():
+                self.context_model.train_using_negative_sampling(cui)
+            self.train_counter[name] = self.train_counter.get(name, 0) + 1
 
 
     def __call__(self, doc):
