@@ -602,8 +602,9 @@ class CAT(object):
                 out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
                 out_ent['cui'] = cui
                 out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
-                out_ent['type'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
                 out_ent['source_value'] = ent.text
+                out_ent['detected_name'] = str(ent._.detected_name)
                 out_ent['acc'] = float(ent._.context_similarity)
                 out_ent['context_similarity'] = float(ent._.context_similarity)
                 out_ent['start'] = ent.start_char
