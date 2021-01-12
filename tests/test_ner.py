@@ -11,6 +11,7 @@ from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
 import logging
 from medcat.cdb import CDB
+from spacy.tokens import Span
 import os
 import requests
 import unittest
@@ -20,6 +21,7 @@ class A_NERTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         #REVIEW - IS THIS THE SIMPLEST SETUP TO TEST NER
+        #WOULD IT BE CLEARER TO TEST THE INTEGRATED MEDCAT COMPONENT e.g. medcat(doc) -> {xxx}
         print("Set up CDB")
         cls.config = Config()
         cls.config.general['log_level'] = logging.INFO
@@ -60,14 +62,41 @@ class A_NERTests(unittest.TestCase):
         cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar viruses', cls.nlp, {}, cls.config))
         cls.cdb.add_names(cui='S-229005', names=prepare_name('CDB', cls.nlp, {}, cls.config))
 
+        print("Add test text")
+        cls.text = "CDB - I was running and then Movar    Virus attacked and CDb"
+        cls.text_post_pipe = cls.nlp(cls.text)
+
     def test_aa_cdb_names_output(self):
         target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         self.assertEqual(self.cdb.cui2names, target_result)
 
-    def test_ab_number_of_entities(self):
-        self.text = "CDB - I was running and then Movar    Virus attacked and CDb"
+    def test_ab_entities_length(self):
+        self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
+
+    #CONSIDER ADDING DIRECT TEST FOR OUTPUTS - REQUIRES MORE SPACY BOILERPLATE E.G. TESTING SPAN CLASSES
+
+    def test_ac_entities_linked_candidates(self):
+        target_result = 'S-229004'
+        self.assertEqual(self.text_post_pipe._.ents[0]._.link_candidates[0], target_result)
+
+    def test_ad_max_skip_entities_length(self):
+        self.config.ner['max_skip_tokens'] = 3
+        self.text_post_pipe = self.nlp(self.text)
+        self.assertEqual(len(self.text_post_pipe._.ents), 3, "Should equal 3")
+
+    def test_ae_upper_case_entities_length(self):
+        self.config.ner['upper_case_limit_len'] = 3
+        self.text_post_pipe = self.nlp(self.text)
+        self.assertEqual(len(self.text_post_pipe._.ents), 4, "Should equal 4")
+
+    def test_af_min_name_entities_length(self):
+        self.config.ner['min_name_len'] = 4
         self.text_post_pipe = self.nlp(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
+
+    #REVIEW IMPLEMENTING SPEED TESTS AS TESTABLE HYPOTHESES (E.G. TIME SHOULD BE < X)
+
+    #REVIEW IMPLEMENTING SIMILARITY AND DISAMBIGUATION AS ASSERTABLE UNIT TESTS -> NO OUTPUT IN ORIGINAL TEST SCRIPT
 
 if __name__ == '__main__':
     unittest.main()
