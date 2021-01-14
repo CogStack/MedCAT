@@ -20,8 +20,6 @@ import unittest
 class A_NERTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        #REVIEW - IS THIS THE SIMPLEST SETUP TO TEST NER
-        #WOULD IT BE CLEARER TO TEST THE INTEGRATED MEDCAT COMPONENT e.g. medcat(doc) -> {xxx}
         print("Set up CDB")
         cls.config = Config()
         cls.config.general['log_level'] = logging.INFO
@@ -42,7 +40,7 @@ class A_NERTests(unittest.TestCase):
         cls.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=cls.config),
                        name='skip_and_punct',
                        additional_fields=['is_punct'])
-        #CLARIFY WHY CDB.VOCAB HERE 
+
         cls.spell_checker = BasicSpellChecker(cdb_vocab=cls.cdb.vocab, config=cls.config, data_vocab=cls.vocab)
         cls.nlp.add_token_normalizer(spell_checker=cls.spell_checker, config=cls.config)
         cls.ner = NER(cls.cdb, cls.config)
@@ -73,8 +71,6 @@ class A_NERTests(unittest.TestCase):
     def test_ab_entities_length(self):
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
 
-    #CONSIDER ADDING DIRECT TEST FOR OUTPUTS - REQUIRES MORE SPACY BOILERPLATE E.G. TESTING SPAN CLASSES
-
     def test_ac_entities_linked_candidates(self):
         target_result = 'S-229004'
         self.assertEqual(self.text_post_pipe._.ents[0]._.link_candidates[0], target_result)
@@ -93,10 +89,6 @@ class A_NERTests(unittest.TestCase):
         self.config.ner['min_name_len'] = 4
         self.text_post_pipe = self.nlp(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
-
-    #REVIEW IMPLEMENTING SPEED TESTS AS TESTABLE HYPOTHESES (E.G. TIME SHOULD BE < X)
-
-    #REVIEW IMPLEMENTING SIMILARITY AND DISAMBIGUATION AS ASSERTABLE UNIT TESTS -> NO OUTPUT IN ORIGINAL TEST SCRIPT
 
 if __name__ == '__main__':
     unittest.main()
