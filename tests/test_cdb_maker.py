@@ -35,7 +35,6 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(len(self.cdb.cui2names), 3, "Should equal 3")
 
     def test_ab_cdb_names_output(self):
-        #CLARIFY NEW ~ BEHAVIOUR
         target_result = {'C0000039': {'virus~k', 'virus', 'virus~m', 'virus~z'}, 'C0000139': {'virus~k', 'virus', 'virus~m', 'virus~z'}, 'C0000239': {'second~csv'}}
         self.assertEqual(self.cdb.cui2names, target_result)
 
@@ -43,7 +42,6 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(len(self.cdb.cui2snames), 3, "Should equal 3")
 
     def test_ad_cdb_snames_output(self):
-        #CLARIFY HOW THIS OUTPUT SHOULD BE DIFFERENT - cui to "sub names"?
         target_result = {'C0000039': {'virus~k', 'virus', 'virus~m', 'virus~z'}, 'C0000139': {'virus~k', 'virus', 'virus~m', 'virus~z'}, 'C0000239': {'second', 'second~csv'}}
         self.assertEqual(self.cdb.cui2snames, target_result)
 
@@ -58,7 +56,6 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(len(self.cdb.cui2tags), 3, "Should equal 3")
 
     def test_ah_cdb_cuis_to_tags_output(self):
-        #CONSIDER ADDING TAGS TO DB SO ACTUALLY TESTING CORRECT TRANSFORMATION
         target_result = {'C0000039': [], 'C0000139': [], 'C0000239': []}
         self.assertEqual(self.cdb.cui2tags, target_result)
 
@@ -66,7 +63,6 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(len(self.cdb.cui2preferred_name), 2, "Should equal 2")
 
     def test_aj_cdb_cui_to_preferred_name_output(self):
-        #CLARIFY HOW DECIDED 'VIRUS Z' IS PREFERRED NAME FROM 'Virus M|Virus K|Virus Z'
         target_result = {'C0000039': 'Virus', 'C0000139': 'Virus Z'}
         self.assertEqual(self.cdb.cui2preferred_name, target_result)
 
@@ -74,7 +70,6 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(len(self.cdb.cui2context_vectors), 3, "Should equal 3")
 
     def test_al_cdb_cui_to_context_vectors_output(self):
-        #CONSIDER ADDING CONTEXT VECTORS TO DB SO ACTUALLY TESTING CORRECT TRANSFORMATION
         target_result = {'C0000039': {}, 'C0000139': {}, 'C0000239': {}}
         self.assertEqual(self.cdb.cui2context_vectors, target_result)
 
@@ -82,7 +77,6 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(len(self.cdb.cui2count_train), 3, "Should equal 3")
 
     def test_an_cdb_cui_to_count_train_output(self):
-        #CONSIDER ADDING TRAINING EXAMPLES TO DB SO ACTUALLY TESTING CORRECT TRANSFORMATION
         target_result = {'C0000039': 0, 'C0000139': 0, 'C0000239': 0}
         self.assertEqual(self.cdb.cui2count_train, target_result)
 
@@ -101,11 +95,9 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(self.cdb.cui2type_ids, target_result)
 
     def test_as_cdb_additional_info_length(self):
-        #CLARIFY IF THIS WOULD BE CONSISTENT
         self.assertEqual(len(self.cdb.addl_info), 8, "Should equal 8")
 
     def test_at_cdb_additional_info_output(self):
-        #CLARIFY WHY NO DATA ON 139 or 239
         target_result = {'cui2icd10': {}, 'cui2opcs4': {}, 'cui2ontologies': {'C0000039': {'MSH'}}, 'cui2original_names': {'C0000039': {'Virus K', 'Virus M', 'Virus', 'Virus Z'}, 'C0000139': {'Virus K', 'Virus M', 'Virus', 'Virus Z'}, 'C0000239': {'Second csv'}}, 'cui2description': {'C0000039': 'Synthetic phospholipid used in liposomes and lipid bilayers to study biological membranes. It is also a major constituent of PULMONARY SURFACTANTS.'}, 'type_id2name': {}, 'type_id2cuis': {'T109': {'C0000039'}, 'T123': {'C0000039'}, 'T234': {'C0000039'}}, 'cui2group': {}}
         self.assertEqual(self.cdb.addl_info, target_result)
 
@@ -132,24 +124,18 @@ class B_CDBMakerEditTests(unittest.TestCase):
         self.assertIn('my~:~new~name~.', self.cdb.name2cuis2status)
 
     def test_bb_removal_of_name(self):
-        #CLARIFY WHY NOT REMOVED FROM ADDITIONAL INFO
         self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config))
         self.assertEqual(len(self.cdb.name2cuis), 5, "Should equal 5")
         self.assertNotIn('my:newname.', self.cdb.name2cuis2status)
 
     def test_bc_filter_by_cui(self):
-        #CLARIFY WHY C0000139 WOULD BE KEPT - 'TRANSITION?'
         cuis_to_keep = {'C0000039'}
         self.cdb.filter_by_cui(cuis_to_keep=cuis_to_keep)
         self.assertEqual(len(self.cdb.cui2names), 2, "Should equal 2")
         self.assertEqual(len(self.cdb.name2cuis), 4, "Should equal 4")
         self.assertEqual(len(self.cdb.snames), 4, "Should equal 4")
 
-
     def test_bd_addition_of_context_vector_positive(self):
-        #REVIEW WHETHER TO SEPARATE OUT TESTS - THIS IS A MORE SOPHISTICATED INTEGRATION TEST
-        #CONFIRM NOT REQUIRED
-        #self.cdb.reset_training()
         np.random.seed(11)
         cuis = list(self.cdb.cui2names.keys())
         for i in range(2):
@@ -163,7 +149,6 @@ class B_CDBMakerEditTests(unittest.TestCase):
         self.assertEqual(self.cdb.cui2context_vectors['C0000139']['long'].shape[0], 300, "Dimensions should equal 300")
 
     def test_be_addition_of_context_vector_negative(self):
-        #CLARIFY WHY IN NEGATIVE CONTEXT SAMPLING JUST SUBTRACT VECTOR*LR (REF EQUATION)
         np.random.seed(11)
         cuis = list(self.cdb.cui2names.keys())
         for i in range(2):
@@ -194,9 +179,6 @@ class B_CDBMakerEditTests(unittest.TestCase):
         target_result = {'C0000039': {}, 'C0000139': {}}
         self.assertEqual(self.cdb.cui2context_vectors, target_result)
         self.assertEqual(self.cdb.cui2count_train['C0000139'], 0, "Count should equal 0")
-
-    #REVIEW HOW TO TEST CONCEPT SIMILARITY - CURRENT TEST JUST TESTS LENGTH OF RETURNED RESULT (effectively topn parameter)
-
 
 
 if __name__ == '__main__':
