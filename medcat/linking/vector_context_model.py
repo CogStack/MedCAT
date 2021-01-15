@@ -137,11 +137,12 @@ class ContextModel(object):
             if self.config.linking['prefer_primary_name']:
                 self.log.debug("Preferring primary names")
                 for i, cui in enumerate(cuis):
-                    if self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'P':
-                        old_sim = similarities[i]
-                        similarities[i] = min(0.99, similarities[i] + similarities[i] * 0.3)
-                        # DEBUG
-                        self.log.debug("CUI: {}, Name: {}, Old sim: {:.3f}, New sim: {:.3f}".format(cui, name, old_sim, similarities[i]))
+                    if similarities[i] > 0:
+                        if self.cdb.name2cuis2status.get(name, {}).get(cui, '') in {'P', 'PD'}:
+                            old_sim = similarities[i]
+                            similarities[i] = min(0.99, similarities[i] + similarities[i] * 0.3)
+                            # DEBUG
+                            self.log.debug("CUI: {}, Name: {}, Old sim: {:.3f}, New sim: {:.3f}".format(cui, name, old_sim, similarities[i]))
 
             # Prefer concepts with tag
             mx = np.argmax(similarities)
@@ -150,10 +151,30 @@ class ContextModel(object):
             return None, 0
 
 
-    def train(self, cui, entity, doc, negative=False):
+    def train(self, cui, entity, doc, negative=False, names=[]):
+        r''' Update the context represenation for this CUI, given it's correct location (entity)
+        in a document (doc).
+
+        Args:
+            names (List[str]/Dict):
+                Optinaly used to update the `status` of a name-cui pair in the CDB.
+        '''
         # Context vectors to be calculated
         vectors = self.get_context_vectors(entity, doc)
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
+
+        if negative:
+            for name in names:
+                if self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'P':
+                    # Set this name to always be disambiguated, even though it is primary
+                    self.cdb.name2cuis2status.get(name, {})[cui] = 'PD'
+                    # Debug
+                    self.log.debug("Updating status for CUI: {}, name: {} to <PD>".format(cui, name))
+                elif self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'A':
+                    # Set this name to always be disambiguated instead of A
+                    self.cdb.name2cuis2status.get(name, {})[cui] = 'N'
+                    self.log.debug("Updating status for CUI: {}, name: {} to <N>".format(cui, name))
+
         # Debug
         self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
 

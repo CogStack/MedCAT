@@ -378,7 +378,7 @@ class CAT(object):
         self.cdb.addl_info['cui2group'][cui] = group_name
 
 
-    def unlink_concept_name(self, cui, name, full_unlink=False):
+    def unlink_concept_name(self, cui, name):
         r'''
         Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
         the Concept Database (CDB). As a consequence medcat will never again link the `name`
@@ -389,9 +389,6 @@ class CAT(object):
                 The CUI from which the `name` will be removed
             name (str):
                 The span of text to be removed from the linking dictionary
-            full_unlink (boolean):
-                If True, the `name` will not only be removed from the given `cui` but from
-                each concept in the database that is associated with this name.
         Examples:
             >>> # To never again link C0020538 to HTN
             >>> cat.unlink_concept_name('C0020538', 'htn', False)
@@ -399,7 +396,7 @@ class CAT(object):
 
         cuis = [cui]
         names = prepare_name(name, self, {}, self.config)
-        if full_unlink:
+        if self.config.general.get('full_unlink', False):
             for name in names:
                 cuis.extend(self.cdb.name2cuis.get(name, []))
         # Remove name from all CUIs
@@ -438,18 +435,18 @@ class CAT(object):
 
         if spacy_entity is not None and spacy_doc is not None:
             # Train Linking
-            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative)
+            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative, names=names)
 
-        if not negative and devalue_others:
-            # Find all cuis
-            cuis = set()
-            for name in names:
-                cuis.update(self.cdb.name2cuis.get(name, []))
-            # Remove the cui for which we just added positive training
-            cuis.remove(cui)
-            # Add negative training for all other CUIs that link to these names
-            for _cui in cuis:
-                self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
+            if not negative and devalue_others:
+                # Find all cuis
+                cuis = set()
+                for name in names:
+                    cuis.update(self.cdb.name2cuis.get(name, []))
+                # Remove the cui for which we just added positive training
+                cuis.remove(cui)
+                # Add negative training for all other CUIs that link to these names
+                for _cui in cuis:
+                    self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
 
 
 
@@ -616,9 +613,7 @@ class CAT(object):
                 out_ent['meta_anns'] = {}
 
                 if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                    for key in ent._.meta_anns.keys():
-                        one = {'name': key, 'value': ent._.meta_anns[key]}
-                        out_ent['meta_anns'][key] = one
+                    out_ent['meta_anns'] = ent._.meta_anns
 
                 out.append(dict(out_ent))
             else:
@@ -634,7 +629,7 @@ class CAT(object):
         return:  json with fields {'entities': <>, 'text': text}
         """
         ents = self.get_entities(text, only_cui, addl_info=addl_info)
-        out = {'entities': ents, 'text': text}
+        out = {'annotations': ents, 'text': text}
 
         return json.dumps(out)
 

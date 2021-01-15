@@ -654,7 +654,7 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
 
 
 
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False, tui_filter=None, replace_center=None):
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False, cui_filter=None, replace_center=None):
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
@@ -679,10 +679,10 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
 
                 for ann in document['annotations']:
                     tui = ""
-                    if tui_filter:
-                        tui = ann['tui']
+                    if cui_filter:
+                        cui = ann['cui']
 
-                    if not tui_filter or tui in tui_filter:
+                    if cui_filter is None or not cui_filter or cui in cui_filter:
                         if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)):
                             start = ann['start']
                             end = ann['end']

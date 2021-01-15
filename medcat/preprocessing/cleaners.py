@@ -28,7 +28,7 @@ def prepare_name(raw_name, nlp, names, config):
 
         if version == "LOWER":
             tokens = [t.lower_ for t in sc_name if not t._.to_skip]
-        if version == "CLEAN" and len(raw_name) > config.preprocessing['min_len_normalize']:
+        if version == "CLEAN" and len(raw_name) >= config.preprocessing['min_len_normalize']:
             tokens = [t.lemma_.lower() for t in sc_name if not t._.to_skip]
 
         if tokens is not None:

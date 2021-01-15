@@ -39,7 +39,7 @@ class MetaCAT(object):
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
-              ignore_cpos=False, model_config={}, tui_filter=None, fine_tune=False,
+              ignore_cpos=False, model_config={}, cui_filter=None, fine_tune=False,
               auto_save_model=True, score_average='weighted', replace_center=None, seed=11):
         r''' TODO: Docs
         '''
@@ -51,7 +51,7 @@ class MetaCAT(object):
             os.makedirs(self.save_dir)
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter,
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, cui_filter=cui_filter,
                 replace_center=replace_center)
 
         if category_name is not None:
@@ -135,12 +135,12 @@ class MetaCAT(object):
         return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
 
 
-    def eval(self, json_path, batch_size=100, lowercase=True, ignore_cpos=False, tui_filter=None, score_average='weighted',
+    def eval(self, json_path, batch_size=100, lowercase=True, ignore_cpos=False, cui_filter=None, score_average='weighted',
             replace_center=None):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter,
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, cui_filter=cui_filter,
                 replace_center=replace_center)
 
         # Check is the name there
@@ -311,9 +311,11 @@ class MetaCAT(object):
                 confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
                 if ent._.meta_anns is None:
                     ent._.meta_anns = {self.category_name: {'value': val,
-                                                            'confidence': confidence}}
+                                                            'confidence': confidence,
+                                                            'name': self.category_name}}
                 else:
                     ent._.meta_anns[self.category_name] = {'value': val,
-                                                           'confidence': confidence}
+                                                           'confidence': confidence,
+                                                           'name': self.category_name}
 
         return doc
