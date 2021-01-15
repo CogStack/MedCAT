@@ -288,9 +288,9 @@ class CDB(object):
                     self.log.debug("Similarity before vs after: {:.5f} vs {:.5f}".format(similarity, similarity_after))
                 else:
                     if negative:
-                         self.cui2context_vectors[cui][context_type] = -1 * vector
+                        self.cui2context_vectors[cui][context_type] = -1 * vector
                     else:
-                         self.cui2context_vectors[cui][context_type] = vector
+                        self.cui2context_vectors[cui][context_type] = vector
 
                     # DEBUG
                     self.log.debug("Added new context type with vectors.\n" + \

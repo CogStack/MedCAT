@@ -63,7 +63,7 @@ class Linker(object):
                                 linked_entities.append(entity)
                         else:
                             for cui in cuis:
-                                if self.cdb.name2cuis2status[name][cui] == 'P':
+                                if self.cdb.name2cuis2status[name][cui] in {'P', 'PD'}:
                                     self._train(cui=cui, entity=entity, doc=doc)
                                     # It should not be possible that one name is 'P' for two CUIs,
                                     #but it can happen - and we do not care.
@@ -82,7 +82,8 @@ class Linker(object):
                             do_disambiguate = False
                             if len(name) < cnf_l['disamb_length_limit']:
                                 do_disambiguate = True
-                            elif len(cuis) == 1 and self.cdb.name2cuis2status[name][cuis[0]] == 'N':
+                            elif len(cuis) == 1 and self.cdb.name2cuis2status[name][cuis[0]] in {'N', 'PD'}:
+                                # PD means it is preferred but should still be disambiguated and N is disamb always
                                 do_disambiguate = True
                             elif len(cuis) > 1:
                                 do_disambiguate = True

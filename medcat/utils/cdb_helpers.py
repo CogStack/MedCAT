@@ -1,6 +1,29 @@
 import pandas as pd
 import json
 
+def mrconso_to_csv(mrconso_path, column_names, sep='|', lng='ENG', output_path=''):
+    if column_names is None:
+        column_names = ['CUI', 'LAT', 'TS', 'LUI', 'STT', 'SUI', 'ISPREF', 'AUI', 'SAUI', 'SCUI', 'SDUI', 'SAB', 'TTY', 'CODE', 'STR', 'SRL', 'SUPPRESS', 'CVF', 'unk']
+    df = pd.read_csv(mrconso_path, names=column_names, sep=sep, dtype=str, **kwargs)
+    df = df[df.LAT == lng]
+
+    df = df[['CUI', 'STR', 'TTY']]
+
+    # Change name status if required
+    df['TTY'] = ['P' if tty=='PN' else 'A' for tty in df['TTY'].values]
+
+    # Remove name duplicates (keep TTY also in the eq)
+    df = df.drop_duplicates(subset=['CUI', 'STR', 'TTY'])
+
+    # Rename columns
+    df.columns = ['cui', 'name', 'name_status']
+
+    if output_path is not None:
+        df.to_csv(output_path, index=False)
+
+    return df
+
+
 def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None, sep='|', lng='ENG', output_path=None, use_umls_primary_names=False, **kwargs):
     r''' Prepare the MRCONSO.RRF to be used for extansion of SNOMED. Will output a CSV that can
     be used with cdb_maker (use the snomed_cdb.dat as the base one and extend with this).
@@ -39,10 +62,11 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     # Remove all CUIs that map to more than one SNOMED term
     cuis_to_remove = set()
     for pair in df_snomed[['CUI', 'CODE']].values:
-        if pair[0] not in umls2snomed or pair[1] == umls2snomed[pair[0]]:
-            umls2snomed[pair[0]] = pair[1]
-        else:
-            cuis_to_remove.add(pair[0])
+        if pair[1] in snomed_codes: # Only if part of codes of interest
+            if pair[0] not in umls2snomed or pair[1] == umls2snomed[pair[0]]:
+                umls2snomed[pair[0]] = pair[1]
+            else:
+                cuis_to_remove.add(pair[0])
     umls2snomed = {cui: snomed for cui, snomed in umls2snomed.items() if cui not in cuis_to_remove}
     # Keep only cui and str
     df = df[['CUI', 'STR', 'TTY']]

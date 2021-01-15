@@ -34,6 +34,8 @@ class Config(object):
                 'spell_check_len_limit': 7,
                 # If set to True functions like get_entities and get_json will return nested_entities and overlaps
                 'show_nested_entities': False,
+                # When unlinking a name from a concept should we do full_unlink
+                'full_unlink': False,
                 }
 
         self.preprocessing = {
@@ -65,15 +67,15 @@ class Config(object):
                 'train': True,
                 # Linear anneal
                 'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005},
-                # 'optim': {'standard': 'lr': 1},
-                # 'optim': {'moving_avg': 'alpha': 0.99, 'e': 1e-4, 'size': 100},
+                # 'optim': {'type': 'standard', 'lr': 1},
+                # 'optim': {'type': 'moving_avg', 'alpha': 0.99, 'e': 1e-4, 'size': 100},
                 # All concepts below this will always be disambiguated
                 'disamb_length_limit': 5,
                 # Context vector sizes that will be calculated and used for linking
                 'context_vector_sizes': {'xxxlong': 60, 'xxlong': 45, 'xlong': 27, 'long': 18, 'medium': 9, 'short': 3},
                 # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
                 'context_vector_weights': {'xxxlong': 0, 'xxlong': 0, 'xlong': 0, 'long': 0.4, 'medium': 0.4, 'short': 0.2},
-                # If True it will filter before doing disamb.
+                # If True it will filter before doing disamb. Useful for the trainer.
                 'filter_before_disamb': False,
                 # Concepts that have seen less training examples than this will not be used for
                 #similarity calculation and will have a similarity of -1.
@@ -117,3 +119,26 @@ class Config(object):
         self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
+
+
+    def parse_config_file(self, path):
+        r'''
+        Parses a configuration file in text format. Must be like:
+                <variable>.<key> = <value>
+                ...
+            Where:
+                variable: linking, general, ner, ...
+                key: a key in the config dict e.g. subsample_after for linking
+                value: the value for the key, will be parsed with `eval`
+        '''
+        with open(path, 'r') as f:
+            for line in f:
+                if line.strip() and not line.startswith("#"):
+                    left, right = line.split("=")
+                    variable, key = left.split(".")
+                    variable = variable.strip()
+                    key = key.strip()
+                    value = eval(right.strip())
+
+                    attr = getattr(self, variable)
+                    attr[key] = value
