@@ -38,7 +38,7 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
+              batch_size=100, nepochs=20, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, cui_filter=None, fine_tune=False,
               auto_save_model=True, score_average='weighted', replace_center=None, seed=11):
         r''' TODO: Docs
@@ -51,8 +51,8 @@ class MetaCAT(object):
             os.makedirs(self.save_dir)
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, cui_filter=cui_filter,
-                replace_center=replace_center)
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, cui_filter=cui_filter,
+                replace_center=replace_center, cntx_in_chars=True)
 
         if category_name is not None:
             self.category_name = category_name
@@ -73,7 +73,7 @@ class MetaCAT(object):
             data, _ = encode_category_values(data, vals=self.category_values)
 
         # Convert data tkns to ids
-        data = tkns_to_ids(data, self.tokenizer)
+        #data = tkns_to_ids(data, self.tokenizer)
 
         if not fine_tune:
             if model_name == 'lstm':

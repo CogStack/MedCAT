@@ -1,7 +1,7 @@
 import pandas as pd
 import json
 
-def mrconso_to_csv(mrconso_path, column_names, sep='|', lng='ENG', output_path=''):
+def mrconso_to_csv(mrconso_path, column_names=None, sep='|', lng='ENG', output_path='', **kwargs):
     if column_names is None:
         column_names = ['CUI', 'LAT', 'TS', 'LUI', 'STT', 'SUI', 'ISPREF', 'AUI', 'SAUI', 'SCUI', 'SDUI', 'SAB', 'TTY', 'CODE', 'STR', 'SRL', 'SUPPRESS', 'CVF', 'unk']
     df = pd.read_csv(mrconso_path, names=column_names, sep=sep, dtype=str, **kwargs)

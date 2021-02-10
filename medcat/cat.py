@@ -378,7 +378,7 @@ class CAT(object):
         self.cdb.addl_info['cui2group'][cui] = group_name
 
 
-    def unlink_concept_name(self, cui, name):
+    def unlink_concept_name(self, cui, name, preprocessed_name=False):
         r'''
         Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
         the Concept Database (CDB). As a consequence medcat will never again link the `name`
@@ -395,10 +395,16 @@ class CAT(object):
         '''
 
         cuis = [cui]
-        names = prepare_name(name, self, {}, self.config)
+        if preprocessed_name:
+            names = {name: 'nothing'}
+        else:
+            names = prepare_name(name, self, {}, self.config)
+
+        # If full unlink find all CUIs
         if self.config.general.get('full_unlink', False):
             for name in names:
                 cuis.extend(self.cdb.name2cuis.get(name, []))
+
         # Remove name from all CUIs
         for cui in cuis:
             self.cdb.remove_names(cui=cui, names=names)
@@ -578,20 +584,29 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
 
-    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
+    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies'], doc_extended_info=False, context_to_generate=-1, lowercase_context=True):
         r''' Get entities
 
         text:  text to be annotated
         return:  entities
         ''' 
         doc = self(text)
-        out = []
+        out = {'entities': []}
 
         out_ent = {}
         if self.config.general.get('show_nested_entities', False):
             _ents = doc._.ents
         else:
             _ents = doc.ents
+
+        if lowercase_context:
+            doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
+        else:
+            doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
+
+        if doc_extended_info:
+            # Add tokens if extended info
+            out['tokens'] = doc_tokens
 
         for ind, ent in enumerate(_ents):
             cui = str(ent._.cui)
@@ -612,12 +627,21 @@ class CAT(object):
                 out_ent['id'] = ent._.id
                 out_ent['meta_anns'] = {}
 
+                if doc_extended_info:
+                    out_ent['start_tkn'] = ent.start
+                    out_ent['end_tkn'] = ent.end
+
+                if context_to_generate > 0:
+                    out_ent['context_left'] = doc_tokens[max(ent.start - context_to_generate, 0):ent.start]
+                    out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_to_generate, len(doc_tokens))]
+                    out_ent['context_center'] = doc_tokens[ent.start:ent.end]
+
                 if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
                     out_ent['meta_anns'] = ent._.meta_anns
 
-                out.append(dict(out_ent))
+                out['entities'].append(dict(out_ent))
             else:
-                out.append(cui)
+                out['entities'].append(cui)
 
         return out
 
@@ -628,13 +652,13 @@ class CAT(object):
         text:  text to be annotated
         return:  json with fields {'entities': <>, 'text': text}
         """
-        ents = self.get_entities(text, only_cui, addl_info=addl_info)
+        ents = self.get_entities(text, only_cui, addl_info=addl_info)['entities']
         out = {'annotations': ents, 'text': text}
 
         return json.dumps(out)
 
 
-    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[], doc_len_limit=1000000):
+    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[], doc_len_limit=1000000, doc_extended_info=False):
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
@@ -659,7 +683,8 @@ class CAT(object):
         procs = []
         for i in range(nproc):
             p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
-                                                      'addl_info': addl_info, 'doc_len_limit': doc_len_limit})
+                                                      'addl_info': addl_info, 'doc_len_limit': doc_len_limit,
+                                                      'doc_extended_info': doc_extended_info})
             p.start()
             procs.append(p)
 
@@ -695,7 +720,7 @@ class CAT(object):
         return out
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], doc_len_limit=1000000):
+    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], doc_len_limit=1000000, doc_extended_info=False):
         cnt = 0
         out = []
         while True:
@@ -707,8 +732,8 @@ class CAT(object):
 
                 for id, text in data:
                     try:
-                        doc = {}
-                        doc['entities'] = self.get_entities(text=text[0:doc_len_limit], only_cui=only_cui, addl_info=addl_info)
+                        doc  = self.get_entities(text=text[0:doc_len_limit], only_cui=only_cui, addl_info=addl_info,
+                                doc_extended_info=doc_extended_info)
                         doc['text'] = text
                         out.append((id, doc))
                     except Exception as e:

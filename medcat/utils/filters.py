@@ -9,13 +9,11 @@ def check_filters(cui, filters):
         bool:
             True if in filters else False
     '''
-    # There is only one filter for now (inclusion)
-    if not filters['cuis']:
-        # If filter is empty use everything
-        return True
-    elif cui in filters['cuis']:
-        # CUI is in filters
-        return True
+    if cui in filters.get('cuis', {}) or not filters.get('cuis', {}):
+        if cui not in filters.get('cuis_exclude', {}):
+            return True
+        else:
+            return False
     else:
         return False
 
