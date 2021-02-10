@@ -100,6 +100,15 @@ class CDB(object):
                 if len(self.name2cuis2status[name]) == 0:
                     del self.name2cuis2status[name]
 
+            # Set to disamb always if name2cuis2status is now only one CUI
+            if name in self.name2cuis2status:
+                if len(self.name2cuis2status[name]) == 1:
+                    for _cui in self.name2cuis2status[name]:
+                        if self.name2cuis2status[name][_cui] == 'A':
+                            self.name2cuis2status[name][_cui] = 'N'
+                        elif self.name2cuis2status[name][_cui] == 'P':
+                            self.name2cuis2status[name][_cui] = 'PD'
+
 
     def add_names(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
         r''' Adds a name to an existing concept.
@@ -249,7 +258,7 @@ class CDB(object):
         self.addl_info[name].update(data)
 
 
-    def update_context_vector(self, cui, vectors, negative=False):
+    def update_context_vector(self, cui, vectors, negative=False, lr=None, cui_count=0):
         r''' Add the vector representation of a context for this CUI.
 
         cui (`str`):
@@ -259,6 +268,10 @@ class CDB(object):
             context_type - is usually one of: ['long', 'medium', 'short']
         negative (`bool`, defaults to `False`):
             Is this negative context of positive.
+        lr (`int`, optional):
+            If set it will override the base value from the config file.
+        cui_count (`int`, defaults to 0):
+            The learning rate will be calculated based on the count for the provided CUI + cui_count.
         '''
         similarity = None
         if cui in self.cui2context_vectors:
@@ -268,8 +281,9 @@ class CDB(object):
                     cv = self.cui2context_vectors[cui][context_type]
                     similarity = np.dot(unitvec(cv), unitvec(vector))
 
-                    # Get the learning rate
-                    lr = get_lr_linking(self.config, self.cui2count_train[cui], self._optim_params, similarity)
+                    # Get the learning rate if None
+                    if lr is None:
+                        lr = get_lr_linking(self.config, self.cui2count_train[cui] + cui_count, self._optim_params, similarity)
 
                     if negative:
                         # Add negative context

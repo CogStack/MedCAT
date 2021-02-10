@@ -32,7 +32,7 @@ vocab = Vocab.load(vocab_path)
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 
 # Train
-_ = cat.train(open("./tmp_medmentions_text_only.txt", 'r'), fine_tune=True)
+_ = cat.train(open("./tmp_medmentions_text_only.txt", 'r'), fine_tune=False)
 
 # Print some stats
 _ = cat._print_stats(json.load(open("tmp_test.csv")))

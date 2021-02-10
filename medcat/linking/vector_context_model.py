@@ -160,23 +160,38 @@ class ContextModel(object):
                 Optinaly used to update the `status` of a name-cui pair in the CDB.
         '''
         # Context vectors to be calculated
-        vectors = self.get_context_vectors(entity, doc)
-        self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
+        if len(entity) > 0: # Make sure there is something
+            vectors = self.get_context_vectors(entity, doc)
+            self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
+            # Debug
+            self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
 
-        if negative:
-            for name in names:
-                if self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'P':
-                    # Set this name to always be disambiguated, even though it is primary
-                    self.cdb.name2cuis2status.get(name, {})[cui] = 'PD'
-                    # Debug
-                    self.log.debug("Updating status for CUI: {}, name: {} to <PD>".format(cui, name))
-                elif self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'A':
-                    # Set this name to always be disambiguated instead of A
-                    self.cdb.name2cuis2status.get(name, {})[cui] = 'N'
-                    self.log.debug("Updating status for CUI: {}, name: {} to <N>".format(cui, name))
+            if negative:
+                # Change the status of the name so that it has to be disambiguated always
+                for name in names:
+                    if self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'P':
+                        # Set this name to always be disambiguated, even though it is primary
+                        self.cdb.name2cuis2status.get(name, {})[cui] = 'PD'
+                        # Debug
+                        self.log.debug("Updating status for CUI: {}, name: {} to <PD>".format(cui, name))
+                    elif self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'A':
+                        # Set this name to always be disambiguated instead of A
+                        self.cdb.name2cuis2status.get(name, {})[cui] = 'N'
+                        self.log.debug("Updating status for CUI: {}, name: {} to <N>".format(cui, name))
+            if not negative and self.config.linking.get('devalue_linked_concepts', False):
+                #Find what other concepts can be disambiguated against this one
+                _cuis = set()
+                for name in self.cdb.cui2names[cui]:
+                    _cuis.update(self.cdb.name2cuis.get(name, []))
+                # Remove the cui of the current concept
+                _cuis = _cuis - {cui}
 
-        # Debug
-        self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
+                for _cui in _cuis:
+                    self.cdb.update_context_vector(cui=_cui, vectors=vectors, negative=True)
+
+                self.log.debug("Devalued via names.\n\tBase cui: {} \n\tTo be devalued: {}\n".format(cui, _cuis))
+        else:
+            self.log.warning("The provided entity for cui <{}> was empty, nothing to train".format(cui))
 
 
     def train_using_negative_sampling(self, cui):
