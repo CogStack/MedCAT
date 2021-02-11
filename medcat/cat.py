@@ -651,6 +651,11 @@ class CAT(object):
     def train(self):
         return self.spacy_cat.train
 
+    @property
+    def spacy_nlp(self):
+        """ Returns the spacy nlp object utilized by cat"""
+        return self.nlp.nlp 
+
 
     @train.setter
     def train(self, val):
