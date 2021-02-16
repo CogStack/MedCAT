@@ -193,7 +193,7 @@ class MetaCAT(object):
             if hasattr(self.tokenizer, 'save_model'):
                 # Support the new save in tokenizer 0.8.2+
                 self.tokenizer.save_model(self.save_dir, name='bbpe')
-            else:
+            elif hasattr(self.tokenizer, 'save_model'):
                 # Old way of saving models
                 self.tokenizer.save(self.save_dir, name='bbpe')
             # Save embeddings

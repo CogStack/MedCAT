@@ -33,6 +33,7 @@ tmp_*
 nohup.out
 tmp.py
 .DS_Store
+*.lock
 
 # models files
 *.dat

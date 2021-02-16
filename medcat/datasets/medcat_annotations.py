@@ -82,9 +82,9 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
             docs = pickle.load(f)
             for doc_id in docs:
                 doc = docs[doc_id]
-                for entity in doc['entities']:
+                for id, entity in doc['entities'].items():
                     yield "{}|{}".format(doc_id, entity['id']), {
-                            'id': int(entity['id']),
+                            'id': int(id),
                             'document_id': str(doc_id),
                             'context_left': "".join(entity['context_left']),
                             'context_right': "".join(entity['context_right']),

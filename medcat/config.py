@@ -12,6 +12,15 @@ class Config(object):
                 'name_versions': ['CLEAN', 'LOWER'],
                 }
 
+        # Used mainly to configure the output of the get_entities function, and in that also the output of
+        #get_json and multiprocessing
+        self.annotation_output = {
+                'doc_extended_info': False,
+                'context_left': -1,
+                'context_right': -1,
+                'lowercase_context': True
+                }
+
         self.general = {
                 # Logging config for everything
                 'log_level': logging.INFO,
