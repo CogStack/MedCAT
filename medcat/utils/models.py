@@ -43,9 +43,13 @@ class LSTM(nn.Module):
         self.d1 = nn.Dropout(dropout)
 
 
-    def forward(self, x, cpos, ignore_cpos=False):
+    def forward(self, input_ids, center_positions, attention_mask=None, ignore_cpos=False):
+        x = input_ids
         # Get the mask from x
-        mask = x != self.padding_idx
+        if attention_mask is None:
+            mask = x != self.padding_idx
+        else:
+            mask = attention_mask
 
         # Embed the input: from id -> vec
         x = self.embeddings(x) # x.shape = batch_size x sequence_length x emb_size
@@ -68,7 +72,7 @@ class LSTM(nn.Module):
             x = x.view(self.num_layers, self.num_directions, -1, self.hidden_size//self.num_directions)
             x = x[-1, :, :, :].permute(1, 2, 0).reshape(-1, self.hidden_size)
         else:
-            x = x[row_indices, cpos, :]
+            x = x[row_indices, center_positions, :]
 
         # Push x through the fc network and add dropout
         x = self.d1(x)

@@ -270,7 +270,7 @@ class CAT(object):
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
-            f1 = (prec + rec) / 2
+            f1 = 2*(prec*rec) / (prec + rec)
             print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(epoch, prec, rec, f1))
             print("Docs with false positives: {}\n".format("; ".join([str(x) for x in list(fp_docs)[0:10]])))
             print("Docs with false negatives: {}\n".format("; ".join([str(x) for x in list(fn_docs)[0:10]])))
@@ -285,7 +285,7 @@ class CAT(object):
             for cui in tps.keys():
                 prec = tps[cui] / (tps.get(cui, 0) + fps.get(cui, 0))
                 rec = tps[cui] / (tps.get(cui, 0) + fns.get(cui, 0))
-                f1 = (prec + rec) / 2
+                f1 = 2*(prec*rec) / (prec + rec)
                 cui_prec[cui] = prec
                 cui_rec[cui] = rec
                 cui_f1[cui] = f1
@@ -320,7 +320,7 @@ class CAT(object):
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
 
-    def train(self, data_iterator, fine_tune=True, progress_print=1000):
+    def train(self, data_iterator, fine_tune=True, progress_print=1000, doc_len_limit=10000000):
         """ Runs training on the data, note that the maximum lenght of a line
         or document is 1M characters. Anything longer will be trimmed.
 
@@ -332,6 +332,8 @@ class CAT(object):
         progress_print:
             Print progress after N lines
         """
+        # Set spacy length
+        self.nlp.nlp.max_length = doc_len_limit
         if not fine_tune:
             self.log.info("Removing old training data!")
             self.cdb.reset_training()
@@ -340,7 +342,7 @@ class CAT(object):
         for line in data_iterator:
             if line is not None and line:
                 # Convert to string
-                line = str(line).strip()[0:1000000]
+                line = str(line).strip()[0:doc_len_limit]
 
                 try:
                     _ = self(line, do_train=True)
@@ -584,14 +586,15 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
 
-    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies'], doc_extended_info=False, context_to_generate=-1, lowercase_context=True):
+    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
         r''' Get entities
 
         text:  text to be annotated
         return:  entities
-        ''' 
+        '''
+        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         doc = self(text)
-        out = {'entities': []}
+        out = {'entities': {}}
 
         out_ent = {}
         if self.config.general.get('show_nested_entities', False):
@@ -599,14 +602,18 @@ class CAT(object):
         else:
             _ents = doc.ents
 
-        if lowercase_context:
+        if cnf_annotation_output.get("lowercase_context", True):
             doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
         else:
             doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
 
-        if doc_extended_info:
+        if cnf_annotation_output.get('doc_extended_info', False):
             # Add tokens if extended info
             out['tokens'] = doc_tokens
+
+        context_left = cnf_annotation_output.get('context_left', -1)
+        context_right = cnf_annotation_output.get('context_right', -1)
+        doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
 
         for ind, ent in enumerate(_ents):
             cui = str(ent._.cui)
@@ -631,15 +638,15 @@ class CAT(object):
                     out_ent['start_tkn'] = ent.start
                     out_ent['end_tkn'] = ent.end
 
-                if context_to_generate > 0:
-                    out_ent['context_left'] = doc_tokens[max(ent.start - context_to_generate, 0):ent.start]
-                    out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_to_generate, len(doc_tokens))]
+                if context_left > 0 and context_right > 0:
+                    out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
+                    out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
                     out_ent['context_center'] = doc_tokens[ent.start:ent.end]
 
                 if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
                     out_ent['meta_anns'] = ent._.meta_anns
 
-                out['entities'].append(dict(out_ent))
+                out['entities'][out_ent['id']] = dict(out_ent)
             else:
                 out['entities'].append(cui)
 
@@ -658,7 +665,7 @@ class CAT(object):
         return json.dumps(out)
 
 
-    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[], doc_len_limit=1000000, doc_extended_info=False):
+    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[], doc_len_limit=1000000):
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
@@ -667,6 +674,7 @@ class CAT(object):
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         '''
+        self.nlp.nlp.max_length = doc_len_limit
 
         if self._meta_annotations:
             # Hack for torch using multithreading, which is not good here
@@ -683,8 +691,7 @@ class CAT(object):
         procs = []
         for i in range(nproc):
             p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
-                                                      'addl_info': addl_info, 'doc_len_limit': doc_len_limit,
-                                                      'doc_extended_info': doc_extended_info})
+                                                      'addl_info': addl_info, 'doc_len_limit': doc_len_limit})
             p.start()
             procs.append(p)
 
@@ -720,7 +727,7 @@ class CAT(object):
         return out
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], doc_len_limit=1000000, doc_extended_info=False):
+    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], doc_len_limit=1000000):
         cnt = 0
         out = []
         while True:
@@ -732,8 +739,7 @@ class CAT(object):
 
                 for id, text in data:
                     try:
-                        doc  = self.get_entities(text=text[0:doc_len_limit], only_cui=only_cui, addl_info=addl_info,
-                                doc_extended_info=doc_extended_info)
+                        doc = self.get_entities(text=text[0:doc_len_limit], only_cui=only_cui, addl_info=addl_info)
                         doc['text'] = text
                         out.append((id, doc))
                     except Exception as e:
