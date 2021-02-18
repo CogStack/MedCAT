@@ -69,6 +69,8 @@ class Config(object):
                 # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
                 #it will be skipped.
                 'upper_case_limit_len': 4,
+                # Documents longer  than this will be trimmed
+                'max_document_length': 1000000,
                 }
 
         self.linking = {
