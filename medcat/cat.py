@@ -92,7 +92,7 @@ class CAT(object):
             self._meta_annotations = True
 
         # Set max document length
-        self.nlp.nlp.max_length = self.config.ner.get('max_document_length', 1000000)
+        self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 
 
     def __call__(self, text, do_train=False):
@@ -101,7 +101,7 @@ class CAT(object):
 
         Args:
             text (string):
-                The text to be annotated, if it is longer than self.config['max_document_length'] it will be trimmed
+                The text to be annotated, if it is longer than self.config.preprocessing['max_document_length'] it will be trimmed
                 to that length.
             do_train (bool, defaults to `False`):
                 This causes so many screwups when not there, so I'll force training
@@ -115,7 +115,7 @@ class CAT(object):
         self.config.linking['train'] = do_train
 
         if text and len(text) > 0:
-            return self.nlp(text[0:self.config.ner.get('max_document_length', 1000000)])
+            return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
         else:
             return None
 

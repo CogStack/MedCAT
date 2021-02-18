@@ -58,6 +58,8 @@ class Config(object):
                 'min_len_normalize': 5,
                 # If None the default set of stowords from spacy will be used. This must be a Set.
                 'stopwords': None,
+                # Documents longer  than this will be trimmed
+                'max_document_length': 1000000,
                 }
 
         self.ner = {
@@ -69,8 +71,6 @@ class Config(object):
                 # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
                 #it will be skipped.
                 'upper_case_limit_len': 4,
-                # Documents longer  than this will be trimmed
-                'max_document_length': 1000000,
                 }
 
         self.linking = {
