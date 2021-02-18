@@ -91,6 +91,9 @@ class CAT(object):
             self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
             self._meta_annotations = True
 
+        # Set max document length
+        self.nlp.nlp.max_length = self.config.ner.get('max_document_length', 1000000)
+
 
     def __call__(self, text, do_train=False):
         r'''
@@ -98,7 +101,8 @@ class CAT(object):
 
         Args:
             text (string):
-                The text to be annotated
+                The text to be annotated, if it is longer than self.config['max_document_length'] it will be trimmed
+                to that length.
             do_train (bool, defaults to `False`):
                 This causes so many screwups when not there, so I'll force training
                 to False. To run training it is much better to use the self.train() function
@@ -110,7 +114,10 @@ class CAT(object):
         #self.train() function
         self.config.linking['train'] = do_train
 
-        return self.nlp(text)
+        if text and len(text) > 0:
+            return self.nlp(text[0:self.config.ner.get('max_document_length', 1000000)])
+        else:
+            return None
 
 
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
@@ -320,7 +327,7 @@ class CAT(object):
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
 
-    def train(self, data_iterator, fine_tune=True, progress_print=1000, doc_len_limit=10000000):
+    def train(self, data_iterator, fine_tune=True, progress_print=1000):
         """ Runs training on the data, note that the maximum lenght of a line
         or document is 1M characters. Anything longer will be trimmed.
 
@@ -332,8 +339,6 @@ class CAT(object):
         progress_print:
             Print progress after N lines
         """
-        # Set spacy length
-        self.nlp.nlp.max_length = doc_len_limit
         if not fine_tune:
             self.log.info("Removing old training data!")
             self.cdb.reset_training()
@@ -342,7 +347,7 @@ class CAT(object):
         for line in data_iterator:
             if line is not None and line:
                 # Convert to string
-                line = str(line).strip()[0:doc_len_limit]
+                line = str(line).strip()
 
                 try:
                     _ = self(line, do_train=True)
@@ -594,61 +599,61 @@ class CAT(object):
         '''
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         doc = self(text)
-        out = {'entities': {}}
-
-        out_ent = {}
-        if self.config.general.get('show_nested_entities', False):
-            _ents = doc._.ents
-        else:
-            _ents = doc.ents
-
-        if cnf_annotation_output.get("lowercase_context", True):
-            doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
-        else:
-            doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
-
-        if cnf_annotation_output.get('doc_extended_info', False):
-            # Add tokens if extended info
-            out['tokens'] = doc_tokens
-
-        context_left = cnf_annotation_output.get('context_left', -1)
-        context_right = cnf_annotation_output.get('context_right', -1)
-        doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
-
-        for ind, ent in enumerate(_ents):
-            cui = str(ent._.cui)
-            if not only_cui:
-                out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
-                out_ent['cui'] = cui
-                out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
-                out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
-                out_ent['source_value'] = ent.text
-                out_ent['detected_name'] = str(ent._.detected_name)
-                out_ent['acc'] = float(ent._.context_similarity)
-                out_ent['context_similarity'] = float(ent._.context_similarity)
-                out_ent['start'] = ent.start_char
-                out_ent['end'] = ent.end_char
-                for addl in addl_info:
-                    tmp = self.cdb.addl_info[addl].get(cui, [])
-                    out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
-                out_ent['id'] = ent._.id
-                out_ent['meta_anns'] = {}
-
-                if doc_extended_info:
-                    out_ent['start_tkn'] = ent.start
-                    out_ent['end_tkn'] = ent.end
-
-                if context_left > 0 and context_right > 0:
-                    out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
-                    out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
-                    out_ent['context_center'] = doc_tokens[ent.start:ent.end]
-
-                if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                    out_ent['meta_anns'] = ent._.meta_anns
-
-                out['entities'][out_ent['id']] = dict(out_ent)
+        out = {'entities': {}, 'tokens': []}
+        if doc is not None:
+            out_ent = {}
+            if self.config.general.get('show_nested_entities', False):
+                _ents = doc._.ents
             else:
-                out['entities'].append(cui)
+                _ents = doc.ents
+
+            if cnf_annotation_output.get("lowercase_context", True):
+                doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
+            else:
+                doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
+
+            if cnf_annotation_output.get('doc_extended_info', False):
+                # Add tokens if extended info
+                out['tokens'] = doc_tokens
+
+            context_left = cnf_annotation_output.get('context_left', -1)
+            context_right = cnf_annotation_output.get('context_right', -1)
+            doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
+
+            for ind, ent in enumerate(_ents):
+                cui = str(ent._.cui)
+                if not only_cui:
+                    out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
+                    out_ent['cui'] = cui
+                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
+                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                    out_ent['source_value'] = ent.text
+                    out_ent['detected_name'] = str(ent._.detected_name)
+                    out_ent['acc'] = float(ent._.context_similarity)
+                    out_ent['context_similarity'] = float(ent._.context_similarity)
+                    out_ent['start'] = ent.start_char
+                    out_ent['end'] = ent.end_char
+                    for addl in addl_info:
+                        tmp = self.cdb.addl_info[addl].get(cui, [])
+                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
+                    out_ent['id'] = ent._.id
+                    out_ent['meta_anns'] = {}
+
+                    if doc_extended_info:
+                        out_ent['start_tkn'] = ent.start
+                        out_ent['end_tkn'] = ent.end
+
+                    if context_left > 0 and context_right > 0:
+                        out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
+                        out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
+                        out_ent['context_center'] = doc_tokens[ent.start:ent.end]
+
+                    if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
+                        out_ent['meta_anns'] = ent._.meta_anns
+
+                    out['entities'][out_ent['id']] = dict(out_ent)
+                else:
+                    out['entities'].append(cui)
 
         return out
 
@@ -665,7 +670,7 @@ class CAT(object):
         return json.dumps(out)
 
 
-    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[], doc_len_limit=1000000):
+    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[]):
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
@@ -674,8 +679,6 @@ class CAT(object):
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         '''
-        self.nlp.nlp.max_length = doc_len_limit
-
         if self._meta_annotations:
             # Hack for torch using multithreading, which is not good here
             import torch
@@ -691,7 +694,7 @@ class CAT(object):
         procs = []
         for i in range(nproc):
             p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
-                                                      'addl_info': addl_info, 'doc_len_limit': doc_len_limit})
+                                                      'addl_info': addl_info})
             p.start()
             procs.append(p)
 
@@ -727,7 +730,7 @@ class CAT(object):
         return out
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], doc_len_limit=1000000):
+    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
         cnt = 0
         out = []
         while True:
@@ -739,7 +742,7 @@ class CAT(object):
 
                 for id, text in data:
                     try:
-                        doc = self.get_entities(text=text[0:doc_len_limit], only_cui=only_cui, addl_info=addl_info)
+                        doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         doc['text'] = text
                         out.append((id, doc))
                     except Exception as e:

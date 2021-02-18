@@ -55,7 +55,7 @@ class LSTM(nn.Module):
         x = self.embeddings(x) # x.shape = batch_size x sequence_length x emb_size
 
         # Tell RNN to ignore padding and set the batch_first to True
-        x = nn.utils.rnn.pack_padded_sequence(x, mask.sum(1).int().view(-1), batch_first=True, enforce_sorted=False)
+        x = nn.utils.rnn.pack_padded_sequence(x, mask.sum(1).int().view(-1).cpu(), batch_first=True, enforce_sorted=False)
 
         # Run 'x' through the RNN
         x, hidden = self.rnn(x)
