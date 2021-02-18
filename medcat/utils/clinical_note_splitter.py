@@ -1,5 +1,6 @@
 import pandas as pd
 import regex
+import logging
 
 
 def normalize_date(date):
@@ -16,7 +17,7 @@ def normalize_date(date):
     elif date.strip()[0].isalpha():
         date = date[date.index(' '):].strip()
     else:
-        print("Unsuported date format: {}".format(date))
+        logging.warning("Unsuported date format: {}".format(date))
 
     return date
 
@@ -47,7 +48,7 @@ def split_one_note(id, text):
             note_text = text[start:end]
             if 'entered on -' in note_text.lower():
                 if len(regex.findall(r'entered on -', note_text)) > 1:
-                    print("Possible problems for span with start: {} and end: {} for note with id: {}".format(start, end, id))
+                    logging.warning("Possible problems for span with start: {} and end: {} for note with id: {}".format(start, end, id))
                 split_note.append({'start': start, 'end': end, 'text': note_text, 'date': normalize_date(previous_date)})
                 start = end
                 previous_date = date.captures()[0]
@@ -55,7 +56,7 @@ def split_one_note(id, text):
     if previous_date is not None:
         split_note.append({'start': start, 'end': len(text), 'text': text[start:], 'date': normalize_date(previous_date)})
     else:
-        print(text)
+        logging.warning(text)
 
     return split_note
 
