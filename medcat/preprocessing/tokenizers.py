@@ -125,3 +125,15 @@ class SpacyHFDoc(object):
         self.doc = doc
         self.tokens = [x.text for x in self.doc]
         self.offsets = [(x.idx, x.idx+len(x.text)) for x in self.doc]
+
+
+class TokenizerWrapperBPE(object):
+    def __init__(self, hf_tokenizers):
+        self.hf_tokenizers = hf_tokenizers
+
+    def __call__(self, text):
+        res = self.hf_tokenizers.encode(text)
+
+        return {'offset_mapping': res.offsets,
+                'input_ids': res.ids,
+                }
