@@ -833,12 +833,12 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
                             _start = max(0, start - cntx_left)
                             _end = min(len(text), end + cntx_right)
-                            t_left = tokenizer(text[_start:start], add_special_tokens=False)['input_ids']
-                            t_right = tokenizer(text[end:_end], add_special_tokens=False)['input_ids']
+                            t_left = tokenizer(text[_start:start])['input_ids']
+                            t_right = tokenizer(text[end:_end])['input_ids']
                             if replace_center is None:
-                                t_center = tokenizer(text[start:end], add_special_tokens=False)['input_ids']
+                                t_center = tokenizer(text[start:end])['input_ids']
                             else:
-                                t_center = tokenizer(replace_center, add_special_tokens=False)['input_ids']
+                                t_center = tokenizer(replace_center)['input_ids']
 
                             tkns = t_left + t_center + t_right
                             cpos = len(t_left)
@@ -885,7 +885,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
             text = str(document['text'])
 
             if len(text) > 0:
-                doc_text = tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
+                doc_text = tokenizer(text)
 
                 for ann in document['annotations']:
                     tui = ""
@@ -917,17 +917,17 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                                             e_ind = p_ind
 
                                     ln = e_ind - s_ind
-                                    tkns[cpos:cpos+ln+1] = [tokenizer(replace_center, add_special_tokens=False)['input_ids'][0]]
+                                    tkns[cpos:cpos+ln+1] = [tokenizer(replace_center)['input_ids'][0]]
 
                             else:
                                 _start = max(0, start - cntx_left)
                                 _end = min(len(text), end + cntx_right)
-                                t_left = tokenizer(text[_start:start], add_special_tokens=False)['input_ids']
-                                t_right = tokenizer(text[end:_end], add_special_tokens=False)['input_ids']
+                                t_left = tokenizer(text[_start:start])['input_ids']
+                                t_right = tokenizer(text[end:_end])['input_ids']
                                 if replace_center is None:
-                                    t_center = tokenizer(text[start:end], add_special_tokens=False)['input_ids']
+                                    t_center = tokenizer(text[start:end])['input_ids']
                                 else:
-                                    t_center = tokenizer(replace_center, add_special_tokens=False)['input_ids']
+                                    t_center = tokenizer(replace_center)['input_ids']
 
                                 tkns = t_left + t_center + t_right
                                 cpos = len(t_left)
