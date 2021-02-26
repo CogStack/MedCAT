@@ -3,6 +3,23 @@ from spacy.tokens import Token, Doc, Span
 from medcat.utils.spelling import SpacySpellChecker
 import spacy
 import os
+import pandas as pd
+
+def _tags_as_dataframe(doc):
+    cols=[
+        'id',
+        'label',
+        'cui',
+        'tui',
+        'start',
+        'end',
+        'ent_id'
+        'acc',
+    ]
+    df = pd.DataFrame(doc._.tags, columns=cols)
+    return df 
+
+
 
 class SpacyPipe(object):
     SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
@@ -36,6 +53,7 @@ class SpacyPipe(object):
         # Add custom fields needed for this usecase
         # Doc.set_extension('ents', default=None, force=True)
         Doc.set_extension('tags', default=[], force=True)
+        Doc.set_extension('tags_as_df', method=_tags_as_dataframe)
 
         # Span.set_extension('acc', default=-1, force=True)
         # Span.set_extension('cui', default=-1, force=True)
