@@ -375,6 +375,7 @@ class SpacyCat(object):
                 # print('lbl: ', lbl)
                 # puts all tags in a list attached to the doc instead of in spans
                 ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
+                # doc.ents = list(doc.ents) + [ent]
                 doc._.tags.append(
                     {
                         'acc':acc,

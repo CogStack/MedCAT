@@ -8,22 +8,24 @@ import pandas as pd
 def _tags_as_dataframe(doc):
     cols=[
         'id',
+        'ent_id',
         'label',
         'cui',
         'tui',
         'start',
         'end',
-        'ent_id'
         'acc',
     ]
+
     df = pd.DataFrame(doc._.tags, columns=cols)
+
     return df 
 
 
 
 class SpacyPipe(object):
     SPACY_MODEL = os.getenv("SPACY_MODEL", 'en_core_sci_md')
-    def __init__(self, tokenizer, disable=['ner', 'parser', 'vectors', 'textcat']):
+    def __init__(self, tokenizer, disable=['ner', 'vectors', 'textcat']):
         self.nlp = spacy.load(self.SPACY_MODEL, disable=disable)
         self.nlp.tokenizer = tokenizer(self.nlp)
 
