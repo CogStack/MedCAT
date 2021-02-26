@@ -6,6 +6,7 @@ import os
 
 config = Config()
 config.general['log_level'] = logging.INFO
+config.general['spacy_model'] = 'en_core_sci_lg'
 maker = CDBMaker(config)
 
 # Building a new CDB from two files (full_build)
@@ -30,6 +31,14 @@ config = Config()
 cdb = CDB.load("./tmp_cdb.dat", config=config)
 vocab = Vocab.load(vocab_path)
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
+
+cat.config.ner['min_name_len'] = 5
+
+cat.config.linking['context_vector_sizes'] = {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3}
+cat.config.linking['context_vector_weights'] = {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3}
+
+cat.train(df.text.values[10000:], fine_tune=True)
+
 
 # Train
 _ = cat.train(open("./tmp_medmentions_text_only.txt", 'r'), fine_tune=False)
