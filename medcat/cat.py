@@ -174,15 +174,20 @@ class CAT(object):
 
         fp_docs = set()
         fn_docs = set()
+        # Backup for filters
         _filters = deepcopy(self.config.linking['filters'])
-
-        # Reset all filters
-        self.config.linking['filters']['cuis'] = set()
+        # Shortcut for filters
+        filters = self.config.linking['filters']
 
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             if use_filters:
-                self.config.linking['filters']['cuis'] = process_old_project_filters(
-                        cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
+                if type(project.get('cuis', None)) == str:
+                    # Old filters
+                    filters['cuis'] = process_old_project_filters(
+                            cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
+                elif type(project.get('cuis', None)) == list:
+                    # New filters
+                    filters['cuis'] = project.get('cuis')
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
@@ -192,7 +197,7 @@ class CAT(object):
                 if use_cui_doc_limit:
                     _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        self.config.linking['filters']['cuis'] = _cuis
+                        filters['cuis'] = _cuis
 
                 spacy_doc = self(doc['text'])
 
@@ -207,7 +212,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if not use_filters or check_filters(cui, self.config.linking['filters']):
+                    if not use_filters or check_filters(cui, filters):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
