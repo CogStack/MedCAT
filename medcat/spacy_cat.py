@@ -372,19 +372,39 @@ class SpacyCat(object):
                 else:
                     lbl = cui
 
-                lbl = doc.vocab.strings.add(lbl)
+                # print('lbl: ', lbl)
+                # puts all tags in a list attached to the doc instead of in spans
                 ent = Span(doc, tkns[0].i, tkns[-1].i + 1, label=lbl)
+                doc._.tags.append(
+                    {
+                        'acc':acc,
+                        'cui':cui,
+                        'tui':self.cdb.cui2tui.get(cui, 'None'),
+                        'ent_id': self.ent_id,
+                        'start':ent.start,
+                        'end':ent.end,
+                        'label':lbl,
+                        'id':self.ent_id
+                    }
+                )
+                self.ent_id += 1
+
+                lbl = doc.vocab.strings.add(lbl)
+                
 
 
                 if self.ACC_ALWAYS:
                     acc = self._calc_acc(cui, doc, tkns, name)
+                
+                
 
-                ent._.acc = acc
-                ent._.cui = cui
-                ent._.tui = self.cdb.cui2tui.get(cui, 'None')
-                ent._.id = self.ent_id
-                self.ent_id += 1
-                doc._.ents.append(ent)
+
+                # ent._.acc = acc
+                # ent._.cui = cui
+                # ent._.tui = self.cdb.cui2tui.get(cui, 'None')
+                # ent._.id = self.ent_id
+                # self.ent_id += 1
+                # doc._.ents.append(ent)
 
                 # Increase counter for cui_count_ext if not already added
                 if cui not in self._cuis:
@@ -405,12 +425,14 @@ class SpacyCat(object):
 
         doc:  spacy document
         """
-        doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
+        # doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
 
         tkns_in = set()
         main_anns = []
-        for ent in doc._.ents:
-            if tuis is None or ent._.tui in tuis:
+        for tag in doc._.tags:
+            tui = tag['tui']
+            ent = doc[tag['start']:tag['end']]
+            if tuis is None or tui in tuis:
                 to_add = True
                 for tkn in ent:
                     if tkn in tkns_in:
@@ -430,7 +452,7 @@ class SpacyCat(object):
         """
         self.ent_id = 0
         self._cuis = set()
-        doc._.ents = []
+        # doc._.ents = []
         # Get the words in this document that should not be skipped
         doc_words = [t._.norm for t in doc if not t._.to_skip]
 

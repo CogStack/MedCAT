@@ -305,11 +305,11 @@ class MetaCAT(object):
             outputs = self.model(x, cpos).detach().to('cpu').numpy()
             outputs = np.argmax(outputs, axis=1)
 
-            for ent in doc.ents:
-                val = self.i_category_values[outputs[id2row[ent._.id]]]
-                if ent._.meta_anns is None:
-                    ent._.meta_anns = {self.category_name: val}
+            for tag in doc._.tags:
+                val = self.i_category_values[outputs[id2row[tag['id']]]]
+                if 'meta_anns' in tag:
+                    tag['meta_anns'] = {self.category_name: val}
                 else:
-                    ent._.meta_anns[self.category_name] = val
+                    tag['meta_anns'][self.category_name] = val
 
         return doc

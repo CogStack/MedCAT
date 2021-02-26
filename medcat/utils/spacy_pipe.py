@@ -34,11 +34,13 @@ class SpacyPipe(object):
         self.nlp.add_pipe(spacy_cat, name='cat', last=True)
 
         # Add custom fields needed for this usecase
-        Doc.set_extension('ents', default=None, force=True)
-        Span.set_extension('acc', default=-1, force=True)
-        Span.set_extension('cui', default=-1, force=True)
-        Span.set_extension('tui', default=-1, force=True)
-        Span.set_extension('id', default=0, force=True)
+        # Doc.set_extension('ents', default=None, force=True)
+        Doc.set_extension('tags', default=[], force=True)
+
+        # Span.set_extension('acc', default=-1, force=True)
+        # Span.set_extension('cui', default=-1, force=True)
+        # Span.set_extension('tui', default=-1, force=True)
+        # Span.set_extension('id', default=0, force=True)
 
 
     def add_meta_cat(self, meta_cat, name):
@@ -46,7 +48,8 @@ class SpacyPipe(object):
 
         # Only the meta_anns field is needed, it will be a dictionary 
         #of {category_name: value, ...}
-        Span.set_extension('meta_anns', default=None, force=True)
+        # Span.set_extension('meta_anns', default=None, force=True)
+        Doc.set_extension('meta_anns', default=None, force=True)
 
 
     def __call__(self, text):

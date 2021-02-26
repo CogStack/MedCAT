@@ -13,6 +13,7 @@ build/
 .idea
 venv
 db.sqlite3
+*.vscode
 
 #tmp and similar files
 .nfs*

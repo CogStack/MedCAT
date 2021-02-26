@@ -704,30 +704,32 @@ class CAT(object):
             cat_filter(doc, self)
 
         out_ent = {}
-        if self.config.get('nested_entities', False):
-            _ents = doc._.ents
-        else:
-            _ents = doc.ents
+        # if self.config.get('nested_entities', False):
+        #     _ents = doc._.ents
+        # else:
+        #     _ents = doc.ents
 
-        for ind, ent in enumerate(_ents):
-            cui = str(ent._.cui)
+        _tags = doc._.tags
+
+        for ind, tag in enumerate(_tags):
+            cui = str(tag['cui'])
             if not only_cui:
                 out_ent['pretty_name'] = self.cdb.cui2pretty_name.get(cui, '')
                 out_ent['cui'] = cui
-                out_ent['tui'] = str(ent._.tui)
+                out_ent['tui'] = str(tag['tui'])
                 out_ent['type'] = str(self.cdb.tui2name.get(out_ent['tui'], ''))
-                out_ent['source_value'] = str(ent.text)
-                out_ent['acc'] = str(ent._.acc)
-                out_ent['start'] = ent.start_char
-                out_ent['end'] = ent.end_char
+                out_ent['source_value'] = str(doc[tag['start']:tag['end']].text)
+                out_ent['acc'] = str(tag['acc'])
+                out_ent['start'] = doc[tag['start']:tag['end']].start_char
+                out_ent['end'] = doc[tag['start']:tag['end']].end_char
                 if not skip_info:
                     out_ent['info'] = self.cdb.cui2info.get(cui, {})
-                out_ent['id'] = str(ent._.id)
+                out_ent['id'] = str(tag['id'])
                 out_ent['meta_anns'] = {}
 
-                if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                    for key in ent._.meta_anns.keys():
-                        one = {'name': key, 'value': ent._.meta_anns[key]}
+                if 'meta_anns' in tag:
+                    for key in tag['meta_anns'].keys():
+                        one = {'name': key, 'value': tag['meta_anns'][key]}
                         out_ent['meta_anns'][key] = one
 
                 out.append(dict(out_ent))

@@ -1,4 +1,5 @@
 import numpy as np
+from spacy.tokens import Span
 from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
 import html
@@ -477,3 +478,6 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, l
                 fns[key] = [fn.get(key, 0)]
 
     return fps, fns, tps, ps, rs, f1s, cui_counts, examples
+
+
+
