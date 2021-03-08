@@ -108,7 +108,7 @@ class MakeVocab(object):
         self.vocab.save_dict(path=vocab_path)
 
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=8, niter=2, min_count=10, window=10, vsize=300):
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, unigram_table_size=100000000, workers=8, niter=2, min_count=10, window=10, vsize=300):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path. 
 
@@ -121,6 +121,9 @@ class MakeVocab(object):
                 If True it will overwrite existing vectors in the vocabulary. Default: False
             data_iter (iterator):
                 If you want to provide a customer iterator over the data use this. If yes, then in_path is not needed.
+            unigram_table_size:
+                Default is 100,000,000. It can easily be 100 times smaller without affecting the performance at all on
+                small/medium datasets, while reducing the size of vocab.dat
             **: Word2Vec arguments
 
         Returns:
@@ -142,6 +145,6 @@ class MakeVocab(object):
                         self.vocab.add_vec(word, w2v.wv.get_vector(word))
 
         # Save the vocab again, now with vectors
-        self.vocab.make_unigram_table()
+        self.vocab.make_unigram_table(unigram_table_size)
         self.vocab.save_dict(path=self.vocab_path)
         return w2v
