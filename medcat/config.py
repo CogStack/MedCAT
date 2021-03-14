@@ -9,7 +9,7 @@ class Config(object):
                 #by the character below.
                 'multi_separator': '|',
                 # Name versions to be generated.
-                'name_versions': ['CLEAN', 'LOWER'],
+                'name_versions': ['LOWER', 'CLEAN'],
                 }
 
         # Used mainly to configure the output of the get_entities function, and in that also the output of
@@ -22,14 +22,15 @@ class Config(object):
                 }
 
         self.general = {
-                # Logging config for everything
+                # Logging config for everything | 'tagger' can be enabled to improve tagging, but will slow down things
+                # TODO: Add 'tagger'
                 'log_level': logging.INFO,
                 'log_format': '%(asctime)s: %(message)s',
-                'spacy_disabled_components': ['tagger', 'ner', 'parser', 'vectors', 'textcat',
+                'spacy_disabled_components': ['ner', 'parser', 'vectors', 'textcat', 
                                               'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                               'merge_entities', 'merge_subtokens'],
                 # What model will be used for tokenization
-                'spacy_model': 'en_core_sci_md',
+                'spacy_model': 'en_core_sci_lg',
                 # Separator that will be used to merge tokens of a name. Once a CDB is built this should
                 #always stay the same.
                 'separator': '~',
@@ -94,8 +95,11 @@ class Config(object):
                 # Do we want to calculate context similarity even for concepts that are not ambigous.
                 'always_calculate_similarity': False,
                 # Weights for a weighted average
-                'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
-                # Concepts below this similarity will be ignored
+                #'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
+                'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.0004)),
+                # Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
+                #and it is calcualted as the average confidence for that CUI * similarity_threshold
+                'similarity_threshold_type': 'static',
                 'similarity_threshold': 0.2,
                 # Probability for the negative context to be added for each positive addition
                 'negative_probability': 0.5,
@@ -156,3 +160,5 @@ class Config(object):
 
                     attr = getattr(self, variable)
                     attr[key] = value
+
+        self.rebuild_re()

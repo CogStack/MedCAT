@@ -13,7 +13,7 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.utils.loggers import add_handlers
-from medcat.utils.data_utils import make_mc_train_test
+from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
@@ -191,7 +191,10 @@ class CAT(object):
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
-                anns = doc['annotations']
+                if type(doc['annotations']) == list:
+                    anns = doc['annotations']
+                elif type(doc['annotations']) == dict:
+                    anns = doc['annotations'].values()
 
                 # Apply document level filtering if
                 if use_cui_doc_limit:
@@ -423,7 +426,7 @@ class CAT(object):
 
 
     def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
-                              description='', full_build=True, negative=False, devalue_others=False):
+                              description='', full_build=True, negative=False, devalue_others=False, do_add_concept=True):
         r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name and concept alraedy exist. Perform
         training if spacy_entity and spacy_doc are set.
 
@@ -448,8 +451,9 @@ class CAT(object):
         '''
 
         names = prepare_name(name, self, {}, self.config)
-        self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
-                             full_build=full_build)
+        if do_add_concept:
+            self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
+                                 full_build=full_build)
 
         if spacy_entity is not None and spacy_doc is not None:
             # Train Linking
@@ -469,9 +473,9 @@ class CAT(object):
 
 
     def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
-                         print_stats=True, use_filters=False, terminate_last=False, use_overlaps=False,
+                         print_stats=0, use_filters=False, terminate_last=False, use_overlaps=False,
                          use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
-                         never_terminate=False):
+                         never_terminate=False, train_from_false_positives=False):
         r''' TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simiulated
         online training then supervised.
@@ -486,8 +490,8 @@ class CAT(object):
                 that exist in the the training data.
             nepochs (int):
                 Number of epochs for which to run the training.
-            print_stats (boolean):
-                If true stats will be printed during training (prints stats every 5 epochs).
+            print_stats (int):
+                If > 0 it will print stats every print_stats epochs.
             use_filters (boolean):
                 Each project in medcattrainer can have filters, do we want to respect those filters
                 when calculating metrics.
@@ -508,6 +512,8 @@ class CAT(object):
                 If True concepts that have groups will be combined and stats will be reported on groups.
             never_terminate (boolean):
                 If True no termination will be applied
+            train_from_false_positives (boolean):
+                If True it will use false positive examples detected by medcat and train from them as negative examples.
 
         Returns:
             fp (dict):
@@ -532,12 +538,13 @@ class CAT(object):
         cui_counts = {}
 
         if test_size == 0:
+            self.log.info("Running without a test set, or train=test")
             test_set = data
             train_set = data
         else:
             train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
 
-        if print_stats:
+        if print_stats > 0:
             self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
                     use_groups=use_groups)
 
@@ -546,7 +553,12 @@ class CAT(object):
             cuis = []
             for project in train_set['projects']:
                 for doc in project['documents']:
-                    for ann in doc['annotations']:
+                    if type(doc['annotations']) == list:
+                        doc_annotations = doc['annotations']
+                    elif type(doc['annotations']) == dict:
+                        doc_annotations = doc['annotations'].values()
+
+                    for ann in doc_annotations:
                         cuis.append(ann['cui'])
             for cui in set(cuis):
                 if cui in self.cdb.cui2count_train:
@@ -556,7 +568,12 @@ class CAT(object):
         if not never_terminate:
             for project in train_set['projects']:
                 for doc in project['documents']:
-                    for ann in doc['annotations']:
+                    if type(doc['annotations']) == list:
+                        doc_annotations = doc['annotations']
+                    elif type(doc['annotations']) == dict:
+                        doc_annotations = doc['annotations'].values()
+
+                    for ann in doc_annotations:
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
 
@@ -565,7 +582,13 @@ class CAT(object):
             for project in tqdm(train_set['projects'], desc='Project', leave=False, total=len(train_set['projects'])):
                 for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
-                    for ann in doc['annotations']:
+                    # Compatibility with old output where annotations are a list
+                    if type(doc['annotations']) == list:
+                        doc_annotations = doc['annotations']
+                    elif type(doc['annotations']) == dict:
+                        doc_annotations = doc['annotations'].values()
+
+                    for ann in doc_annotations:
                         if not ann.get('killed', False):
                             cui = ann['cui']
                             start = ann['start']
@@ -578,21 +601,36 @@ class CAT(object):
                                           spacy_entity=spacy_entity,
                                           negative=deleted,
                                           devalue_others=devalue_others)
+                    if train_from_false_positives:
+                        fps = get_false_positives(doc, spacy_doc)
+
+                        for fp in fps:
+                            self.add_and_train_concept(cui=fp._.cui,
+                                                       name=fp.text,
+                                                       spacy_doc=spacy_doc,
+                                                       spacy_entity=fp,
+                                                       negative=True,
+                                                       do_add_concept=False)
+
             if terminate_last and not never_terminate:
                 # Remove entites that were terminated, but after all training is done
                 for project in train_set['projects']:
                     for doc in project['documents']:
-                        for ann in doc['annotations']:
+                        if type(doc['annotations']) == list:
+                            doc_annotations = doc['annotations']
+                        elif type(doc['annotations']) == dict:
+                            doc_annotations = doc['annotations'].values()
+
+                        for ann in doc_annotations:
                             if ann.get('killed', False):
                                 self.unlink_concept_name(ann['cui'], ann['value'])
 
-            if epoch % 5 == 0:
-                if print_stats:
-                    fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, epoch=epoch+1,
-                                                             use_filters=use_filters,
-                                                             use_cui_doc_limit=use_cui_doc_limit,
-                                                             use_overlaps=use_overlaps,
-                                                             use_groups=use_groups)
+            if print_stats > 0 and (epoch + 1) % print_stats == 0:
+                fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, epoch=epoch+1,
+                                                         use_filters=use_filters,
+                                                         use_cui_doc_limit=use_cui_doc_limit,
+                                                         use_overlaps=use_overlaps,
+                                                         use_groups=use_groups)
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
 

@@ -22,7 +22,8 @@ class NER(object):
         for i in range(len(_doc)):
             tkn = _doc[i]
             tkns = [tkn]
-            name_versions = [tkn.lower_, tkn._.norm]
+            #name_versions = [tkn.lower_, tkn._.norm]
+            name_versions = [tkn._.norm, tkn.lower_]
             name = ""
 
             for name_version in name_versions:

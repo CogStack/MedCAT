@@ -101,10 +101,13 @@ class Linker(object):
                         cui, context_similarity = self.context_model.disambiguate(entity._.link_candidates, entity, 'unk-unk', doc)
 
                     # Add the annotation if it exists and if above threshold and in filters
-                    if cui and context_similarity >= self.config.linking['similarity_threshold'] and check_filters(cui, self.config.linking['filters']):
-                        entity._.cui = cui
-                        entity._.context_similarity = context_similarity
-                        linked_entities.append(entity)
+                    if cui and check_filters(cui, self.config.linking['filters']):
+                        th_type = self.config.linking.get('similarity_threshold_type', 'static')
+                        if (th_type == 'static' and context_similarity >= self.config.linking['similarity_threshold']) or \
+                           (th_type == 'dynamic' and context_similarity >= self.cdb.cui2average_confidence[cui] * self.config.linking['similarity_threshold']):
+                            entity._.cui = cui
+                            entity._.context_similarity = context_similarity
+                            linked_entities.append(entity)
 
         doc._.ents = linked_entities
         self._create_main_ann(doc)
