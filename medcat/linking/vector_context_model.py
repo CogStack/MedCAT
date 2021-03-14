@@ -166,6 +166,11 @@ class ContextModel(object):
             # Debug
             self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
 
+            if not negative:
+                # Update average confidence for this CUI
+                sim = self.similarity(cui, entity, doc)
+                self.cdb.update_cui2_average_confidence(cui=cui, new_sim=sim)
+
             if negative:
                 # Change the status of the name so that it has to be disambiguated always
                 for name in names:
@@ -196,6 +201,8 @@ class ContextModel(object):
 
     def train_using_negative_sampling(self, cui):
         vectors = {}
+
+        # Get vectors for each context type
         for context_type in self.config.linking['context_vector_sizes'].keys():
             size = self.config.linking['context_vector_sizes'][context_type]
             # While it should be size*2 it is already too many negative examples, so we leave it at size
@@ -206,4 +213,5 @@ class ContextModel(object):
             # Debug
             self.log.debug("Updating CUI: {}, with {} negative words".format(cui, len(inds)))
 
+        # Do the update for all context types
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=True)

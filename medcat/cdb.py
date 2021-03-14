@@ -58,6 +58,7 @@ class CDB(object):
         self.cui2tags = {} # Used to add custom tags to CUIs
         self.cui2type_ids = {}
         self.cui2preferred_name = {}
+        self.cui2average_confidence = {}
 
         self.addl_info = {
                 'cui2icd10': {},
@@ -73,6 +74,9 @@ class CDB(object):
         self.vocab = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
 
+
+    def update_cui2_average_confidence(self, cui, new_sim):
+        self.cui2average_confidence[cui] = (self.cui2average_confidence[cui] * self.cui2count_train[cui] + new_sim)  / (self.cui2count_train[cui] + 1)
 
     def remove_names(self, cui: str, names: Dict):
         r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
@@ -165,6 +169,7 @@ class CDB(object):
             self.cui2snames[cui] = set()
             self.cui2context_vectors[cui] = {}
             self.cui2count_train[cui] = 0
+            self.cui2average_confidence = 0
             self.cui2tags[cui] = []
 
             # Add type_ids

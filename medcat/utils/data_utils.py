@@ -993,7 +993,12 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
             tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
 
         for document in project['documents']:
-            for ann in document['annotations']:
+            if type(document['annotations']) == list:
+                doc_annotations = document['annotations']
+            elif type(document['annotations']) == dict:
+                doc_annotations = document['annotations'].values()
+
+            for ann in doc_annotations:
 
                 if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                    (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
@@ -1042,7 +1047,12 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
 
             # Coutn CUIs for this document
             _cnts = {}
-            for ann in document['annotations']:
+            if type(document['annotations']) == list:
+                doc_annotations = document['annotations']
+            elif type(document['annotations']) == dict:
+                doc_annotations = document['annotations'].values()
+
+            for ann in doc_annotations:
                 if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                    (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
                     if ann['cui'] in _cnts:
@@ -1064,7 +1074,12 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
             # Add to test set
             if is_test and np.random.rand() < test_prob:
                 test_project['documents'].append(document)
-                for ann in document['annotations']:
+                if type(document['annotations']) == list:
+                    doc_annotations = document['annotations']
+                elif type(document['annotations']) == dict:
+                    doc_annotations = document['annotations'].values()
+
+                for ann in doc_annotations:
                     if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                        (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
                         test_anns += 1
@@ -1079,3 +1094,17 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
         train_set['projects'].append(train_project)
 
     return train_set, test_set, test_anns, total_anns
+
+
+def get_false_positives(doc, spacy_doc):
+    if type(doc['annotations']) == list:
+        truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
+    elif type(doc['annotations']) == dict:
+        truth = set([(ent['start'], ent['cui']) for ent in doc['annotations'].values()])
+
+    fps = []
+    for ent in spacy_doc._.ents:
+        if (ent.start_char, ent._.cui) not in truth:
+            fps.append(ent)
+    
+    return fps
