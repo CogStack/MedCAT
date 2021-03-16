@@ -1,7 +1,20 @@
 import pandas as pd
 import json
 
-def mrconso_to_csv(mrconso_path, column_names=None, sep='|', lng='ENG', output_path='', **kwargs):
+def prepare_umls_csv(mrconso_path, mrsty_path, sep='|', lng='ENG', output_path=None, **kwargs):
+    conso_df = mrconso_path(mrconso_path=mrconso_path, column_names=column_names, sep=sep, lng=lng, output_path=None, **kwargs)
+
+    column_names = ['CUI', 'TUI', 'STN', 'STY', 'ATUI', 'CVF']
+    sty_df = pd.read_csv(mrsty_path, names=column_names, sep=sep, dtype=str, **kwargs)
+
+    cui2tui = {}
+    for cui, tui in sty_df[['CUI', 'TUI']]:
+        if cui in cui2tui:
+            cui2tui[cui].append(tui)
+        else:
+            cui2tui[cui] = [tui]
+
+def mrconso_to_csv(mrconso_path, column_names=None, sep='|', lng='ENG', output_path=None, **kwargs):
     if column_names is None:
         column_names = ['CUI', 'LAT', 'TS', 'LUI', 'STT', 'SUI', 'ISPREF', 'AUI', 'SAUI', 'SCUI', 'SDUI', 'SAB', 'TTY', 'CODE', 'STR', 'SRL', 'SUPPRESS', 'CVF', 'unk']
     df = pd.read_csv(mrconso_path, names=column_names, sep=sep, dtype=str, **kwargs)

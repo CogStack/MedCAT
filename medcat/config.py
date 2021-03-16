@@ -112,8 +112,10 @@ class Config(object):
                 'negative_probability': 0.5,
                 # Do we ignore punct/num when negative sampling
                 'negative_ignore_punct_and_num': True,
-                # If True concepts for which a detection is its primary name will be preferred
-                'prefer_primary_name': True,
+                # If >0 concepts for which a detection is its primary name will be preferred by that amount (0 to 1)
+                'prefer_primary_name': 0.35,
+                # If >0 concepts that are more frequent will be prefered by a multiply of this amount 
+                'prefer_frequent_concepts': 0.35,
                 # Subsample during unsupervised training if a concept has received more than 
                 'subsample_after': 30000,
                 # When adding a positive example, should it also be treated as Negative for concepts
