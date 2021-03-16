@@ -10,6 +10,11 @@ class Config(object):
                 'multi_separator': '|',
                 # Name versions to be generated.
                 'name_versions': ['LOWER', 'CLEAN'],
+                # Should preferred names with parenthesis be cleaned 0 means no, else it means if longer than or equal
+                # e.g. Head (Body part) -> Head
+                'remove_parenthesis': 5,
+                # Minimum number of letters required in a name to be accepted for a concept
+                'min_letters_required': 2,
                 }
 
         # Used mainly to configure the output of the get_entities function, and in that also the output of
@@ -22,8 +27,7 @@ class Config(object):
                 }
 
         self.general = {
-                # Logging config for everything | 'tagger' can be enabled to improve tagging, but will slow down things
-                # TODO: Add 'tagger'
+                # Logging config for everything | 'tagger' can be disabled, but will cause drop in performance 
                 'log_level': logging.INFO,
                 'log_format': '%(asctime)s: %(message)s',
                 'spacy_disabled_components': ['ner', 'parser', 'vectors', 'textcat', 
@@ -44,7 +48,7 @@ class Config(object):
                 'spell_check_len_limit': 7,
                 # If set to True functions like get_entities and get_json will return nested_entities and overlaps
                 'show_nested_entities': False,
-                # When unlinking a name from a concept should we do full_unlink
+                # When unlinking a name from a concept should we do full_unlink (means unlink a name from all concepts, not just the one in question)
                 'full_unlink': False,
                 }
 
@@ -61,6 +65,8 @@ class Config(object):
                 'stopwords': None,
                 # Documents longer  than this will be trimmed
                 'max_document_length': 1000000,
+                # Should specific word types be normalized: e.g. running -> run
+                'do_not_normalize': {'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'},
                 }
 
         self.ner = {
@@ -71,7 +77,7 @@ class Config(object):
                 'max_skip_tokens': 2,
                 # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
                 #it will be skipped.
-                'upper_case_limit_len': 4,
+                'upper_case_limit_len': 3,
                 }
 
         self.linking = {
@@ -82,16 +88,16 @@ class Config(object):
                 # 'optim': {'type': 'standard', 'lr': 1},
                 # 'optim': {'type': 'moving_avg', 'alpha': 0.99, 'e': 1e-4, 'size': 100},
                 # All concepts below this will always be disambiguated
-                'disamb_length_limit': 5,
+                'disamb_length_limit': 3,
                 # Context vector sizes that will be calculated and used for linking
                 'context_vector_sizes': {'xxxlong': 60, 'xxlong': 45, 'xlong': 27, 'long': 18, 'medium': 9, 'short': 3},
                 # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
-                'context_vector_weights': {'xxxlong': 0, 'xxlong': 0, 'xlong': 0, 'long': 0.4, 'medium': 0.4, 'short': 0.2},
+                'context_vector_weights': {'xxxlong': 0, 'xxlong': 0, 'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1},
                 # If True it will filter before doing disamb. Useful for the trainer.
                 'filter_before_disamb': False,
                 # Concepts that have seen less training examples than this will not be used for
                 #similarity calculation and will have a similarity of -1.
-                'train_count_threshold': 2,
+                'train_count_threshold': 1,
                 # Do we want to calculate context similarity even for concepts that are not ambigous.
                 'always_calculate_similarity': False,
                 # Weights for a weighted average
@@ -99,6 +105,7 @@ class Config(object):
                 'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.0004)),
                 # Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
                 #and it is calcualted as the average confidence for that CUI * similarity_threshold
+                'calculate_dynamic_threshold': False,
                 'similarity_threshold_type': 'static',
                 'similarity_threshold': 0.2,
                 # Probability for the negative context to be added for each positive addition

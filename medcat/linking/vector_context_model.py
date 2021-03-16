@@ -59,7 +59,7 @@ class ContextModel(object):
             values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
                            for step, tkn in enumerate(tokens_left) if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
             # Add center - used normalized
-            values.extend([self.vocab.vec(tkn._.norm) for tkn in tokens_center if tkn._.norm in self.vocab and self.vocab.vec(tkn._.norm) is not None])
+            values.extend([self.vocab.vec(tkn.lower_) for tkn in tokens_center if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
             # Add right
             values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
@@ -167,9 +167,13 @@ class ContextModel(object):
             self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
 
             if not negative:
-                # Update average confidence for this CUI
-                sim = self.similarity(cui, entity, doc)
-                self.cdb.update_cui2_average_confidence(cui=cui, new_sim=sim)
+                # Update the name count
+                self.cdb.name2count_train[entity._.detected_name] += 1
+
+                if self.config.linking.get('calculate_dynamic_threshold', False):
+                    # Update average confidence for this CUI
+                    sim = self.similarity(cui, entity, doc)
+                    self.cdb.update_cui2_average_confidence(cui=cui, new_sim=sim)
 
             if negative:
                 # Change the status of the name so that it has to be disambiguated always

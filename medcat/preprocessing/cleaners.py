@@ -3,7 +3,6 @@ pretty much everything that is not a word.
 """
 import re
 
-
 def prepare_name(raw_name, nlp, names, config):
     r''' Generates different forms of a name. Will edit the provided `names` dictionary
     and add information generated from the `name`.
@@ -28,23 +27,33 @@ def prepare_name(raw_name, nlp, names, config):
 
         if version == "LOWER":
             tokens = [t.lower_ for t in sc_name if not t._.to_skip]
-        if version == "CLEAN" and len(raw_name) >= config.preprocessing['min_len_normalize']:
-            tokens = [t.lemma_.lower() for t in sc_name if not t._.to_skip]
+        if version == "CLEAN":
+            tokens = []
+            for t in sc_name:
+                if not t._.to_skip:
+                    if len(t.lower_) < config.preprocessing['min_len_normalize']:
+                        tokens.append(t.lower_)
+                    elif (config.preprocessing.get('do_not_normalize', set())) and t.tag_ is not None and \
+                            t.tag_ in config.preprocessing.get('do_not_normalize'):
+                        tokens.append(t.lower_)
+                    else:
+                        tokens.append(t.lemma_.lower())
 
-        if tokens is not None:
+        if tokens is not None and tokens:
             snames = set()
             name = config.general['separator'].join(tokens)
 
-            if name not in names:
-                sname = ""
-                for token in tokens:
-                    if sname:
-                        sname = sname + config.general['separator'] + token
-                    else:
-                        sname = token
-                    snames.add(sname.strip())
+            if not config.cdb_maker.get('min_letters_required', 0) or len(re.sub("[^A-Za-z]*", '', name)) >= config.cdb_maker.get('min_letters_required'):
+                if name not in names:
+                    sname = ""
+                    for token in tokens:
+                        if sname:
+                            sname = sname + config.general['separator'] + token
+                        else:
+                            sname = token
+                        snames.add(sname.strip())
 
-                names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}
+                    names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}
 
     return names
 

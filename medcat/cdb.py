@@ -59,6 +59,7 @@ class CDB(object):
         self.cui2type_ids = {}
         self.cui2preferred_name = {}
         self.cui2average_confidence = {}
+        self.name2count_train = {}
 
         self.addl_info = {
                 'cui2icd10': {},
@@ -169,7 +170,7 @@ class CDB(object):
             self.cui2snames[cui] = set()
             self.cui2context_vectors[cui] = {}
             self.cui2count_train[cui] = 0
-            self.cui2average_confidence = 0
+            self.cui2average_confidence[cui] = 0
             self.cui2tags[cui] = []
 
             # Add type_ids
@@ -189,6 +190,8 @@ class CDB(object):
             self.cui2names[cui].add(name)
             # Extend cui2snames
             self.cui2snames[cui].update(name_info['snames'])
+            # Add name to counts
+            self.name2count_train[name] = 0
 
             if name in self.name2cuis:
                 # Means we have alrady seen this name

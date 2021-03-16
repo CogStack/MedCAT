@@ -4,6 +4,7 @@ import numpy as np
 import datetime
 import logging
 from functools import partial
+import re
 
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
@@ -11,6 +12,8 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.utils.loggers import add_handlers
+
+PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
 
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
@@ -152,6 +155,13 @@ class CDBMaker(object):
                     for raw_name in raw_names:
                         raw_name = raw_name.strip()
                         prepare_name(raw_name, self.nlp, names, self.config)
+
+                        if self.config.cdb_maker.get('remove_parenthesis', 0) > 0 and name_status == 'P':
+                            # Should we remove the content in parenthesis from primary names and add them also
+                            raw_name = PH_REMOVE.sub(" ", raw_name).strip()
+                            if len(raw_name) >= self.config.cdb_maker['remove_parenthesis']:
+                                prepare_name(raw_name, self.nlp, names, self.config)
+
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
