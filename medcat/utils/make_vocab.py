@@ -2,12 +2,12 @@ from medcat.vocab import Vocab
 import numpy as np
 import pandas
 from medcat.preprocessing.tokenizers import spacy_split_all
-from medcat.preprocessing.cleaners import spacy_tag_punct, clean_name, clean_def
 from functools import partial
-from medcat.utils.spelling import CustomSpellChecker
 from gensim.models import Word2Vec
 from medcat.preprocessing.iterators import SimpleIter
-from medcat.utils.loggers import basic_logger
+import logging
+from medcat.pipe import Pipe
+from medcat.preprocessing.taggers import tag_skip_and_punct
 
 class MakeVocab(object):
     r'''
@@ -30,6 +30,7 @@ class MakeVocab(object):
     log = logging.getLogger(__name__)
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
+        self.config = config
         self.w2v = None
         if vocab is not None:
             self.vocab = vocab
@@ -56,7 +57,7 @@ class MakeVocab(object):
         return [text]
 
 
-    def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=True):
+    def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=False):
         r'''
         Make a vocab - without vectors initially. This will create two files in the out_folder:
         - vocab.dat -> The vocabulary without vectors
@@ -81,7 +82,7 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                log.info("Vocab builder at: " + str(ind))
+                self.log.info("Vocab builder at: " + str(ind))
                 print(ind)
 
             doc = self.nlp.nlp.tokenizer(doc)
@@ -118,7 +119,7 @@ class MakeVocab(object):
         self.vocab.save(path=self.vocab_path)
 
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=8, niter=2, min_count=10, window=10, vsize=300):
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path.
 

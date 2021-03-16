@@ -99,6 +99,9 @@ class TokenNormalizer(object):
         for token in doc:
             if len(token.lower_) < self.config.preprocessing['min_len_normalize']:
                 token._.norm = token.lower_
+            elif (self.config.preprocessing.get('do_not_normalize', set())) and token.tag_ is not None and \
+                     token.tag_ in self.config.preprocessing.get('do_not_normalize'):
+                token._.norm = token.lower_
             elif token.lemma_ == '-PRON-':
                 token._.norm = token.lemma_
                 token._.to_skip = True
