@@ -2,6 +2,7 @@ import numpy as np
 import logging
 from medcat.utils.matutils import unitvec
 from medcat.utils.filters import check_filters
+import spacy
 
 class ContextModel(object):
     r''' Used to learn embeddings for concepts and calculate similarities in new documents.
@@ -134,15 +135,23 @@ class ContextModel(object):
             self.log.debug("Similarities: {}".format([(sim, cui) for sim,cui in zip(cuis, similarities)]))
 
             # Prefer primary
-            if self.config.linking['prefer_primary_name']:
+            if self.config.linking['prefer_primary_name'] > 0:
                 self.log.debug("Preferring primary names")
                 for i, cui in enumerate(cuis):
                     if similarities[i] > 0:
                         if self.cdb.name2cuis2status.get(name, {}).get(cui, '') in {'P', 'PD'}:
                             old_sim = similarities[i]
-                            similarities[i] = min(0.99, similarities[i] + similarities[i] * 0.3)
+                            similarities[i] = min(0.99, similarities[i] + similarities[i] * self.config.linking['prefer_primary_name'])
                             # DEBUG
                             self.log.debug("CUI: {}, Name: {}, Old sim: {:.3f}, New sim: {:.3f}".format(cui, name, old_sim, similarities[i]))
+
+            if self.config.linking['prefer_frequent_concepts'] > 0:
+                self.log.debug("Preferring frequent concepts")
+                #Prefer frequent concepts
+                cnts = [self.cdb.cui2count_train.get(cui, 0) for cui in cuis]
+                m = min(cnts) if min(cnts) > 0 else 1
+                scales = [np.log10(cnt/m)*self.config.linking['prefer_frequent_concepts'] if cnt > 10 else 0 for cnt in cnts]
+                similarities = [min(0.99, sim + sim*scales[i]) for i, sim in enumerate(similarities)]
 
             # Prefer concepts with tag
             mx = np.argmax(similarities)
@@ -167,8 +176,9 @@ class ContextModel(object):
             self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
 
             if not negative:
-                # Update the name count
-                self.cdb.name2count_train[entity._.detected_name] += 1
+                # Update the name count, if possible
+                if type(entity) == spacy.tokens.span.Span:
+                    self.cdb.name2count_train[entity._.detected_name] += 1
 
                 if self.config.linking.get('calculate_dynamic_threshold', False):
                     # Update average confidence for this CUI

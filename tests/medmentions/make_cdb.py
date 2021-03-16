@@ -61,6 +61,10 @@ cdb.config.general['spacy_disabled_components'] = ['ner', 'parser', 'vectors', '
 _ = cat.train(open("./tmp_medmentions_text_only.txt", 'r'), fine_tune=False)
 
 _ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=True, nepochs=13, train_from_false_positives=True, print_stats=3, test_size=0)
+cdb.save("/home/ubuntu/data/umls/2020ab/cdb_trained_medmen.dat")
+
+
+_ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=True, nepochs=13, train_from_false_positives=True, print_stats=0, test_size=0)
 
 cat.config.linking['similarity_threshold'] = 0.1
 cat.config.ner['min_name_len'] = 2
@@ -88,6 +92,8 @@ _ = cat._print_stats(data)
 #6k 5     Epoch: 0, Prec: 0.4325832297643917, Rec: 0.5108834827144686, F1: 0.4684842063060225
 # 420, 498, 456
 # p: 0.413  r: 0.505  f1: 0.454
+
+# Epoch: 0, Prec: 0.4281473766436662, Rec: 0.5135067611879703, F1: 0.46695822565529777
 
 
 # Remove all names that are numbers
