@@ -454,7 +454,9 @@ class SpacyCat(object):
                         if self.DISAMB_EVERYTHING:
                             self.to_disamb.append((list(tkns), raw_name))
                         else:
-                            self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
+                            # NEW: UPPERCASE
+                            if _doc[i].is_upper== self.cdb.name_isupper[raw_name]:
+                                self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
             elif name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                 # Add annotation
                 if not self.train or not self._train_skip(name) or self.force_train:
@@ -462,7 +464,9 @@ class SpacyCat(object):
                         if self.DISAMB_EVERYTHING:
                             self.to_disamb.append((list(tkns), name))
                         else:
-                            self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                            # NEW: UPPERCASE
+                            if _doc[i].is_upper == self.cdb.name_isupper[name]:
+                                self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
             last_notskipped_tkn = tkns[-1]
             for j in range(i+1, len(_doc)):
@@ -491,13 +495,17 @@ class SpacyCat(object):
                             if self.DISAMB_EVERYTHING:
                                 self.to_disamb.append((list(tkns), raw_name))
                             else:
-                                self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
+                                # NEW: UPPERCASE
+                                if _doc[i].is_upper == self.cdb.name_isupper:
+                                    self.cat_ann.add_ann(raw_name, tkns, doc, self.to_disamb, doc_words)
                     elif not skip and name in self.cdb.name2cui and len(name) > self.MIN_CONCEPT_LENGTH:
                         if not self.train or not self._train_skip(name) or self.force_train:
                             if self.DISAMB_EVERYTHING:
                                 self.to_disamb.append((list(tkns), name))
                             else:
-                                self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
+                                # NEW: UPPERCASE
+                                if _doc[i].is_upper == self.cdb.name_isupper:
+                                    self.cat_ann.add_ann(name, tkns, doc, self.to_disamb, doc_words)
 
 
 

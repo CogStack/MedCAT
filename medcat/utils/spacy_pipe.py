@@ -18,6 +18,8 @@ class SpacyPipe(object):
         # Add custom fields needed for this usecase
         Token.set_extension('is_punct', default=False, force=True)
         Token.set_extension('to_skip', default=False, force=True)
+        # NEW: UPPERCASE
+        Token.set_extension('isupper', default=False, force=True)
 
 
     def add_spell_checker(self, spell_checker):

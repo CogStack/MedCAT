@@ -179,6 +179,10 @@ def spacy_tag_punct(doc, skip_stopwords=True, keep_punct=[]):
                 token._.is_punct = True
                 token._.to_skip = True
 
+        # NEW: UPPERCASE
+        if token.is_upper:
+            token._.isupper = True
+
         # Skip if specific strings
         if TO_SKIP.match(token.lower_):
             token._.to_skip = True

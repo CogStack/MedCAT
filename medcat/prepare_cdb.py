@@ -115,6 +115,10 @@ class PrepareCDB(object):
                         original_name = _name
                         name = _name
 
+                        # NEW
+                        # Check whether it is uppercase
+                        isupper = name.isupper()
+
                         if version == "CLEAN" and add_cleaner is not None:
                             name = add_cleaner(name)
 
@@ -201,7 +205,7 @@ class PrepareCDB(object):
 
                         # Add the concept
                         self.cdb.add_concept(cui, name, onto, tokens, snames,
-                                tui=tui, pretty_name=pretty_name,
+                                tui=tui, pretty_name=pretty_name, isupper=isupper,
                                 tokens_vocab=tokens_vocab, is_unique=is_unique,
                                 desc=desc, original_name=original_name,
                                 is_pref_name=is_pref_name, tui_name=tui_name)
