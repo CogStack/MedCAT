@@ -60,12 +60,13 @@ cdb.config.general['spacy_disabled_components'] = ['ner', 'parser', 'vectors', '
 # Train
 _ = cat.train(open("./tmp_medmentions_text_only.txt", 'r'), fine_tune=False)
 
-_ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=True, nepochs=13, train_from_false_positives=True, print_stats=3, test_size=0)
+_ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=True, nepochs=13, train_from_false_positives=True, print_stats=3, test_size=0.1)
 cdb.save("/home/ubuntu/data/umls/2020ab/cdb_trained_medmen.dat")
 
 
 _ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=True, nepochs=13, train_from_false_positives=True, print_stats=0, test_size=0)
 
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 cat.config.linking['similarity_threshold'] = 0.1
 cat.config.ner['min_name_len'] = 2
 cat.config.ner['upper_case_limit_len'] = 1
@@ -73,6 +74,7 @@ cat.config.linking['train_count_threshold'] = -2
 cat.config.linking['filters']['cuis'] = set()
 cat.config.linking['context_vector_sizes'] = {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3}
 cat.config.linking['context_vector_weights'] = {'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1}
+cat.config.linking['similarity_threshold_type'] = 'static'
 
 cat.config.linking['similarity_threshold_type'] = 'dynamic'
 cat.config.linking['similarity_threshold'] = 0.35
@@ -82,18 +84,8 @@ cat.config.linking['calculate_dynamic_threshold'] = True
 # Print some stats
 _ = cat._print_stats(data)
 
-#static:  Epoch: 0, Prec: 0.4182515298479039, Rec: 0.5144124168514412, F1: 0.461374712901238 
-#dynamic: Epoch: 0, Prec: 0.41783918321735153, Rec: 0.5137878267387027, F1: 0.4608726101267596
-#d wrat : Epoch: 0, Prec: 0.42184109928711644, Rec: 0.5100402860622716, F1: 0.4617668264133339
-#d rem: : Epoch: 0, Prec: 0.42636048572713564, Rec: 0.5032789956904629, F1: 0.46163761618997146  
-#b7       Epoch: 0, Prec: 0.42293654517962354, Rec: 0.5066204484416963, F1: 0.46101165103722647
-#wnumb  : Epoch: 0, Prec: 0.4293618687198225, Rec: 0.5137565972330658, F1: 0.467783212010919
-#6k       Epoch: 0, Prec: 0.43320010658140157, Rec: 0.5077293026451392, F1: 0.46751304797918075
-#6k 5     Epoch: 0, Prec: 0.4325832297643917, Rec: 0.5108834827144686, F1: 0.4684842063060225
-# 420, 498, 456
-# p: 0.413  r: 0.505  f1: 0.454
-
-# Epoch: 0, Prec: 0.4281473766436662, Rec: 0.5135067611879703, F1: 0.46695822565529777
+#Epoch: 0, Prec: 0.4331506351144245, Rec: 0.5207520064957372, F1: 0.47292889758643175
+#p: 0.421  r: 0.507  f1: 0.460
 
 
 # Remove all names that are numbers

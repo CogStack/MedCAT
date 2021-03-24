@@ -78,6 +78,8 @@ class Config(object):
                 # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
                 #it will be skipped.
                 'upper_case_limit_len': 3,
+                # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
+                'try_reverse_word_order': False,
                 }
 
         self.linking = {
@@ -104,7 +106,8 @@ class Config(object):
                 #'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
                 'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.0004)),
                 # Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
-                #and it is calcualted as the average confidence for that CUI * similarity_threshold
+                #and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
+                #if the cdb was trained with calculate_dynamic_threshold = True.
                 'calculate_dynamic_threshold': False,
                 'similarity_threshold_type': 'static',
                 'similarity_threshold': 0.2,

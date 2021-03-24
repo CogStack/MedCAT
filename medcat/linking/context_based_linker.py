@@ -1,6 +1,7 @@
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
 import random
+import logging
 
 class Linker(object):
     r''' Link to a biomedical database.
@@ -10,6 +11,7 @@ class Linker(object):
         vocab
         config
     '''
+    log = logging.getLogger(__name__)
     def __init__(self, cdb, vocab, config):
         self.cdb = cdb
         self.vocab = vocab
@@ -72,6 +74,7 @@ class Linker(object):
                                     linked_entities.append(entity)
         else:
             for entity in doc._.ents:
+                self.log.debug("Linker started with entity: {}".format(entity))
                 # Check does it have a detected name
                 if entity._.link_candidates is not None:
                     if entity._.detected_name is not None:

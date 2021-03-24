@@ -1,6 +1,10 @@
 from medcat.ner.vocab_based_annotator import maybe_annotate_name
+import logging
 
 class NER(object):
+    r'''
+    '''
+    log = logging.getLogger(__name__)
     def __init__(self, cdb, config):
         self.config = config
         self.cdb = cdb
@@ -46,6 +50,7 @@ class NER(object):
                     name_versions = [tkn._.norm, tkn.lower_]
 
                     name_changed = False
+                    name_reverse = None
                     for name_version in name_versions:
                         _name = name + self.config.general['separator'] + name_version
                         if _name in self.cdb.snames:
@@ -54,9 +59,18 @@ class NER(object):
                             name_changed = True
                             break
 
+                        if self.config.ner.get('try_reverse_word_order', False):
+                            _name_reverse = name_version + self.config.general['separator'] + name
+                            if _name_reverse in self.cdb.snames:
+                                # Append the name and break
+                                name_reverse = _name_reverse
+
                     if name_changed:
                         if name in self.cdb.name2cuis:
                             maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
+                    elif name_reverse is not None:
+                        if name_reverse in self.cdb.name2cuis:
+                            maybe_annotate_name(name_reverse, tkns, doc, self.cdb, self.config)
                     else:
                         break
 
