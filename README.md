@@ -56,6 +56,21 @@ print(doc_spacy.ents)
 #and usually easier to use unless you know a lot about spaCy
 doc = cat.get_entities(text)
 print(doc)
+
+
+# TRAINING
+# Prepare for training, load your train config file
+cat.config.parse_config_file(<path to a .txt config file>)
+
+# To train on one example
+_ = cat(text, do_train=True)
+
+# To train on a iterator over documents
+data_iterator = <your iterator>
+cat.train(data_iterator)
+
+#Once done, save the new CDB
+cat.cdb.save(<save path>)
 ```
 
 
