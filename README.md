@@ -58,10 +58,6 @@ doc = cat.get_entities(text)
 print(doc)
 
 
-# TRAINING
-# Prepare for training, load your train config file
-cat.config.parse_config_file(<path to a .txt config file>)
-
 # To train on one example
 _ = cat(text, do_train=True)
 
@@ -90,6 +86,14 @@ that data is not publicaly available.)
 If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
+## TODO
+- [ ] Update the tutorials
+- [ ] Switch to spaCy version 3+
+- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
+- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
+- [ ] Update webapp to v1 and enable UMLS and SNOMED
+
+
 ## Acknowledgement
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
@@ -100,22 +104,14 @@ The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wik
 A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.
 
 
-## TODO
-- [ ] Update the tutorials
-- [ ] Switch to spaCy version 3+
-- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
-- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
-- [ ] Update webapp to v1 and enable UMLS and SNOMED
-
-
 ## Citation
 ```
-@misc{kraljevic2019medcat,
-    title={MedCAT -- Medical Concept Annotation Tool},
-    author={Zeljko Kraljevic and Daniel Bean and Aurelie Mascio and Lukasz Roguski and Amos Folarin and Angus Roberts and Rebecca Bendayan and Richard Dobson},
-    year={2019},
-    eprint={1912.10166},
-    archivePrefix={arXiv},
-    primaryClass={cs.CL}
+@misc{kraljevic2020multidomain,
+      title={Multi-domain Clinical Natural Language Processing with MedCAT: the Medical Concept Annotation Toolkit}, 
+      author={Zeljko Kraljevic and Thomas Searle and Anthony Shek and Lukasz Roguski and Kawsar Noor and Daniel Bean and Aurelie Mascio and Leilei Zhu and Amos A Folarin and Angus Roberts and Rebecca Bendayan and Mark P Richardson and Robert Stewart and Anoop D Shah and Wai Keong Wong and Zina Ibrahim and James T Teo and Richard JB Dobson},
+      year={2020},
+      eprint={2010.01165},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
