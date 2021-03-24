@@ -64,7 +64,7 @@ _ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset
 cdb.save("/home/ubuntu/data/umls/2020ab/cdb_trained_medmen.dat")
 
 
-_ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=True, nepochs=13, train_from_false_positives=True, print_stats=0, test_size=0)
+_ = cat.train_supervised("/home/ubuntu/data/medmentions/medmentions.json", reset_cui_count=False, nepochs=13, train_from_false_positives=True, print_stats=3, test_size=0)
 
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 cat.config.linking['similarity_threshold'] = 0.1

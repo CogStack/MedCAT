@@ -37,6 +37,10 @@ class CDB(object):
             From CUI to type id (e.g. TUI in UMLS).
         cui2preferred_name (`Dict[str, str]`):
             From CUI to the preferred name for this concept.
+        cui2average_confidence(`Dict[str, str]`):
+            Used for dynamic thresholding. Holds the average confidence for this CUI given the training examples.
+        name2count_train(`Dict[str, str]`):
+            Counts how often did a name appear during training.
         addl_info (`Dict[str, Dict[]]`):
             Any additional maps that are not part of the core CDB. These are usually not needed
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
