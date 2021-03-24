@@ -95,6 +95,12 @@ class CAT(object):
         self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 
 
+    def get_spacy_nlp(self):
+        ''' Returns the spacy pipeline with MedCAT
+        '''
+        return self.nlp.nlp
+
+
     def __call__(self, text, do_train=False):
         r'''
         Push the text through the pipeline.
