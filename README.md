@@ -6,7 +6,7 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
 and contains a small portion of UMLS.
 
-## Tutorial
+## Tutorial [NOT YET v1 READY]
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
 ## Papers that use MedCAT
