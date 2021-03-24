@@ -4,6 +4,9 @@ once the software is trained the main thing are the context vectors.
 import numpy as np
 import operator
 from spacy.tokens import Span
+import logging
+
+log = logging.getLogger(__name__)
 
 def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
     r''' Given a name it will check should it be annotated based on config rules. If yes
@@ -23,6 +26,8 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
         label (`str`):
             Label for this name (usually `concept` if we are using a vocab based approach).
     '''
+
+    log.debug("Maybe annotating name: {}".format(name))
     if len(name) >= config.ner['min_name_len']:
         # Check the upper case limit, last part checks is it one token and uppercase
         if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
@@ -38,6 +43,10 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             doc._.ents.append(entity)
 
             # Not necessary, but why not
+            log.debug("NER detected an entity." +
+                      "\n\tDetected name: {}".format(entity._.detected_name) + 
+                      "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+                    
             return entity
 
     return None
