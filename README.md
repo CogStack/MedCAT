@@ -100,6 +100,14 @@ The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wik
 A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://huggingface.co/) - who made life a million times easier.
 
 
+## TODO
+- [ ] Update the tutorials
+- [ ] Switch to spaCy version 3+
+- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
+- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
+- [ ] Update webapp to v1 and enable UMLS and SNOMED
+
+
 ## Citation
 ```
 @misc{kraljevic2019medcat,
