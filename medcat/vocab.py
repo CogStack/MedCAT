@@ -183,7 +183,7 @@ class Vocab(object):
             self.add_word(word, cnt, vec)
 
 
-    def make_unigram_table(self):
+    def make_unigram_table(self, table_size=100000000):
         r''' Make unigram table for negative sampling, look at the paper if interested
         in details.
         '''
@@ -202,7 +202,7 @@ class Vocab(object):
             word = self.vec_index2word[ind]
             f_ind = words.index(word)
             p = freqs[f_ind] / sm
-            self.unigram_table.extend([ind] * int(p * 100000000))
+            self.unigram_table.extend([ind] * int(p * table_size))
 
         self.unigram_table = np.array(self.unigram_table)
 

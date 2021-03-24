@@ -119,7 +119,8 @@ class MakeVocab(object):
         self.vocab.save(path=self.vocab_path)
 
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300):
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
+                    unigram_table_size=100000000):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path.
 
@@ -153,6 +154,6 @@ class MakeVocab(object):
                         self.vocab.add_vec(word, w2v.wv.get_vector(word))
 
         # Save the vocab again, now with vectors
-        self.vocab.make_unigram_table()
+        self.vocab.make_unigram_table(table_size=unigram_table_size)
         self.vocab.save(path=self.vocab_path)
         return w2v

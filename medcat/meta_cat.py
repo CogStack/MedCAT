@@ -184,7 +184,7 @@ class MetaCAT(object):
         outputs_test = self.model(x, cpos)
 
         inv_map = {v: k for k, v in self.category_values.items()}
-        return inv_map[int(np.argmax(outputs_test.detach().numpy()[0]))]
+        return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
     def save(self, full_save=False):
@@ -302,7 +302,7 @@ class MetaCAT(object):
         # Nearly impossible that we need batches, so I'll ignore it
         if len(x) >  0:
             self.model.eval()
-            outputs = self.model(x, cpos).detach().numpy()
+            outputs = self.model(x, cpos).detach().to('cpu').numpy()
             confidences = softmax(outputs, axis=1)
             outputs = np.argmax(outputs, axis=1)
 
