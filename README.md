@@ -44,7 +44,7 @@ cdb = CDB.load('<path to the cdb file>')
 
 # Create cat - each cdb comes with a config that was used
 #to train it. You can change that config in any way you want, before or after creating cat.
-cat = CAT(cdb=cdb, cdb.config, vocab=vocab)
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 
 # Test it
 text = "My simple document with kidney failure"
