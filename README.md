@@ -6,7 +6,7 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
 and contains a small portion of UMLS.
 
-## Tutorial
+## Tutorial [NOT YET v1 READY]
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
 ## Papers that use MedCAT
@@ -44,7 +44,7 @@ cdb = CDB.load('<path to the cdb file>')
 
 # Create cat - each cdb comes with a config that was used
 #to train it. You can change that config in any way you want, before or after creating cat.
-cat = CAT(cdb=cdb, cdb.config, vocab=vocab)
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 
 # Test it
 text = "My simple document with kidney failure"
