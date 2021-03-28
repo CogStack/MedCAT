@@ -427,7 +427,7 @@ class CAT(object):
                         else:
                             fp += 1
                             fps[cui] = fps.get(cui, 0) + 1
-                            fp_docs.add(doc['name'])
+                            fp_docs.add(doc.get('name', 'unk'))
 
                             # Add example for this FP prediction
                             example = p_anns_examples[iann]
@@ -441,7 +441,7 @@ class CAT(object):
                     if ann not in p_anns_norm:
                         cui = ann[1]
                         fn += 1
-                        fn_docs.add(doc['name'])
+                        fn_docs.add(doc.get('name', 'unk'))
 
                         fns[cui] = fns.get(cui, 0) + 1
                         examples['fn'][cui] = examples['fn'].get(cui, []) + [anns_examples[iann]]
