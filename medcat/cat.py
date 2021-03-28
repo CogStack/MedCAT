@@ -449,7 +449,7 @@ class CAT(object):
         try:
             prec = tp / (tp + fp)
             rec = tp / (tp + fn)
-            f1 = (prec + rec) / 2
+            f1 = 2*(prec * rec)/(prec + rec)
             print("Epoch: {}, Prec: {}, Rec: {}, F1: {}\n".format(epoch, prec, rec, f1))
             print("Docs with false positives: {}\n".format("; ".join([str(x) for x in list(fp_docs)[0:10]])))
             print("Docs with false negatives: {}\n".format("; ".join([str(x) for x in list(fn_docs)[0:10]])))
@@ -464,7 +464,7 @@ class CAT(object):
             for cui in tps.keys():
                 prec = tps[cui] / (tps.get(cui, 0) + fps.get(cui, 0))
                 rec = tps[cui] / (tps.get(cui, 0) + fns.get(cui, 0))
-                f1 = (prec + rec) / 2
+                f1 = 2*(prec * rec)/(prec + rec)
                 cui_prec[cui] = prec
                 cui_rec[cui] = rec
                 cui_f1[cui] = f1
@@ -650,6 +650,11 @@ class CAT(object):
     @property
     def train(self):
         return self.spacy_cat.train
+
+    @property
+    def spacy_nlp(self):
+        """ Returns the spacy nlp object utilized by cat"""
+        return self.nlp.nlp 
 
 
     @train.setter

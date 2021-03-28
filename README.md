@@ -2,9 +2,12 @@
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
 
-## Demo
+## SNOMED Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
-and contains a small portion of UMLS.
+and uses SNOMED for the CDB.
+
+## Interest Group, Q&A
+Please use [Discussions](https://github.com/CogStack/MedCAT/discussions) as type of interest group, or place where to ask questions and write suggestions without opening an Issue.
 
 ## Tutorial
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
@@ -65,7 +68,7 @@ print(doc)
 A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
 so the performance might not be the best.
 
-Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
+Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from Wiktionary
 
 CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built from MedMentions
 
@@ -74,7 +77,38 @@ CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built f
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases.
+
+Alternatively, you can build the CDBs for scratch from source data. We have used the below steps to build UMLS and SNOMED-CT (UK) for our experiments
+
+#### Building Concept Databases from Scratch
+We provide details to build both UMLS and SNOMED-CT concept databases. In both cases CSV files containing the source
+data with required columns (column descriptions are provided in the [tutorial](https://colab.research.google.com/drive/1nz2zMDQ3QrlTgpW7FfGaXeV1ZAtZeOe2#scrollTo=ptRmHln9k7hG). 
+Given the CSV files the [prepare_cdb.py](https://github.com/CogStack/MedCAT/blob/master/medcat/prepare_cdb.py) script can be used to build a CDB.
+ 
+##### Building a UMLS Concept Database
+The UMLS can be downloaded from https://www.nlm.nih.gov/research/umls/index.html in the 
+Rich Release Format (RRF). To make subsetting and filtering easier we import UMLS RRF into a PostgreSQL database 
+(scripts available at [here](https://github.com/w-is-h/umls)).
+
+Once the data is in the database we can use the following SQL script to download the CSV files containing all concepts 
+that will form our CDB.
+
+```
+# Selecting concepts for all the Ontologies that are used
+SELECT DISTINCT umls.mrconso.cui, str, mrconso.sab, mrconso.tty, tui, sty, def 
+FROM umls.mrconso 
+    LEFT OUTER JOIN umls.mrsty ON umls.mrsty.cui = umls.mrconso.cui 
+    LEFT OUTER JOIN umls.mrdef ON umls.mrconso.cui = umls.mrdef.cui
+WHERE lat='ENG'
+```
+
+##### Building a SNOMED-CT Concept Database
+We use the SNOMED-CT data provided by the NHS TRUD service [https://isd.digital.nhs.uk/trud3/user/guest/group/0/pack/26](https://isd.digital.nhs.uk/trud3/user/guest/group/0/pack/26). 
+This release combines the International and UK specific concepts into a set of assets that can be parsed and loaded 
+into a MedCAT CDB. We provide scripts for parsing the various release files and load into a MedCAT CDB instance. 
+We provide further scripts to load accompanying SNOMED-CT Drug extension and clinical coding data 
+(ICD / OPCS terminologies) also from the NHS TRUD service. Scripts are available at: [https://github.com/tomolopolis/SNOMED-CT_Analysis](https://github.com/tomolopolis/SNOMED-CT_Analysis) 
 
 
 ## Acknowledgement
@@ -89,12 +123,12 @@ A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://hu
 
 ## Citation
 ```
-@misc{kraljevic2019medcat,
-    title={MedCAT -- Medical Concept Annotation Tool},
-    author={Zeljko Kraljevic and Daniel Bean and Aurelie Mascio and Lukasz Roguski and Amos Folarin and Angus Roberts and Rebecca Bendayan and Richard Dobson},
-    year={2019},
-    eprint={1912.10166},
-    archivePrefix={arXiv},
-    primaryClass={cs.CL}
+@misc{kraljevic2020multidomain,
+      title={Multi-domain Clinical Natural Language Processing with MedCAT: the Medical Concept Annotation Toolkit}, 
+      author={Zeljko Kraljevic and Thomas Searle and Anthony Shek and Lukasz Roguski and Kawsar Noor and Daniel Bean and Aurelie Mascio and Leilei Zhu and Amos A Folarin and Angus Roberts and Rebecca Bendayan and Mark P Richardson and Robert Stewart and Anoop D Shah and Wai Keong Wong and Zina Ibrahim and James T Teo and Richard JB Dobson},
+      year={2020},
+      eprint={2010.01165},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
 }
 ```
