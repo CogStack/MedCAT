@@ -570,7 +570,7 @@ class CAT(object):
                 if cui in self.cdb.cui2count_train:
                     self.cdb.cui2count_train[cui] = 10
 
-        # Remove entites that were terminated
+        # Remove entities that were terminated
         if not never_terminate:
             for project in train_set['projects']:
                 for doc in project['documents']:
@@ -619,7 +619,7 @@ class CAT(object):
                                                        do_add_concept=False)
 
             if terminate_last and not never_terminate:
-                # Remove entites that were terminated, but after all training is done
+                # Remove entities that were terminated, but after all training is done
                 for project in train_set['projects']:
                     for doc in project['documents']:
                         if type(doc['annotations']) == list:
@@ -702,7 +702,7 @@ class CAT(object):
 
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
-                    out['entities'].append(cui)
+                    out['entities'][ent._.id] = cui
 
         return out
 
