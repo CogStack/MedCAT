@@ -498,7 +498,7 @@ class CDB(object):
 
 
     def most_similar(self, cui, context_type, type_id_filter=[], min_cnt=0, topn=50, force_build=False):
-        r''' Given a concept it will calculat what other concepts in this CDB have the most similar
+        r''' Given a concept it will calculate what other concepts in this CDB have the most similar
         embedding.
 
         Args:
@@ -552,7 +552,7 @@ class CDB(object):
             sim_data['sim_vectors_type_ids'] = np.array(sim_vectors_type_ids)
             sim_data['sim_vectors_cuis'] = np.array(sim_vectors_cuis)
 
-        # Select appropirate concepts
+        # Select appropriate concepts
         type_id_inds = np.arange(0, len(sim_data['sim_vectors_type_ids']))
         if len(type_id_filter) > 0:
             type_id_inds = np.array([], dtype=np.int32)
