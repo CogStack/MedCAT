@@ -2,6 +2,11 @@
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
 
+## UPDATE
+MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), as well as potential problems with all code that used the MedCAT package.
+
+MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree/legacy) branch and will still be supported until 1. June 2021 (with respect to potential bug fixes).
+
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
 and contains a small portion of UMLS.
@@ -27,7 +32,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 
 2. Get the scispacy models:
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_lg-0.3.0.tar.gz`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_md-0.3.0.tar.gz`
 
 3. Downlad the Vocabulary and CDB from the Models section bellow
 

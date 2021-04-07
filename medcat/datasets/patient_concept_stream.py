@@ -18,30 +18,32 @@ _CITATION = """\
 """
 
 _DESCRIPTION = """\
-Takes as input a pickled dict of annotated documents from MedCAT. The format should be:
-    {'document_id': {'entities': <entities>, ...}
-Where entities is the output from medcat.get_entities(<...>)['entities']
+Takes as input a pickled dict of pt2stream. The format should be:
+    {'patient_id': (concept_cui, concept_count_for_patient, timestamp_of_first_occurrence_for_patient), ...}
 """
 
-class MedCATAnnotationsConfig(datasets.BuilderConfig):
-    """ BuilderConfig for MedCATAnnotations.
+class PatientConceptStreamConfig(datasets.BuilderConfig):
+    """ BuilderConfig for PatientConceptStream.
 
         Args:
-          **kwargs: keyword arguments forwarded to super.
+            **kwargs: keyword arguments forwarded to super.
     """
 
     def __init__(self, **kwargs):
-        super(MedCATAnnotationsConfig, self).__init__(**kwargs)
+        super(PatientConceptStreamConfig, self).__init__(**kwargs)
 
 
-class MedCATAnnotations(datasets.GeneratorBasedBuilder):
-    """MedCATAnnotations: Output of MedCAT"""
+class PatientConceptStream(datasets.GeneratorBasedBuilder):
+    """PatientConceptStream: as input takes the patient to stream of concepts.
+
+    TODO: Move the preparations scripts out of notebooks
+    """
 
     BUILDER_CONFIGS = [
-        MedCATAnnotationsConfig(
+        PatientConceptStreamConfig(
             name="pickle",
             version=datasets.Version("1.0.0", ""),
-            description="Pickled output from MedCAT",
+            description="Pickled output from Temporal dataset preparation scripts",
         ),
     ]
 
@@ -51,11 +53,8 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
             description=_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "id": datasets.Value("int32"),
-                    "document_id": datasets.Value("string"),
-                    "context_left": datasets.Value("string"),
-                    "context_right": datasets.Value("string"),
-                    "context_center": datasets.Value("string"),
+                    "patient_id": datasets.Value("int32"),
+                    "stream": [datasets.Value('string')],
                 }
             ),
             # No default supervised_keys (as we have to pass both question
@@ -79,14 +78,17 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
         """This function returns the examples in the raw (text) form."""
         logging.info("generating examples from = %s", filepath)
         with open(filepath, 'rb') as f:
-            docs = pickle.load(f)
-            for doc_id in docs:
-                doc = docs[doc_id]
-                for id, entity in doc['entities'].items():
-                    yield "{}|{}".format(doc_id, entity['id']), {
-                            'id': int(id),
-                            'document_id': str(doc_id),
-                            'context_left': "".join(entity['context_left']),
-                            'context_right': "".join(entity['context_right']),
-                            'context_center': "".join(entity['context_center']),
-                            }
+            pt2stream = pickle.load(f)
+            for pt, stream in pt2stream.items():
+                out_stream = []
+                year = -1
+                for data in stream:
+                    # 0 - CUI, 1 - CNT, 2 - TIME, 3 - Pt age in Years
+                    if data[3] > year:
+                        out_stream.append(str(data[3]))
+                        year = data[3]
+
+                    out_stream.append(data[0])
+
+                yield pt, {'patient_id': int(pt),
+                           'stream': out_stream}
