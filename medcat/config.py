@@ -27,14 +27,14 @@ class Config(object):
                 }
 
         self.general = {
-                # Logging config for everything | 'tagger' can be disabled, but will cause drop in performance 
+                # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance 
                 'log_level': logging.INFO,
                 'log_format': '%(asctime)s: %(message)s',
                 'spacy_disabled_components': ['ner', 'parser', 'vectors', 'textcat', 
                                               'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                               'merge_entities', 'merge_subtokens'],
                 # What model will be used for tokenization
-                'spacy_model': 'en_core_sci_lg',
+                'spacy_model': 'en_core_sci_md',
                 # Separator that will be used to merge tokens of a name. Once a CDB is built this should
                 #always stay the same.
                 'separator': '~',

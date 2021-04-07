@@ -135,22 +135,22 @@ class ContextModel(object):
             self.log.debug("Similarities: {}".format([(sim, cui) for sim,cui in zip(cuis, similarities)]))
 
             # Prefer primary
-            if self.config.linking['prefer_primary_name'] > 0:
+            if self.config.linking.get('prefer_primary_name', 0) > 0:
                 self.log.debug("Preferring primary names")
                 for i, cui in enumerate(cuis):
                     if similarities[i] > 0:
                         if self.cdb.name2cuis2status.get(name, {}).get(cui, '') in {'P', 'PD'}:
                             old_sim = similarities[i]
-                            similarities[i] = min(0.99, similarities[i] + similarities[i] * self.config.linking['prefer_primary_name'])
+                            similarities[i] = min(0.99, similarities[i] + similarities[i] * self.config.linking.get('prefer_primary_name', 0))
                             # DEBUG
                             self.log.debug("CUI: {}, Name: {}, Old sim: {:.3f}, New sim: {:.3f}".format(cui, name, old_sim, similarities[i]))
 
-            if self.config.linking['prefer_frequent_concepts'] > 0:
+            if self.config.linking.get('prefer_frequent_concepts', 0) > 0:
                 self.log.debug("Preferring frequent concepts")
                 #Prefer frequent concepts
                 cnts = [self.cdb.cui2count_train.get(cui, 0) for cui in cuis]
                 m = min(cnts) if min(cnts) > 0 else 1
-                scales = [np.log10(cnt/m)*self.config.linking['prefer_frequent_concepts'] if cnt > 10 else 0 for cnt in cnts]
+                scales = [np.log10(cnt/m)*self.config.linking.get('prefer_frequent_concepts', 0) if cnt > 10 else 0 for cnt in cnts]
                 similarities = [min(0.99, sim + sim*scales[i]) for i, sim in enumerate(similarities)]
 
             # Prefer concepts with tag
