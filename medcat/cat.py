@@ -702,12 +702,7 @@ class CAT(object):
 
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
-                    if type(out['entities']) is list:
-                        out_cuis.append(cui)
-                    else:
-                        out_cuis = [cui]
-
-                    out['entities'] = out_cuis
+                    out['entities'][ent._.id] = cui
 
         return out
 
