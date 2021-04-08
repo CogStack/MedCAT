@@ -167,14 +167,14 @@ class MetaCAT(object):
         """
         text = text.lower()
 
-        doc_text = self.tokenizer.encode(text)
+        doc_text = self.tokenizer(text)
         ind = 0
-        for ind, pair in enumerate(doc_text.offsets):
+        for ind, pair in enumerate(doc_text['offset_mapping']):
             if start >= pair[0] and start <= pair[1]:
                 break
         _start = max(0, ind - self.cntx_left)
-        _end = min(len(doc_text.tokens), ind + 1 + self.cntx_right)
-        tkns = doc_text.ids[_start:_end]
+        _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
+        tkns = doc_text['input_ids'][_start:_end]
         cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
         x = torch.tensor([tkns], dtype=torch.long).to(self.device)
@@ -268,7 +268,7 @@ class MetaCAT(object):
         text = doc.text
         if lowercase:
             text = text.lower()
-        doc_text = self.tokenizer.encode(text)
+        doc_text = self.tokenizer(text)
         x = []
         cpos = []
 
@@ -277,12 +277,12 @@ class MetaCAT(object):
             start = ent.start_char
             end = ent.end_char
             ind = 0
-            for ind, pair in enumerate(doc_text.offsets):
+            for ind, pair in enumerate(doc_text['offset_mapping']):
                 if start >= pair[0] and start <= pair[1]:
                     break
             _start = max(0, ind - self.cntx_left)
-            _end = min(len(doc_text.tokens), ind + 1 + self.cntx_right)
-            _ids = doc_text.ids[_start:_end]
+            _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
+            _ids = doc_text['input_ids'][_start:_end]
             _cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
             id2row[ent._.id] = len(x)
