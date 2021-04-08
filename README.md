@@ -24,9 +24,9 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
 ## Install using PIP (Requires Python 3.6.1+)
-1. Install MedCAT 
+1. Install MedCAT (version 0.4)
 
-`pip install --upgrade medcat`
+`pip install medcat~=0.4`
 
 2. Get the scispacy models:
 
