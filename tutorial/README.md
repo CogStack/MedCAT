@@ -1,7 +1,6 @@
 ### MedCAT Tutorial
 
-This, in some way, should be a definitive tutorial on how to use MedCAT. The blog posts are there to tell a story with short code snipets and explanations why is something necessary, while the Jupyter Notebooks are for those who don't give a shit about the story.
-
+In this tutorial, we will walk you through each stage of a basic MedCAT project. The blog posts are there to tell a story and explain why several steps or processes which we have decided to take are necessary. While the Jupyter Notebooks are for a hands-on experience building and training your MedCAT models for information extraction tasks.
 
 | Part | Title                                                                       | Google Colab                                                                       | Blog Post |
 |------|-----------------------------------------------------------------------------|------------------------------------------------------------------------------------|-----------|
