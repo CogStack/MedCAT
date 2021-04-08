@@ -153,6 +153,6 @@ class TokenizerWrapperBPE(object):
         tokenizer = cls()
         vocab_file = dir_path + "{}-vocab.json".format(name)
         merges_file = dir_path + "{}-merges.txt".format(name)
-        tokenizer.hf_tokenizer = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=lowercase)
+        tokenizer.hf_tokenizers = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=lowercase)
 
         return tokenizer
