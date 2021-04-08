@@ -141,6 +141,7 @@ class TokenizerWrapperBPE(object):
 
         return {'offset_mapping': res.offsets,
                 'input_ids': res.ids,
+                'tokens': res.tokens,
                 }
 
 
