@@ -5,7 +5,7 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 ## UPDATE
 MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), as well as potential problems with all code that used the MedCAT package.
 
-MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree/legacy) branch and will still be supported until 1. June 2021 (with respect to potential bug fixes).
+MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree/legacy) branch and will still be supported until 1. July 2021 (with respect to potential bug fixes), after it will still be available but not updated anymore.
 
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
