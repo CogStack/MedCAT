@@ -53,7 +53,7 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
             description=_DESCRIPTION,
             features=datasets.Features(
                 {
-                    "patient_id": datasets.Value("int32"),
+                    "patient_id": datasets.Value("string"),
                     "stream": [datasets.Value('string')],
                 }
             ),
@@ -90,5 +90,5 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
 
                     out_stream.append(data[0])
 
-                yield pt, {'patient_id': int(pt),
+                yield pt, {'patient_id': str(pt),
                            'stream': out_stream}

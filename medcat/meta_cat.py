@@ -3,11 +3,11 @@ import json
 import pickle
 import numpy as np
 import torch
-from tokenizers import ByteLevelBPETokenizer
 from scipy.special import softmax
 
 from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
+from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 
 class MetaCAT(object):
     r''' TODO: Add documentation
@@ -191,10 +191,10 @@ class MetaCAT(object):
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
             if hasattr(self.tokenizer, 'save_model'):
-                # Support the new save in tokenizer 0.8.2+
+                # Support the new save in tokenizer 0.8.2+ from huggingface
                 self.tokenizer.save_model(self.save_dir, name='bbpe')
-            elif hasattr(self.tokenizer, 'save_model'):
-                # Old way of saving models
+            elif hasattr(self.tokenizer, 'save'):
+                # The tokenizer wrapper saving  
                 self.tokenizer.save(self.save_dir, name='bbpe')
             # Save embeddings
             np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
@@ -249,13 +249,10 @@ class MetaCAT(object):
         """
         # Load tokenizer if it is None
         if self.tokenizer is None:
-            vocab_file = self.save_dir + "{}-vocab.json".format(tokenizer_name)
-            merges_file = self.save_dir + "{}-merges.txt".format(tokenizer_name)
-            self.tokenizer = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=True)
-
+            self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
         # Load embeddings if None
         if self.embeddings is None:
-            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'))
+            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'), allow_pickle=False)
             self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
 
         # Load configuration
