@@ -23,7 +23,7 @@ log = basic_logger("CAT")
 class CAT(object):
     r'''
     The main MedCAT class used to annotate documents, it is built on top of spaCy
-    and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
+    and works as a spaCy pipeline. Creates an instance of a spaCy pipeline that can
     be used as a spacy nlp model.
 
     Args:
@@ -50,7 +50,7 @@ class CAT(object):
     Examples:
         >>>cat = CAT(cdb, vocab)
         >>>spacy_doc = cat("Put some text here")
-        >>>print(spacy_doc.ents) # Detected entites
+        >>>print(spacy_doc.ents) # Detected entities
     '''
     def __init__(self, cdb, vocab=None, skip_stopwords=True, meta_cats=[], config={}, tokenizer=None):
         self.cdb = cdb
@@ -73,7 +73,7 @@ class CAT(object):
         self.spacy_cat = SpacyCat(cdb=self.cdb, vocab=self.vocab, tokenizer=tokenizer)
         self.nlp.add_cat(spacy_cat=self.spacy_cat)
 
-        # Add meta_annotaiton classes if they exist
+        # Add meta_annotation classes if they exist
         self._meta_annotations = False
         for meta_cat in meta_cats:
             self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
@@ -127,7 +127,7 @@ class CAT(object):
         names.append(p_name)
         # Get the raw version
         p_name, tokens, _, _ = get_all_from_name(name=name, source_value=name, nlp=self.nlp, version='raw')
-        # Append the raw evrsion
+        # Append the raw version
         names.append(p_name)
 
         if tokens[-1].lower() == "s":
@@ -163,14 +163,14 @@ class CAT(object):
             source_val (str):
                 The `name` or span or source_value that will be linked to the cui
             is_pref_name (boolean):
-                Is this source_val the prefered `name` for this CUI (concept)
+                Is this source_val the preferred `name` for this CUI (concept)
             only_new (bool):
                 Only add the name if it does not exist in the current CDB and is not linked
                 to any concept (CUI) in the current CDB.
             desc (str):
                 Description for this concept
             tui (str):
-                Semenantic Type identifer for this concept, should be a TUI that exisit in the
+                Semantic Type identifier for this concept, should be a TUI that exists in the
                 current CDB. Have a look at cdb.tui2names - for a list of all existing TUIs
                 in the current CDB.
 
@@ -238,10 +238,10 @@ class CAT(object):
                 Text in which an example of this source_val can be found. Used for supervised/online
                 training. This is basically one sample in a dataset for supervised training.
             is_pref_name (boolean):
-                Is this source_val the prefered `name` for this CUI (concept)
+                Is this source_val the preferred `name` for this CUI (concept)
             tkn_inds (list of ints, optional):
                 Should be in the form: [3, 4, 5, ...]. This should be used only if you are providing a spacy_doc also.
-                It gives the indicies of the tokens in a spacy document where the source_val can be found.
+                It gives the indices of the tokens in a spaCy document where the source_val can be found.
             text_inds (list, optional):
                 A list that has only two values the start index for this `source_val` in the `text` and the end index.
                 Used if you are not providing a spacy_doc. But are providing a `text` - it is optional and if not provided
@@ -303,7 +303,7 @@ class CAT(object):
                 Each project in medcattrainer can have filters, do we want to respect those filters
                 when calculating metrics.
             use_overlaps (boolean):
-                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
             use_cui_doc_limit (boolean):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
