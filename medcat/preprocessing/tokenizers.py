@@ -1,6 +1,7 @@
 import spacy
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
+from tokenizers import ByteLevelBPETokenizer
 import re
 
 def spacy_extended(nlp):
@@ -128,8 +129,12 @@ class SpacyHFDoc(object):
 
 
 class TokenizerWrapperBPE(object):
-    def __init__(self, hf_tokenizers):
+    '''
+    '''
+
+    def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
+
 
     def __call__(self, text):
         res = self.hf_tokenizers.encode(text)
@@ -137,3 +142,16 @@ class TokenizerWrapperBPE(object):
         return {'offset_mapping': res.offsets,
                 'input_ids': res.ids,
                 }
+
+
+    def save(self, dir_path, name='bbpe'):
+        self.hf_tokenizers.save_model(dir_path, name=name)
+
+    @classmethod
+    def load(cls, dir_path, name='bbpe', lowercase=True):
+        tokenizer = cls()
+        vocab_file = dir_path + "{}-vocab.json".format(name)
+        merges_file = dir_path + "{}-merges.txt".format(name)
+        tokenizer.hf_tokenizer = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=lowercase)
+
+        return tokenizer
