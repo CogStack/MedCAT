@@ -1,3 +1,4 @@
-cui,name,onto,tty,tui,sty,desc,examples
-1,Kidney Failure,SNOMED,PN,T047,Disease,Description of the concept,The patient was diagnosed with kidney failure
-1,Failure of Kidneys|KF|K. Failure,,,,,,
+cui,name
+1,kidney failure
+7,CoVid 2
+7,coronavirus
