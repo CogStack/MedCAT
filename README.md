@@ -11,7 +11,7 @@ MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
 and contains a small portion of UMLS.
 
-## Tutorial [NOT YET v1 READY]
+## Tutorial
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
 ## Papers that use MedCAT
@@ -92,7 +92,6 @@ If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot
 
 
 ## TODO
-- [ ] Update the tutorials
 - [ ] Switch to spaCy version 3+
 - [ ] Enable automatic download of pre-built UMLS/SNOMED databases
 - [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
