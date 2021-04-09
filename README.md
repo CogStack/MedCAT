@@ -28,7 +28,8 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 ## Install using PIP (Requires Python 3.6.1+)
 1. Install MedCAT 
 
-`pip install --upgrade medcat`
+- For macOS: `pip install --upgrade medcat`
+- For Windows/Linux (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
 2. Get the scispacy models:
 
