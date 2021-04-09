@@ -7,9 +7,16 @@ from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
 
-from medcat.utils.loggers import basic_logger
-log = basic_logger("utils")
 
+def get_lr_linking(config, cui_count, params, similarity):
+    if config.linking['optim']['type'] == 'standard':
+        return config.linking['optim']['lr']
+    elif config.linking['optim']['type'] == 'linear':
+        lr = config.linking['optim']['base_lr']
+        cui_count += 1 # Just in case incrase by 1
+        return max(lr / cui_count, config.linking['optim']['min_lr'])
+    else:
+        raise Exception("Optimizer not implemented")
 
 def get_batch(ind, batch_size, x, y, cpos, device):
     # Get the start/end index for this batch

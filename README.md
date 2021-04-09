@@ -2,14 +2,16 @@
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
 
-## SNOMED Demo
+## UPDATE
+MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), as well as potential problems with all code that used the MedCAT package.
+
+MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree/legacy) branch and will still be supported until 1. July 2021 (with respect to potential bug fixes), after it will still be available but not updated anymore.
+
+## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
-and uses SNOMED for the CDB.
+and contains a small portion of UMLS.
 
-## Interest Group, Q&A
-Please use [Discussions](https://github.com/CogStack/MedCAT/discussions) as type of interest group, or place where to ask questions and write suggestions without opening an Issue.
-
-## Tutorial
+## Tutorial [NOT YET v1 READY]
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
 ## Papers that use MedCAT
@@ -30,26 +32,24 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 
 2. Get the scispacy models:
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_md-0.3.0.tar.gz`
 
-3. Download the Vocabulary and CDB from the Models section below
+3. Downlad the Vocabulary and CDB from the Models section bellow
 
 4. Quickstart:
 ```python
+from medcat.vocab import Vocab
+from medcat.cdb import CDB
 from medcat.cat import CAT
-from medcat.utils.vocab import Vocab
-from medcat.cdb import CDB 
 
-vocab = Vocab()
 # Load the vocab model you downloaded
-vocab.load_dict('<path to the vocab file>')
-
+vocab = Vocab.load(vocab_path)
 # Load the cdb model you downloaded
-cdb = CDB()
-cdb.load_dict('<path to the cdb file>') 
+cdb = CDB.load('<path to the cdb file>') 
 
-# create cat
-cat = CAT(cdb=cdb, vocab=vocab)
+# Create cat - each cdb comes with a config that was used
+#to train it. You can change that config in any way you want, before or after creating cat.
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
 
 # Test it
 text = "My simple document with kidney failure"
@@ -61,54 +61,41 @@ print(doc_spacy.ents)
 #and usually easier to use unless you know a lot about spaCy
 doc = cat.get_entities(text)
 print(doc)
+
+
+# To train on one example
+_ = cat(text, do_train=True)
+
+# To train on a iterator over documents
+data_iterator = <your iterator>
+cat.train(data_iterator)
+
+#Once done, save the new CDB
+cat.cdb.save(<save path>)
 ```
 
 
 ## Models
-A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. It is quite limited
-so the performance might not be the best.
+A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. 
 
-Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from Wiktionary
+Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
 
-CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat) - Built from MedMentions
+CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-v1.dat) - Built from MedMentions
 
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases.
+If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
-Alternatively, you can build the CDBs for scratch from source data. We have used the below steps to build UMLS and SNOMED-CT (UK) for our experiments
 
-#### Building Concept Databases from Scratch
-We provide details to build both UMLS and SNOMED-CT concept databases. In both cases CSV files containing the source
-data with required columns (column descriptions are provided in the [tutorial](https://colab.research.google.com/drive/1nz2zMDQ3QrlTgpW7FfGaXeV1ZAtZeOe2#scrollTo=ptRmHln9k7hG). 
-Given the CSV files the [prepare_cdb.py](https://github.com/CogStack/MedCAT/blob/master/medcat/prepare_cdb.py) script can be used to build a CDB.
- 
-##### Building a UMLS Concept Database
-The UMLS can be downloaded from https://www.nlm.nih.gov/research/umls/index.html in the 
-Rich Release Format (RRF). To make subsetting and filtering easier we import UMLS RRF into a PostgreSQL database 
-(scripts available at [here](https://github.com/w-is-h/umls)).
-
-Once the data is in the database we can use the following SQL script to download the CSV files containing all concepts 
-that will form our CDB.
-
-```
-# Selecting concepts for all the Ontologies that are used
-SELECT DISTINCT umls.mrconso.cui, str, mrconso.sab, mrconso.tty, tui, sty, def 
-FROM umls.mrconso 
-    LEFT OUTER JOIN umls.mrsty ON umls.mrsty.cui = umls.mrconso.cui 
-    LEFT OUTER JOIN umls.mrdef ON umls.mrconso.cui = umls.mrdef.cui
-WHERE lat='ENG'
-```
-
-##### Building a SNOMED-CT Concept Database
-We use the SNOMED-CT data provided by the NHS TRUD service [https://isd.digital.nhs.uk/trud3/user/guest/group/0/pack/26](https://isd.digital.nhs.uk/trud3/user/guest/group/0/pack/26). 
-This release combines the International and UK specific concepts into a set of assets that can be parsed and loaded 
-into a MedCAT CDB. We provide scripts for parsing the various release files and load into a MedCAT CDB instance. 
-We provide further scripts to load accompanying SNOMED-CT Drug extension and clinical coding data 
-(ICD / OPCS terminologies) also from the NHS TRUD service. Scripts are available at: [https://github.com/tomolopolis/SNOMED-CT_Analysis](https://github.com/tomolopolis/SNOMED-CT_Analysis) 
+## TODO
+- [ ] Update the tutorials
+- [ ] Switch to spaCy version 3+
+- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
+- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
+- [ ] Update webapp to v1 and enable UMLS and SNOMED
 
 
 ## Acknowledgement

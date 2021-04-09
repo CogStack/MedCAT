@@ -16,6 +16,7 @@ db.sqlite3
 
 #tmp and similar files
 .nfs*
+*.log
 *.pyc
 *.out
 *.swp
@@ -32,6 +33,7 @@ tmp_*
 nohup.out
 tmp.py
 .DS_Store
+*.lock
 
 # models files
 *.dat

@@ -1,0 +1,10 @@
+linking.similarity_threshold = 0.1
+ner.min_name_len = 3
+ner.upper_case_limit_len = 3
+linking.disamb_length_limit = 3
+linking.train_count_threshold = -2
+linking.filters = {'cuis': set()}
+linking.context_vector_sizes = {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3}
+linking.context_vector_weights = {'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1}
+linking.weighted_average_function = lambda step: max(0.1, 1-(step**2*0.0004))
+linking.similarity_threshold_type = 'static'
