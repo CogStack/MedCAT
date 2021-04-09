@@ -719,12 +719,13 @@ class CAT(object):
         return json.dumps(out)
 
 
-    def multiprocessing(self, in_data, nproc=8, batch_size=100, only_cui=False, addl_info=[]):
+    def multiprocessing(self, in_data, nproc=8, batch_size_chars=1000000, max_chars_in_memory=-1, only_cui=False, addl_info=[]):
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  number of processors
-        batch_size:  obvious
+        batch_size_chars: size of a batch in number of characters
+        max_chars_in_memory: if set it will limit the number of chars that can be processed together by all processed combined 
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         '''
@@ -738,21 +739,25 @@ class CAT(object):
         manager = Manager()
         out_dict = manager.dict()
         out_dict['processed'] = []
+        out_dict['current_size_in_chars'] = 0
 
         # Create processes
         procs = []
         for i in range(nproc):
             p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
-                                                      'addl_info': addl_info})
+                'addl_info': addl_info, 'max_chars_in_memory': max_chars_in_memory})
             p.start()
             procs.append(p)
 
         data = []
+        nchars = 0
         for id, text in in_data:
             data.append((id, str(text)))
-            if len(data) == batch_size:
+            nchars += len(str(text))
+            if  nchars >= batch_size_chars:
                 in_q.put(data)
                 data = []
+                nchars = 0
         # Put the last batch if it exists
         if len(data) > 0:
             in_q.put(data)
@@ -779,7 +784,7 @@ class CAT(object):
         return out
 
 
-    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
+    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[], max_chars_in_memory=-1):
         cnt = 0
         out = []
         while True:
@@ -791,7 +796,18 @@ class CAT(object):
 
                 for id, text in data:
                     try:
+                        if max_chars_in_memory > 0:
+                            while out_dict['current_size_in_chars'] > max_chars_in_memory:
+                                self.log.debug("Process: {}, waiting because current chars in memory: {}".format(pid, out_dict['current_size_in_chars']))
+                                # Wait until size in memory is low
+                                sleep(1)
+                        out_dict['current_size_in_chars'] = out_dict['current_size_in_chars'] + len(text)
+                        self.log.debug("Process: {}, current chars in memory (before) is: {}".format(pid, out_dict['current_size_in_chars']))
+                        # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
+
+                        out_dict['current_size_in_chars'] = out_dict['current_size_in_chars'] - len(text)
+                        self.log.debug("Process: {}, current chars in memory (after) is: {}".format(pid, out_dict['current_size_in_chars']))
                         doc['text'] = text
                         out.append((id, doc))
                     except Exception as e:

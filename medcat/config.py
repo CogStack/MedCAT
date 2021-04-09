@@ -29,7 +29,8 @@ class Config(object):
         self.general = {
                 # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance 
                 'log_level': logging.INFO,
-                'log_format': '%(asctime)s: %(message)s',
+                'log_format': '%(levelname)s:%(name)s: %(message)s',
+                'log_path': './medcat.log',
                 'spacy_disabled_components': ['ner', 'parser', 'vectors', 'textcat', 
                                               'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                               'merge_entities', 'merge_subtokens'],
