@@ -1,6 +1,7 @@
 from medcat.vocab import Vocab
 import numpy as np
 import pandas
+from pathlib import Path
 from medcat.preprocessing.tokenizers import spacy_split_all
 from functools import partial
 from gensim.models import Word2Vec
@@ -22,9 +23,9 @@ class MakeVocab(object):
             Default: None
 
     >>>cdb = <your existing cdb>
-    >>>maker = MakeVocab(cdb=cdb)
+    >>>maker = MakeVocab(cdb=cdb, config=config)
     >>>maker.make(data_iterator, out_folder="./output/")
-    >>>maker.add_vectors(self, in_path="./output/data.txt")
+    >>>maker.add_vectors(in_path="./output/data.txt")
     >>>
     '''
     log = logging.getLogger(__name__)
@@ -75,10 +76,10 @@ class MakeVocab(object):
                 between e.g. plural/singular should be ignored. But in general not so important if the dataset is big enough.
         '''
         # Save the preprocessed data, used for emb training
-        out_path = out_folder + "data.txt"
-        vocab_path = out_folder + "vocab.dat"
+        out_path = Path(out_folder) / "data.txt"
+        vocab_path = Path(out_folder) / "vocab.dat"
         self.vocab_path = vocab_path
-        out = open(out_path, 'w')
+        out = open(out_path, 'w', encoding='utf-8')
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
