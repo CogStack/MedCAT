@@ -380,12 +380,13 @@ class CDB(object):
                 self.cui2count_train[cui] = cdb.cui_count[cui]
 
 
-    def import_old_cdb(self, cdb):
+    def import_old_cdb(self, cdb, import_vectors=True):
         r''' Import all data except for cuis and names from an old CDB.
         '''
         
         # Import vectors
-        self.import_old_cdb_vectors(cdb)
+        if import_vectors:
+            self.import_old_cdb_vectors(cdb)
 
         # Import TUIs
         for cui in cdb.cui2names:
