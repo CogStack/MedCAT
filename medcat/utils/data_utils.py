@@ -867,7 +867,7 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
 
 
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False, cui_filter=None, replace_center=None):
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False, cui_filter=None, replace_center=None, prerequisite={}):
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
@@ -892,7 +892,16 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                     if cui_filter:
                         cui = ann['cui']
 
-                    if cui_filter is None or not cui_filter or cui in cui_filter:
+                    skip = False
+
+                    if 'meta_anns' in ann and prerequisite:
+                        # It is possible to require certain meta_anns to exist and have a specific value
+                        for meta_ann in prerequisite:
+                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisite[meta_ann]:
+                                # Skip this annotation as the prerequisite is not met
+                                skip = True
+
+                    if not skip and (cui_filter is None or not cui_filter or cui in cui_filter):
                         if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)):
                             start = ann['start']
                             end = ann['end']
