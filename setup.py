@@ -9,7 +9,7 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="1.0.8",
+    version="1.0.21",
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
@@ -31,6 +31,7 @@ setuptools.setup(
         'elasticsearch~=7.10',
         'dill~=0.3.3',
         'datasets~=1.5.0',
+        'psutil==5.8.0',
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

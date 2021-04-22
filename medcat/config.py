@@ -41,7 +41,7 @@ class Config(object):
                 'separator': '~',
                 # Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
                 #for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language.
-                'spell_check': False,
+                'spell_check': True,
                 # If True the spell checker will try harder to find mistakes, this can slow down
                 #things drastically.
                 'spell_check_deep': False,
