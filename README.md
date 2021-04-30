@@ -96,6 +96,7 @@ If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot
 - [ ] Enable automatic download of pre-built UMLS/SNOMED databases
 - [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
 - [ ] Update webapp to v1 and enable UMLS and SNOMED
+- [ ] Fix logging, make sure the config options are respected 
 
 
 ## Acknowledgement
