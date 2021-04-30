@@ -80,8 +80,28 @@ class CDB(object):
         self._optim_params = None
 
 
-    def update_cui2_average_confidence(self, cui, new_sim):
-        self.cui2average_confidence[cui] = (self.cui2average_confidence[cui] * self.cui2count_train[cui] + new_sim)  / (self.cui2count_train[cui] + 1)
+    def get_name(self, cui):
+        r''' Returns preferred name if it exists, otherwise it will return
+        the logest name assigend to the concept.
+
+        Args:
+            cui
+        '''
+
+        name = cui # In case we do not find anything it will just return the CUI
+
+        if cui in self.cui2preferred_name:
+            name = self.cui2preferred_name[cui]
+        elif cui in self.cui2names:
+            name = " ".join(str(max(self.cui2names[cui], key=len)).split(self.config.general.get('separator', '~'))).title()
+
+        return name
+
+
+    def update_cui2average_confidence(self, cui, new_sim):
+        self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim)  / \
+                                            (self.cui2count_train.get(cui, 0) + 1)
+
 
     def remove_names(self, cui: str, names: Dict):
         r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
@@ -172,10 +192,6 @@ class CDB(object):
             # Create placeholders 
             self.cui2names[cui] = set()
             self.cui2snames[cui] = set()
-            self.cui2context_vectors[cui] = {}
-            self.cui2count_train[cui] = 0
-            self.cui2average_confidence[cui] = 0
-            self.cui2tags[cui] = []
 
             # Add type_ids
             self.cui2type_ids[cui] = type_ids
@@ -192,10 +208,11 @@ class CDB(object):
 
             # Add name to cui2names
             self.cui2names[cui].add(name)
-            # Extend cui2snames
-            self.cui2snames[cui].update(name_info['snames'])
-            # Add name to counts
-            self.name2count_train[name] = 0
+            # Extend cui2snames, but check is the cui already in also
+            if cui in self.cui2snames:
+                self.cui2snames[cui].update(name_info['snames'])
+            else:
+                self.cui2snames[cui] = name_info['snames']
 
             if name in self.name2cuis:
                 # Means we have alrady seen this name
@@ -285,42 +302,45 @@ class CDB(object):
         cui_count (`int`, defaults to 0):
             The learning rate will be calculated based on the count for the provided CUI + cui_count.
         '''
+        if cui not in self.cui2context_vectors:
+            self.cui2context_vectors = {}
+            self.cui2count_train = 0
+
         similarity = None
-        if cui in self.cui2context_vectors:
-            for context_type, vector in vectors.items():
-                # Get the right context
-                if context_type in self.cui2context_vectors[cui]:
-                    cv = self.cui2context_vectors[cui][context_type]
-                    similarity = np.dot(unitvec(cv), unitvec(vector))
+        for context_type, vector in vectors.items():
+            # Get the right context
+            if context_type in self.cui2context_vectors[cui]:
+                cv = self.cui2context_vectors[cui][context_type]
+                similarity = np.dot(unitvec(cv), unitvec(vector))
 
-                    # Get the learning rate if None
-                    if lr is None:
-                        lr = get_lr_linking(self.config, self.cui2count_train[cui] + cui_count, self._optim_params, similarity)
+                # Get the learning rate if None
+                if lr is None:
+                    lr = get_lr_linking(self.config, self.cui2count_train[cui] + cui_count, self._optim_params, similarity)
 
-                    if negative:
-                        # Add negative context
-                        b = max(0, similarity) * lr
-                        self.cui2context_vectors[cui][context_type] = cv*(1-b) - vector*b
-                    else:
-                        b = (1 - max(0, similarity)) * lr
-                        self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
-
-                    # DEBUG
-                    self.log.debug("Updated vector embedding.\n" + \
-                            "CUI: {}, Context Type: {}, Similarity: {:.2f}, Is Negative: {}, LR: {:.5f}, b: {:.3f}".format(cui, context_type,
-                                similarity, negative, lr, b))
-                    cv = self.cui2context_vectors[cui][context_type]
-                    similarity_after = np.dot(unitvec(cv), unitvec(vector))
-                    self.log.debug("Similarity before vs after: {:.5f} vs {:.5f}".format(similarity, similarity_after))
+                if negative:
+                    # Add negative context
+                    b = max(0, similarity) * lr
+                    self.cui2context_vectors[cui][context_type] = cv*(1-b) - vector*b
                 else:
-                    if negative:
-                        self.cui2context_vectors[cui][context_type] = -1 * vector
-                    else:
-                        self.cui2context_vectors[cui][context_type] = vector
+                    b = (1 - max(0, similarity)) * lr
+                    self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
 
-                    # DEBUG
-                    self.log.debug("Added new context type with vectors.\n" + \
-                            "CUI: {}, Context Type: {}, Is Negative: {}".format(cui, context_type, negative))
+                # DEBUG
+                self.log.debug("Updated vector embedding.\n" + \
+                        "CUI: {}, Context Type: {}, Similarity: {:.2f}, Is Negative: {}, LR: {:.5f}, b: {:.3f}".format(cui, context_type,
+                            similarity, negative, lr, b))
+                cv = self.cui2context_vectors[cui][context_type]
+                similarity_after = np.dot(unitvec(cv), unitvec(vector))
+                self.log.debug("Similarity before vs after: {:.5f} vs {:.5f}".format(similarity, similarity_after))
+            else:
+                if negative:
+                    self.cui2context_vectors[cui][context_type] = -1 * vector
+                else:
+                    self.cui2context_vectors[cui][context_type] = vector
+
+                # DEBUG
+                self.log.debug("Added new context type with vectors.\n" + \
+                        "CUI: {}, Context Type: {}, Is Negative: {}".format(cui, context_type, negative))
 
         if not negative:
             # Increase counter only for positive examples
@@ -368,7 +388,7 @@ class CDB(object):
 
     def import_old_cdb_vectors(self, cdb):
         # Import context vectors
-        for cui in self.cui2context_vectors:
+        for cui in self.cui2names: # Loop through all CUIs in the current CDB
             if cui in cdb.cui2context_vec:
                 self.cui2context_vectors[cui] = {'medium': cdb.cui2context_vec[cui],
                                                  'long': cdb.cui2context_vec[cui],
@@ -383,7 +403,7 @@ class CDB(object):
     def import_old_cdb(self, cdb, import_vectors=True):
         r''' Import all data except for cuis and names from an old CDB.
         '''
-        
+
         # Import vectors
         if import_vectors:
             self.import_old_cdb_vectors(cdb)
@@ -432,7 +452,7 @@ class CDB(object):
         '''
         # Import vectors and counts
         for cui in cdb.cui2context_vectors:
-            if cui in self.cui2context_vectors:
+            if cui in self.cui2names:
                 for context_type, vector in cdb.cui2context_vectors[cui].items():
                     if overwrite or context_type not in self.cdb.cui2context_vectors[cui]:
                         self.cui2context_vectors[cui][context_type] = vector
@@ -440,7 +460,7 @@ class CDB(object):
                         self.cui2context_vectors[cui][context_type] = (vector + self.cui2context_vectors[cui][context_type]) / 2
 
                 # Increase the vector count
-                self.cui2count_train[cui] += cdb.cui2count_train[cui]
+                self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
 
 
     def reset_cui_count(self, n=10):
@@ -463,9 +483,8 @@ class CDB(object):
         for concepts in the current CDB. Please note that this does not remove synonyms (names) that were
         potentially added during supervised/online learning.
         '''
-        self.reset_cui_count(n=0)
-        for context_type in self.cui2context_vectors:
-            self.cui2context_vectors[context_type] = {}
+        self.cui2count_train = {}
+        self.cui2context_vectors = {}
         self.reset_concept_similarity()
 
 
@@ -480,6 +499,10 @@ class CDB(object):
             cuis_to_keep (`List[str]`):
                 CUIs that will be kept, the rest will be removed (not completely, look above).
         '''
+
+        if not self.cui2snames:
+            raise Exception("This CDB does not support subsetting - most likely because it is a `small/medium` version of a CDB")
+
         # First get all names/snames that should be kept based on this CUIs
         names_to_keep = set()
         snames_to_keep = set()
@@ -506,11 +529,15 @@ class CDB(object):
         for cui in all_cuis_to_keep:
             new_cui2names[cui] = self.cui2names[cui]
             new_cui2snames[cui] = self.cui2snames[cui]
-            new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
-            new_cui2count_train[cui] = self.cui2count_train[cui]
-            new_cui2tags[cui] = self.cui2tags[cui]
+            if cui in self.cui2context_vectors:
+                new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
+                # We assume that it must have the cui2count_train if it has a vector
+                new_cui2count_train[cui] = self.cui2count_train[cui]
+            if cui in self.cui2tags:
+                new_cui2tags[cui] = self.cui2tags[cui]
             new_cui2type_ids[cui] = self.cui2type_ids[cui]
-            new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
+            if cui in self.cui2preferred_name:
+                new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
 
         # Subset name2<whatever>
         for name in names_to_keep:
@@ -593,7 +620,7 @@ class CDB(object):
             for _cui in self.cui2context_vectors:
                 if context_type in self.cui2context_vectors[_cui]:
                     sim_vectors.append(unitvec(self.cui2context_vectors[_cui][context_type]))
-                    sim_vectors_counts.append(self.cui2count_train[_cui])
+                    sim_vectors_counts.append(self.cui2count_train.get(_cui, 0))
                     sim_vectors_type_ids.append(self.cui2type_ids.get(_cui, {'unk'}))
                     sim_vectors_cuis.append(_cui)
 
@@ -629,6 +656,6 @@ class CDB(object):
             res[_cui] = {'name': self.cui2preferred_name.get(_cui, list(self.cui2names[_cui])[0]), 'sim': sims[sims_srt][ind],
                          'type_names': [self.addl_info['type_id2name'].get(cui, 'unk') for cui in self.cui2type_ids.get(_cui, ['unk'])],
                          'type_ids': self.cui2type_ids.get(_cui, 'unk'),
-                         'cnt': self.cui2count_train[_cui]}
+                         'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res

@@ -40,7 +40,8 @@ class MetaCAT(object):
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, class_weights=None, cv=0,
               ignore_cpos=False, model_config={}, cui_filter=None, fine_tune=False,
-              auto_save_model=True, score_average='weighted', replace_center=None, seed=11):
+              auto_save_model=True, score_average='weighted', replace_center=None, seed=11,
+              prerequisite={}):
         r''' TODO: Docs
         '''
         set_all_seeds(seed)
@@ -52,7 +53,7 @@ class MetaCAT(object):
 
         # Prepare the data
         data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, cui_filter=cui_filter,
-                replace_center=replace_center, cntx_in_chars=True)
+                replace_center=replace_center, cntx_in_chars=True, prerequisite=prerequisite)
 
         if category_name is not None:
             self.category_name = category_name
