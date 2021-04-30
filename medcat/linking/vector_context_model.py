@@ -178,12 +178,12 @@ class ContextModel(object):
             if not negative:
                 # Update the name count, if possible
                 if type(entity) == spacy.tokens.span.Span:
-                    self.cdb.name2count_train[entity._.detected_name] += 1
+                    self.cdb.name2count_train[entity._.detected_name] = self.cdb.name2count_train.get(entity._.detected_name, 0) + 1
 
                 if self.config.linking.get('calculate_dynamic_threshold', False):
                     # Update average confidence for this CUI
                     sim = self.similarity(cui, entity, doc)
-                    self.cdb.update_cui2_average_confidence(cui=cui, new_sim=sim)
+                    self.cdb.update_cui2average_confidence(cui=cui, new_sim=sim)
 
             if negative:
                 # Change the status of the name so that it has to be disambiguated always

@@ -640,7 +640,7 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
 
-    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
+    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies', 'cui2snomed']):
         r''' Get entities
 
         text:  text to be annotated
