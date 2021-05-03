@@ -38,6 +38,7 @@ class Pipe(object):
         self.nlp.add_pipe(tagger, name='tag_' + name, first=True)
         # Add custom fields needed for this usecase
         Token.set_extension('to_skip', default=False, force=True)
+        Token.set_extension('is_upper', default=False, force=True)
 
         # Add any additional fields that are required
         for field in additional_fields:

@@ -64,6 +64,7 @@ class CDB(object):
         self.cui2preferred_name = {}
         self.cui2average_confidence = {}
         self.name2count_train = {}
+        self.name_isupper = {}
 
         self.addl_info = {
                 'cui2icd10': {},
@@ -163,7 +164,7 @@ class CDB(object):
         self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
 
-    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
+    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False, isupper: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
@@ -213,6 +214,9 @@ class CDB(object):
                 self.cui2snames[cui].update(name_info['snames'])
             else:
                 self.cui2snames[cui] = name_info['snames']
+
+            # Add whether concept is uppercase
+            self.name_isupper[name] = isupper
 
             if name in self.name2cuis:
                 # Means we have alrady seen this name
