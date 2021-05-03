@@ -37,7 +37,7 @@ class NER(object):
                     else:
                         name = name_version
                     break
-            if name in self.cdb.name2cuis and not tkn.is_stop:
+            if name in self.cdb.name2cuis and not tkn.is_stop and tkn.is_upper == self.cdb.name_isupper.get(name, False):
                 maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
 
             if name: # There has to be at least something appended to the name to go forward
