@@ -27,7 +27,4 @@ def tag_skip_and_punct(doc, config):
         elif cnf_p['skip_stopwords'] and token.is_stop:
             token._.to_skip = True
 
-        if token.is_upper:
-            token._.is_upper = True
-
     return doc

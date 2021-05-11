@@ -24,6 +24,10 @@ def prepare_name(raw_name, nlp, names, config):
 
     for version in config.cdb_maker['name_versions']:
         tokens = None
+        is_upper = None
+
+        if config.general['case_sensitive']:
+            is_upper = sc_name.text.isupper()
 
         if version == "LOWER":
             tokens = [t.lower_ for t in sc_name if not t._.to_skip]
@@ -53,7 +57,7 @@ def prepare_name(raw_name, nlp, names, config):
                             sname = token
                         snames.add(sname.strip())
 
-                    names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}
+                    names[name] = {'tokens': tokens, 'snames': snames, 'raw_name': raw_name, 'is_upper': is_upper}
 
     return names
 

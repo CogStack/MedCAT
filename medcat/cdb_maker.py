@@ -155,9 +155,6 @@ class CDBMaker(object):
                     for raw_name in raw_names:
                         raw_name = raw_name.strip()
 
-                        # Check whether it is uppercase
-                        isupper = raw_name.isupper()
-
                         prepare_name(raw_name, self.nlp, names, self.config)
 
                         if self.config.cdb_maker.get('remove_parenthesis', 0) > 0 and name_status == 'P':
@@ -167,7 +164,7 @@ class CDBMaker(object):
                                 prepare_name(raw_name, self.nlp, names, self.config)
 
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
-                                         description=description, full_build=full_build, isupper=isupper)
+                                         description=description, full_build=full_build)
                     # DEBUG
                     self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontologies: {}\n Name status: {}\n".format(cui, names, ontologies, name_status) + \
                                    " Type IDs: {}\n Description: {}\n Is full build: {}".format(
