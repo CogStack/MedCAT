@@ -46,7 +46,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             log.debug("NER detected an entity." +
                       "\n\tDetected name: {}".format(entity._.detected_name) + 
                       "\n\tLink candidates: {}\n".format(entity._.link_candidates))
-                    
+
             return entity
 
     return None
