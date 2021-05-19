@@ -125,6 +125,8 @@ class Config(object):
                 # When adding a positive example, should it also be treated as Negative for concepts
                 #which link to the postive one via names (ambigous names).
                 'devalue_linked_concepts': False,
+                # If true when the context of a concept is calculated (embedding) the words making that concept are not taken into accout
+                'context_ignore_center_tokens': False,
                 # Filters
                 'filters': {
                     'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included

@@ -303,8 +303,8 @@ class CDB(object):
             The learning rate will be calculated based on the count for the provided CUI + cui_count.
         '''
         if cui not in self.cui2context_vectors:
-            self.cui2context_vectors = {}
-            self.cui2count_train = 0
+            self.cui2context_vectors[cui] = {}
+            self.cui2count_train[cui] = 0
 
         similarity = None
         for context_type, vector in vectors.items():
