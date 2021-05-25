@@ -28,8 +28,8 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
     '''
 
     log.debug("Maybe annotating name: {}".format(name))
-    if not config.general['check_upper_case_names'] or (config.general['check_upper_case_names'] and all([x.is_upper for x in tkns]) == cdb.name_isupper.get(name, False)):
-
+    check_upper_case_names = config.general.get('check_upper_case_names', False)
+    if not check_upper_case_names or (check_upper_case_names and all([x.is_upper for x in tkns]) == cdb.name_isupper.get(name, False)):
         if len(name) >= config.ner['min_name_len']:
             # Check the upper case limit, last part checks is it one token and uppercase
             if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
