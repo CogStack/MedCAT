@@ -64,6 +64,7 @@ class CDB(object):
         self.cui2preferred_name = {}
         self.cui2average_confidence = {}
         self.name2count_train = {}
+        self.name_isupper = {}
 
         self.addl_info = {
                 'cui2icd10': {},
@@ -213,6 +214,9 @@ class CDB(object):
                 self.cui2snames[cui].update(name_info['snames'])
             else:
                 self.cui2snames[cui] = name_info['snames']
+
+            # Add whether concept is uppercase
+            self.name_isupper[name] = names[name]['is_upper']
 
             if name in self.name2cuis:
                 # Means we have alrady seen this name

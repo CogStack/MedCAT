@@ -51,6 +51,8 @@ class Config(object):
                 'show_nested_entities': False,
                 # When unlinking a name from a concept should we do full_unlink (means unlink a name from all concepts, not just the one in question)
                 'full_unlink': False,
+                # Additional checking whether the concepts are uppercase or not before linking concepts
+                'check_upper_case_names': False,
                 }
 
         self.preprocessing = {

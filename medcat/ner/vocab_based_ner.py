@@ -70,7 +70,7 @@ class NER(object):
                             maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
                     elif name_reverse is not None:
                         if name_reverse in self.cdb.name2cuis:
-                            maybe_annotate_name(name_reverse, tkns, doc, self.cdb, self.config)
+                            maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
                     else:
                         break
 
