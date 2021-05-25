@@ -38,11 +38,7 @@ class NER(object):
                         name = name_version
                     break
             if name in self.cdb.name2cuis and not tkn.is_stop:
-                if self.config.general['case_sensitive']:
-                    if tkn.is_upper == self.cdb.name_isupper.get(name, False):
-                        maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
-                else:
-                    maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
+                maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
 
             if name: # There has to be at least something appended to the name to go forward
                 for j in range(i+1, len(_doc)):
@@ -71,18 +67,10 @@ class NER(object):
 
                     if name_changed:
                         if name in self.cdb.name2cuis:
-                            if self.config.general['case_sensitive']:
-                                if tkn.is_upper == self.cdb.name_isupper.get(name, False):
-                                    maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
-                            else:
-                                maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
+                            maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
                     elif name_reverse is not None:
                         if name_reverse in self.cdb.name2cuis:
-                            if self.config.general['case_sensitive']:
-                                if tkn.is_upper == self.cdb.name_isupper.get(name, False):
-                                    maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
-                            else:
-                                maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
+                            maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
                     else:
                         break
 
