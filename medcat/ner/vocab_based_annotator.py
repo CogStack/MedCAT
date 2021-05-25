@@ -28,26 +28,28 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
     '''
 
     log.debug("Maybe annotating name: {}".format(name))
-    if len(name) >= config.ner['min_name_len']:
-        # Check the upper case limit, last part checks is it one token and uppercase
-        if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
-            # Everything is fine, mark name
-            entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
-            # Only set this property when using a vocab approach and where this name
-            #fits a name in the cdb. All standard name entity recognition models will not set this.
-            entity._.detected_name = name
-            entity._.link_candidates = cdb.name2cuis[name]
-            entity._.id = len(doc._.ents)
-            entity._.confidence = -1 #  This does not calculate confidence
-            # Append the entity to the document
-            doc._.ents.append(entity)
+    if not config.general['check_upper_case_names'] or (config.general['check_upper_case_names'] and all([x.is_upper for x in tkns]) == cdb.name_isupper.get(name, False)):
 
-            # Not necessary, but why not
-            log.debug("NER detected an entity." +
-                      "\n\tDetected name: {}".format(entity._.detected_name) + 
-                      "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+        if len(name) >= config.ner['min_name_len']:
+            # Check the upper case limit, last part checks is it one token and uppercase
+            if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
+                # Everything is fine, mark name
+                entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
+                # Only set this property when using a vocab approach and where this name
+                #fits a name in the cdb. All standard name entity recognition models will not set this.
+                entity._.detected_name = name
+                entity._.link_candidates = cdb.name2cuis[name]
+                entity._.id = len(doc._.ents)
+                entity._.confidence = -1 #  This does not calculate confidence
+                # Append the entity to the document
+                doc._.ents.append(entity)
 
-            return entity
+                # Not necessary, but why not
+                log.debug("NER detected an entity." +
+                          "\n\tDetected name: {}".format(entity._.detected_name) +
+                          "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+
+                return entity
 
     return None
 
