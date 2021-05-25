@@ -154,7 +154,6 @@ class CDBMaker(object):
                                  len(raw_name.strip()) > 0]
                     for raw_name in raw_names:
                         raw_name = raw_name.strip()
-
                         prepare_name(raw_name, self.nlp, names, self.config)
 
                         if self.config.cdb_maker.get('remove_parenthesis', 0) > 0 and name_status == 'P':
