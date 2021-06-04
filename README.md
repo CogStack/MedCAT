@@ -76,7 +76,7 @@ cat.cdb.save(<save path>)
 ```
 
 
-## Models +++ TEMPORARILY UNAVAILABLE, BACK IN A COUPLE OF DAYS +++
+## Models
 A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. 
 
 Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
