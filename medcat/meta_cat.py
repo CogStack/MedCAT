@@ -3,10 +3,11 @@ import json
 import pickle
 import numpy as np
 import torch
-from tokenizers import ByteLevelBPETokenizer
+from scipy.special import softmax
 
 from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
+from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 
 class MetaCAT(object):
     r''' TODO: Add documentation
@@ -37,9 +38,10 @@ class MetaCAT(object):
 
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
-              batch_size=100, nepochs=20, lowercase=True, class_weights=None, cv=0,
-              ignore_cpos=False, model_config={}, tui_filter=None, fine_tune=False,
-              auto_save_model=True, score_average='weighted', replace_center=None, seed=11):
+              batch_size=100, nepochs=20, class_weights=None, cv=0,
+              ignore_cpos=False, model_config={}, cui_filter=None, fine_tune=False,
+              auto_save_model=True, score_average='weighted', replace_center=None, seed=11,
+              prerequisite={}):
         r''' TODO: Docs
         '''
         set_all_seeds(seed)
@@ -50,8 +52,8 @@ class MetaCAT(object):
             os.makedirs(self.save_dir)
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter,
-                replace_center=replace_center)
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, cui_filter=cui_filter,
+                replace_center=replace_center, cntx_in_chars=True, prerequisite=prerequisite)
 
         if category_name is not None:
             self.category_name = category_name
@@ -72,7 +74,7 @@ class MetaCAT(object):
             data, _ = encode_category_values(data, vals=self.category_values)
 
         # Convert data tkns to ids
-        data = tkns_to_ids(data, self.tokenizer)
+        #data = tkns_to_ids(data, self.tokenizer)
 
         if not fine_tune:
             if model_name == 'lstm':
@@ -134,12 +136,12 @@ class MetaCAT(object):
         return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
 
 
-    def eval(self, json_path, batch_size=100, lowercase=True, ignore_cpos=False, tui_filter=None, score_average='weighted',
+    def eval(self, json_path, batch_size=100, lowercase=True, ignore_cpos=False, cui_filter=None, score_average='weighted',
             replace_center=None):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, tui_filter=tui_filter,
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, cui_filter=cui_filter,
                 replace_center=replace_center)
 
         # Check is the name there
@@ -166,14 +168,14 @@ class MetaCAT(object):
         """
         text = text.lower()
 
-        doc_text = self.tokenizer.encode(text)
+        doc_text = self.tokenizer(text)
         ind = 0
-        for ind, pair in enumerate(doc_text.offsets):
+        for ind, pair in enumerate(doc_text['offset_mapping']):
             if start >= pair[0] and start <= pair[1]:
                 break
         _start = max(0, ind - self.cntx_left)
-        _end = min(len(doc_text.tokens), ind + 1 + self.cntx_right)
-        tkns = doc_text.ids[_start:_end]
+        _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
+        tkns = doc_text['input_ids'][_start:_end]
         cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
         x = torch.tensor([tkns], dtype=torch.long).to(self.device)
@@ -183,17 +185,17 @@ class MetaCAT(object):
         outputs_test = self.model(x, cpos)
 
         inv_map = {v: k for k, v in self.category_values.items()}
-        return inv_map[int(np.argmax(outputs_test.detach().numpy()[0]))]
+        return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
     def save(self, full_save=False):
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
             if hasattr(self.tokenizer, 'save_model'):
-                # Support the new save in tokenizer 0.8.2+
+                # Support the new save in tokenizer 0.8.2+ from huggingface
                 self.tokenizer.save_model(self.save_dir, name='bbpe')
-            else:
-                # Old way of saving models
+            elif hasattr(self.tokenizer, 'save'):
+                # The tokenizer wrapper saving  
                 self.tokenizer.save(self.save_dir, name='bbpe')
             # Save embeddings
             np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
@@ -248,13 +250,10 @@ class MetaCAT(object):
         """
         # Load tokenizer if it is None
         if self.tokenizer is None:
-            vocab_file = self.save_dir + "{}-vocab.json".format(tokenizer_name)
-            merges_file = self.save_dir + "{}-merges.txt".format(tokenizer_name)
-            self.tokenizer = ByteLevelBPETokenizer(vocab_file=vocab_file, merges_file=merges_file, lowercase=True)
-
+            self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
         # Load embeddings if None
         if self.embeddings is None:
-            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'))
+            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'), allow_pickle=False)
             self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
 
         # Load configuration
@@ -262,7 +261,6 @@ class MetaCAT(object):
 
         # Load MODEL
         self.load_model(model=model)
-        self.model.to(self.device)
 
     def __call__(self, doc, lowercase=True):
         """ Spacy pipe method """
@@ -271,7 +269,7 @@ class MetaCAT(object):
         text = doc.text
         if lowercase:
             text = text.lower()
-        doc_text = self.tokenizer.encode(text)
+        doc_text = self.tokenizer(text)
         x = []
         cpos = []
 
@@ -280,12 +278,12 @@ class MetaCAT(object):
             start = ent.start_char
             end = ent.end_char
             ind = 0
-            for ind, pair in enumerate(doc_text.offsets):
+            for ind, pair in enumerate(doc_text['offset_mapping']):
                 if start >= pair[0] and start <= pair[1]:
                     break
             _start = max(0, ind - self.cntx_left)
-            _end = min(len(doc_text.tokens), ind + 1 + self.cntx_right)
-            _ids = doc_text.ids[_start:_end]
+            _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
+            _ids = doc_text['input_ids'][_start:_end]
             _cpos = self.cntx_left + min(0, ind-self.cntx_left)
 
             id2row[ent._.id] = len(x)
@@ -303,13 +301,19 @@ class MetaCAT(object):
         if len(x) >  0:
             self.model.eval()
             outputs = self.model(x, cpos).detach().to('cpu').numpy()
+            confidences = softmax(outputs, axis=1)
             outputs = np.argmax(outputs, axis=1)
 
             for ent in doc.ents:
                 val = self.i_category_values[outputs[id2row[ent._.id]]]
+                confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
                 if ent._.meta_anns is None:
-                    ent._.meta_anns = {self.category_name: val}
+                    ent._.meta_anns = {self.category_name: {'value': val,
+                                                            'confidence': confidence,
+                                                            'name': self.category_name}}
                 else:
-                    ent._.meta_anns[self.category_name] = val
+                    ent._.meta_anns[self.category_name] = {'value': val,
+                                                           'confidence': confidence,
+                                                           'name': self.category_name}
 
         return doc

@@ -1,27 +1,18 @@
-from medcat.utils.vocab import Vocab
-import os
+from medcat.vocab import Vocab
 import numpy as np
 import pandas
+from pathlib import Path
 from medcat.preprocessing.tokenizers import spacy_split_all
-from medcat.preprocessing.cleaners import spacy_tag_punct, clean_name, clean_def
-from medcat.utils.spacy_pipe import SpacyPipe
 from functools import partial
-from medcat.utils.spelling import CustomSpellChecker
 from gensim.models import Word2Vec
 from medcat.preprocessing.iterators import SimpleIter
-from medcat.utils.loggers import basic_logger
-
-log = basic_logger("CAT")
+import logging
+from medcat.pipe import Pipe
+from medcat.preprocessing.taggers import tag_skip_and_punct
 
 class MakeVocab(object):
     r'''
     Create a new vocab from a text file. To make a vocab and train word embeddings do:
-    >>>cdb = <your existing cdb>
-    >>>maker = MakeVocab(cdb=cdb)
-    >>>maker.make(data_iterator, out_folder="./output/")
-    >>>maker.add_vectors(self, in_path="./output/data.txt")
-    >>>
-
     Args:
         cdb (medcat.cdb.CDB):
             The concept database that will be added ontop of the Vocab built from the text file.
@@ -30,19 +21,28 @@ class MakeVocab(object):
         word_tokenizer (<function>):
             A custom tokenizer for word spliting - used if embeddings are BERT or similar.
             Default: None
-    '''
 
-    def __init__(self, cdb=None, vocab=None, word_tokenizer=None):
+    >>>cdb = <your existing cdb>
+    >>>maker = MakeVocab(cdb=cdb, config=config)
+    >>>maker.make(data_iterator, out_folder="./output/")
+    >>>maker.add_vectors(in_path="./output/data.txt")
+    >>>
+    '''
+    log = logging.getLogger(__name__)
+    def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
+        self.config = config
         self.w2v = None
-        self.vocab_path = "./vocab.dat"
         if vocab is not None:
             self.vocab = vocab
         else:
             self.vocab = Vocab()
 
         # Build the required spacy pipeline
-        self.nlp = SpacyPipe(spacy_split_all, disable=['ner', 'parser', 'vectors', 'textcat'])
+        self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
+        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
+                            name='skip_and_punct',
+                            additional_fields=['is_punct'])
 
         # Get the tokenizer
         if word_tokenizer is not None:
@@ -50,16 +50,19 @@ class MakeVocab(object):
         else:
             self.tokenizer = self._tok
 
+        # Used for saving if the real path is not set
+        self.vocab_path = "./tmp_vocab.dat"
+
 
     def _tok(self, text):
         return [text]
 
 
-    def make(self, iter_data, out_folder, join_cdb=True):
+    def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=False):
         r'''
         Make a vocab - without vectors initially. This will create two files in the out_folder:
         - vocab.dat -> The vocabulary without vectors
-        - data.txt -> The tokenized dataset prepared for training of word2vec or similar embeddings. 
+        - data.txt -> The tokenized dataset prepared for training of word2vec or similar embeddings.
 
         Args:
             iter_data (Iterator):
@@ -68,16 +71,19 @@ class MakeVocab(object):
                 A path to a folder where all the results will be saved
             join_cdb (bool):
                 Should the words from the CDB be added to the Vocab. Default: True
+            normalize_tokens (bool, defaults to True):
+                If set tokens will be lematized - tends to work better in some cases where the difference
+                between e.g. plural/singular should be ignored. But in general not so important if the dataset is big enough.
         '''
         # Save the preprocessed data, used for emb training
-        out_path = os.path.join(out_folder, "data.txt")
-        vocab_path = os.path.join(out_folder, "vocab.dat")
+        out_path = Path(out_folder) / "data.txt"
+        vocab_path = Path(out_folder) / "vocab.dat"
         self.vocab_path = vocab_path
         out = open(out_path, 'w', encoding='utf-8')
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                log.info("Vocab builder at: " + str(ind))
+                self.log.info("Vocab builder at: " + str(ind))
                 print(ind)
 
             doc = self.nlp.nlp.tokenizer(doc)
@@ -88,9 +94,15 @@ class MakeVocab(object):
                     continue
 
                 if len(token.lower_) > 0:
-                    self.vocab.inc_or_add(token.lower_)
+                    if normalize_tokens:
+                        self.vocab.inc_or_add(token._.norm)
+                    else:
+                        self.vocab.inc_or_add(token.lower_)
 
-                line = line + " " + "_".join(token.lower_.split(" "))
+                if normalize_tokens:
+                    line = line + " " + "_".join(token._.norm.split(" "))
+                else:
+                    line = line + " " + "_".join(token.lower_.split(" "))
 
             out.write(line.strip())
             out.write("\n")
@@ -105,12 +117,13 @@ class MakeVocab(object):
                     self.cdb.vocab[word] += self.vocab[word]
 
         # Save the vocab also
-        self.vocab.save_dict(path=vocab_path)
+        self.vocab.save(path=self.vocab_path)
 
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=8, niter=2, min_count=10, window=10, vsize=300):
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
+                    unigram_table_size=100000000):
         r'''
-        Add vectors to an existing vocabulary and save changes to the vocab_path. 
+        Add vectors to an existing vocabulary and save changes to the vocab_path.
 
         Args:
             in_path (String):
@@ -142,6 +155,6 @@ class MakeVocab(object):
                         self.vocab.add_vec(word, w2v.wv.get_vector(word))
 
         # Save the vocab again, now with vectors
-        self.vocab.make_unigram_table()
-        self.vocab.save_dict(path=self.vocab_path)
+        self.vocab.make_unigram_table(table_size=unigram_table_size)
+        self.vocab.save(path=self.vocab_path)
         return w2v
