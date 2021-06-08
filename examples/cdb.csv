@@ -1,0 +1,6 @@
+cui,name,ontologies,name_status,type_ids,description
+C0000039,"Virus",MSH,P,T109|T123,Synthetic phospholipid used in liposomes and lipid bilayers to study biological membranes. It is also a major constituent of PULMONARY SURFACTANTS.
+C0000039,"Virus M",,,T234,
+C0000039,"Virus M |Virus K|Virus Z",,,,
+C0000139,"Virus M|Virus K|Virus Z",,P,,
+C0000139,"Virus",,A,,
