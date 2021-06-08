@@ -1,423 +1,453 @@
 """ Representation class for CDB data
 """
-import pickle
+
+import dill
+import logging
 import numpy as np
-from scipy.sparse import dok_matrix
-#from gensim.matutils import unitvec
+from typing import Dict, List, Set
+
 from medcat.utils.matutils import unitvec, sigmoid
-from medcat.utils.attr_dict import AttrDict
-from medcat.utils.loggers import basic_logger
-import os
-import pandas as pd
+from medcat.utils.ml_utils import get_lr_linking
+from medcat.config import Config
 
-log = basic_logger("cdb")
+
 class CDB(object):
-    """ Holds all the CDB data required for annotation
+    """ Concept DataBase - holds all information necessary for NER+L.
+
+    Properties:
+        name2cuis (`Dict[str, List[str]]`):
+            Map fro concept name to CUIs - one name can map to multiple CUIs.
+        name2cuis2status (`Dict[str, Dict[str, str]]`):
+            What is the status for a given name and cui pair - each name can be:
+                P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
+        snames (`Set[str]`):
+            All possible subnames for all concepts
+        cui2names (`Dict[str, Set[str]]`):
+            From cui to all names assigned to it. Mainly used for subsetting (maybe even only).
+        cui2snames (`Dict[str, Set[str]]`):
+            From cui to all sub-names assigned to it. Only used for subsetting.
+        cui2context_vectors (`Dict[str, Dict[str, np.array]]`):
+            From cui to a dictionary of different kinds of context vectors. Normally you would have here
+            a short and a long context vector - they are calculated separately.
+        cui2count_train (`Dict[str, int]`):
+            From CUI to the number of training examples seen.
+        cui2tags (`Dict[str, List[str]]`):
+            From CUI to a list of tags. This can be used to tag concepts for grouping of whatever.
+        cui2type_ids (`Dict[str, Set[str]]`):
+            From CUI to type id (e.g. TUI in UMLS).
+        cui2preferred_name (`Dict[str, str]`):
+            From CUI to the preferred name for this concept.
+        cui2average_confidence(`Dict[str, str]`):
+            Used for dynamic thresholding. Holds the average confidence for this CUI given the training examples.
+        name2count_train(`Dict[str, str]`):
+            Counts how often did a name appear during training.
+        addl_info (`Dict[str, Dict[]]`):
+            Any additional maps that are not part of the core CDB. These are usually not needed
+            for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
+        vocab (`Dict[str, int]`):
+            Stores all the words tha appear in this CDB and the count for each one.
     """
-    MAX_COO_DICT_SIZE = int(os.getenv('MAX_COO_DICT_SIZE', 10000000))
-    MIN_COO_COUNT = int(os.getenv('MIN_COO_COUNT', 100))
+    log = logging.getLogger(__name__)
+    def __init__(self, config):
+        self.config = config
+        self.name2cuis = {}
+        self.name2cuis2status = {}
 
-    def __init__(self):
-        self.index2cui = [] # A list containing all CUIs 
-        self.cui2index = {} # Map from cui to index in the index2cui list
-        self.name2cui = {} # Converts a normalized concept name to a cui
-        self.name2cnt = {} # Converts a normalized concept name to a count
-        self.name_isunique = {} # Should this name be skipped
-        self.name2original_name = {} # Holds the two versions of a name
-        self.name2ntkns = {} # Number of tokens for this name
-        self.name_isupper = {} # Checks was this name all upper case in cdb 
-        self.cui2desc = {} # Map between a CUI and its cdb description
-        self.cui_count = {} # TRAINING - How many times this this CUI appear until now
-        self.cui_count_ext = {} # Always - counter for cuis that can be reset, destroyed..
-        self.cui2ontos = {} # Cui to ontology from where it comes
-        self.cui2names = {} # CUI to all the different names it can have
-        self.cui2original_names = {} # CUI to all the different original names it can have
-        self.original_name2cuis = {} # Original name to cuis it can be assigned to
-        self.cui2tui = {} # CUI to the semantic type ID
-        self.tui2cuis = {} # Semantic type id to a list of CUIs that have it
-        self.tui2name = {} # Semnatic tpye id to its name
-        self.cui2pref_name = {} # Get the prefered name for a CUI - taken from CDB 
-        self.cui2pretty_name = {} # Get the pretty name for a CUI - taken from CDB 
-        self.sname2name = set() # Internal - subnames to nam
-        self.cui2words = {} # CUI to all the words that can describe it
-        self.onto2cuis = {} # Ontology to all the CUIs contained in it
-        self.cui2context_vec = {} # CUI to context vector
-        self.cui2context_vec_short = {} # CUI to context vector - short
-        self.cui2context_vec_long = {} # CUI to context vector - long
-        self.cui2info = {} # Additional info for a concept
-        self.cui_disamb_always = {} # Should this CUI be always disambiguated
-        self.vocab = {} # Vocabulary of all words ever, hopefully 
-        self._coo_matrix = None # cooccurrence matrix - scikit
-        self.coo_dict = {} # cooccurrence dictionary <(cui1, cui2)>:<count>
-        self.sim_vectors = None
+        self.snames = set()
+
+        self.cui2names = {}
+        self.cui2snames = {}
+        self.cui2context_vectors = {}
+        self.cui2count_train = {}
+        self.cui2tags = {} # Used to add custom tags to CUIs
+        self.cui2type_ids = {}
+        self.cui2preferred_name = {}
+        self.cui2average_confidence = {}
+        self.name2count_train = {}
+        self.name_isupper = {}
+
+        self.addl_info = {
+                'cui2icd10': {},
+                'cui2opcs4': {},
+                'cui2ontologies': {},
+                'cui2original_names': {},
+                'cui2description': {},
+                'type_id2name': {},
+                'type_id2cuis': {},
+                'cui2group': {},
+                # Can be extended with whatever is necessary
+                }
+        self.vocab = {} # Vocabulary of all words ever in our cdb
+        self._optim_params = None
 
 
-    def add_concept(self, cui, name, onto, tokens, snames, isupper=False,
-                    is_pref_name=False, tui=None, pretty_name='',
-                    desc=None, tokens_vocab=None, original_name=None,
-                    is_unique=None, tui_name=None):
+    def get_name(self, cui):
+        r''' Returns preferred name if it exists, otherwise it will return
+        the logest name assigend to the concept.
+
+        Args:
+            cui
+        '''
+
+        name = cui # In case we do not find anything it will just return the CUI
+
+        if cui in self.cui2preferred_name:
+            name = self.cui2preferred_name[cui]
+        elif cui in self.cui2names:
+            name = " ".join(str(max(self.cui2names[cui], key=len)).split(self.config.general.get('separator', '~'))).title()
+
+        return name
+
+
+    def update_cui2average_confidence(self, cui, new_sim):
+        self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim)  / \
+                                            (self.cui2count_train.get(cui, 0) + 1)
+
+
+    def remove_names(self, cui: str, names: Dict):
+        r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
+        This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
+        Why? Because it is bothersome to remove it from everywhere, but
+        could also be useful to keep the removed names in e.g. cui2names.
+
+        Args:
+            cui (`str`):
+                Concept ID or unique identifer in this database.
+            names (`Dict[str, Dict]`):
+                Names to be removed, should look like: `{'name': {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
+        '''
+        for name in names.keys():
+            if name in self.name2cuis:
+                if cui in self.name2cuis[name]:
+                    self.name2cuis[name].remove(cui)
+                if len(self.name2cuis[name]) == 0:
+                    del self.name2cuis[name]
+
+            # Remove from name2cuis2status
+            if name in self.name2cuis2status:
+                if cui in self.name2cuis2status[name]:
+                    _ = self.name2cuis2status[name].pop(cui)
+                if len(self.name2cuis2status[name]) == 0:
+                    del self.name2cuis2status[name]
+
+            # Set to disamb always if name2cuis2status is now only one CUI
+            if name in self.name2cuis2status:
+                if len(self.name2cuis2status[name]) == 1:
+                    for _cui in self.name2cuis2status[name]:
+                        if self.name2cuis2status[name][_cui] == 'A':
+                            self.name2cuis2status[name][_cui] = 'N'
+                        elif self.name2cuis2status[name][_cui] == 'P':
+                            self.name2cuis2status[name][_cui] = 'PD'
+
+
+    def add_names(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
+        r''' Adds a name to an existing concept.
+
+        Args:
+            cui (`str`):
+                Concept ID or unique identifer in this database, all concepts that have
+                the same CUI will be merged internally.
+            names (`Dict[str, Dict]`):
+                Names for this concept, or the value that if found in free text can be linked to this concept.
+                Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
+            name_status (`str`):
+                One of `P`, `N`, `A`
+            full_build (`bool`, defaults to `False`):
+                If True the dictionary self.addl_info will also be populated, contains a lot of extra information
+                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
+        '''
+        name_status = name_status.upper()
+        if name_status not in ['P', 'A', 'N']:
+            # Name status must be one of the three
+            name_status = 'A'
+
+        self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
+
+
+    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
 
         Args:
-            cui (str):
+            cui (`str`):
                 Concept ID or unique identifer in this database, all concepts that have
                 the same CUI will be merged internally.
-
-            name (str):
-                Name for this concept, or the value that if found in free text can be linked to this concept.
-            onto (str):
-                Ontology from which the concept is taken (e.g. SNOMEDCT)
-            tokens (str, list of str):
-                Tokenized version of the name. Usually done vai spacy
-            snames (str, list of str):
-                Subnames of this name, have a look at medcat.prepare_cdb.PrepareCDB for details on how
-                to provide `snames`.Example: if name is "heart attack" snames is ['heart', 'heart attack']
-            isupper (boolean, optional):
-                If name in the original ontology is upper_cased
-            is_pref_name (boolean, optional):
-                If this is the prefered name for this CUI
-            tui (str, optional):
+            names (`Dict[str, Dict]`):
+                Names for this concept, or the value that if found in free text can be linked to this concept.
+                Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
+            ontologies(`Set[str]`):
+                ontologies in which the concept exists (e.g. SNOMEDCT, HPO)
+            name_status (`str`):
+                One of `P`, `N`, `A`
+            type_ids (`Set[str]`):
                 Semantic type identifier (have a look at TUIs in UMLS or SNOMED-CT)
-            pretty_name (str, optional):
-                Pretty name for this concept, really just the pretty name for the concept if it exists.
-            desc (str, optinal):
+            description (`str`):
                 Description of this concept.
-            tokens_vocab (list of str, optional):
-                Tokens that should be added to the vocabulary, usually not normalized version of tokens.
-            original_name (str, optinal):
-                The orignal name from the source vocabulary, without any normalization.
-            is_unique (boolean, optional):
-                If set to False - you can require disambiguation for a name even if it is unique inside
-                of the current CDB. If set to True - you are forcing medcat to make a decision without
-                disambiguation even if it is required. Do not set this arg unless you are sure.
-            tui_name (str, optional):
-                The name for the TUI
+            full_build (`bool`, defaults to `False`):
+                If True the dictionary self.addl_info will also be populated, contains a lot of extra information
+                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
         '''
-        # Add the info property
-        if cui not in self.cui2info:
-            self.cui2info[cui] = {}
-
-        # Add is name upper
-        if name in self.name_isupper:
-            self.name_isupper[name] = self.name_isupper[name] or isupper
-            self.name_isupper[name] = self.name_isupper[name] or isupper
-        else:
-            self.name_isupper[name] = isupper
-
-        # Add original name
-        if original_name is not None:
-            self.name2original_name[name] = original_name
-
-            if original_name in self.original_name2cuis:
-                self.original_name2cuis[original_name].add(cui)
-            else:
-                self.original_name2cuis[original_name] = {cui}
-
-            if cui in self.cui2original_names:
-                self.cui2original_names[cui].add(original_name)
-            else:
-                self.cui2original_names[cui] = {original_name}
-
-
-        # Add prefered name 
-        if is_pref_name:
-            self.cui2pref_name[cui] = name
-            if pretty_name:
-                self.cui2pretty_name[cui] = pretty_name
-
-        if cui not in self.cui2pretty_name and pretty_name:
-            self.cui2pretty_name[cui] = pretty_name
-
-        if tui is not None:
-            self.cui2tui[cui] = tui
-
-            if tui in self.tui2cuis:
-                self.tui2cuis[tui].add(cui)
-            else:
-                self.tui2cuis[tui] = set([cui])
-
-            if tui_name is not None:
-                self.tui2name[tui] = tui_name
-
-        if is_unique is not None:
-            self.name_isunique[name] = is_unique
-
-        # Add name to cnt
-        if name not in self.name2cnt:
-            self.name2cnt[name] = {}
-        if cui in self.name2cnt[name]:
-            self.name2cnt[name][cui] += 1
-        else:
-            self.name2cnt[name][cui] = 1
-
-        # Add description
-        if desc is not None:
-            if cui not in self.cui2desc:
-                self.cui2desc[cui] = str(desc)
-            elif str(desc) not in str(self.cui2desc[cui]):
-                self.cui2desc[cui] = str(self.cui2desc[cui]) + "\n\n" + str(desc)
-
-        # Add cui to a list of cuis
-        if cui not in self.index2cui:
-            self.index2cui.append(cui)
-            self.cui2index[cui] = len(self.index2cui) - 1
-
-            # Expand coo matrix if it is used
-            if self._coo_matrix is not None:
-                s = self._coo_matrix.shape[0] + 1
-                self._coo_matrix.resize((s, s))
-
-        # Add words to vocab
-        for token in tokens_vocab:
-            if token in self.vocab:
-                self.vocab[token] += 1
-            else:
-                self.vocab[token] = 1
-        # Add also the normalized tokens, why not
-        for token in tokens:
-            if token in self.vocab:
-                self.vocab[token] += 1
-            else:
-                self.vocab[token] = 1
-
-        # Add number of tokens for this name
-        if name in self.name2ntkns:
-            self.name2ntkns[name].add(len(tokens))
-        else:
-            self.name2ntkns[name] = {len(tokens)}
-
-        # Add mappings to onto2cuis
-        if onto not in self.onto2cuis:
-            self.onto2cuis[onto] = set([cui])
-        else:
-            self.onto2cuis[onto].add(cui)
-
-        if cui in self.cui2ontos:
-            self.cui2ontos[cui].add(onto)
-        else:
-            self.cui2ontos[cui] = {onto}
-
-        # Add mappings to name2cui
-        if name not in self.name2cui:
-            self.name2cui[name] = set([cui])
-        else:
-            self.name2cui[name].add(cui)
-
-        # Add snames to set
-        self.sname2name.update(snames)
-
-        # Add mappings to cui2names
+        # Add CUI to the required dictionaries
         if cui not in self.cui2names:
-            self.cui2names[cui] = {name}
+            # Create placeholders 
+            self.cui2names[cui] = set()
+            self.cui2snames[cui] = set()
+
+            # Add type_ids
+            self.cui2type_ids[cui] = type_ids
         else:
+            # If the CUI is already in update the type_ids
+            self.cui2type_ids[cui].update(type_ids)
+
+        # Add names to the required dictionaries
+        name_info = None
+        for name in names:
+            name_info = names[name]
+            # Extend snames
+            self.snames.update(name_info['snames'])
+
+            # Add name to cui2names
             self.cui2names[cui].add(name)
+            # Extend cui2snames, but check is the cui already in also
+            if cui in self.cui2snames:
+                self.cui2snames[cui].update(name_info['snames'])
+            else:
+                self.cui2snames[cui] = name_info['snames']
 
-        # Add mappings to cui2words
-        if cui not in self.cui2words:
-            self.cui2words[cui] = {}
-        for token in tokens:
-            if not token.isdigit() and len(token) > 1:
-                if token in self.cui2words[cui]:
-                    self.cui2words[cui][token] += 1
+            # Add whether concept is uppercase
+            self.name_isupper[name] = names[name]['is_upper']
+
+            if name in self.name2cuis:
+                # Means we have alrady seen this name
+                if cui not in self.name2cuis[name]:
+                    # If CUI is not already linked do it
+                    self.name2cuis[name].append(cui)
+
+                    # At the same time it means the cui is also missing from name2cuis2status, but the 
+                    #name is there
+                    self.name2cuis2status[name][cui] = name_status
+                elif name_status == 'P':
+                    # If name_status is P overwrite whatever was the old status
+                    self.name2cuis2status[name][cui] = name_status
+            else:
+                # Means we never saw this name
+                self.name2cuis[name] = [cui]
+
+               # Add name2cuis2status
+                self.name2cuis2status[name] = {cui: name_status}
+
+
+            # Add tokens to vocab
+            for token in name_info['tokens']:
+                if token in self.vocab:
+                    self.vocab[token] += 1
                 else:
-                    self.cui2words[cui][token] = 1
+                    self.vocab[token] = 1
 
+        # Check is this a preferred name for the concept, this takes the name_info
+        #dict which must have a value (but still have to check it, just in case).
+        if name_info is not None:
+            if name_status == 'P' and cui not in self.cui2preferred_name:
+                # Do not overwrite old preferred names
+                self.cui2preferred_name[cui] = name_info['raw_name']
 
-    def add_tui_names(self, csv_path, sep="|"):
-        """ Fils the tui2name dict
-
-        """
-        df = pd.read_csv(csv_path, sep=sep)
-
-        for index, row in df.iterrows():
-            tui = row['tui']
-            name = row['name']
-            if tui not in self.tui2name:
-                self.tui2name[tui] = name
-
-
-    def add_context_vec(self, cui, context_vec, negative=False, cntx_type='LONG', inc_cui_count=True, anneal=True, lr=0.5):
-        """ Add the vector representation of a context for this CUI
-
-        cui:  The concept in question
-        context_vec:  Vector represenation of the context
-        negative:  Is this negative context of positive
-        cntx_type:  Currently only two supported LONG and SHORT
-                     pretty much just based on the window size
-        inc_cui_count:  should this be counted
-        """
-        if cui not in self.cui_count:
-            self.increase_cui_count(cui, True)
-
-        # Ignore very similar context
-        prob = 0.95
-
-
-        # Set the right context
-        if cntx_type == 'MED':
-            cui2context_vec = self.cui2context_vec
-        elif cntx_type == 'SHORT':
-            cui2context_vec = self.cui2context_vec_short
-        elif cntx_type == 'LONG':
-            cui2context_vec = self.cui2context_vec_long
-
-        sim = 0
-        cv = context_vec
-        if cui in cui2context_vec:
-            sim = np.dot(unitvec(cv), unitvec(cui2context_vec[cui]))
-            if anneal:
-                lr = max(lr / self.cui_count[cui], 0.0005)
-
-            if negative:
-                b = max(0, sim) * lr
-                cui2context_vec[cui] = cui2context_vec[cui]*(1-b) - cv*b
-                #cui2context_vec[cui] = cui2context_vec[cui] - cv*b
+        # Add other fields if full_build
+        if full_build:
+            # Use original_names as the base check because they must be added
+            if cui not in self.addl_info['cui2original_names']:
+                if ontologies: self.addl_info['cui2ontologies'][cui] = ontologies
+                if description: self.addl_info['cui2description'][cui] = description
+                self.addl_info['cui2original_names'][cui] = set([v['raw_name'] for k,v in names.items()])
             else:
-                if sim < prob:
-                    b = (1 - max(0, sim)) * lr
-                    cui2context_vec[cui] = cui2context_vec[cui]*(1-b) + cv*b
-                    #cui2context_vec[cui] = cui2context_vec[cui] + cv*b
+                # Update existing ones
+                if ontologies: self.addl_info['cui2ontologies'][cui].update(ontologies)
+                if description: self.addl_info['cui2description'][cui] = description
+                self.addl_info['cui2original_names'][cui].update([v['raw_name'] for k,v in names.items()])
 
-                    # Increase cui count
-                    self.increase_cui_count(cui, inc_cui_count)
-        else:
-            if negative:
-                cui2context_vec[cui] = -1 * cv
+            for type_id in type_ids:
+                # Add type_id2cuis link
+                if type_id in self.addl_info['type_id2cuis']:
+                    self.addl_info['type_id2cuis'][type_id].add(cui)
+                else:
+                    self.addl_info['type_id2cuis'][type_id] = {cui}
+
+
+    def add_addl_info(self, name, data, reset_existing=False):
+        r''' Add data to the addl_info dictionary. This is done in a function to
+        not directly access the addl_info dictionary.
+
+        Args:
+            name (`str`):
+                What key should be used in the `addl_info` dictionary.
+            data (`Dict[<whatever>]`):
+                What will be added as the value for the key `name`
+            reset_existing (`bool`):
+                Should old data be removed if it exists
+        '''
+        if reset_existing:
+            self.addl_info[name] = {}
+
+        self.addl_info[name].update(data)
+
+
+    def update_context_vector(self, cui, vectors, negative=False, lr=None, cui_count=0):
+        r''' Add the vector representation of a context for this CUI.
+
+        cui (`str`):
+            The concept in question.
+        vectors (`Dict[str, np.array]`):
+            Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
+            context_type - is usually one of: ['long', 'medium', 'short']
+        negative (`bool`, defaults to `False`):
+            Is this negative context of positive.
+        lr (`int`, optional):
+            If set it will override the base value from the config file.
+        cui_count (`int`, defaults to 0):
+            The learning rate will be calculated based on the count for the provided CUI + cui_count.
+        '''
+        if cui not in self.cui2context_vectors:
+            self.cui2context_vectors[cui] = {}
+            self.cui2count_train[cui] = 0
+
+        similarity = None
+        for context_type, vector in vectors.items():
+            # Get the right context
+            if context_type in self.cui2context_vectors[cui]:
+                cv = self.cui2context_vectors[cui][context_type]
+                similarity = np.dot(unitvec(cv), unitvec(vector))
+
+                # Get the learning rate if None
+                if lr is None:
+                    lr = get_lr_linking(self.config, self.cui2count_train[cui] + cui_count, self._optim_params, similarity)
+
+                if negative:
+                    # Add negative context
+                    b = max(0, similarity) * lr
+                    self.cui2context_vectors[cui][context_type] = cv*(1-b) - vector*b
+                else:
+                    b = (1 - max(0, similarity)) * lr
+                    self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
+
+                # DEBUG
+                self.log.debug("Updated vector embedding.\n" + \
+                        "CUI: {}, Context Type: {}, Similarity: {:.2f}, Is Negative: {}, LR: {:.5f}, b: {:.3f}".format(cui, context_type,
+                            similarity, negative, lr, b))
+                cv = self.cui2context_vectors[cui][context_type]
+                similarity_after = np.dot(unitvec(cv), unitvec(vector))
+                self.log.debug("Similarity before vs after: {:.5f} vs {:.5f}".format(similarity, similarity_after))
             else:
-                cui2context_vec[cui] = cv
+                if negative:
+                    self.cui2context_vectors[cui][context_type] = -1 * vector
+                else:
+                    self.cui2context_vectors[cui][context_type] = vector
 
-            self.increase_cui_count(cui, inc_cui_count)
+                # DEBUG
+                self.log.debug("Added new context type with vectors.\n" + \
+                        "CUI: {}, Context Type: {}, Is Negative: {}".format(cui, context_type, negative))
 
-        return sim
-
-
-    def increase_cui_count(self, cui, inc_cui_count):
-        if inc_cui_count:
-            if cui in self.cui_count:
-                self.cui_count[cui] += 1
-            else:
-                self.cui_count[cui] = 1
-
-
-    def add_coo(self, cui1, cui2):
-        """ Add one cooccurrence
-
-        cui1:  Base CUI
-        cui2:  Coocured with CUI
-        """
-        key = (self.cui2index[cui1], self.cui2index[cui2])
-
-        if key in self.coo_dict:
-            self.coo_dict[key] += 1
-        else:
-            self.coo_dict[key] = 1
-
-
-    def add_coos(self, cuis):
-        """ Given a list of CUIs it will add them to the coo matrix
-        saying that each CUI cooccurred with each one
-
-        cuis:  List of CUIs
-        """
-        # We use done to ignore multiple occ of same concept
-        d_cui1 = set()
-        pairs = set()
-        for i, cui1 in enumerate(cuis):
-            if cui1 not in d_cui1:
-                for cui2 in cuis[i+1:]:
-                    t = cui1+cui2
-                    if t not in pairs:
-                        self.add_coo(cui1, cui2)
-                        pairs.add(t)
-                    t = cui2+cui1
-                    if t not in pairs:
-                        self.add_coo(cui2, cui1)
-                        pairs.add(t)
-                d_cui1.add(cui1)
-
-        if len(self.coo_dict) > self.MAX_COO_DICT_SIZE:
-            log.info("Starting the clean of COO_DICT, parameters are\n \
-                      MAX_COO_DICT_SIZE: {}\n \
-                      MIN_COO_COUNT: {}".format(self.MAX_COO_DICT_SIZE, self.MIN_COO_COUNT))
-
-            # Remove entries from coo_dict if too many
-            old_size = len(self.coo_dict)
-            to_del = []
-            for key in self.coo_dict.keys():
-                if self.coo_dict[key] < self.MIN_COO_COUNT:
-                    to_del.append(key)
-
-            for key in to_del:
-                del self.coo_dict[key]
-
-            new_size = len(self.coo_dict)
-            log.info("COO_DICT cleaned, size was: {} and now is {}. In total \
-                      {} items were removed".format(old_size, new_size, old_size-new_size))
-
-
-    @property
-    def coo_matrix(self):
-        """ Get the COO Matrix as scikit dok_matrix
-        """
-        if self._coo_matrix is None:
-            s = len(self.cui2index)
-            self._coo_matrix = dok_matrix((s, s), dtype=np.uint32)
-
-        self._coo_matrix._update(self.coo_dict)
-        return self._coo_matrix
-
-
-    @coo_matrix.setter
-    def coo_matrix(self, val):
-        """ Imposible to set, it is built internally
-        """
-        raise AttributeError("Can not set attribute coo_matrix")
-
-
-    def reset_coo_matrix(self):
-        """ Remove the COO-Matrix
-        """
-        self.cui_count_ext = {}
-        self.coo_dict = {}
-        self._coo_matrix = None
+        if not negative:
+            # Increase counter only for positive examples
+            self.cui2count_train[cui] += 1
 
 
     def save(self, path):
+        r''' Saves model to file (in fact it saves vairables of this class). 
+
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+        '''
         with open(path, 'wb') as f:
-            pickle.dump(self, f)
+            # No idea how to this correctly
+            to_save = {}
+            to_save['config'] = self.config.__dict__
+            to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
+            dill.dump(to_save, f)
 
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path, config=None):
+        r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
+
+        Args:
+            path (`str`):
+                Path to a `cdb.dat` from which to load data.
+        '''
         with open(path, 'rb') as f:
-            return pickle.load(f)
+            # Again no idea
+            data = dill.load(f)
+            if config is None:
+                config = Config.from_dict(data['config'])
+            # Create an instance of the CDB (empty)
+            cdb = cls(config=config)
+
+            # Load data into the new cdb instance
+            for k in cdb.__dict__:
+                if k in data['cdb']:
+                    cdb.__dict__[k] = data['cdb'][k]
+
+        return cdb
 
 
-    def save_dict(self, path):
-        """ Saves variables of this object
-        """
-        with open(path, 'wb') as f:
-            pickle.dump(self.__dict__, f)
+    def import_old_cdb_vectors(self, cdb):
+        # Import context vectors
+        for cui in self.cui2names: # Loop through all CUIs in the current CDB
+            if cui in cdb.cui2context_vec:
+                self.cui2context_vectors[cui] = {'medium': cdb.cui2context_vec[cui],
+                                                 'long': cdb.cui2context_vec[cui],
+                                                 'xlong': cdb.cui2context_vec[cui]}
+
+                if cui in cdb.cui2context_vec_short:
+                    self.cui2context_vectors[cui]['short'] = cdb.cui2context_vec_short[cui]
+
+                self.cui2count_train[cui] = cdb.cui_count[cui]
 
 
-    def load_dict(self, path):
-        """ Loads variables of this object
-        """
-        with open(path, 'rb') as f:
-            self.__dict__ = pickle.load(f)
+    def import_old_cdb(self, cdb, import_vectors=True):
+        r''' Import all data except for cuis and names from an old CDB.
+        '''
+
+        # Import vectors
+        if import_vectors:
+            self.import_old_cdb_vectors(cdb)
+
+        # Import TUIs
+        for cui in cdb.cui2names:
+            self.cui2type_ids[cui] = {cdb.cui2tui.get(cui, 'unk')}
+
+        # Import TUI to CUIs
+        self.addl_info['type_id2cuis'] = cdb.tui2cuis
+
+        # Import type_id to name
+        self.addl_info['type_id2name'] = cdb.tui2name
+
+        # Import description
+        self.addl_info['cui2description'] = cdb.cui2desc
+
+        # Import ICD10 and SNOMED
+        self.addl_info['cui2snomed'] = {}
+        for cui in self.cui2names:
+            if cui in cdb.cui2info and 'icd10' in cdb.cui2info[cui]:
+                self.addl_info['cui2icd10'][cui] = cdb.cui2info[cui]['icd10']
+            if cui in cdb.cui2info and 'snomed' in cdb.cui2info[cui]:
+                self.addl_info['cui2snomed'][cui] = cdb.cui2info[cui]['snomed']
+            if cui in cdb.cui2info and 'opcs4' in cdb.cui2info[cui]:
+                self.addl_info['cui2opcs4'][cui] = cdb.cui2info[cui]['opcs4']
+
+
+        # Import cui 2 ontologies
+        self.addl_info['cui2ontologies'] = cdb.cui2ontos
 
 
     def import_training(self, cdb, overwrite=True):
-        r'''
-        This will import vector embeddings from another CDB. No new concept swill be added.
-        IMPORTANT it will not import name maps (cui2name or name2cui or ...).
+        r''' This will import vector embeddings from another CDB. No new concepts will be added.
+        IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 
         Args:
-            cdb (medcat.cdb.CDB):
+            cdb (`medcat.cdb.CDB`):
                 Concept database from which to import training vectors
-            overwrite (boolean):
+            overwrite (`bool`, defaults to `True`):
                 If True all training data in the existing CDB will be overwritten, else
                 the average between the two training vectors will be taken.
 
@@ -425,214 +455,211 @@ class CDB(object):
             >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
         '''
         # Import vectors and counts
-        for cui in self.cui2names:
-            if cui in cdb.cui_count:
-                if overwrite or cui not in self.cui_count:
-                    self.cui_count[cui] = cdb.cui_count[cui]
-                else:
-                    self.cui_count[cui] = (self.cui_count[cui] + cdb.cui_count[cui]) / 2
+        for cui in cdb.cui2context_vectors:
+            if cui in self.cui2names:
+                for context_type, vector in cdb.cui2context_vectors[cui].items():
+                    if overwrite or context_type not in self.cdb.cui2context_vectors[cui]:
+                        self.cui2context_vectors[cui][context_type] = vector
+                    else:
+                        self.cui2context_vectors[cui][context_type] = (vector + self.cui2context_vectors[cui][context_type]) / 2
 
-            if cui in cdb.cui2context_vec:
-                if overwrite or cui not in self.cui2context_vec:
-                    self.cui2context_vec[cui] = cdb.cui2context_vec[cui]
-                else:
-                    self.cui2context_vec[cui] = (cdb.cui2context_vec[cui] + self.cui2context_vec[cui]) / 2
-
-
-            if cui in cdb.cui2context_vec_short:
-                if overwrite or cui not in self.cui2context_vec_short:
-                    self.cui2context_vec_short[cui] = cdb.cui2context_vec_short[cui]
-                else:
-                    self.cui2context_vec_short[cui] = (cdb.cui2context_vec_short[cui] + self.cui2context_vec_short[cui]) / 2
-
-            if cui in cdb.cui2context_vec_long:
-                if overwrite or cui not in self.cui2context_vec_long:
-                    self.cui2context_vec_long[cui] = cdb.cui2context_vec_long[cui]
-                else:
-                    self.cui2context_vec_long[cui] = (cdb.cui2context_vec_long[cui] + self.cui2context_vec_long[cui]) / 2 
-
-            if cui in cdb.cui_disamb_always:
-                self.cui_disamb_always[cui] = cdb.cui_disamb_always
+                # Increase the vector count
+                self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
 
 
     def reset_cui_count(self, n=10):
-        r'''
-        Reset the CUI count for all concepts that received training, used when starting new unsupervised training
+        r''' Reset the CUI count for all concepts that received training, used when starting new unsupervised training
         or for suppervised with annealing.
 
         Args:
-            n (int, optional):
+            n (`int`, optional, defaults to 10):
                 This will be set as the CUI count for all cuis in this CDB.
 
         Examples:
             >>> cdb.reset_cui_count()
         '''
-        for cui in self.cui_count.keys():
-            self.cui_count[cui] = n
+        for cui in self.cui2count_train.keys():
+            self.cui2count_train[cui] = n
 
 
     def reset_training(self):
-        r'''
-        Will remove all training efforts - in other words all embeddings that are learnt
+        r''' Will remove all training efforts - in other words all embeddings that are learnt
         for concepts in the current CDB. Please note that this does not remove synonyms (names) that were
         potentially added during supervised/online learning.
         '''
-        self.cui_count = {}
-        self.cui2context_vec = {}
-        self.cui2context_vec_short = {}
-        self.cui2context_vec_long = {}
-        self.coo_dict = {}
-        self.cui_disamb_always = {}
-        self.reset_coo_matrix()
-        self.reset_similarity_matrix()
+        self.cui2count_train = {}
+        self.cui2context_vectors = {}
+        self.reset_concept_similarity()
 
 
-    def filter_by_tui(self, tuis_to_keep):
-        all_cuis = [c for c_list in [self.tui2cuis[tui] for tui in tuis_to_keep] for c in c_list]
-        self.filter_by_cui(all_cuis)
+    def filter_by_cui(self, cuis_to_keep):
+        ''' Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
+        then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
+        find all CUIs that link to those names and keep all of them.
+        This also will not remove any data from cdb.addl_info - as this field can contain data of
+        unknown structure.
 
+        Args:
+            cuis_to_keep (`List[str]`):
+                CUIs that will be kept, the rest will be removed (not completely, look above).
+        '''
 
-    def filter_by_cui(self, cuis_to_keep=None):
-        assert cuis_to_keep, "Cannot remove all concepts, enter at least one CUI in a set."
-        print("FYI - with large CDBs this can take a long time.")
-        cuis_to_keep = set(cuis_to_keep)
-        cuis = []
-        print("Gathering CUIs ")
-        for cui in self.cui2names:
-            if cui not in cuis_to_keep:
-                cuis.append(cui)
+        if not self.cui2snames:
+            raise Exception("This CDB does not support subsetting - most likely because it is a `small/medium` version of a CDB")
 
-        print("Cleaning up CUI maps...")
-        for i, cui in enumerate(cuis):
-            if i % 10000 == 0:
-                print(f'removed 10k concepts, {len(cuis) - i} to go...')
-            if cui in self.cui2desc:
-                del self.cui2desc[cui]
-            if cui in self.cui_count:
-                del self.cui_count[cui]
-            if cui in self.cui_count_ext:
-                del self.cui_count_ext[cui]
-            if cui in self.cui2names:
-                del self.cui2names[cui]
-            if cui in self.cui2original_names:
-                del self.cui2original_names[cui]
-            if cui in self.cui2pref_name:
-                del self.cui2pref_name[cui]
-            if cui in self.cui2pretty_name:
-                del self.cui2pretty_name[cui]
-            if cui in self.cui2words:
-                del self.cui2words[cui]
-            if cui in self.cui2context_vec:
-                del self.cui2context_vec[cui]
-            if cui in self.cui2context_vec_short:
-                del self.cui2context_vec_short[cui]
-            if cui in self.cui2context_vec_long:
-                del self.cui2context_vec_long[cui]
-            if cui in self.cui2info:
-                del self.cui2info[cui]
-            if cui in self.cui_disamb_always:
-                del self.cui_disamb_always[cui]
-        print("Done CUI cleaning")
+        # First get all names/snames that should be kept based on this CUIs
+        names_to_keep = set()
+        snames_to_keep = set()
+        for cui in cuis_to_keep:
+            names_to_keep.update(self.cui2names[cui])
+            snames_to_keep.update(self.cui2snames[cui])
 
-        print("Cleaning names...")
-        for name in list(self.name2cui.keys()):
-            _cuis = list(self.name2cui[name])
+        # Based on the names get also the indirect CUIs that have to be kept
+        all_cuis_to_keep = set()
+        for name in names_to_keep:
+            all_cuis_to_keep.update(self.name2cuis[name])
 
-            for cui in _cuis:
-                if cui not in cuis_to_keep:
-                    self.name2cui[name].remove(cui)
+        new_name2cuis = {}
+        new_name2cuis2status = {}
+        new_cui2names = {}
+        new_cui2snames = {}
+        new_cui2context_vectors = {}
+        new_cui2count_train = {}
+        new_cui2tags = {} # Used to add custom tags to CUIs
+        new_cui2type_ids = {}
+        new_cui2preferred_name = {}
 
-            if len(self.name2cui[name]) == 0:
-                del self.name2cui[name]
-        print("Done all")
+        # Subset cui2<whatever>
+        for cui in all_cuis_to_keep:
+            new_cui2names[cui] = self.cui2names[cui]
+            new_cui2snames[cui] = self.cui2snames[cui]
+            if cui in self.cui2context_vectors:
+                new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
+                # We assume that it must have the cui2count_train if it has a vector
+                new_cui2count_train[cui] = self.cui2count_train[cui]
+            if cui in self.cui2tags:
+                new_cui2tags[cui] = self.cui2tags[cui]
+            new_cui2type_ids[cui] = self.cui2type_ids[cui]
+            if cui in self.cui2preferred_name:
+                new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
+
+        # Subset name2<whatever>
+        for name in names_to_keep:
+            new_name2cuis[name] = self.name2cuis[name]
+            new_name2cuis2status[name] = self.name2cuis2status[name]
+
+        # Replace everything
+        self.name2cuis = new_name2cuis
+        self.snames = snames_to_keep
+        self.name2cuis2status = new_name2cuis2status
+        self.cui2names = new_cui2names
+        self.cui2snames = new_cui2snames
+        self.cui2context_vectors = new_cui2context_vectors
+        self.cui2count_train = new_cui2count_train
+        self.cui2tags = new_cui2tags
+        self.cui2type_ids = new_cui2type_ids
+        self.cui2preferred_name = new_cui2preferred_name
 
 
     def print_stats(self):
-        """ Print basic statistics on the database
-        """
-        print("Number of concepts: {:,}".format(len(self.cui2names)))
-        print("Number of names:    {:,}".format(len(self.name2cui)))
-        print("Number of concepts that received training: {:,}".format(len(self.cui2context_vec)))
-        print("Number of seen training examples in total: {:,}".format(sum(self.cui_count.values())))
-        print("Average training examples per concept:     {:.1f}".format(np.average(list(self.cui_count.values()))))
+        r'''Print basic statistics for the CDB.
+        '''
+        self.log.info("Number of concepts: {:,}".format(len(self.cui2names)))
+        self.log.info("Number of names:    {:,}".format(len(self.name2cuis)))
+        self.log.info("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
+        self.log.info("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
+        self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
+            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
 
 
-    def reset_similarity_matrix(self):
-        self.sim_vectors = None
-        self.sim_vectors_counts = None
-        self.sim_vectors_tuis = None
-        self.sim_vectors_cuis = None
+    def reset_concept_similarity(self):
+        r''' Reset concept similarity matrix.
+        '''
+        self.addl_info['similarity'] = {}
 
 
-    def most_similar(self, cui, tui_filter=[], min_cnt=0, topn=50):
-        r'''
-        Given a concept it will calculat what other concepts in this CDB have the most similar
+    def most_similar(self, cui, context_type, type_id_filter=[], min_cnt=0, topn=50, force_build=False):
+        r''' Given a concept it will calculate what other concepts in this CDB have the most similar
         embedding.
 
         Args:
-            cui (str):
+            cui (`str`):
                 The concept ID for the base concept for which you want to get the most similar concepts.
-            tui_filter (list):
-                A list of TUIs that will be used to filterout the returned results. Using this it is possible
+            context_type (`str`):
+                On what vector type from the cui2context_vectors map will the similarity be calculated.
+            type_id_filter (`List[str]`):
+                A list of type_ids that will be used to filterout the returned results. Using this it is possible
                 to limit the similarity calculation to only disorders/symptoms/drugs/...
-            min_cnt (int):
+            min_cnt (`int`):
                 Minimum training examples (unsupervised+supervised) that a concept must have to be considered
                 for the similarity calculation.
-            topn (int):
+            topn (`int`):
                 How many results to return
+            force_build (`bool`, defaults to `False`):
+                Do not use cached sim matrix
 
         Return:
-            results (dict):
-                A dictionary with topn results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'tui_name': <tui_name>,
-                                                              'tui': <tui>, 'cnt': <number of training examples the concept has seen>}, ...}
+            results (Dict):
+                A dictionary with topn results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'type_name': <type_name>,
+                                                              'type_id': <type_id>, 'cnt': <number of training examples the concept has seen>}, ...}
 
         '''
+
+        if 'similarity' in self.addl_info:
+            if context_type not in self.addl_info['similarity']:
+                self.addl_info['similarity'][context_type] = {}
+        else:
+            self.addl_info['similarity'] = {context_type: {}}
+
+        sim_data = self.addl_info['similarity'][context_type]
+
         # Create the matrix if necessary
-        if not hasattr(self, 'sim_vectors') or self.sim_vectors is None or len(self.sim_vectors) < len(self.cui2context_vec):
-            print("Building similarity matrix")
-            log.info("Building similarity matrix")
+        if 'sim_vectors' not in sim_data or force_build:
+            self.log.info("Building similarity matrix")
 
             sim_vectors = []
             sim_vectors_counts = []
-            sim_vectors_tuis = []
+            sim_vectors_type_ids = []
             sim_vectors_cuis = []
-            for _cui in self.cui2context_vec:
-                sim_vectors.append(unitvec(self.cui2context_vec[_cui]))
-                sim_vectors_counts.append(self.cui_count[_cui])
-                sim_vectors_tuis.append(self.cui2tui.get(_cui, 'unk'))
-                sim_vectors_cuis.append(_cui)
+            for _cui in self.cui2context_vectors:
+                if context_type in self.cui2context_vectors[_cui]:
+                    sim_vectors.append(unitvec(self.cui2context_vectors[_cui][context_type]))
+                    sim_vectors_counts.append(self.cui2count_train.get(_cui, 0))
+                    sim_vectors_type_ids.append(self.cui2type_ids.get(_cui, {'unk'}))
+                    sim_vectors_cuis.append(_cui)
 
-            self.sim_vectors = np.array(sim_vectors)
-            self.sim_vectors_counts = np.array(sim_vectors_counts)
-            self.sim_vectors_tuis = np.array(sim_vectors_tuis)
-            self.sim_vectors_cuis = np.array(sim_vectors_cuis)
+            sim_data['sim_vectors'] = np.array(sim_vectors)
+            sim_data['sim_vectors_counts'] = np.array(sim_vectors_counts)
+            sim_data['sim_vectors_type_ids'] = np.array(sim_vectors_type_ids)
+            sim_data['sim_vectors_cuis'] = np.array(sim_vectors_cuis)
 
-        # Select appropirate concepts
-        tui_inds = np.arange(0, len(self.sim_vectors_tuis))
-        if len(tui_filter) > 0:
-            tui_inds = np.array([], dtype=np.int32)
-            for tui in tui_filter:
-                tui_inds = np.union1d(np.where(self.sim_vectors_tuis == tui)[0], tui_inds)
-        cnt_inds = np.arange(0, len(self.sim_vectors_counts))
+        # Select appropriate concepts
+        type_id_inds = np.arange(0, len(sim_data['sim_vectors_type_ids']))
+        if len(type_id_filter) > 0:
+            type_id_inds = np.array([], dtype=np.int32)
+            for type_id in type_id_filter:
+                type_id_inds = np.union1d(np.array([ind for ind, type_ids in enumerate(sim_data['sim_vectors_type_ids']) if type_id in type_ids]),
+                        type_id_inds)
+        cnt_inds = np.arange(0, len(sim_data['sim_vectors_counts']))
         if min_cnt > 0:
-            cnt_inds = np.where(self.sim_vectors_counts >= min_cnt)[0]
+            cnt_inds = np.where(sim_data['sim_vectors_counts'] >= min_cnt)[0]
+        # Intersect cnt and type_id 
+        inds = np.intersect1d(type_id_inds, cnt_inds)
 
-        # Intersect cnt and tui
-        inds = np.intersect1d(tui_inds, cnt_inds)
+        mtrx = sim_data['sim_vectors'][inds]
+        cuis = sim_data['sim_vectors_cuis'][inds]
 
-        mtrx = self.sim_vectors[inds]
-        cuis = self.sim_vectors_cuis[inds]
-
-        sims = np.dot(mtrx, unitvec(self.cui2context_vec[cui]))
+        sims = np.dot(mtrx, unitvec(self.cui2context_vectors[cui][context_type]))
 
         sims_srt = np.argsort(-1*sims)
 
         # Create the return dict
         res = {}
+        print()
         for ind, _cui in enumerate(cuis[sims_srt[0:topn]]):
-            res[_cui] = {'name': self.cui2pretty_name[_cui], 'sim': sims[sims_srt][ind],
-                         'tui_name': self.tui2name.get(self.cui2tui.get(_cui, 'unk'), 'unk'),
-                         'tui': self.cui2tui.get(_cui, 'unk'),
-                         'cnt': self.cui_count[_cui]}
+            res[_cui] = {'name': self.cui2preferred_name.get(_cui, list(self.cui2names[_cui])[0]), 'sim': sims[sims_srt][ind],
+                         'type_names': [self.addl_info['type_id2name'].get(cui, 'unk') for cui in self.cui2type_ids.get(_cui, ['unk'])],
+                         'type_ids': self.cui2type_ids.get(_cui, 'unk'),
+                         'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res

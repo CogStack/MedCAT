@@ -2,12 +2,10 @@ import numpy as np
 import json
 import copy
 from sklearn.metrics import cohen_kappa_score
-
+import torch
+import pickle
 
 def set_all_seeds(seed):
-    import numpy as np
-    import torch
-
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -653,14 +651,164 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
     json.dump(data, open(data_path, 'w'))
 
 
+class MetaAnnotationDS(torch.utils.data.Dataset):
+    def __init__(self, data, category_map):
+        r'''
 
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cntx_in_chars=False, tui_filter=None, replace_center=None):
+        Args:
+            data:
+                Dictionary of data values
+            category_map:
+                Map from category naem to id
+        '''
+        self.data = data
+        self.category_map = category_map
+
+
+    def __getitem__(self, idx):
+        item = {}
+        for key, value in self.data.items():
+            if key != 'labels':
+                item[key] = torch.tensor(value[idx])
+            else:
+                item[key] = torch.tensor(self.category_map[value[idx]])
+        return item
+
+
+    def __len__(self):
+        return len(self.data['input_ids'])
+"""
+def add_ids_and_cpos_to_docs(data_path, cntx_left, cntx_right, tokenizer, max_seq_len, cui_filter=None, replace_center=None, batch_size=100000):
+    data = pickle.load(open(data_path, 'rb'))
+
+    all_left = []
+    all_right = []
+    all_center = []
+    for id, doc in data.items():
+        anns = doc['entities']
+        tokens = doc['tokens']
+
+        for ann in anns:
+            tkns_left = tokens[max(0, start - cntx_left):start]
+            tkns_right = tokens[end+1:min(len(tokens), end + 1 + cntx_right)]
+            tkns_center = tokens[start:end]
+
+
+
+def prepare_from_docs_hf(data_path, tkns_path, cntx_left, cntx_right, tokenizer, max_seq_len, cui_filter=None, replace_center=None):
+    out = {}
+    out['input_ids'] = []
+    out['center_positions'] = []
+    out['token_type_ids'] = []
+    out['attention_mask'] = []
+    out['document_ids'] = []
+    out['annotation_ids'] = []
+
+    data = pickle.load(open(data_path, 'rb'))
+    tkns_data = pickle.load(open(tkns_path, 'rb'))
+
+    for id, doc in data.items():
+        anns = doc['entities']
+        tokens = doc['tokens']
+
+        if id % 1000 == 0:
+            print(id)
+
+        for ann in anns:
+            cui = ann['cui']
+            if cui_filter is None or not cui_filter or cui in cui_filter:
+                start = ann['start_tkn']
+                end = ann['end_tkn']
+
+                tkns_left = tokens[max(0, start - cntx_left):start]
+                tkns_right = tokens[end+1:min(len(tokens), end + 1 + cntx_right)]
+                tkns_center = tokens[start:end]
+
+                # Get the index of the center token
+                ind = 0 
+                for ind, pair in enumerate(doc_text['offset_mapping']):
+                    if start >= pair[0] and start < pair[1]:
+                        break
+
+                _start = 0#max(0, ind - cntx_left)
+                _end = 10#min(len(doc_text['input_ids']), ind + 1 + cntx_right)
+                tkns = doc_text['input_ids'][_start:_end]
+                cpos = cntx_left + min(0, ind-cntx_left)
+
+                if replace_center is not None:
+                    for p_ind, pair in enumerate(doc_text['offset_mapping']):
+                        if start >= pair[0] and start < pair[1]:
+                            s_ind = p_ind
+                        if end > pair[0] and end <= pair[1]:
+                            e_ind = p_ind
+
+                    ln = e_ind - s_ind
+                    tkns[cpos:cpos+ln+1] = [tokenizer(replace_center, add_special_tokens=False)['input_ids'][0]]
+                # Extend tokens with padding
+                #tkns = np.array(tkns + [tokenizer.pad_token_id] * max(0, max_seq_len - len(tkns)))
+
+                #out['input_ids'].append(tkns)
+                #out['center_positions'].append(cpos)
+                #out['token_type_ids'].append([0] * len(tkns))
+                #out['attention_mask'].append((tkns != tokenizer.pad_token_id).astype(int))
+                #out['document_ids'].append(id)
+                #out['annotation_ids'].append(ann['id'])
+    return out
+"""
+"""
+def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None, max_seq_len=None):
+    out = {}
+    data = json.load(open(data_path))
+
+    p_data = prepare_from_json_chars(data, cntx_left=cntx_left, cntx_right=cntx_right, tokenizer=tokenizer,
+                               cui_filter=cui_filter, replace_center=replace_center)
+
+    _max_seq_len = max_seq_len
+    for name in p_data.keys():
+        out[name] = {}
+
+        out[name]['labels'] = np.array([x[0] for x in p_data[name]])
+        out[name]['input_ids'] = [x[1] for x in p_data[name]]
+        _max_seq_len = min(max_seq_len, max([len(x) for x in out[name]['input_ids']]))
+        print("Max seq: ", _max_seq_len)
+        out[name]['center_positions'] = np.array([x[2] for x in p_data[name]])
+        out[name]['token_type_ids'] = np.zeros((len(p_data[name]), _max_seq_len), dtype=int)
+
+        # Add padding where necessary
+        out[name]['input_ids'] = np.array(
+                [(sample + [tokenizer.pad_token_id] * max(0, _max_seq_len - len(sample)))[0:_max_seq_len] for sample in out[name]['input_ids']])
+
+        out[name]['attention_mask'] = [(np.array(x) != tokenizer.pad_token_id).astype(int) for x in out[name]['input_ids']]
+
+    return out
+"""
+def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None, max_seq_len=None):
+    out = {}
+    data = json.load(open(data_path))
+
+    p_data = prepare_from_json_chars(data, cntx_left=cntx_left, cntx_right=cntx_right, tokenizer=tokenizer,
+                               cui_filter=cui_filter, replace_center=replace_center)
+
+    _max_seq_len = max_seq_len
+    for name in p_data.keys():
+        out[name] = {}
+
+        out[name]['labels'] = np.array([x[0] for x in p_data[name]])
+        out[name]['input_ids'] = [x[1] for x in p_data[name]]
+        out[name]['center_positions'] = np.array([x[2] for x in p_data[name]])
+        out[name]['token_type_ids'] = [[0] * len(x) for x in out[name]['input_ids']]
+        out[name]['attention_mask'] = [[1] * len(x) for x in out[name]['input_ids']]
+
+    return out
+
+
+def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None):
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
     cntx_left:  size of the context
     cntx_right:  size of the context
-    tokenizer:  instance of the <Tokenizer> class from huggingface
+    tokenizer:  instance of the <FastTokenizer> class from huggingface
     replace_center:  if not None the center word (concept) will be replaced with whatever is set
 
     return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
@@ -669,20 +817,91 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
 
     for project in data['projects']:
         for document in project['documents']:
-            if lowercase:
-                text = str(document['text']).lower()
-            else:
-                text = str(document['text'])
+            text = str(document['text'])
 
             if len(text) > 0:
-                doc_text = tokenizer.encode(text)
 
                 for ann in document['annotations']:
                     tui = ""
-                    if tui_filter:
-                        tui = ann['tui']
+                    if cui_filter:
+                        cui = ann['cui']
 
-                    if not tui_filter or tui in tui_filter:
+                    if cui_filter is None or not cui_filter or cui in cui_filter:
+                        if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)):
+                            start = ann['start']
+                            end = ann['end']
+
+                            _start = max(0, start - cntx_left)
+                            _end = min(len(text), end + cntx_right)
+                            t_left = tokenizer(text[_start:start])['input_ids']
+                            t_right = tokenizer(text[end:_end])['input_ids']
+                            if replace_center is None:
+                                t_center = tokenizer(text[start:end])['input_ids']
+                            else:
+                                t_center = tokenizer(replace_center)['input_ids']
+
+                            tkns = t_left + t_center + t_right
+                            cpos = len(t_left)
+
+                            # Backward compatibility if meta_anns is a list vs dict in the new approach
+                            meta_anns = []
+                            if 'meta_anns' in ann:
+                                meta_anns = ann['meta_anns']
+
+                                if type(meta_anns) == dict:
+                                    meta_anns = meta_anns.values()
+
+                            # If the annotation is validated
+                            for meta_ann in meta_anns:
+                                name = meta_ann['name']
+                                value = meta_ann['value']
+
+                                sample = [value, tkns, cpos]
+
+                                if name in out_data:
+                                    out_data[name].append(sample)
+                                else:
+                                    out_data[name] = [sample]
+
+    return out_data
+
+
+
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False, cui_filter=None, replace_center=None, prerequisite={}):
+    """ Convert the data from a json format into a CSV-like format for training.
+
+    data:  json file from MedCAT
+    cntx_left:  size of the context
+    cntx_right:  size of the context
+    tokenizer:  instance of the <FastTokenizer> class from huggingface
+    replace_center:  if not None the center word (concept) will be replaced with whatever is set
+
+    return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
+    """
+    out_data = {}
+
+    for project in data['projects']:
+        for document in project['documents']:
+            text = str(document['text'])
+
+            if len(text) > 0:
+                doc_text = tokenizer(text)
+
+                for ann in document['annotations']:
+                    tui = ""
+                    if cui_filter:
+                        cui = ann['cui']
+
+                    skip = False
+
+                    if 'meta_anns' in ann and prerequisite:
+                        # It is possible to require certain meta_anns to exist and have a specific value
+                        for meta_ann in prerequisite:
+                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisite[meta_ann]:
+                                # Skip this annotation as the prerequisite is not met
+                                skip = True
+
+                    if not skip and (cui_filter is None or not cui_filter or cui in cui_filter):
                         if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)):
                             start = ann['start']
                             end = ann['end']
@@ -690,33 +909,37 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, lowercase=True, cn
                             if not cntx_in_chars:
                                 # Get the index of the center token
                                 ind = 0
-                                for ind, pair in enumerate(doc_text.offsets):
+                                for ind, pair in enumerate(doc_text['offset_mapping']):
                                     if start >= pair[0] and start < pair[1]:
                                         break
 
                                 _start = max(0, ind - cntx_left)
-                                _end = min(len(doc_text.tokens), ind + 1 + cntx_right)
-                                tkns = doc_text.tokens[_start:_end]
+                                _end = min(len(doc_text['input_ids']), ind + 1 + cntx_right)
+                                tkns = doc_text['input_ids'][_start:_end]
                                 cpos = cntx_left + min(0, ind-cntx_left)
 
                                 if replace_center is not None:
-                                    for p_ind, pair in enumerate(doc_text.offsets):
+                                    for p_ind, pair in enumerate(doc_text['offset_mapping']):
                                         if start >= pair[0] and start < pair[1]:
                                             s_ind = p_ind
                                         if end > pair[0] and end <= pair[1]:
                                             e_ind = p_ind
 
                                     ln = e_ind - s_ind
-                                    tkns[cpos:cpos+ln+1] = [replace_center]
+                                    tkns[cpos:cpos+ln+1] = [tokenizer(replace_center)['input_ids'][0]]
 
                             else:
-                                # TODO: Currently not working properly 
                                 _start = max(0, start - cntx_left)
                                 _end = min(len(text), end + cntx_right)
-                                tkns = tokenizer.encode(text[_start:_end]).tokens
+                                t_left = tokenizer(text[_start:start])['input_ids']
+                                t_right = tokenizer(text[end:_end])['input_ids']
+                                if replace_center is None:
+                                    t_center = tokenizer(text[start:end])['input_ids']
+                                else:
+                                    t_center = tokenizer(replace_center)['input_ids']
 
-                                raise Exception("Not working properly for now")
-
+                                tkns = t_left + t_center + t_right
+                                cpos = len(t_left)
 
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
                             meta_anns = []
@@ -758,7 +981,7 @@ def tkns_to_ids(data, tokenizer):
     data = list(data)
 
     for i in range(len(data)):
-        data[i][1] = [tokenizer.token_to_id(tok) for tok in data[i][1]]
+        data[i][1] = [tokenizer.convert_tokens_to_ids(tok) for tok in data[i][1]]
 
     return data
 
@@ -779,7 +1002,12 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
             tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
 
         for document in project['documents']:
-            for ann in document['annotations']:
+            if type(document['annotations']) == list:
+                doc_annotations = document['annotations']
+            elif type(document['annotations']) == dict:
+                doc_annotations = document['annotations'].values()
+
+            for ann in doc_annotations:
 
                 if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                    (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
@@ -828,7 +1056,12 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
 
             # Coutn CUIs for this document
             _cnts = {}
-            for ann in document['annotations']:
+            if type(document['annotations']) == list:
+                doc_annotations = document['annotations']
+            elif type(document['annotations']) == dict:
+                doc_annotations = document['annotations'].values()
+
+            for ann in doc_annotations:
                 if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                    (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
                     if ann['cui'] in _cnts:
@@ -850,7 +1083,12 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
             # Add to test set
             if is_test and np.random.rand() < test_prob:
                 test_project['documents'].append(document)
-                for ann in document['annotations']:
+                if type(document['annotations']) == list:
+                    doc_annotations = document['annotations']
+                elif type(document['annotations']) == dict:
+                    doc_annotations = document['annotations'].values()
+
+                for ann in doc_annotations:
                     if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
                        (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
                         test_anns += 1
@@ -865,3 +1103,17 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
         train_set['projects'].append(train_project)
 
     return train_set, test_set, test_anns, total_anns
+
+
+def get_false_positives(doc, spacy_doc):
+    if type(doc['annotations']) == list:
+        truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
+    elif type(doc['annotations']) == dict:
+        truth = set([(ent['start'], ent['cui']) for ent in doc['annotations'].values()])
+
+    fps = []
+    for ent in spacy_doc._.ents:
+        if (ent.start_char, ent._.cui) not in truth:
+            fps.append(ent)
+    
+    return fps
