@@ -191,7 +191,7 @@ class MetaCAT(object):
         return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
-    def save(self, full_save=False):
+    def save(self, full_save=True):
         tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
@@ -256,8 +256,17 @@ class MetaCAT(object):
 
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
+    @classmethod
+    def load(cls, save_dir, model='lstm'):
+        ''' Load from full save
+        '''
+        mc = cls(save_dir=save_dir)
+        mc._load(model=model)
 
-    def load(self, model='lstm'):
+        return mc
+
+
+    def _load(self, model='lstm'):
         """ Loads model and config for this meta annotation
         """
         # Load configuration
