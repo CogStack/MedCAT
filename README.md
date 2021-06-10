@@ -1,6 +1,6 @@
 # Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
-MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Preprint [arXiv](https://arxiv.org/abs/2010.01165). 
+MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
 
 ## UPDATE
 MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), as well as potential problems with all code that used the MedCAT package.
@@ -8,8 +8,7 @@ MedCAT is upgraded to v1, unforunately this introduces breaking changes with old
 MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree/legacy) branch and will still be supported until 1. July 2021 (with respect to potential bug fixes), after it will still be available but not updated anymore.
 
 ## Demo
-A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). Please note that this was trained on MedMentions
-and contains a small portion of UMLS.
+A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
 
 ## Tutorial
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
@@ -19,6 +18,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [Supplementing the National Early Warning Score (NEWS2) for anticipating early deterioration among patients with COVID-19 infection](https://www.medrxiv.org/content/10.1101/2020.04.24.20078006v1)
 - [Comparative Analysis of Text Classification Approaches in Electronic Health Records](https://www.researchgate.net/publication/341396173_Comparative_Analysis_of_Text_Classification_Approaches_in_Electronic_Health_Records)
 - [Experimental Evaluation and Development of a Silver-Standard for the MIMIC-III Clinical Coding Dataset](https://arxiv.org/abs/2006.07332)
+- [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
 
 ## Related Projects
 - [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
@@ -26,14 +26,16 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
 ## Install using PIP (Requires Python 3.6.1+)
+0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
-
-- For macOS: `pip install --upgrade medcat`
-- For Windows/Linux (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
+- For macOS/linux: `pip install --upgrade medcat`
+- For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
 2. Get the scispacy models:
 
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_md-0.3.0.tar.gz`
+
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_lg-0.3.0.tar.gz`
 
 3. Downlad the Vocabulary and CDB from the Models section bellow
 
@@ -79,9 +81,9 @@ cat.cdb.save(<save path>)
 ## Models
 A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. 
 
-Vocabulary [Download](https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat) - Built from MedMentions
+Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
 
-CDB [Download](https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen-v1.dat) - Built from MedMentions
+CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat) - Built from MedMentions
 
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
@@ -97,6 +99,7 @@ If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot
 - [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
 - [ ] Update webapp to v1 and enable UMLS and SNOMED
 - [ ] Fix logging, make sure the config options are respected 
+- [ ] Relation extraction
 
 
 ## Acknowledgement
