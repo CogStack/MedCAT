@@ -191,7 +191,8 @@ class MetaCAT(object):
         return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
-    def save(self, full_save=False, tokenizer_name='bbpe'):
+    def save(self, full_save=True):
+        tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
             if hasattr(self.tokenizer, 'save_model'):
@@ -255,10 +256,23 @@ class MetaCAT(object):
 
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
+    @classmethod
+    def load(cls, save_dir, model='lstm'):
+        ''' Load from full save
+        '''
+        mc = cls(save_dir=save_dir)
+        mc._load(model=model)
 
-    def load(self, model='lstm', tokenizer_name='bbpe'):
+        return mc
+
+
+    def _load(self, model='lstm'):
         """ Loads model and config for this meta annotation
         """
+        # Load configuration
+        self.load_config()
+
+        tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
         # Load tokenizer if it is None
         if self.tokenizer is None:
             if 'bbpe' in tokenizer_name:
@@ -271,9 +285,6 @@ class MetaCAT(object):
         if self.embeddings is None:
             embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'), allow_pickle=False)
             self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
-
-        # Load configuration
-        self.load_config()
 
         # Load MODEL
         self.load_model(model=model)
