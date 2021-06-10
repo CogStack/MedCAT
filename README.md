@@ -26,10 +26,10 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
 ## Install using PIP (Requires Python 3.6.1+)
+0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
-
-- For macOS: `pip install --upgrade medcat`
-- For Windows/Linux (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
+- For macOS/linux: `pip install --upgrade medcat`
+- For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
 2. Get the scispacy models:
 
@@ -97,6 +97,7 @@ If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot
 - [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
 - [ ] Update webapp to v1 and enable UMLS and SNOMED
 - [ ] Fix logging, make sure the config options are respected 
+- [ ] Relation extraction
 
 
 ## Acknowledgement
