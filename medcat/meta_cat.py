@@ -8,6 +8,7 @@ from scipy.special import softmax
 from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
+from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
 class MetaCAT(object):
     r''' TODO: Add documentation
@@ -29,6 +30,7 @@ class MetaCAT(object):
         self.category_name = None
         self.category_values = {}
         self.i_category_values = {}
+        self.model_config = {}
 
         self.model = None
 
@@ -44,6 +46,7 @@ class MetaCAT(object):
               prerequisite={}):
         r''' TODO: Docs
         '''
+        self.model_config = model_config
         set_all_seeds(seed)
         data = json.load(open(json_path, 'r'))
 
@@ -163,7 +166,7 @@ class MetaCAT(object):
         return result
 
 
-    def predicit_one(self, text, start, end):
+    def predict_one(self, text, start, end):
         """ A test function, not useful in any other case
         """
         text = text.lower()
@@ -188,15 +191,15 @@ class MetaCAT(object):
         return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
-    def save(self, full_save=False):
+    def save(self, full_save=False, tokenizer_name='bbpe'):
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
             if hasattr(self.tokenizer, 'save_model'):
                 # Support the new save in tokenizer 0.8.2+ from huggingface
-                self.tokenizer.save_model(self.save_dir, name='bbpe')
+                self.tokenizer.save_model(self.save_dir, name=tokenizer_name)
             elif hasattr(self.tokenizer, 'save'):
                 # The tokenizer wrapper saving  
-                self.tokenizer.save(self.save_dir, name='bbpe')
+                self.tokenizer.save(self.save_dir, name=tokenizer_name)
             # Save embeddings
             np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
 
@@ -213,7 +216,8 @@ class MetaCAT(object):
                    'i_category_values': self.i_category_values,
                    'pad_id': self.pad_id,
                    'cntx_left': self.cntx_left,
-                   'cntx_right': self.cntx_right}
+                   'cntx_right': self.cntx_right,
+                   'model_config': self.model_config}
         with open(path, 'wb') as f:
             pickle.dump(to_save, f)
 
@@ -231,6 +235,7 @@ class MetaCAT(object):
         self.cntx_left = to_load['cntx_left']
         self.cntx_right = to_load['cntx_right']
         self.pad_id = to_load.get('pad_id', 0)
+        self.model_config = to_load.get('model_config', {})
 
 
     def load_model(self, model='lstm'):
@@ -238,8 +243,14 @@ class MetaCAT(object):
         if model == 'lstm':
             from medcat.utils.models import LSTM
             nclasses = len(self.category_values)
-            self.model = LSTM(self.embeddings, self.pad_id,
-                              nclasses=nclasses)
+            bid = self.model_config.get("bid", True)
+            num_layers = self.model_config.get("num_layers", 2)
+            input_size = self.model_config.get("input_size", 300)
+            hidden_size = self.model_config.get("hidden_size", 300)
+            dropout = self.model_config.get("dropout", 0.5)
+
+            self.model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses, bid=bid, num_layers=num_layers,
+                         input_size=input_size, hidden_size=hidden_size, dropout=dropout)
             path = self.save_dir + "lstm.dat"
 
         self.model.load_state_dict(torch.load(path, map_location=self.device))
@@ -250,7 +261,12 @@ class MetaCAT(object):
         """
         # Load tokenizer if it is None
         if self.tokenizer is None:
-            self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
+            if 'bbpe' in tokenizer_name:
+                self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
+            elif 'bert' in tokenizer_name:
+                self.tokenizer = TokenizerWrapperBERT.load(self.save_dir, name=tokenizer_name)
+            else:
+                raise Exception("Tokenizer not supported")
         # Load embeddings if None
         if self.embeddings is None:
             embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'), allow_pickle=False)

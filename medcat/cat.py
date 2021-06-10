@@ -683,7 +683,7 @@ class CAT(object):
                     out_ent['start'] = ent.start_char
                     out_ent['end'] = ent.end_char
                     for addl in addl_info:
-                        tmp = self.cdb.addl_info[addl].get(cui, [])
+                        tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
                         out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
                     out_ent['id'] = ent._.id
                     out_ent['meta_anns'] = {}
