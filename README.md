@@ -77,6 +77,19 @@ cat.train(data_iterator)
 cat.cdb.save(<save path>)
 ```
 
+### MetaCAT example
+```python
+from medcat.meta_cat import MetaCAT
+# Assume we have a CDB and Vocab object from before
+# Download the mc_status model from the models section below and unzip it
+
+mc_status = MetaCAT.load("<path to the unziped mc_status directory>")
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=[mc_status])
+
+# Now annotate a document, it will have the meta annotation 'status'
+doc = cat.get_entities(text)
+```
+
 
 ## Models
 A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. 
@@ -84,6 +97,8 @@ A basic trained model is made public for the vocabulary and CDB. It is trained f
 Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
 
 CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat) - Built from MedMentions
+
+MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a fairly small sample from MIMIC-III
 
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
