@@ -977,15 +977,6 @@ def encode_category_values(data, vals=None):
     return data, vals
 
 
-def tkns_to_ids(data, tokenizer):
-    data = list(data)
-
-    for i in range(len(data)):
-        data[i][1] = [tokenizer.convert_tokens_to_ids(tok) for tok in data[i][1]]
-
-    return data
-
-
 def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
     """ This is a disaster
     """
