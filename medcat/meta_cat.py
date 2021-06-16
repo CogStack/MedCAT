@@ -6,7 +6,7 @@ import torch
 from scipy.special import softmax
 
 from medcat.utils.ml_utils import train_network, eval_network
-from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
+from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
@@ -76,9 +76,6 @@ class MetaCAT(object):
             # We already have everything, just get the data
             data, _ = encode_category_values(data, vals=self.category_values)
 
-        # Convert data tkns to ids
-        #data = tkns_to_ids(data, self.tokenizer)
-
         if not fine_tune:
             if model_name == 'lstm':
                 from medcat.utils.models import LSTM
@@ -144,7 +141,7 @@ class MetaCAT(object):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, cui_filter=cui_filter,
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, cui_filter=cui_filter,
                 replace_center=replace_center)
 
         # Check is the name there
@@ -155,9 +152,6 @@ class MetaCAT(object):
 
         # We already have everything, just get the data
         data, _ = encode_category_values(data, vals=self.category_values)
-
-        # Convert data tkns to ids
-        data = tkns_to_ids(data, self.tokenizer)
 
         # Run evaluation
         result = eval_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), pad_id=self.pad_id,
