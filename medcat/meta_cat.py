@@ -270,9 +270,9 @@ class MetaCAT(object):
         # Load tokenizer if it is None
         if self.tokenizer is None:
             if 'bbpe' in tokenizer_name:
-                self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
+                self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name, **kwargs)
             elif 'bert' in tokenizer_name:
-                self.tokenizer = TokenizerWrapperBERT.load(self.save_dir, name=tokenizer_name)
+                self.tokenizer = TokenizerWrapperBERT.load(self.save_dir, name=tokenizer_name, **kwargs)
             else:
                 raise Exception("Tokenizer not supported")
         # Load embeddings if None
