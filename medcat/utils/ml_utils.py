@@ -6,6 +6,7 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
+import os
 
 
 def get_lr_linking(config, cui_count, params, similarity):
@@ -173,7 +174,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         if f1 > best_f1:
             print("=" * 50)
             if auto_save_model:
-                path = save_dir + "lstm.dat"
+                path = os.path.join(save_dir, "lstm.dat")
                 torch.save(net.state_dict(), path)
                 print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
 

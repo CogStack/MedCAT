@@ -151,11 +151,13 @@ class TokenizerWrapperBPE(object):
         self.hf_tokenizers.save_model(dir_path, name=name)
 
     @classmethod
-    def load(cls, dir_path, name='bbpe', lowercase=True):
+    def load(cls, dir_path, name='bbpe', **kwargs):
         tokenizer = cls()
-        vocab_file = dir_path + "{}-vocab.json".format(name)
-        merges_file = dir_path + "{}-merges.txt".format(name)
-        tokenizer.hf_tokenizers = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=lowercase)
+        vocab_file = os.path.join(dir_path, f'{name}-vocab.json')
+        merges_file = os.path.join(dir_path, f'{name}-merges.txt')
+        tokenizer.hf_tokenizers = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file,
+                                                                  merges_filename=merges_file,
+                                                                  **kwargs)
 
         return tokenizer
 
@@ -183,9 +185,9 @@ class TokenizerWrapperBERT(object):
         self.hf_tokenizers.save_pretrained(path)
 
     @classmethod
-    def load(cls, dir_path, name='bert', lowercase=True):
+    def load(cls, dir_path, name='bert', **kwargs):
         tokenizer = cls()
         path = os.path.join(dir_path, name)
-        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path)
+        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
 
         return tokenizer
