@@ -34,10 +34,6 @@ class MetaCAT(object):
 
         self.model = None
 
-        # TODO: A shitty solution, make right at some point
-        if not self.save_dir.endswith("/"):
-            self.save_dir = self.save_dir + "/"
-
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, class_weights=None, cv=0,
@@ -196,7 +192,7 @@ class MetaCAT(object):
                 # The tokenizer wrapper saving  
                 self.tokenizer.save(self.save_dir, name=tokenizer_name)
             # Save embeddings
-            np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
+            np.save(os.path.join(self.save_dir, 'embeddings.npy'), np.array(self.embeddings))
 
         # The lstm model is saved during training, don't do it here
         #save the config.
@@ -205,7 +201,7 @@ class MetaCAT(object):
 
     def save_config(self):
         # TODO: Add other parameters, e.g replace_center, ignore_cpos etc.
-        path = self.save_dir + "vars.dat"
+        path = os.path.join(self.save_dir, 'vars.dat')
         to_save = {'category_name': self.category_name,
                    'category_values': self.category_values,
                    'i_category_values': self.i_category_values,
@@ -220,7 +216,7 @@ class MetaCAT(object):
     def load_config(self):
         """ Loads variables of this object
         """
-        path = self.save_dir + "vars.dat"
+        path = os.path.join(self.save_dir, 'vars.dat')
         with open(path, 'rb') as f:
             to_load = pickle.load(f)
 
@@ -246,21 +242,21 @@ class MetaCAT(object):
 
             self.model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses, bid=bid, num_layers=num_layers,
                          input_size=input_size, hidden_size=hidden_size, dropout=dropout)
-            path = self.save_dir + "lstm.dat"
+            path = os.path.join(self.save_dir, 'lstm.dat')
 
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
     @classmethod
-    def load(cls, save_dir, model='lstm'):
+    def load(cls, save_dir, model='lstm', **kwargs):
         ''' Load from full save
         '''
         mc = cls(save_dir=save_dir)
-        mc._load(model=model)
+        mc._load(model=model, **kwargs)
 
         return mc
 
 
-    def _load(self, model='lstm'):
+    def _load(self, model='lstm', **kwargs):
         """ Loads model and config for this meta annotation
         """
         # Load configuration
@@ -270,14 +266,14 @@ class MetaCAT(object):
         # Load tokenizer if it is None
         if self.tokenizer is None:
             if 'bbpe' in tokenizer_name:
-                self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
+                self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name, **kwargs)
             elif 'bert' in tokenizer_name:
-                self.tokenizer = TokenizerWrapperBERT.load(self.save_dir, name=tokenizer_name)
+                self.tokenizer = TokenizerWrapperBERT.load(self.save_dir, name=tokenizer_name, **kwargs)
             else:
                 raise Exception("Tokenizer not supported")
         # Load embeddings if None
         if self.embeddings is None:
-            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'), allow_pickle=False)
+            embeddings = np.load(os.path.join(self.save_dir, 'embeddings.npy'), allow_pickle=False)
             self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
 
         # Load MODEL

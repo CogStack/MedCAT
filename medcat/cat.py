@@ -4,7 +4,7 @@ import time
 import logging
 from functools import partial
 from copy import deepcopy
-from tqdm.autonotebook import tqdm
+from tqdm import tqdm
 from multiprocessing import Process, Manager, Queue, Pool, Array
 from time import sleep
 
