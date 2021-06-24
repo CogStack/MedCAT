@@ -116,6 +116,7 @@ If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot
 - [ ] Fix logging, make sure the config options are respected 
 - [ ] Relation extraction
 - [ ] Implement replace_center in the __call__ function for meta_cat
+- [ ] Fix parallelization for MedCAT alone + Try to solve how to run this when we have MetaCATs also
 
 
 ## Acknowledgement
