@@ -105,7 +105,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     return df
 
 
-def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=False, **kwargs):
+def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=True, **kwargs):
     r''' Given paths to the snomed files with concepts e.g. `sct2_Concept_Snapshot_INT_20180731.txt` this will
     build a CSV required by the cdb_maker.py
 
@@ -138,7 +138,7 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
 
     # Process descs and keep only active ones (note this is not active concepts,
     #but active descriptions).
-    snomed_descs = [pd.read_csv(path, sep=sep, dtype=str, **kwargs) for path in snomed_desc_paths]
+    snomed_descs = [pd.read_csv(path, sep=sep, dtype=str, na_filter=False, **kwargs) for path in snomed_desc_paths]
     snomed_descs = pd.concat(snomed_descs)
     snomed_descs = snomed_descs[snomed_descs.active == '1']
 
@@ -173,8 +173,10 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
     if output_path is not None:
         snomed_cdb_df.to_csv(output_path, index=False)
 
+    # Create reverse mapping of types
+    type_id2name = {v:k for k,v in type_name2id.items()}
     if output_path_type_names is not None:
         # Reverse tje type 2 id nad save
-        json.dump({v:k for k,v in type_name2id.items()}, open(output_path_type_names, 'w'))
+        json.dump(type_id2name, open(output_path_type_names, 'w'))
 
-    return snomed_cdb_df, {v:k for k,v in type_name2id.items()}
+    return snomed_cdb_df, type_id2name
