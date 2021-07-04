@@ -105,7 +105,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     return df
 
 
-def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=True, **kwargs):
+def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=True, na_filter=False, **kwargs):
     r''' Given paths to the snomed files with concepts e.g. `sct2_Concept_Snapshot_INT_20180731.txt` this will
     build a CSV required by the cdb_maker.py
 
@@ -123,6 +123,9 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
         strip_fqn (bool, defaults to `True`):
             If True all Fully Qualified Names will be striped of the semantic type e.g. (disorder)
             and that cleaned name will be appended as an additional row in the CSV.
+        na_filter (bool, defaults to `False`):
+            If True, Pandas will apply its default detection of "missing" values and replace them with nan.
+            This is usually undesirable because some SNOMED concepts match the patterns considered as missing (e.g. "N/A")
         kwargs:
             Will be forwarded to pandas.read_csv
     Return:
@@ -138,7 +141,7 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
 
     # Process descs and keep only active ones (note this is not active concepts,
     #but active descriptions).
-    snomed_descs = [pd.read_csv(path, sep=sep, dtype=str, na_filter=False, **kwargs) for path in snomed_desc_paths]
+    snomed_descs = [pd.read_csv(path, sep=sep, dtype=str, na_filter=na_filter, **kwargs) for path in snomed_desc_paths]
     snomed_descs = pd.concat(snomed_descs)
     snomed_descs = snomed_descs[snomed_descs.active == '1']
 
