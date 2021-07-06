@@ -4,7 +4,7 @@ import time
 import logging
 from functools import partial
 from copy import deepcopy
-from tqdm import tqdm
+from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, Pool, Array
 from time import sleep
 
@@ -471,7 +471,8 @@ class CAT(object):
                 for name in names:
                     cuis.update(self.cdb.name2cuis.get(name, []))
                 # Remove the cui for which we just added positive training
-                cuis.remove(cui)
+                if cui in cuis:
+                    cuis.remove(cui)
                 # Add negative training for all other CUIs that link to these names
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
