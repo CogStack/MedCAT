@@ -14,9 +14,15 @@ class TokenizerNER(object):
         self.label_map = {'O': 0, 'X': 1}
         self.id2type = id2type
 
-    def encode(self, examples, use_subwords=False):
+    def encode(self, examples, ignore_subwords=False):
         r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
         appropriate form for NER with BERT. It will split long text segments into max_len sequences.
+
+        Args:
+            examples:
+                Stream of examples
+            ignore_subwords:
+                If set to `True` subwords of any token will get the special label `X`
         '''
         old_ids = examples['id']
         examples['input_ids'] = []
@@ -43,7 +49,7 @@ class TokenizerNER(object):
                         self.label_map[entities[0][2]] = len(self.label_map)
                     # Means this token is part of entity at position 0
                     tkn_part_of_entity = True
-                    if not use_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
+                    if not ignore_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
                         labels.append(self.label_map[entities[0][2]])
                     else:
                         labels.append(self.label_map['X'])
@@ -53,7 +59,7 @@ class TokenizerNER(object):
                         del entities[0]
                         tkn_part_of_entity = False
 
-                    if not use_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
+                    if not ignore_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
                         labels.append(self.label_map["O"])
                     else:
                         labels.append(self.label_map['X'])

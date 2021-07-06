@@ -78,18 +78,18 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
         with open(filepath, 'r') as f:
             projects = json.load(f)['projects']
             for project in projects:
-                for doc in project['documents']:
+                for ind, doc in enumerate(project['documents']):
                     starts = []
                     ends = []
                     cuis = []
                     for entity in doc['annotations']:
-                        if entity['correct']:
+                        if entity.get('correct', True) or entity.get('manually_created', False):
                             starts.append(entity['start'])
                             ends.append(entity['end'])
                             cuis.append(entity['cui'])
-
-                    yield "{}".format(doc['id']), {
-                            'id': int(doc['id']),
+                    doc_id = doc.get(id, ind)
+                    yield "{}".format(doc_id), {
+                            'id': int(doc_id),
                             'text': str(doc['text']),
                             'ent_starts': starts,
                             'ent_ends': ends,
