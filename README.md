@@ -115,6 +115,7 @@ If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot
 - [ ] Implement replace_center in the __call__ function for meta_cat
 - [ ] Fix parallelization for MedCAT alone + Try to solve how to run this when we have MetaCATs also
 - [ ] How to continue training after unsupervised training (without reseting annealing) - how not to overfit if we have very little annotations, but also not underfit (not learn anything)
+- [ ] Make MetaCAT config part of `config.py`
 
 
 ## Acknowledgement
