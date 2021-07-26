@@ -3,12 +3,12 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
 
 ## News 
+- **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
 - **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), 
 as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy 
 branch and will still be supported until 1. July 2021 
 (with respect to potential bug fixes), after it will still be available but not updated anymore.
 - **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
-- **Paper**: [Treatment with ACE-inhibitors is not associated with early severe SARS-Covid-19 infection in a multi-site UK acute Hospital Trust](https://www.researchgate.net/publication/340261837_Treatment_with_ACE-inhibitors_is_not_associated_with_early_severe_SARS-Covid-19_infection_in_a_multi-site_UK_acute_Hospital_Trust)
 - ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md))
 
 ## Demo
@@ -103,18 +103,6 @@ that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
 If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
-
-
-## TODO
-- [ ] Switch to spaCy version 3+
-- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
-- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
-- [ ] Update webapp to v1 and enable UMLS and SNOMED
-- [ ] Fix logging, make sure the config options are respected 
-- [ ] Relation extraction
-- [ ] Implement replace_center in the __call__ function for meta_cat
-- [ ] Fix parallelization for MedCAT alone + Try to solve how to run this when we have MetaCATs also
-- [ ] How to continue training after unsupervised training (without reseting annealing) - how not to overfit if we have very little annotations, but also not underfit (not learn anything)
 
 
 ## Acknowledgement
