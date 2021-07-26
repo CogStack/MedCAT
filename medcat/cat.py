@@ -673,7 +673,7 @@ class CAT(object):
             for ind, ent in enumerate(_ents):
                 cui = str(ent._.cui)
                 if not only_cui:
-                    out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
+                    out_ent['pretty_name'] = self.cdb.get_name(cui)
                     out_ent['cui'] = cui
                     out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
                     out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]

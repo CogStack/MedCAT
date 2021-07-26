@@ -54,6 +54,11 @@ class TokenizerNER(object):
                     else:
                         labels.append(self.label_map['X'])
 
+                    if entities[0][1] <= offset[1]:
+                        # If it is the last token of the entity, remove the entity as it is done
+                        del entities[0]
+                        tkn_part_of_entity = False # Set this so the next token is not removed
+
                 else:
                     if tkn_part_of_entity:
                         del entities[0]
