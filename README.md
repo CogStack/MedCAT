@@ -105,19 +105,6 @@ that data is not publicaly available.)
 If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
-## TODO
-- [ ] Switch to spaCy version 3+
-- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
-- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
-- [ ] Update webapp to v1 and enable UMLS and SNOMED
-- [ ] Fix logging, make sure the config options are respected 
-- [ ] Relation extraction
-- [ ] Implement replace_center in the __call__ function for meta_cat
-- [ ] Fix parallelization for MedCAT alone + Try to solve how to run this when we have MetaCATs also
-- [ ] How to continue training after unsupervised training (without reseting annealing) - how not to overfit if we have very little annotations, but also not underfit (not learn anything)
-- [ ] Make MetaCAT config part of `config.py`
-
-
 ## Acknowledgement
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
