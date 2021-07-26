@@ -1,5 +1,6 @@
-from medcat.ner.vocab_based_annotator import maybe_annotate_name
 import logging
+from medcat.ner.vocab_based_annotator import maybe_annotate_name
+
 
 class NER(object):
     r'''

@@ -1,7 +1,8 @@
-from medcat.utils.filters import check_filters
-from medcat.linking.vector_context_model import ContextModel
 import random
 import logging
+from medcat.utils.filters import check_filters
+from medcat.linking.vector_context_model import ContextModel
+
 
 class Linker(object):
     r''' Link to a biomedical database.
