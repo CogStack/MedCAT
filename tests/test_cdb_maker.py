@@ -1,10 +1,11 @@
 import unittest
+import logging
+import os
+import numpy as np
 from medcat.cdb_maker import CDBMaker
 from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.preprocessing.cleaners import prepare_name
-import numpy as np
-import logging
 
 #cdb.csv
 #cui  name  ontologies  name_status type_ids  description
@@ -20,6 +21,7 @@ import logging
 
 #TESTS RUN IN ALPHABETICAL ORDER - CONTROLLING WITH '[class_letter]Class and test_[classletter subclassletter]' function syntax
 
+
 class A_CDBMakerLoadTests(unittest.TestCase):
     
     @classmethod
@@ -28,7 +30,10 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         config = Config()
         config.general['log_level'] = logging.DEBUG
         maker = CDBMaker(config)
-        csvs = ['../examples/cdb.csv', '../examples/cdb_2.csv']
+        csvs = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb_2.csv')
+        ]
         cls.cdb = maker.prepare_csvs(csvs, full_build=True)
 
     def test_aa_cdb_names_length(self):
@@ -110,7 +115,10 @@ class B_CDBMakerEditTests(unittest.TestCase):
         cls.config = Config()
         cls.config.general['log_level'] = logging.DEBUG
         cls.maker = CDBMaker(cls.config)
-        csvs = ['../examples/cdb.csv', '../examples/cdb_2.csv']
+        csvs = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb_2.csv')
+        ]
         cls.cdb = cls.maker.prepare_csvs(csvs, full_build=True)
         cls.cdb2 = CDB(cls.config)
 
