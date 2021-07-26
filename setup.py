@@ -21,7 +21,7 @@ setuptools.setup(
         'numpy~=1.20',
         'pandas~=1.0',
         'gensim~=3.8',
-        'spacy==2.3.4',
+        'spacy==3.1.1',
         'scipy~=1.5',
         'transformers~=4.5.1',
         'torch~=1.8.1',
