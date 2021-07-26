@@ -83,11 +83,11 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
                     ends = []
                     cuis = []
                     for entity in doc['annotations']:
-                        if entity.get('correct', True) or entity.get('manually_created', False):
+                        if entity.get('correct', True) or entity.get('manually_created', False) or entity.get('alternative', False):
                             starts.append(entity['start'])
                             ends.append(entity['end'])
                             cuis.append(entity['cui'])
-                    doc_id = doc.get(id, ind)
+                    doc_id = doc.get('id', ind)
                     yield "{}".format(doc_id), {
                             'id': int(doc_id),
                             'text': str(doc['text']),
