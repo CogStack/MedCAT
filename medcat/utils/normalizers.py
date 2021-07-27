@@ -1,9 +1,6 @@
-#import hunspell
 import re
-from collections import Counter
-from spacy.tokens import Span
 import spacy
-import os
+
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
 
