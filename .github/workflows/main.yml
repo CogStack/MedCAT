@@ -2,7 +2,7 @@ name: Main
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, spacy-v3 ]
   pull_request:
     branches: [ master ]
 
