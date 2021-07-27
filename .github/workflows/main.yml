@@ -1,8 +1,8 @@
-name: Main
+name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, spacy-v3 ]
   pull_request:
     branches: [ master ]
 
@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ 3.7 ]
+        python-version: [ 3.7, 3.8, 3.9 ]
       max-parallel: 1
 
     steps:
