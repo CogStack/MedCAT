@@ -2,10 +2,14 @@
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
 
-## UPDATE
-MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), as well as potential problems with all code that used the MedCAT package.
-
-MedCAT v0.4 is available on the [legacy](https://github.com/CogStack/MedCAT/tree/legacy) branch and will still be supported until 1. July 2021 (with respect to potential bug fixes), after it will still be available but not updated anymore.
+## News 
+- **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
+- **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), 
+as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy 
+branch and will still be supported until 1. July 2021 
+(with respect to potential bug fixes), after it will still be available but not updated anymore.
+- **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
+- ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md))
 
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
@@ -13,29 +17,24 @@ A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). 
 ## Tutorial
 A guide on how to use MedCAT is available in the [tutorial](https://github.com/CogStack/MedCAT/tree/master/tutorial) folder. Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
-## Papers that use MedCAT
-- [Treatment with ACE-inhibitors is not associated with early severe SARS-Covid-19 infection in a multi-site UK acute Hospital Trust](https://www.researchgate.net/publication/340261837_Treatment_with_ACE-inhibitors_is_not_associated_with_early_severe_SARS-Covid-19_infection_in_a_multi-site_UK_acute_Hospital_Trust)
-- [Supplementing the National Early Warning Score (NEWS2) for anticipating early deterioration among patients with COVID-19 infection](https://www.medrxiv.org/content/10.1101/2020.04.24.20078006v1)
-- [Comparative Analysis of Text Classification Approaches in Electronic Health Records](https://www.researchgate.net/publication/341396173_Comparative_Analysis_of_Text_Classification_Approaches_in_Electronic_Health_Records)
-- [Experimental Evaluation and Development of a Silver-Standard for the MIMIC-III Clinical Coding Dataset](https://arxiv.org/abs/2006.07332)
-- [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
-
 ## Related Projects
 - [MedCATtrainer](https://github.com/CogStack/MedCATtrainer/) - an interface for building, improving and customising a given Named Entity Recognition and Linking (NER+L) model (MedCAT) for biomedical domain text.
 - [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
-## Install using PIP (Requires Python 3.6.1+)
+## Install using PIP (Requires Python 3.7+)
+0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
-
-- For macOS: `pip install --upgrade medcat`
-- For Windows/Linux (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
+- For macOS/linux: `pip install --upgrade medcat`
+- For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
 2. Get the scispacy models:
 
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_md-0.3.0.tar.gz`
 
-3. Download the Vocabulary and CDB from the Models section below
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_lg-0.3.0.tar.gz`
+
+3. Downlad the Vocabulary and CDB from the Models section bellow
 
 4. Quickstart:
 ```python
@@ -75,6 +74,19 @@ cat.train(data_iterator)
 cat.cdb.save(<save path>)
 ```
 
+### MetaCAT example
+```python
+from medcat.meta_cat import MetaCAT
+# Assume we have a CDB and Vocab object from before
+# Download the mc_status model from the models section below and unzip it
+
+mc_status = MetaCAT.load("<path to the unziped mc_status directory>")
+cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=[mc_status])
+
+# Now annotate a document, it will have the meta annotation 'status'
+doc = cat.get_entities(text)
+```
+
 
 ## Models
 A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. 
@@ -83,51 +95,14 @@ Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built
 
 CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat) - Built from MedMentions
 
+MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical)
+
 
 (Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases.
-
-Alternatively, you can build the CDBs for scratch from source data. We have used the below steps to build UMLS and SNOMED-CT (UK) for our experiments
-
-#### Building Concept Databases from Scratch
-We provide details to build both UMLS and SNOMED-CT concept databases. In both cases CSV files containing the source
-data with required columns (column descriptions are provided in the [tutorial](https://colab.research.google.com/drive/1nz2zMDQ3QrlTgpW7FfGaXeV1ZAtZeOe2#scrollTo=ptRmHln9k7hG). 
-Given the CSV files the [prepare_cdb.py](https://github.com/CogStack/MedCAT/blob/master/medcat/prepare_cdb.py) script can be used to build a CDB.
- 
-##### Building a UMLS Concept Database
-The UMLS can be downloaded from https://www.nlm.nih.gov/research/umls/index.html in the 
-Rich Release Format (RRF). To make subsetting and filtering easier we import UMLS RRF into a PostgreSQL database 
-(scripts available at [here](https://github.com/w-is-h/umls)).
-
-Once the data is in the database we can use the following SQL script to download the CSV files containing all concepts 
-that will form our CDB.
-
-```
-# Selecting concepts for all the Ontologies that are used
-SELECT DISTINCT umls.mrconso.cui, str, mrconso.sab, mrconso.tty, tui, sty, def 
-FROM umls.mrconso 
-    LEFT OUTER JOIN umls.mrsty ON umls.mrsty.cui = umls.mrconso.cui 
-    LEFT OUTER JOIN umls.mrdef ON umls.mrconso.cui = umls.mrdef.cui
-WHERE lat='ENG'
-```
-
-##### Building a SNOMED-CT Concept Database
-We use the SNOMED-CT data provided by the NHS TRUD service [https://isd.digital.nhs.uk/trud3/user/guest/group/0/pack/26](https://isd.digital.nhs.uk/trud3/user/guest/group/0/pack/26). 
-This release combines the International and UK specific concepts into a set of assets that can be parsed and loaded 
-into a MedCAT CDB. We provide scripts for parsing the various release files and load into a MedCAT CDB instance. 
-We provide further scripts to load accompanying SNOMED-CT Drug extension and clinical coding data 
-(ICD / OPCS terminologies) also from the NHS TRUD service. Scripts are available at: [https://github.com/tomolopolis/SNOMED-CT_Analysis](https://github.com/tomolopolis/SNOMED-CT_Analysis) 
-
-
-## TODO
-- [ ] Switch to spaCy version 3+
-- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
-- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
-- [ ] Update webapp to v1 and enable UMLS and SNOMED
-- [ ] Fix logging, make sure the config options are respected 
+If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
 ## Acknowledgement

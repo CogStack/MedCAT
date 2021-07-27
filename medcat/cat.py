@@ -471,7 +471,8 @@ class CAT(object):
                 for name in names:
                     cuis.update(self.cdb.name2cuis.get(name, []))
                 # Remove the cui for which we just added positive training
-                cuis.remove(cui)
+                if cui in cuis:
+                    cuis.remove(cui)
                 # Add negative training for all other CUIs that link to these names
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
@@ -672,7 +673,7 @@ class CAT(object):
             for ind, ent in enumerate(_ents):
                 cui = str(ent._.cui)
                 if not only_cui:
-                    out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
+                    out_ent['pretty_name'] = self.cdb.get_name(cui)
                     out_ent['cui'] = cui
                     out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
                     out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
@@ -683,7 +684,7 @@ class CAT(object):
                     out_ent['start'] = ent.start_char
                     out_ent['end'] = ent.end_char
                     for addl in addl_info:
-                        tmp = self.cdb.addl_info[addl].get(cui, [])
+                        tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
                         out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
                     out_ent['id'] = ent._.id
                     out_ent['meta_anns'] = {}

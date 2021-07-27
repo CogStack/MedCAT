@@ -6,8 +6,9 @@ import torch
 from scipy.special import softmax
 
 from medcat.utils.ml_utils import train_network, eval_network
-from medcat.utils.data_utils import prepare_from_json, encode_category_values, tkns_to_ids, set_all_seeds
+from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
+from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
 class MetaCAT(object):
     r''' TODO: Add documentation
@@ -29,12 +30,9 @@ class MetaCAT(object):
         self.category_name = None
         self.category_values = {}
         self.i_category_values = {}
+        self.model_config = {}
 
         self.model = None
-
-        # TODO: A shitty solution, make right at some point
-        if not self.save_dir.endswith("/"):
-            self.save_dir = self.save_dir + "/"
 
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
@@ -44,6 +42,7 @@ class MetaCAT(object):
               prerequisite={}):
         r''' TODO: Docs
         '''
+        self.model_config = model_config
         set_all_seeds(seed)
         data = json.load(open(json_path, 'r'))
 
@@ -72,9 +71,6 @@ class MetaCAT(object):
         else:
             # We already have everything, just get the data
             data, _ = encode_category_values(data, vals=self.category_values)
-
-        # Convert data tkns to ids
-        #data = tkns_to_ids(data, self.tokenizer)
 
         if not fine_tune:
             if model_name == 'lstm':
@@ -141,7 +137,7 @@ class MetaCAT(object):
         data = json.load(open(json_path, 'r'))
 
         # Prepare the data
-        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, lowercase=lowercase, cui_filter=cui_filter,
+        data = prepare_from_json(data, self.cntx_left, self.cntx_right, self.tokenizer, cui_filter=cui_filter,
                 replace_center=replace_center)
 
         # Check is the name there
@@ -153,9 +149,6 @@ class MetaCAT(object):
         # We already have everything, just get the data
         data, _ = encode_category_values(data, vals=self.category_values)
 
-        # Convert data tkns to ids
-        data = tkns_to_ids(data, self.tokenizer)
-
         # Run evaluation
         result = eval_network(self.model, data, max_seq_len=(self.cntx_left+self.cntx_right+1), pad_id=self.pad_id,
                 batch_size=batch_size, device=self.device, ignore_cpos=ignore_cpos, score_average=score_average)
@@ -163,7 +156,7 @@ class MetaCAT(object):
         return result
 
 
-    def predicit_one(self, text, start, end):
+    def predict_one(self, text, start, end):
         """ A test function, not useful in any other case
         """
         text = text.lower()
@@ -188,17 +181,18 @@ class MetaCAT(object):
         return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
-    def save(self, full_save=False):
+    def save(self, full_save=True):
+        tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
         if full_save:
             # Save tokenizer and embeddings, slightly redundant
             if hasattr(self.tokenizer, 'save_model'):
                 # Support the new save in tokenizer 0.8.2+ from huggingface
-                self.tokenizer.save_model(self.save_dir, name='bbpe')
+                self.tokenizer.save_model(self.save_dir, name=tokenizer_name)
             elif hasattr(self.tokenizer, 'save'):
                 # The tokenizer wrapper saving  
-                self.tokenizer.save(self.save_dir, name='bbpe')
+                self.tokenizer.save(self.save_dir, name=tokenizer_name)
             # Save embeddings
-            np.save(open(self.save_dir + "embeddings.npy", 'wb'), np.array(self.embeddings))
+            np.save(os.path.join(self.save_dir, 'embeddings.npy'), np.array(self.embeddings))
 
         # The lstm model is saved during training, don't do it here
         #save the config.
@@ -207,13 +201,14 @@ class MetaCAT(object):
 
     def save_config(self):
         # TODO: Add other parameters, e.g replace_center, ignore_cpos etc.
-        path = self.save_dir + "vars.dat"
+        path = os.path.join(self.save_dir, 'vars.dat')
         to_save = {'category_name': self.category_name,
                    'category_values': self.category_values,
                    'i_category_values': self.i_category_values,
                    'pad_id': self.pad_id,
                    'cntx_left': self.cntx_left,
-                   'cntx_right': self.cntx_right}
+                   'cntx_right': self.cntx_right,
+                   'model_config': self.model_config}
         with open(path, 'wb') as f:
             pickle.dump(to_save, f)
 
@@ -221,7 +216,7 @@ class MetaCAT(object):
     def load_config(self):
         """ Loads variables of this object
         """
-        path = self.save_dir + "vars.dat"
+        path = os.path.join(self.save_dir, 'vars.dat')
         with open(path, 'rb') as f:
             to_load = pickle.load(f)
 
@@ -231,6 +226,7 @@ class MetaCAT(object):
         self.cntx_left = to_load['cntx_left']
         self.cntx_right = to_load['cntx_right']
         self.pad_id = to_load.get('pad_id', 0)
+        self.model_config = to_load.get('model_config', {})
 
 
     def load_model(self, model='lstm'):
@@ -238,26 +234,48 @@ class MetaCAT(object):
         if model == 'lstm':
             from medcat.utils.models import LSTM
             nclasses = len(self.category_values)
-            self.model = LSTM(self.embeddings, self.pad_id,
-                              nclasses=nclasses)
-            path = self.save_dir + "lstm.dat"
+            bid = self.model_config.get("bid", True)
+            num_layers = self.model_config.get("num_layers", 2)
+            input_size = self.model_config.get("input_size", 300)
+            hidden_size = self.model_config.get("hidden_size", 300)
+            dropout = self.model_config.get("dropout", 0.5)
+
+            self.model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses, bid=bid, num_layers=num_layers,
+                         input_size=input_size, hidden_size=hidden_size, dropout=dropout)
+            path = os.path.join(self.save_dir, 'lstm.dat')
 
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
+    @classmethod
+    def load(cls, save_dir, model='lstm', device='cpu', **kwargs):
+        ''' Load from full save
+        '''
+        mc = cls(save_dir=save_dir)
+        mc.device = device
+        mc._load(model=model, **kwargs)
 
-    def load(self, model='lstm', tokenizer_name='bbpe'):
+        return mc
+
+
+    def _load(self, model='lstm', **kwargs):
         """ Loads model and config for this meta annotation
         """
-        # Load tokenizer if it is None
-        if self.tokenizer is None:
-            self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name)
-        # Load embeddings if None
-        if self.embeddings is None:
-            embeddings = np.load(open(self.save_dir  + "embeddings.npy", 'rb'), allow_pickle=False)
-            self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
-
         # Load configuration
         self.load_config()
+
+        tokenizer_name = self.model_config.get('tokenizer_name', 'bbpe')
+        # Load tokenizer if it is None
+        if self.tokenizer is None:
+            if 'bbpe' in tokenizer_name:
+                self.tokenizer = TokenizerWrapperBPE.load(self.save_dir, name=tokenizer_name, **kwargs)
+            elif 'bert' in tokenizer_name:
+                self.tokenizer = TokenizerWrapperBERT.load(self.save_dir, name=tokenizer_name, **kwargs)
+            else:
+                raise Exception("Tokenizer not supported")
+        # Load embeddings if None
+        if self.embeddings is None:
+            embeddings = np.load(os.path.join(self.save_dir, 'embeddings.npy'), allow_pickle=False)
+            self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
 
         # Load MODEL
         self.load_model(model=model)

@@ -2,7 +2,9 @@ import spacy
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from tokenizers import ByteLevelBPETokenizer
+from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 import re
+import os
 
 def spacy_extended(nlp):
     infix_re_list = ('\\.\\.+',
@@ -149,10 +151,43 @@ class TokenizerWrapperBPE(object):
         self.hf_tokenizers.save_model(dir_path, name=name)
 
     @classmethod
-    def load(cls, dir_path, name='bbpe', lowercase=True):
+    def load(cls, dir_path, name='bbpe', **kwargs):
         tokenizer = cls()
-        vocab_file = dir_path + "{}-vocab.json".format(name)
-        merges_file = dir_path + "{}-merges.txt".format(name)
-        tokenizer.hf_tokenizers = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file, merges_filename=merges_file, lowercase=lowercase)
+        vocab_file = os.path.join(dir_path, f'{name}-vocab.json')
+        merges_file = os.path.join(dir_path, f'{name}-merges.txt')
+        tokenizer.hf_tokenizers = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file,
+                                                                  merges_filename=merges_file,
+                                                                  **kwargs)
+
+        return tokenizer
+
+
+class TokenizerWrapperBERT(object):
+    '''
+    '''
+
+    def __init__(self, hf_tokenizers=None):
+        self.hf_tokenizers = hf_tokenizers
+
+
+    def __call__(self, text):
+        res = self.hf_tokenizers.encode_plus(text,
+                return_offsets_mapping=True, add_special_tokens=False)
+
+        return {'offset_mapping': res['offset_mapping'],
+                'input_ids': res['input_ids'],
+                'tokens':  self.hf_tokenizers.convert_ids_to_tokens(res['input_ids']),
+                }
+
+
+    def save(self, dir_path, name='bert'):
+        path = os.path.join(dir_path, name)
+        self.hf_tokenizers.save_pretrained(path)
+
+    @classmethod
+    def load(cls, dir_path, name='bert', **kwargs):
+        tokenizer = cls()
+        path = os.path.join(dir_path, name)
+        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
 
         return tokenizer
