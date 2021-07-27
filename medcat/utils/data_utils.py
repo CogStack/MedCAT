@@ -977,15 +977,6 @@ def encode_category_values(data, vals=None):
     return data, vals
 
 
-def tkns_to_ids(data, tokenizer):
-    data = list(data)
-
-    for i in range(len(data)):
-        data[i][1] = [tokenizer.convert_tokens_to_ids(tok) for tok in data[i][1]]
-
-    return data
-
-
 def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
     """ This is a disaster
     """
@@ -998,8 +989,11 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
 
         if 'cuis' in project and len(project['cuis'].strip()) > 0:
             cui_filter = [x.strip() for x in project['cuis'].split(",")]
+
+        """
         if 'tuis' in project and len(project['tuis'].strip()) > 0:
             tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
+        """
 
         for document in project['documents']:
             if type(document['annotations']) == list:
@@ -1008,9 +1002,7 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
                 doc_annotations = document['annotations'].values()
 
             for ann in doc_annotations:
-
-                if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
-                   (tui_filter is not None and cdb.cui2tui.get(ann['cui'], 'unk') in tui_filter):
+                if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter):
                     if ann['cui'] in cnts:
                         cnts[ann['cui']] += 1
                     else:
@@ -1043,8 +1035,10 @@ def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
 
         if 'cuis' in project and len(project['cuis'].strip()) > 0:
             cui_filter = [x.strip() for x in project['cuis'].split(",")]
+        """
         if 'tuis' in project and len(project['tuis'].strip()) > 0:
             tui_filter = [x.strip().upper() for x in project['tuis'].split(",")]
+        """
 
 
         for i_document in np.random.permutation(np.arange(0, len(project['documents']))):

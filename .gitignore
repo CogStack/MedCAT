@@ -5,6 +5,9 @@
 /output/
 /graphics/
 /models/*.dat
+/notebooks/wandb/
+/notebooks/logs/
+/notebooks/results/
 dist/
 tmp/
 *_tmp/
@@ -13,6 +16,7 @@ build/
 .idea
 venv
 db.sqlite3
+.ipynb_checkpoints
 
 #tmp and similar files
 .nfs*
