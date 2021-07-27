@@ -22,7 +22,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
-## Install using PIP (Requires Python 3.6.1+)
+## Install using PIP (Requires Python 3.7+)
 0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
 - For macOS/linux: `pip install --upgrade medcat`
@@ -103,19 +103,6 @@ that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
 If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
-
-
-## TODO
-- [ ] Switch to spaCy version 3+
-- [ ] Enable automatic download of pre-built UMLS/SNOMED databases
-- [ ] Enable spaCy serialization of documents (problem with `doc._.ents`)
-- [ ] Update webapp to v1 and enable UMLS and SNOMED
-- [ ] Fix logging, make sure the config options are respected 
-- [ ] Relation extraction
-- [ ] Implement replace_center in the __call__ function for meta_cat
-- [ ] Fix parallelization for MedCAT alone + Try to solve how to run this when we have MetaCATs also
-- [ ] How to continue training after unsupervised training (without reseting annealing) - how not to overfit if we have very little annotations, but also not underfit (not learn anything)
-- [ ] Make MetaCAT config part of `config.py`
 
 
 ## Acknowledgement
