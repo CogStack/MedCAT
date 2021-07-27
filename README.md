@@ -22,7 +22,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
-## Install using PIP (Requires Python 3.6.1+)
+## Install using PIP (Requires Python 3.7+)
 0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
 - For macOS/linux: `pip install --upgrade medcat`
