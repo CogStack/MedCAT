@@ -23,7 +23,7 @@ from medcat.preprocessing.cleaners import prepare_name
 
 
 class A_CDBMakerLoadTests(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         print("Load test database csvs for load tests")
@@ -58,10 +58,10 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(self.cdb.name2cuis, target_result)
 
     def test_ag_cdb_cuis_to_tags_length(self):
-        self.assertEqual(len(self.cdb.cui2tags), 3, "Should equal 3")
+        self.assertEqual(len(self.cdb.cui2tags), 0, "Should equal 0")
 
     def test_ah_cdb_cuis_to_tags_output(self):
-        target_result = {'C0000039': [], 'C0000139': [], 'C0000239': []}
+        target_result = {}
         self.assertEqual(self.cdb.cui2tags, target_result)
 
     def test_ai_cdb_cui_to_preferred_name_length(self):
@@ -72,17 +72,17 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(self.cdb.cui2preferred_name, target_result)
 
     def test_ak_cdb_cui_to_context_vectors_length(self):
-        self.assertEqual(len(self.cdb.cui2context_vectors), 3, "Should equal 3")
+        self.assertEqual(len(self.cdb.cui2context_vectors), 0, "Should equal 0")
 
     def test_al_cdb_cui_to_context_vectors_output(self):
-        target_result = {'C0000039': {}, 'C0000139': {}, 'C0000239': {}}
+        target_result = {}
         self.assertEqual(self.cdb.cui2context_vectors, target_result)
 
     def test_am_cdb_cui_to_count_train_length(self):
-        self.assertEqual(len(self.cdb.cui2count_train), 3, "Should equal 3")
+        self.assertEqual(len(self.cdb.cui2count_train), 0, "Should equal 0")
 
     def test_an_cdb_cui_to_count_train_output(self):
-        target_result = {'C0000039': 0, 'C0000139': 0, 'C0000239': 0}
+        target_result = {}
         self.assertEqual(self.cdb.cui2count_train, target_result)
 
     def test_ao_cdb_name_to_cui_to_status_length(self):
@@ -184,9 +184,8 @@ class B_CDBMakerEditTests(unittest.TestCase):
 
     def test_bh_reset_training(self):
         self.cdb.reset_training()
-        target_result = {'C0000039': {}, 'C0000139': {}}
+        target_result = {}
         self.assertEqual(self.cdb.cui2context_vectors, target_result)
-        self.assertEqual(self.cdb.cui2count_train['C0000139'], 0, "Count should equal 0")
 
 
 if __name__ == '__main__':
