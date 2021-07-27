@@ -248,10 +248,11 @@ class MetaCAT(object):
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
     @classmethod
-    def load(cls, save_dir, model='lstm', **kwargs):
+    def load(cls, save_dir, model='lstm', device='cpu', **kwargs):
         ''' Load from full save
         '''
         mc = cls(save_dir=save_dir)
+        mc.device = device
         mc._load(model=model, **kwargs)
 
         return mc
@@ -263,7 +264,7 @@ class MetaCAT(object):
         # Load configuration
         self.load_config()
 
-        tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
+        tokenizer_name = self.model_config.get('tokenizer_name', 'bbpe')
         # Load tokenizer if it is None
         if self.tokenizer is None:
             if 'bbpe' in tokenizer_name:
