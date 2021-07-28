@@ -1,16 +1,19 @@
-import re
-
 def tag_skip_and_punct(nlp, name, config):
     r''' Detects and tags spacy tokens that are punctuation and that should be skipped.
 
      Args:
+         nlp (spacy.language.<lng>):
+             The base spacy NLP pipeline.
+         name (`str`):
+             The component instance name.
          config (`medcat.config.Config`):
              Global config for medcat.
     '''
 
-    return TagSkipAndPunct(nlp, name, config)
+    return _Tagger(nlp, name, config)
 
-class TagSkipAndPunct(object):
+
+class _Tagger(object):
 
     def __init__(self, nlp, name, config):
         self.nlp = nlp
@@ -18,16 +21,6 @@ class TagSkipAndPunct(object):
         self.config = config
 
     def __call__(self, doc):
-        r''' Detects and tags spacy tokens that are punctuation and that should be skipped.
-
-        Args:
-            doc (`spacy.tokens.Doc`):
-                Spacy document that will be tagged.
-
-        Return:
-            (`spacy.tokens.Doc):
-                Tagged spacy document
-        '''
         # Make life easier
         cnf_p = self.config.preprocessing
 
