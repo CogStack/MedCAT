@@ -134,7 +134,7 @@ class Vocab(object):
             cnt (int):
                 count of this word in your dataset
             vec (np.array):
-                the vector repesentation of the word
+                the vector representation of the word
             replace (bool):
                 will replace old vector representation
         """
@@ -170,17 +170,16 @@ class Vocab(object):
             replace (bool):
                 existing words in the vocabulary will be replaced
         """
-        f = open(path)
+        with open(path) as f:
+            for line in f:
+                parts = line.split("\t")
+                word = parts[0]
+                cnt = int(parts[1].strip())
+                vec = None
+                if len(parts) == 3:
+                    vec = np.array([float(x) for x in parts[2].strip().split(" ")])
 
-        for line in f:
-            parts = line.split("\t")
-            word = parts[0]
-            cnt = int(parts[1].strip())
-            vec = None
-            if len(parts) == 3:
-                vec = np.array([float(x) for x in parts[2].strip().split(" ")])
-
-            self.add_word(word, cnt, vec)
+                self.add_word(word, cnt, vec, replace)
 
 
     def make_unigram_table(self, table_size=100000000):
@@ -232,11 +231,15 @@ class Vocab(object):
 
 
     def __getitem__(self, word):
-        return self.vocab[word]['cnt']
+        return self.count(word)
 
 
     def vec(self, word):
         return self.vocab[word]['vec']
+
+
+    def count(self, word):
+        return self.vocab[word]['cnt']
 
 
     def item(self, word):
