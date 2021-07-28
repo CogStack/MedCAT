@@ -1,7 +1,8 @@
-from spacy.tokens import Token, Doc, Span
-from medcat.utils.normalizers import TokenNormalizer
 import spacy
-import os
+from spacy.tokens import Token, Doc, Span
+from spacy.language import Language
+from medcat.utils.normalizers import TokenNormalizer
+
 
 class Pipe(object):
     r''' A wrapper around the standard spacy pipeline.
@@ -21,7 +22,7 @@ class Pipe(object):
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
         self.nlp.tokenizer = tokenizer(self.nlp)
-
+        self.config = config
 
     def add_tagger(self, tagger, name, additional_fields=[]):
         r''' Add any kind of a tagger for tokens.
@@ -35,7 +36,9 @@ class Pipe(object):
             additional_fields (`List[str]`):
                 Fields to be added to the `_` properties of a token.
         '''
-        self.nlp.add_pipe(tagger, name='tag_' + name, first=True)
+        component_factory_name = spacy.util.get_object_name(tagger)
+        Language.factory(name=component_factory_name, default_config={"config": self.config}, func=tagger)
+        self.nlp.add_pipe(component_factory_name, name='tag_' + name, first=True)
         # Add custom fields needed for this usecase
         Token.set_extension('to_skip', default=False, force=True)
 
@@ -43,21 +46,23 @@ class Pipe(object):
         for field in additional_fields:
             Token.set_extension(field, default=False, force=True)
 
-
     def add_token_normalizer(self, config, spell_checker=None):
         token_normalizer = TokenNormalizer(spell_checker=spell_checker, config=config)
-        self.nlp.add_pipe(token_normalizer, name='token_normalizer', last=True)
+        component_name = spacy.util.get_object_name(token_normalizer)
+        Language.component(name=component_name, func=token_normalizer)
+        self.nlp.add_pipe(component_name, name='token_normalizer', last=True)
 
         # Add custom fields needed for this usecase
         Token.set_extension('norm', default=None, force=True)
-
 
     def add_ner(self, ner):
         r''' Add NER from CAT to the pipeline, will also add the necessary fields
         to the document and Span objects.
 
         '''
-        self.nlp.add_pipe(ner, name='cat_ner', last=True)
+        component_name = spacy.util.get_object_name(ner)
+        Language.component(name=component_name, func=ner)
+        self.nlp.add_pipe(component_name, name='cat_ner', last=True)
 
         Doc.set_extension('ents', default=[], force=True)
         Span.set_extension('confidence', default=-1, force=True)
@@ -67,7 +72,6 @@ class Pipe(object):
         Span.set_extension('detected_name', default=None, force=True)
         Span.set_extension('link_candidates', default=None, force=True)
 
-
     def add_linker(self, linker):
         r''' Add entity linker to the pipeline, will also add the necessary fields
         to Span object.
@@ -76,18 +80,20 @@ class Pipe(object):
             Any object/function created based on the requirements for a spaCy pipeline components. Have
             a look at https://spacy.io/usage/processing-pipelines#custom-components
         '''
-        self.nlp.add_pipe(linker, name='cat_linker', last=True)
+        component_name = spacy.util.get_object_name(linker)
+        Language.component(name=component_name, func=linker)
+        self.nlp.add_pipe(component_name, name='cat_linker', last=True)
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('context_similarity', default=-1, force=True)
 
-
     def add_meta_cat(self, meta_cat, name):
-        self.nlp.add_pipe(meta_cat, name=name, last=True)
+        component_name = spacy.util.get_object_name(meta_cat)
+        Language.component(name=component_name, func=meta_cat)
+        self.nlp.add_pipe(component_name, name=name, last=True)
 
         # Only the meta_anns field is needed, it will be a dictionary 
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
-
 
     def __call__(self, text):
         return self.nlp(text)
