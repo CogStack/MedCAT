@@ -28,7 +28,7 @@ class A_NERTests(unittest.TestCase):
         print("Set up Vocab")
         vocab_path = "./tmp_vocab.dat"
         if not os.path.exists(vocab_path):
-            tmp = requests.get("https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat")
+            tmp = requests.get("https://medcat.rosalind.kcl.ac.uk/media/vocab.dat")
             with open(vocab_path, 'wb') as f:
                 f.write(tmp.content)
 
@@ -37,7 +37,7 @@ class A_NERTests(unittest.TestCase):
 
         print("Set up NLP pipeline")
         cls.nlp = Pipe(tokenizer=spacy_split_all, config=cls.config)
-        cls.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=cls.config),
+        cls.nlp.add_tagger(tagger=tag_skip_and_punct,
                        name='skip_and_punct',
                        additional_fields=['is_punct'])
 

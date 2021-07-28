@@ -10,6 +10,7 @@ from medcat.utils.data_utils import prepare_from_json, encode_category_values, s
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
+
 class MetaCAT(object):
     r''' TODO: Add documentation
     '''

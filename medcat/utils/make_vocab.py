@@ -40,7 +40,7 @@ class MakeVocab(object):
 
         # Build the required spacy pipeline
         self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
+        self.nlp.add_tagger(tagger=tag_skip_and_punct,
                             name='skip_and_punct',
                             additional_fields=['is_punct'])
 

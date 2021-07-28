@@ -19,8 +19,8 @@ KEEP_PUNCT=:|.
 SPACY_MODEL=en_core_sci_md
 VOCAB_PATH=/webapp/models/vocab.dat
 CDB_PATH=/webapp/models/cdb.dat
-VOCAB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat
-CDB_URL=https://s3-eu-west-1.amazonaws.com/zkcl/cdb-medmen.dat
+VOCAB_URL=https://medcat.rosalind.kcl.ac.uk/media/vocab.dat
+CDB_URL=https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat
 
 MKL_NUM_THREAD=1
 NUMEXPR_NUM_THREADS=1
