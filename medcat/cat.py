@@ -116,7 +116,7 @@ class CAT(object):
         Returns:
             A spacy document with the extracted entities
         '''
-        # Should we train - do not use this for training, unles you know what you are doing. Use the
+        # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
         self.config.linking['train'] = do_train
 

@@ -24,7 +24,6 @@ class Pipe(object):
         self.nlp.tokenizer = tokenizer(self.nlp)
         self.config = config
 
-
     def add_tagger(self, tagger, name, additional_fields=[]):
         r''' Add any kind of a tagger for tokens.
 
@@ -37,16 +36,15 @@ class Pipe(object):
             additional_fields (`List[str]`):
                 Fields to be added to the `_` properties of a token.
         '''
-        component_name = spacy.util.get_object_name(tagger)
-        Language.factory(name=component_name, default_config={"config": self.config}, func=tagger)
-        self.nlp.add_pipe(component_name, name='tag_' + name, first=True)
+        component_factory_name = spacy.util.get_object_name(tagger)
+        Language.factory(name=component_factory_name, default_config={"config": self.config}, func=tagger)
+        self.nlp.add_pipe(component_factory_name, name='tag_' + name, first=True)
         # Add custom fields needed for this usecase
         Token.set_extension('to_skip', default=False, force=True)
 
         # Add any additional fields that are required
         for field in additional_fields:
             Token.set_extension(field, default=False, force=True)
-
 
     def add_token_normalizer(self, config, spell_checker=None):
         token_normalizer = TokenNormalizer(spell_checker=spell_checker, config=config)
@@ -56,7 +54,6 @@ class Pipe(object):
 
         # Add custom fields needed for this usecase
         Token.set_extension('norm', default=None, force=True)
-
 
     def add_ner(self, ner):
         r''' Add NER from CAT to the pipeline, will also add the necessary fields
@@ -75,7 +72,6 @@ class Pipe(object):
         Span.set_extension('detected_name', default=None, force=True)
         Span.set_extension('link_candidates', default=None, force=True)
 
-
     def add_linker(self, linker):
         r''' Add entity linker to the pipeline, will also add the necessary fields
         to Span object.
@@ -90,7 +86,6 @@ class Pipe(object):
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('context_similarity', default=-1, force=True)
 
-
     def add_meta_cat(self, meta_cat, name):
         component_name = spacy.util.get_object_name(meta_cat)
         Language.component(name=component_name, func=meta_cat)
@@ -99,7 +94,6 @@ class Pipe(object):
         # Only the meta_anns field is needed, it will be a dictionary 
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
-
 
     def __call__(self, text):
         return self.nlp(text)
