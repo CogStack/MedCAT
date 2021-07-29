@@ -5,13 +5,10 @@ from medcat.pipe import Pipe
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.vocab import Vocab
 from medcat.preprocessing.cleaners import prepare_name
-from medcat.linking.vector_context_model import ContextModel
-from functools import partial
 from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
 import logging
 from medcat.cdb import CDB
-from spacy.tokens import Span
 import os
 import requests
 import unittest
