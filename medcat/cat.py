@@ -1,3 +1,5 @@
+import sys
+from medcat.vocab import Vocab
 import traceback
 import json
 import time
@@ -20,6 +22,10 @@ from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import process_old_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
+
+from medcat.cli.modelstats import TrainerStats
+from medcat.cli.system_utils import get_local_model_storage_path, load_model_from_file
+from dataclasses import asdict
 
 
 class CAT(object):
@@ -59,7 +65,7 @@ class CAT(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
-    def __init__(self, cdb, config, vocab, meta_cats=[]):
+    def __init__(self, cdb, config, vocab, meta_cats=[], trainer_data=None):
         self.cdb = cdb
         self.vocab = vocab
         # Take config from the cdb
@@ -94,6 +100,10 @@ class CAT(object):
         # Set max document length
         self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 
+        # MedCAT Export data
+        self.trainer_data = trainer_data
+        self.trainer_stats = TrainerStats()
+
 
     def get_spacy_nlp(self):
         ''' Returns the spacy pipeline with MedCAT
@@ -124,6 +134,39 @@ class CAT(object):
             return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
         else:
             return None
+
+    def save_model(self, vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json"):
+        self.vocab.save_model(output_file_name=vocab_output_file_name)
+        self.cdb.save_model(output_file_name=cdb_output_file_name)
+        
+        if self.trainer_data != None:
+            fp, fn, tp, cui_precision, cui_recall, cui_f1, cui_counts, examples,  recall, precision, f1, epoch  = self._print_stats(self.trainer_data)
+
+            self.trainer_stats = TrainerStats(epoch, precision, f1, recall, fp, fn, tp, cui_counts)
+            self.trainer_data["trainer_stats"] = asdict(self.trainer_stats)
+
+            with open(trainer_data_file_name, "w+") as f:
+                f.write(json.dumps(self.trainer_data))
+
+    @classmethod
+    def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+        
+        vocab = Vocab.load_model(model_full_tag_name=model_full_tag_name, input_file_name=vocab_input_file_name)
+        cdb = CDB.load_model(model_full_tag_name=model_full_tag_name, input_file_name=cdb_input_file_name)
+        
+        medcat_export = load_model_from_file(model_full_tag_name, file_name=trainer_data_file_name)
+
+        if not medcat_export:
+            medcat_export = None
+
+        if cdb is False or vocab is False:
+            logging.error("Exiting...")
+            sys.exit()
+
+        return CAT(cdb, config=cdb.config, vocab=vocab, trainer_data=medcat_export)
 
 
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
@@ -178,6 +221,10 @@ class CAT(object):
         cui_counts = {}
         examples = {'fp': {}, 'fn': {}, 'tp': {}}
 
+        # if there is any trainer data loaded via the load_model_from_file way
+        if self.trainer_data != None:
+            data = self.trainer_data
+            
         fp_docs = set()
         fn_docs = set()
         # Backup for filters
@@ -476,7 +523,6 @@ class CAT(object):
                 # Add negative training for all other CUIs that link to these names
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
-
 
 
     def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,

@@ -4,12 +4,15 @@
 import dill
 import logging
 import numpy as np
+import os
 from typing import Dict, List, Set
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config
 
+from medcat.cli import ModelTagData, system_utils
+from medcat.cli.modelstats import CDBStats
 
 class CDB(object):
     """ Concept DataBase - holds all information necessary for NER+L.
@@ -79,6 +82,10 @@ class CDB(object):
                 }
         self.vocab = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
+
+        # Model Version Control variables
+        self.vc_model_tag_data = ModelTagData()
+        self.cdb_stats = CDBStats()
 
 
     def get_name(self, cui):
@@ -350,6 +357,49 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
+    def save_model(self, organisation_name="", model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_save_path=".",  output_file_name="cdb.dat"):
+        """
+            This method should NOT be used outside of version control purposes. Use the save() method instead.
+        
+            Saves variables of this object
+            Files saved are in the model's folder
+        """
+        if organisation_name.strip() != "":
+            self.vc_model_tag_data.organisation_name = organisation_name
+        if model_name.strip() != "":
+            self.vc_model_tag_data.model_name = model_name
+        if parent_model_name.strip() != "":
+            self.vc_model_tag_data.parent_model_name = parent_model_name
+        if model_version_number.strip() != "":
+            self.vc_model_tag_data.version = model_version_number
+        if commit_hash.strip() != "":
+            self.vc_model_tag_data.commit_hash = commit_hash
+        if git_repo_url.strip() != "":
+            self.vc_model_tag_data.git_repo = git_repo_url
+
+        if not hasattr(self, "cdb_stats"):
+            self.cdb_stats = CDBStats()
+    
+        self.cdb_stats.number_of_concepts = len(self.cui2names)
+        self.cdb_stats.number_of_names = len(self.name2cui)
+        self.cdb_stats.number_of_concepts_received_training = len(self.cui2context_vec)
+        self.cdb_stats.number_of_seen_training_examples = sum(self.cui_count.values())
+        self.cdb_stats.average_training_example_per_concept = np.average(list(self.cui_count.values()))
+
+        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
+            dill.dump(self, f)
+         
+    @classmethod     
+    def load_model(self, model_full_tag_name, input_file_name="cdb.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name)
+        
+        if data is False:
+            logging.error("Could not load concept database from model: " + model_full_tag_name)
+
+        return data
 
     def save(self, path):
         r''' Saves model to file (in fact it saves vairables of this class). 

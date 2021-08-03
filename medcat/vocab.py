@@ -1,5 +1,9 @@
 import numpy as np
 import pickle
+import logging
+import os
+from medcat.cli import ModelTagData, system_utils
+
 
 class Vocab(object):
     r''' Vocabulary used to store word embeddings for context similarity
@@ -21,6 +25,9 @@ class Vocab(object):
         self.index2word = {}
         self.vec_index2word = {}
         self.unigram_table = []
+
+        # Model Version Control variables
+        self.vc_model_tag_data = ModelTagData()
 
 
     def inc_or_add(self, word, cnt=1, vec=None):
@@ -249,6 +256,40 @@ class Vocab(object):
 
         return False
 
+    def save_model(self, organisation_name="", model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", parent_model_tag="", output_save_path=".",  output_file_name="vocab.dat"):
+        """
+            This method should NOT be used outside of version control purposes. Use the save() method instead.
+       
+            Saves variables of this object
+            Files saved are in the model's folder
+        """
+        if organisation_name.strip() != "":
+            self.vc_model_tag_data.organisation_name = organisation_name
+        if model_name.strip() != "":
+            self.vc_model_tag_data.model_name = model_name
+        if parent_model_name.strip() != "":
+            self.vc_model_tag_data.parent_model_name = parent_model_name
+        if model_version_number.strip() != "":
+            self.vc_model_tag_data.version = model_version_number
+        if commit_hash.strip() != "":
+            self.vc_model_tag_data.commit_hash = commit_hash
+        if git_repo_url.strip() != "":
+            self.vc_model_tag_data.git_repo = git_repo_url
+    
+        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
+            pickle.dump(self, f)
+         
+    @classmethod     
+    def load_model(self, model_full_tag_name, input_file_name="vocab.dat"):
+        """ Loads variables of this object
+            This is used to search the site-packages models folder for installed models..
+        """
+        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name)
+        
+        if data is  False:
+            logging.error("Could not load vocabulary from model: " + model_full_tag_name)
+
+        return data
 
     def save(self, path):
         with open(path, 'wb') as f:

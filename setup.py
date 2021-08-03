@@ -30,6 +30,11 @@ setuptools.setup(
         'elasticsearch~=7.10',
         'dill~=0.3.3',
         'datasets~=1.6.0',
+        'gitpython~=3.1.17',
+        'pydrive2~=1.8.3',
+        'dvc~=2.5.4',
+        'wexpect~=4.0.0',
+        'pexpect~=4.8.0'
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
