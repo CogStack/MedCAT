@@ -1,7 +1,9 @@
 import spacy
+import multiprocessing as mp
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
 from medcat.utils.normalizers import TokenNormalizer
+from typing import List, Optional, Union
 
 
 class Pipe(object):
@@ -95,5 +97,15 @@ class Pipe(object):
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
 
-    def __call__(self, text):
-        return self.nlp(text)
+    def batch_process(self, texts: List[str], n_process: Optional[int] = None, batch_size: Optional[int] = None):
+        n_process = n_process if n_process is not None else max(mp.cpu_count() - 1, 1)
+        batch_size = batch_size if batch_size is not None else 1000
+        return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
+
+    def __call__(self, text: Union[str, List[str]]) -> Union[Doc, List[Doc]]:
+        if isinstance(text, str):
+            return self.nlp(text)
+        elif isinstance(text, list):
+            return self.batch_process(text)
+        else:
+            raise ValueError("The input text should be either a string or a list of strings")
