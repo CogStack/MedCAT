@@ -58,7 +58,7 @@ class A_NERTests(unittest.TestCase):
         cls.cdb.add_names(cui='S-229005', names=prepare_name('CDB', cls.nlp, {}, cls.config))
 
         print("Add test text")
-        cls.text = "CDB - I was running and then Movar    Virus attacked and CDb"
+        cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
         cls.text_post_pipe = cls.nlp(cls.text)
 
     def test_aa_cdb_names_output(self):
