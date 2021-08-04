@@ -1,6 +1,5 @@
-import gc
-
 import spacy
+import gc
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
 from medcat.utils.normalizers import TokenNormalizer
@@ -103,7 +102,7 @@ class Pipe(object):
         except ValueError:
             pass
 
-    def destroy_nlp(self):
+    def destroy(self):
         del self.nlp
         gc.collect()
 
