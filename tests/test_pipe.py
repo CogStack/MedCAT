@@ -37,29 +37,23 @@ class PipeTests(unittest.TestCase):
         cls.config.ner['upper_case_limit_len'] = 4
         cls.config.linking['disamb_length_limit'] = 2
         cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
-
-    def setUp(self) -> None:
-        self.config = Config()
-        self.config.general['log_level'] = logging.INFO
-        self.undertest = Pipe(tokenizer=spacy_split_all, config=self.config)
-
-    def test_add_tagger(self):
-        self.assertRaises(ValueError, lambda: Language.get_factory_meta("tag_skip_and_punct"))
-
-        self.undertest.add_tagger(tagger=tag_skip_and_punct, name="skip_and_punct", additional_fields=["is_punct"])
-
-        self.assertEqual("tag_skip_and_punct", Language.get_factory_meta("tag_skip_and_punct").factory)
-        self.assertEqual(self.config, Language.get_factory_meta("tag_skip_and_punct").default_config["config"])
-
-    def test_add_token_normalizer(self):
-        self.assertRaises(ValueError, lambda: Language.get_factory_meta("TokenNormalizer"))
-
-        self.undertest.add_token_normalizer(spell_checker=PipeTests.spell_checker, config=PipeTests.config)
-
-        self.assertEqual("TokenNormalizer", Language.get_factory_meta("TokenNormalizer").factory)
+        cls.config = Config()
+        cls.config.general['log_level'] = logging.INFO
+        cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
 
     def test_batch_process(self):
-        docs = list(self.undertest.batch_process([PipeTests.text, PipeTests.text]))
+        docs = list(self.undertest.batch_process([PipeTests.text, PipeTests.text, PipeTests.text]))
+        self.assertEqual(3, len(docs))
+        self.assertEqual(PipeTests.text, docs[0].text)
+        self.assertEqual(PipeTests.text, docs[1].text)
+        self.assertEqual(PipeTests.text, docs[2].text)
+
+    def test_single_text(self):
+        doc = self.undertest(PipeTests.text)
+        self.assertEqual(PipeTests.text, doc.text)
+
+    def test_multi_texts(self):
+        docs = list(self.undertest([PipeTests.text, PipeTests.text]))
         self.assertEqual(2, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual(PipeTests.text, docs[1].text)
