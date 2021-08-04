@@ -21,6 +21,10 @@ class Linker(object):
         # Counter for how often did a pair (name,cui) appear and was used during training
         self.train_counter = {}
 
+    # Custom pipeline component name
+    @property
+    def name(self):
+        return "cat_linker"
 
     def _train(self, cui, entity, doc, add_negative=True):
         name = "{} - {}".format(entity._.detected_name, cui)
