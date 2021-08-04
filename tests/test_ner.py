@@ -63,7 +63,7 @@ class A_NERTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.nlp.destroy_nlp()
+        cls.nlp.destroy()
 
     def test_aa_cdb_names_output(self):
         target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}

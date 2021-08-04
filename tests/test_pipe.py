@@ -44,7 +44,7 @@ class PipeTests(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.undertest.destroy_nlp()
+        cls.undertest.destroy()
 
     def setUp(self) -> None:
         PipeTests.undertest.force_remove(tag_skip_and_punct.__name__)
