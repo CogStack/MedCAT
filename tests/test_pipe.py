@@ -42,6 +42,10 @@ class PipeTests(unittest.TestCase):
         cls.config.general['log_level'] = logging.INFO
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.undertest.destroy_nlp()
+
     def setUp(self) -> None:
         PipeTests.undertest.force_remove(tag_skip_and_punct.__name__)
         PipeTests.undertest.force_remove("token_normalizer")

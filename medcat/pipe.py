@@ -1,3 +1,5 @@
+import gc
+
 import spacy
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
@@ -100,6 +102,10 @@ class Pipe(object):
             self.nlp.remove_pipe(component_name)
         except ValueError:
             pass
+
+    def destroy_nlp(self):
+        del self.nlp
+        gc.collect()
 
     def __call__(self, text):
         return self.nlp(text)
