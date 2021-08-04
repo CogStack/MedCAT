@@ -10,6 +10,11 @@ class NER(object):
         self.config = config
         self.cdb = cdb
 
+    # Custom pipeline component name
+    @property
+    def name(self):
+        return "vocab_based_ner"
+
     def __call__(self, doc):
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
         doc._.ents and each entity can have the entitiy._.link_candidates - that the linker will resolve.

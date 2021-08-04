@@ -95,5 +95,11 @@ class Pipe(object):
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
 
+    def force_remove(self, component_name):
+        try:
+            self.nlp.remove_pipe(component_name)
+        except ValueError:
+            pass
+
     def __call__(self, text):
         return self.nlp(text)

@@ -92,6 +92,11 @@ class TokenNormalizer(object):
         self.spell_checker = spell_checker
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
 
+    # Custom pipeline component name
+    @property
+    def name(self):
+        return "token_normalizer"
+
     def __call__(self, doc):
         for token in doc:
             if len(token.lower_) < self.config.preprocessing['min_len_normalize']:
