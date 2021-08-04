@@ -222,16 +222,6 @@ def upload_model(model_name, version):
 
     create_model_folder(tag_name)
 
-    # check to see if there is a tag with the same name, (this is only useful in case the dvc push fails, )
-    # result = get_matching_version(tag_name, request_url, headers)
-
-    #if result["request_success"]:
-    #    create_new_base_repository(new_model_package_folder, git_repo_url, checkout_full_tag_name=tag_name)
-
-    #if get_downloaded_local_model_folder(tag_name):
-    #    if prompt_statement(tag_name + " folder is already present on computer, do you wish to delete it ?"):
-    #        shutil.rmtree(new_model_package_folder, ignore_errors=True)
-
     if previous_tag_model_data != False:
         tmp_old_full_model_tag_name = previous_tag_model_data.model_name + "-" + str(previous_tag_model_data.version)
         logging.info("Creating new folder for the release... checking out from tag: " + tmp_old_full_model_tag_name )
@@ -415,10 +405,9 @@ def upload_model(model_name, version):
         logging.error("description: " + repr(exception))
         logging.warning("Push process cancelled... reverting state...")
        
-        #subprocess.run(["git", "reset", "HEAD~"], cwd=new_model_package_folder)
         if tag_name != "": 
             logging.warning("Deleting tag " + tag_name + " because the push operation has failed and changes were reverted.")
-            #subprocess.run(["git", "push", "origin", "--delete", tag_name ], cwd=new_model_package_folder)
+     
             subprocess.run(["git", "tag", "--delete", tag_name], cwd=new_model_package_folder)
        
     finally:
@@ -503,7 +492,6 @@ def generate_model_version(model_name, version, previous_model_tag_data=False):
     return version
 
 def package(full_model_tag_name="", version="auto"):
-    #subprocess.run(["git", "config", "--global", "credential.helper", "cache"])
     return upload_model(full_model_tag_name, version=version)
 
 if __name__ == '__main__':

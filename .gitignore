@@ -46,5 +46,5 @@ tmp.py
 *.dat
 
 # others 
-./medcat/config/
-./medcat/models/
+/medcat/config/*
+/medcat/models/*

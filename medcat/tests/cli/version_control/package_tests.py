@@ -5,7 +5,7 @@ import requests
 import zipfile
 from tqdm import tqdm
 from unittest import mock
-from medcat.cli.system_utils import get_local_model_storage_path, load_model_from_file
+from medcat.cli.system_utils import get_local_model_storage_path
 from medcat.cli.config import *
 from medcat.cli.package import package
 from medcat.cli.download import download
@@ -37,7 +37,6 @@ class PackageTests(unittest.TestCase):
         vocab_file_name = url_vocab.split("/")[-1]
         medcat_export_file_name = url_medcat_export_json.split("/")[-1]
         url_mc_status_file_name = url_mc_status.split("/")[-1]
-
 
         r_get_cdb = requests.get(url_cdb, stream=True, allow_redirects=True)
         r_get_vocab = requests.get(url_vocab, stream=True, allow_redirects=True)
@@ -127,7 +126,6 @@ class PackageTests(unittest.TestCase):
         os.chdir(new_release_tmp_path)
 
         from medcat.cat import CAT
-        from medcat.cli.system_utils import load_model_from_file
 
         cat = CAT.load_model(self.tmp_full_model_tag_name)
         text = ["My patient has kidney failure, bowel cancer and heart failure",
