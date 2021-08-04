@@ -98,6 +98,16 @@ class Pipe(object):
         Span.set_extension('meta_anns', default=None, force=True)
 
     def batch_process(self, texts: List[str], n_process: Optional[int] = None, batch_size: Optional[int] = None):
+        r''' Batch process a list of texts.
+
+        Args:
+            texts (`List[str]`):
+                The input list of strings.
+            n_process (`int`):
+                The number of processes running in parallel. Defaults to max(mp.cpu_count() - 1, 1).
+            batch_size (`int`):
+                The number of texts to buffer. Defaults to 1000.
+        '''
         n_process = n_process if n_process is not None else max(mp.cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
         return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
