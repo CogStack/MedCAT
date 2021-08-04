@@ -61,6 +61,10 @@ class A_NERTests(unittest.TestCase):
         cls.text = "CDB - I was running and then Movar    Virus attacked and CDb"
         cls.text_post_pipe = cls.nlp(cls.text)
 
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.nlp.destroy_nlp()
+
     def test_aa_cdb_names_output(self):
         target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         self.assertEqual(self.cdb.cui2names, target_result)
