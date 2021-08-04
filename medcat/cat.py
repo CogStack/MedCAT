@@ -2,13 +2,11 @@ import traceback
 import json
 import time
 import logging
-from functools import partial
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
-from multiprocessing import Process, Manager, Queue, Pool, Array
+from multiprocessing import Process, Manager, Queue
 from time import sleep
 
-from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
