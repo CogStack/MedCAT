@@ -29,6 +29,7 @@ class CDBMaker(object):
     '''
     log = logging.getLogger(__package__)
     log = add_handlers(log)
+
     def __init__(self, config, cdb=None, name_max_words=20):
         self.config = config
         # Set log level
@@ -170,3 +171,6 @@ class CDBMaker(object):
                                    type_ids, description, full_build))
 
         return self.cdb
+
+    def destroy_pipe(self):
+        self.nlp.destroy()

@@ -802,3 +802,6 @@ class CAT(object):
                         self.log.warning(e, stack_info=True)
 
             sleep(1)
+
+    def destroy_pipe(self):
+        self.nlp.destroy()

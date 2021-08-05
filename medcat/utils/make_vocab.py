@@ -158,3 +158,6 @@ class MakeVocab(object):
         self.vocab.make_unigram_table(table_size=unigram_table_size)
         self.vocab.save(path=self.vocab_path)
         return w2v
+
+    def destroy_pipe(self):
+        self.nlp.destroy()
