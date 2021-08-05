@@ -87,15 +87,13 @@ class TokenNormalizer(object):
         spell_checker
     '''
 
+    # Custom pipeline component name
+    name = 'token_normalizer'
+
     def __init__(self, config, spell_checker=None):
         self.config = config
         self.spell_checker = spell_checker
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
-
-    # Custom pipeline component name
-    @property
-    def name(self):
-        return "token_normalizer"
 
     def __call__(self, doc):
         for token in doc:
