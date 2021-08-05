@@ -13,6 +13,9 @@ def tag_skip_and_punct(nlp, name, config):
     return _Tagger(nlp, name, config)
 
 
+tag_skip_and_punct.name = "tag_skip_and_punct"
+
+
 class _Tagger(object):
 
     def __init__(self, nlp, name, config):

@@ -1,7 +1,12 @@
 import re
 import logging
+import jsonpickle
+
 
 class Config(object):
+
+    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+
     def __init__(self):
         # CDB Maker
         self.cdb_maker = {
@@ -141,6 +146,15 @@ class Config(object):
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
 
+    def __iter__(self):
+        for attr, value in self.__dict__.items():
+            yield attr, value
+
+    def __str__(self):
+        json_obj = {}
+        for attr, value in self:
+            json_obj[attr] = value
+        return jsonpickle.encode(json_obj)
 
     @classmethod
     def from_dict(cls, d):

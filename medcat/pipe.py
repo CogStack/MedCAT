@@ -1,4 +1,5 @@
 import spacy
+import gc
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
 from medcat.utils.normalizers import TokenNormalizer
@@ -94,6 +95,16 @@ class Pipe(object):
         # Only the meta_anns field is needed, it will be a dictionary 
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
+
+    def force_remove(self, component_name):
+        try:
+            self.nlp.remove_pipe(component_name)
+        except ValueError:
+            pass
+
+    def destroy(self):
+        del self.nlp
+        gc.collect()
 
     def __call__(self, text):
         return self.nlp(text)
