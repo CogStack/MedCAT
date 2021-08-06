@@ -1,5 +1,6 @@
 import spacy
 import multiprocessing as mp
+import gc
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
 from medcat.utils.normalizers import TokenNormalizer
@@ -111,6 +112,16 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(mp.cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
         return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
+
+    def force_remove(self, component_name):
+        try:
+            self.nlp.remove_pipe(component_name)
+        except ValueError:
+            pass
+
+    def destroy(self):
+        del self.nlp
+        gc.collect()
 
     def __call__(self, text: Union[str, List[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):

@@ -900,6 +900,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                             if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisite[meta_ann]:
                                 # Skip this annotation as the prerequisite is not met
                                 skip = True
+                                break
 
                     if not skip and (cui_filter is None or not cui_filter or cui in cui_filter):
                         if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)):

@@ -41,7 +41,7 @@ cat.config.linking['filters'] = {'cuis': set()}
 cat.config.linking['train_count_threshold'] = -1
 cat.config.linking['context_vector_sizes'] = {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3}
 cat.config.linking['context_vector_weights'] = {'xlong': 0, 'long': 0.4, 'medium': 0.4, 'short': 0.2}
-cat.config.linking['weighted_average_function'] = lambda step: max(0.1, 1-(step**2*0.0004))
+cat.config.linking['weighted_average_function'] = '0.0004'
 
 cat.config.linking['similarity_threshold_type'] = 'dynamic'
 cat.config.linking['similarity_threshold'] = 0.35
