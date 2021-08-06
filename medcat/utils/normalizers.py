@@ -87,6 +87,9 @@ class TokenNormalizer(object):
         spell_checker
     '''
 
+    # Custom pipeline component name
+    name = 'token_normalizer'
+
     def __init__(self, config, spell_checker=None):
         self.config = config
         self.spell_checker = spell_checker
