@@ -6,6 +6,8 @@ from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue
 from time import sleep
+from typing import Union, List
+from collections.abc import Iterable
 
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
@@ -57,7 +59,7 @@ class CAT(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
-    def __init__(self, cdb, config, vocab, meta_cats=[]):
+        def __init__(self, cdb, config, vocab, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab
         # Take config from the cdb
@@ -98,31 +100,40 @@ class CAT(object):
         '''
         return self.nlp.nlp
 
-
-    def __call__(self, text, do_train=False):
+    def __call__(self, text: Union[str, List[str]], do_train: bool = False):
         r'''
         Push the text through the pipeline.
 
         Args:
-            text (string):
-                The text to be annotated, if it is longer than self.config.preprocessing['max_document_length'] it will be trimmed
-                to that length.
+            text (string/List):
+                The text or the list of texts to be annotated, if the text length is longer than
+                self.config.preprocessing['max_document_length'] it will be trimmed to that length.
             do_train (bool, defaults to `False`):
                 This causes so many screwups when not there, so I'll force training
                 to False. To run training it is much better to use the self.train() function
                 but for some special cases I'm leaving it here also.
         Returns:
-            A spacy document with the extracted entities
+            A single spacy document or multiple spacy documents with the extracted entities
         '''
         # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
         self.config.linking['train'] = do_train
 
-        if text and len(text) > 0:
-            return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
+        if isinstance(text, str):
+            if text and len(text) > 0:
+                return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
+            else:
+                return None # TODO: Can an empty string be returned instead of None
+        elif isinstance(text, list):
+            truncated = []
+            for t in text:
+                if isinstance(t, str) and len(t) > 0:
+                    truncated.append(t[0:self.config.preprocessing.get('max_document_length', 1000000)])
+                else:
+                    truncated.append("")
+            return self.nlp(truncated)
         else:
-            return None
-
+            raise ValueError("The input text should be either a string or a list of strings")
 
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
                      use_groups=False):
@@ -338,7 +349,6 @@ class CAT(object):
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
-
     def train(self, data_iterator, fine_tune=True, progress_print=1000):
         """ Runs training on the data, note that the maximum lenght of a line
         or document is 1M characters. Anything longer will be trimmed.
@@ -372,7 +382,6 @@ class CAT(object):
 
         self.config.linking['train'] = False
 
-
     def add_cui_to_group(self, cui, group_name, reset_all_groups=False):
         r'''
         Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
@@ -395,7 +404,6 @@ class CAT(object):
 
         # Add group_name
         self.cdb.addl_info['cui2group'][cui] = group_name
-
 
     def unlink_concept_name(self, cui, name, preprocessed_name=False):
         r'''
@@ -427,7 +435,6 @@ class CAT(object):
         # Remove name from all CUIs
         for cui in cuis:
             self.cdb.remove_names(cui=cui, names=names)
-
 
     def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
                               description='', full_build=True, negative=False, devalue_others=False, do_add_concept=True):
@@ -474,8 +481,6 @@ class CAT(object):
                 # Add negative training for all other CUIs that link to these names
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
-
-
 
     def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
                          print_stats=0, use_filters=False, terminate_last=False, use_overlaps=False,
@@ -638,73 +643,24 @@ class CAT(object):
                                                          use_groups=use_groups)
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
-
-    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies', 'cui2snomed']):
+    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies', 'cui2snomed'], n_process=None, batch_size=None):
         r''' Get entities
 
         text:  text to be annotated
         return:  entities
         '''
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        doc = self(text)
-        out = {'entities': {}, 'tokens': []}
-        if doc is not None:
-            out_ent = {}
-            if self.config.general.get('show_nested_entities', False):
-                _ents = doc._.ents
-            else:
-                _ents = doc.ents
-
-            if cnf_annotation_output.get("lowercase_context", True):
-                doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
-            else:
-                doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
-
-            if cnf_annotation_output.get('doc_extended_info', False):
-                # Add tokens if extended info
-                out['tokens'] = doc_tokens
-
-            context_left = cnf_annotation_output.get('context_left', -1)
-            context_right = cnf_annotation_output.get('context_right', -1)
-            doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
-
-            for ind, ent in enumerate(_ents):
-                cui = str(ent._.cui)
-                if not only_cui:
-                    out_ent['pretty_name'] = self.cdb.get_name(cui)
-                    out_ent['cui'] = cui
-                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
-                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
-                    out_ent['source_value'] = ent.text
-                    out_ent['detected_name'] = str(ent._.detected_name)
-                    out_ent['acc'] = float(ent._.context_similarity)
-                    out_ent['context_similarity'] = float(ent._.context_similarity)
-                    out_ent['start'] = ent.start_char
-                    out_ent['end'] = ent.end_char
-                    for addl in addl_info:
-                        tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
-                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
-                    out_ent['id'] = ent._.id
-                    out_ent['meta_anns'] = {}
-
-                    if doc_extended_info:
-                        out_ent['start_tkn'] = ent.start
-                        out_ent['end_tkn'] = ent.end
-
-                    if context_left > 0 and context_right > 0:
-                        out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
-                        out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
-                        out_ent['context_center'] = doc_tokens[ent.start:ent.end]
-
-                    if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                        out_ent['meta_anns'] = ent._.meta_anns
-
-                    out['entities'][out_ent['id']] = dict(out_ent)
-                else:
-                    out['entities'][ent._.id] = cui
-
+        if isinstance(text, str):
+            doc = self(text)
+            out = self._get_out(cnf_annotation_output, doc, only_cui, addl_info)
+        elif isinstance(text, Iterable):
+            out = []
+            docs = self.nlp.batch_process(text, n_process, batch_size)
+            for doc in docs:
+                out.append(self._get_out(cnf_annotation_output, doc, only_cui, addl_info))
+        else:
+            raise ValueError("The input text should be either a string or a list of strings")
         return out
-
 
     def get_json(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
         """ Get output in json format
@@ -716,7 +672,6 @@ class CAT(object):
         out = {'annotations': ents, 'text': text}
 
         return json.dumps(out)
-
 
     def multiprocessing(self, in_data, nproc=8, batch_size_chars=1000000, only_cui=False, addl_info=[]):
         r''' Run multiprocessing NOT FOR TRAINING
@@ -780,6 +735,36 @@ class CAT(object):
 
         return out
 
+    def multiprocessing_pipe(self, in_data, nproc=None, batch_size=None, only_cui=False, addl_info=[]):
+        r''' Run multiprocessing NOT FOR TRAINING
+
+        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
+        nproc:  the number of processors
+        batch_size: the number of texts to buffer
+
+        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
+        '''
+
+        def _generate_texts(data):
+            for _, text in data:
+                if isinstance(text, str) and len(text) > 0:
+                    yield text[0:self.config.preprocessing.get('max_document_length', 1000000)]
+                else:
+                    yield ""
+
+        if self._meta_annotations:
+            # Hack for torch using multithreading, which is not good here
+            import torch
+            torch.set_num_threads(1)
+
+        entities = self.get_entities(text=_generate_texts(in_data), only_cui=only_cui, addl_info=addl_info,
+                                     n_process=nproc, batch_size=batch_size)
+        out = []
+        for idx in range(len(in_data)):
+            entities[idx]['text'] = in_data[idx][1]
+            out.append((in_data[idx][0], entities[idx]))
+
+        return out
 
     def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
         cnt = 0
@@ -802,6 +787,64 @@ class CAT(object):
                         self.log.warning(e, stack_info=True)
 
             sleep(1)
+
+    def _get_out(self, cnf_annotation_output, doc, only_cui, addl_info):
+        out = {'entities': {}, 'tokens': []}
+        if doc is not None:
+            out_ent = {}
+            if self.config.general.get('show_nested_entities', False):
+                _ents = doc._.ents
+            else:
+                _ents = doc.ents
+
+            if cnf_annotation_output.get("lowercase_context", True):
+                doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
+            else:
+                doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
+
+            if cnf_annotation_output.get('doc_extended_info', False):
+                # Add tokens if extended info
+                out['tokens'] = doc_tokens
+
+            context_left = cnf_annotation_output.get('context_left', -1)
+            context_right = cnf_annotation_output.get('context_right', -1)
+            doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
+
+            for ind, ent in enumerate(_ents):
+                cui = str(ent._.cui)
+                if not only_cui:
+                    out_ent['pretty_name'] = self.cdb.get_name(cui)
+                    out_ent['cui'] = cui
+                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
+                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                    out_ent['source_value'] = ent.text
+                    out_ent['detected_name'] = str(ent._.detected_name)
+                    out_ent['acc'] = float(ent._.context_similarity)
+                    out_ent['context_similarity'] = float(ent._.context_similarity)
+                    out_ent['start'] = ent.start_char
+                    out_ent['end'] = ent.end_char
+                    for addl in addl_info:
+                        tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
+                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
+                    out_ent['id'] = ent._.id
+                    out_ent['meta_anns'] = {}
+
+                    if doc_extended_info:
+                        out_ent['start_tkn'] = ent.start
+                        out_ent['end_tkn'] = ent.end
+
+                    if context_left > 0 and context_right > 0:
+                        out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
+                        out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
+                        out_ent['context_center'] = doc_tokens[ent.start:ent.end]
+
+                    if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
+                        out_ent['meta_anns'] = ent._.meta_anns
+
+                    out['entities'][out_ent['id']] = dict(out_ent)
+                else:
+                    out['entities'][ent._.id] = cui
+        return out
 
     def destroy_pipe(self):
         self.nlp.destroy()

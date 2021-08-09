@@ -22,6 +22,9 @@ class PipeTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.config = Config()
         cls.config.general['log_level'] = logging.INFO
+        cls.config.ner['max_skip_tokens'] = 1
+        cls.config.ner['upper_case_limit_len'] = 4
+        cls.config.linking['disamb_length_limit'] = 2
         cls.cdb = CDB(config=cls.config)
 
         vocab_path = "./tmp_vocab.dat"
@@ -34,11 +37,6 @@ class PipeTests(unittest.TestCase):
         cls.spell_checker = BasicSpellChecker(cdb_vocab=cls.cdb.vocab, config=cls.config, data_vocab=cls.vocab)
         cls.ner = NER(cls.cdb, cls.config)
         cls.linker = Linker(cls.cdb, cls.vocab, cls.config)
-        cls.config = Config()
-        cls.config.general['log_level'] = logging.INFO
-        cls.config.ner['max_skip_tokens'] = 1
-        cls.config.ner['upper_case_limit_len'] = 4
-        cls.config.linking['disamb_length_limit'] = 2
         cls.meta_cat = MetaCAT(tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased"))
         cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
@@ -81,10 +79,11 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(PipeTests.meta_cat.name, Language.get_factory_meta(PipeTests.meta_cat.name).factory)
 
     def test_batch_process(self):
-        docs = list(self.undertest.batch_process([PipeTests.text, PipeTests.text, PipeTests.text]))
+        docs = list(self.undertest.batch_process([PipeTests.text, "", PipeTests.text]))
+        import pdb; pdb.set_trace()
         self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
-        self.assertEqual(PipeTests.text, docs[1].text)
+        self.assertEqual("", docs[1].text)
         self.assertEqual(PipeTests.text, docs[2].text)
 
     def test_single_text(self):

@@ -1,6 +1,7 @@
 import os
 import shutil
 import unittest
+import tempfile
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 
@@ -46,6 +47,6 @@ class CDBTests(unittest.TestCase):
         self.assertEqual({'C0000039': {'T109', 'T234', 'T123'}, 'C0000139': set(), 'C0000239': set()}, self.undertest.cui2type_ids)
 
     def test_save_and_load(self):
-        cdb_path = f"{self.tmp_dir}/cdb.dat"
-        self.undertest.save(cdb_path)
-        self.undertest.load(cdb_path)
+        with tempfile.NamedTemporaryFile() as f:
+            self.undertest.save(f.name)
+            self.undertest.load(f.name)
