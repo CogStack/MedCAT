@@ -380,8 +380,10 @@ class CDB(object):
             data = dill.load(f)
             if config is None:
                 config = Config.from_dict(data['config'])
-                if callable(config.linking['weighted_average_function']) and config.linking['weighted_average_function'].__name__ == "<lambda>":
-                    # TODO: trying to be backward compatible but...
+
+                # Hacky way of supporting old CBDs
+                weighted_average = config.linking['weighted_average_function']
+                if callable(weighted_average) and getattr(weighted_average, "__name__", None) == "<lambda>":
                     config.linking['weighted_average_function'] = partial(Config.weighted_average, factor=0.0004)
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
