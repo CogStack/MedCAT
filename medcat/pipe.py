@@ -4,7 +4,7 @@ import gc
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
 from medcat.utils.normalizers import TokenNormalizer
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Iterator
 
 
 class Pipe(object):
@@ -98,22 +98,26 @@ class Pipe(object):
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
 
-    def batch_process(self, texts: List[str], n_process: Optional[int] = None, batch_size: Optional[int] = None):
+    def batch_process(self, texts: Iterator[str], n_process: Optional[int] = None, batch_size: Optional[int] = None) -> Iterator[Doc]:
         r''' Batch process a list of texts.
 
         Args:
-            texts (`List[str]`):
-                The input list of strings.
+            texts (`Iterator[str]`):
+                The input text strings.
             n_process (`int`):
                 The number of processes running in parallel. Defaults to max(mp.cpu_count() - 1, 1).
             batch_size (`int`):
                 The number of texts to buffer. Defaults to 1000.
+
+        Return:
+            Iterator[Doc]:
+                The spacy documents with the extracted entities
         '''
         n_process = n_process if n_process is not None else max(mp.cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
         return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
 
-    def force_remove(self, component_name):
+    def force_remove(self, component_name: str) -> None:
         try:
             self.nlp.remove_pipe(component_name)
         except ValueError:
@@ -123,10 +127,13 @@ class Pipe(object):
         del self.nlp
         gc.collect()
 
-    def __call__(self, text: Union[str, List[str]]) -> Union[Doc, List[Doc]]:
+    def __call__(self,
+                 text: Union[str, List[str]],
+                 n_process: Optional[int] = None,
+                 batch_size: Optional[int] = None) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
             return self.nlp(text)
         elif isinstance(text, list):
-            return self.batch_process(text)
+            return self.batch_process(text, n_process, batch_size)
         else:
             raise ValueError("The input text should be either a string or a list of strings")
