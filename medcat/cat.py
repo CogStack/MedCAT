@@ -59,7 +59,7 @@ class CAT(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
-        def __init__(self, cdb, config, vocab, meta_cats=[]):
+    def __init__(self, cdb, config, vocab, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab
         # Take config from the cdb
@@ -123,7 +123,7 @@ class CAT(object):
             if text and len(text) > 0:
                 return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
             else:
-                return None # TODO: Can an empty string be returned instead of None
+                return None
         elif isinstance(text, list):
             truncated = []
             for t in text:
@@ -652,12 +652,12 @@ class CAT(object):
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         if isinstance(text, str):
             doc = self(text)
-            out = self._get_out(cnf_annotation_output, doc, only_cui, addl_info)
+            out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         elif isinstance(text, Iterable):
             out = []
             docs = self.nlp.batch_process(text, n_process, batch_size)
             for doc in docs:
-                out.append(self._get_out(cnf_annotation_output, doc, only_cui, addl_info))
+                out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
         else:
             raise ValueError("The input text should be either a string or a list of strings")
         return out
@@ -706,7 +706,7 @@ class CAT(object):
         for id, text in in_data:
             data.append((id, str(text)))
             nchars += len(str(text))
-            if  nchars >= batch_size_chars:
+            if nchars >= batch_size_chars:
                 in_q.put(data)
                 data = []
                 nchars = 0
@@ -788,7 +788,7 @@ class CAT(object):
 
             sleep(1)
 
-    def _get_out(self, cnf_annotation_output, doc, only_cui, addl_info):
+    def _doc_to_out(self, doc, cnf_annotation_output, only_cui, addl_info):
         out = {'entities': {}, 'tokens': []}
         if doc is not None:
             out_ent = {}

@@ -80,7 +80,6 @@ class PipeTests(unittest.TestCase):
 
     def test_batch_process(self):
         docs = list(self.undertest.batch_process([PipeTests.text, "", PipeTests.text]))
-        import pdb; pdb.set_trace()
         self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual("", docs[1].text)
