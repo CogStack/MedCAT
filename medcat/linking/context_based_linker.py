@@ -1,7 +1,8 @@
-from medcat.utils.filters import check_filters
-from medcat.linking.vector_context_model import ContextModel
 import random
 import logging
+from medcat.utils.filters import check_filters
+from medcat.linking.vector_context_model import ContextModel
+
 
 class Linker(object):
     r''' Link to a biomedical database.
@@ -12,6 +13,10 @@ class Linker(object):
         config
     '''
     log = logging.getLogger(__name__)
+
+    # Custom pipeline component name
+    name = 'cat_linker'
+
     def __init__(self, cdb, vocab, config):
         self.cdb = cdb
         self.vocab = vocab
@@ -19,7 +24,6 @@ class Linker(object):
         self.context_model = ContextModel(self.cdb, self.vocab, self.config)
         # Counter for how often did a pair (name,cui) appear and was used during training
         self.train_counter = {}
-
 
     def _train(self, cui, entity, doc, add_negative=True):
         name = "{} - {}".format(entity._.detected_name, cui)

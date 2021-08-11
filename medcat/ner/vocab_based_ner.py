@@ -1,10 +1,15 @@
-from medcat.ner.vocab_based_annotator import maybe_annotate_name
 import logging
+from medcat.ner.vocab_based_annotator import maybe_annotate_name
+
 
 class NER(object):
     r'''
     '''
     log = logging.getLogger(__name__)
+
+    # Custom pipeline component name
+    name = 'vocab_based_ner'
+
     def __init__(self, cdb, config):
         self.config = config
         self.cdb = cdb
