@@ -168,7 +168,7 @@ class ContextModel(object):
 
         Args:
             names (List[str]/Dict):
-                Optinaly used to update the `status` of a name-cui pair in the CDB.
+                Optionally used to update the `status` of a name-cui pair in the CDB.
         '''
         # Context vectors to be calculated
         if len(entity) > 0: # Make sure there is something

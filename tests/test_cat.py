@@ -30,6 +30,23 @@ class CATTests(unittest.TestCase):
         doc = self.undertest(text)
         self.assertEqual(text, doc.text)
 
+    @unittest.skip("WIP")
+    def test_multiprocessing(self):
+        in_data = [
+            (1, "The dog is sitting outside the house."),
+            (2, ""),
+            (3, "The dog is sitting outside the house.")
+        ]
+        out = list(self.undertest.multiprocessing(in_data, nproc=3))
+        import pdb; pdb.set_trace()
+        self.assertEqual(3, len(out))
+        self.assertEqual(1, out[0][0])
+        self.assertEqual("The dog is sitting outside the house.", out[0][1]["text"])
+        self.assertEqual(2, out[1][0])
+        self.assertEqual("", out[1][1]["text"])
+        self.assertEqual(3, out[2][0])
+        self.assertEqual("The dog is sitting outside the house.", out[2][1]["text"])
+
     def test_multiprocessing_pipe(self):
         in_data = [
             (1, "The dog is sitting outside the house."),
@@ -44,3 +61,9 @@ class CATTests(unittest.TestCase):
         self.assertEqual("", out[1][1]["text"])
         self.assertEqual(3, out[2][0])
         self.assertEqual("The dog is sitting outside the house.", out[2][1]["text"])
+
+    def test_train(self):
+        self.undertest.cdb.print_stats()
+        self.undertest.train(["The dog is not a house", "The house is not a dog"])
+        self.undertest.cdb.print_stats()
+

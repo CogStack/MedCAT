@@ -44,7 +44,7 @@ class CAT(object):
             Concept database used with this CAT instance, please do not assign
             this value directly.
         config (medcat.config.Config):
-            The global configuration for medcat. Usuall cdb.config can be used for this
+            The global configuration for medcat. Usually cdb.config can be used for this
             field.
         vocab (medcat.utils.vocab.Vocab):
             The vocabulary object used with this instance, please do not assign
@@ -350,7 +350,7 @@ class CAT(object):
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
     def train(self, data_iterator, fine_tune=True, progress_print=1000):
-        """ Runs training on the data, note that the maximum lenght of a line
+        """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
         data_iterator:
