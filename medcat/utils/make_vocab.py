@@ -40,7 +40,7 @@ class MakeVocab(object):
 
         # Build the required spacy pipeline
         self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
+        self.nlp.add_tagger(tagger=tag_skip_and_punct,
                             name='skip_and_punct',
                             additional_fields=['is_punct'])
 
@@ -158,3 +158,6 @@ class MakeVocab(object):
         self.vocab.make_unigram_table(table_size=unigram_table_size)
         self.vocab.save(path=self.vocab_path)
         return w2v
+
+    def destroy_pipe(self):
+        self.nlp.destroy()

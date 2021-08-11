@@ -2,13 +2,11 @@ import traceback
 import json
 import time
 import logging
-from functools import partial
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
-from multiprocessing import Process, Manager, Queue, Pool, Array
+from multiprocessing import Process, Manager, Queue
 from time import sleep
 
-from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -70,7 +68,7 @@ class CAT(object):
 
         # Build the pipeline
         self.nlp = Pipe(tokenizer=spacy_split_all, config=self.config)
-        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
+        self.nlp.add_tagger(tagger=tag_skip_and_punct,
                             name='skip_and_punct',
                             additional_fields=['is_punct'])
 
@@ -116,7 +114,7 @@ class CAT(object):
         Returns:
             A spacy document with the extracted entities
         '''
-        # Should we train - do not use this for training, unles you know what you are doing. Use the
+        # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
         self.config.linking['train'] = do_train
 
@@ -804,3 +802,6 @@ class CAT(object):
                         self.log.warning(e, stack_info=True)
 
             sleep(1)
+
+    def destroy_pipe(self):
+        self.nlp.destroy()

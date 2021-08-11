@@ -1,10 +1,11 @@
 import unittest
+import logging
+import os
+import numpy as np
 from medcat.cdb_maker import CDBMaker
 from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.preprocessing.cleaners import prepare_name
-import numpy as np
-import logging
 
 #cdb.csv
 #cui  name  ontologies  name_status type_ids  description
@@ -20,6 +21,7 @@ import logging
 
 #TESTS RUN IN ALPHABETICAL ORDER - CONTROLLING WITH '[class_letter]Class and test_[classletter subclassletter]' function syntax
 
+
 class A_CDBMakerLoadTests(unittest.TestCase):
 
     @classmethod
@@ -27,9 +29,16 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         print("Load test database csvs for load tests")
         config = Config()
         config.general['log_level'] = logging.DEBUG
-        maker = CDBMaker(config)
-        csvs = ['../examples/cdb.csv', '../examples/cdb_2.csv']
-        cls.cdb = maker.prepare_csvs(csvs, full_build=True)
+        cls.maker = CDBMaker(config)
+        csvs = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb_2.csv')
+        ]
+        cls.cdb = cls.maker.prepare_csvs(csvs, full_build=True)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.maker.destroy_pipe()
 
     def test_aa_cdb_names_length(self):
         self.assertEqual(len(self.cdb.cui2names), 3, "Should equal 3")
@@ -110,9 +119,16 @@ class B_CDBMakerEditTests(unittest.TestCase):
         cls.config = Config()
         cls.config.general['log_level'] = logging.DEBUG
         cls.maker = CDBMaker(cls.config)
-        csvs = ['../examples/cdb.csv', '../examples/cdb_2.csv']
+        csvs = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb_2.csv')
+        ]
         cls.cdb = cls.maker.prepare_csvs(csvs, full_build=True)
         cls.cdb2 = CDB(cls.config)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.maker.destroy_pipe()
 
     def test_ba_addition_of_new_name(self):
         self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config), name_status='P', full_build=True)

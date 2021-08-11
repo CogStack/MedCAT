@@ -10,9 +10,14 @@ from medcat.utils.data_utils import prepare_from_json, encode_category_values, s
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
+
 class MetaCAT(object):
     r''' TODO: Add documentation
     '''
+
+    # Custom pipeline component name
+    name = 'meta_cat'
+
     def __init__(self, tokenizer=None, embeddings=None, cntx_left=20, cntx_right=20,
                  save_dir='./meta_cat/', pad_id=30000, device='cpu'):
         self.tokenizer = tokenizer
@@ -33,7 +38,6 @@ class MetaCAT(object):
         self.model_config = {}
 
         self.model = None
-
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, class_weights=None, cv=0,

@@ -1,8 +1,13 @@
 # Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
+[![Build Status](https://github.com/CogStack/MedCAT/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
+[![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT)](https://github.com/CogStack/MedCAT/releases/latest)
+[![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
+
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
 
-## News 
+## News
+- **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs will work without any changes.
 - **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
 - **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), 
 as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy 
@@ -22,7 +27,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
-## Install using PIP (Requires Python 3.7+)
+## Install using PIP (Requires Python 3.6+)
 0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
 - For macOS/linux: `pip install --upgrade medcat`
@@ -30,9 +35,9 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 
 2. Get the scispacy models:
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_md-0.3.0.tar.gz`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz`
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.3.0/en_core_sci_lg-0.3.0.tar.gz`
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz`
 
 3. Downlad the Vocabulary and CDB from the Models section bellow
 
@@ -98,7 +103,7 @@ CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat) - Buil
 MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical)
 
 
-(Note: This is was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
+(Note: This was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
