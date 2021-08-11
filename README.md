@@ -117,12 +117,15 @@ A big thank you goes to [spaCy](https://spacy.io/) and [Hugging Face](https://hu
 
 ## Citation
 ```
-@misc{kraljevic2020multidomain,
-      title={Multi-domain Clinical Natural Language Processing with MedCAT: the Medical Concept Annotation Toolkit}, 
-      author={Zeljko Kraljevic and Thomas Searle and Anthony Shek and Lukasz Roguski and Kawsar Noor and Daniel Bean and Aurelie Mascio and Leilei Zhu and Amos A Folarin and Angus Roberts and Rebecca Bendayan and Mark P Richardson and Robert Stewart and Anoop D Shah and Wai Keong Wong and Zina Ibrahim and James T Teo and Richard JB Dobson},
-      year={2020},
-      eprint={2010.01165},
-      archivePrefix={arXiv},
-      primaryClass={cs.CL}
+@ARTICLE{Kraljevic2021-ln,
+  title="Multi-domain clinical natural language processing with {MedCAT}: The Medical Concept Annotation Toolkit",
+  author="Kraljevic, Zeljko and Searle, Thomas and Shek, Anthony and Roguski, Lukasz and Noor, Kawsar and Bean, Daniel and Mascio, Aurelie and Zhu, Leilei and Folarin, Amos A and Roberts, Angus and Bendayan, Rebecca and Richardson, Mark P and Stewart, Robert and Shah, Anoop D and Wong, Wai Keong and Ibrahim, Zina and Teo, James T and Dobson, Richard J B",
+  journal="Artif. Intell. Med.",
+  volume=117,
+  pages="102083",
+  month=jul,
+  year=2021,
+  issn="0933-3657",
+  doi="10.1016/j.artmed.2021.102083"
 }
 ```
