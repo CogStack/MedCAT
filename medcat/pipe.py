@@ -112,10 +112,13 @@ class Pipe(object):
             Iterator[Doc]:
                 The spacy documents with the extracted entities
         '''
-        component_name = spacy.util.get_object_name(self._remove_unserializables)
-        Language.component(name=component_name, func=self._remove_unserializables)
-        self.nlp.add_pipe(component_name, name="remove_unserializables", last=True)
-
+        instance_name = "remove_unserializables"
+        try:
+            self.nlp.get_pipe(instance_name)
+        except KeyError:
+            component_name = spacy.util.get_object_name(self._remove_unserializables)
+            Language.component(name=component_name, func=self._remove_unserializables)
+            self.nlp.add_pipe(component_name, name=instance_name, last=True)
         return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
 
     def force_remove(self, component_name: str) -> None:
