@@ -79,7 +79,7 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(PipeTests.meta_cat.name, Language.get_factory_meta(PipeTests.meta_cat.name).factory)
 
     def test_batch_process(self):
-        docs = list(self.undertest.batch_process([PipeTests.text, "", PipeTests.text]))
+        docs = list(self.undertest.batch_multi_process([PipeTests.text, "", PipeTests.text]))
         self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual("", docs[1].text)

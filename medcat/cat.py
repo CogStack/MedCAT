@@ -2,9 +2,10 @@ import traceback
 import json
 import time
 import logging
+import math
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
-from multiprocessing import Process, Manager, Queue
+from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
 from typing import Union, List
 from collections.abc import Iterable
@@ -655,7 +656,7 @@ class CAT(object):
             out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         elif isinstance(text, Iterable):
             out = []
-            docs = self.nlp.batch_process(text, n_process, batch_size)
+            docs = self.nlp.batch_multi_process(text, n_process, batch_size)
             for doc in docs:
                 out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
         else:
@@ -744,7 +745,6 @@ class CAT(object):
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
         '''
-
         def _generate_texts(data):
             for _, text in data:
                 if isinstance(text, str) and len(text) > 0:
@@ -757,8 +757,11 @@ class CAT(object):
             import torch
             torch.set_num_threads(1)
 
+        n_process = nproc if nproc is not None else max(cpu_count() - 1, 1)
+        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / n_process)
+
         entities = self.get_entities(text=_generate_texts(in_data), only_cui=only_cui, addl_info=addl_info,
-                                     n_process=nproc, batch_size=batch_size)
+                                     n_process=n_process, batch_size=batch_size)
         out = []
         for idx in range(len(in_data)):
             entities[idx]['text'] = in_data[idx][1]
