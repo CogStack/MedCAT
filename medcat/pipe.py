@@ -1,5 +1,4 @@
 import spacy
-import multiprocessing as mp
 import gc
 from spacy.tokens import Token, Doc, Span
 from spacy.language import Language
@@ -98,8 +97,8 @@ class Pipe(object):
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
 
-    def batch_process(self, texts: Iterator[str], n_process: Optional[int] = None, batch_size: Optional[int] = None) -> Iterator[Doc]:
-        r''' Batch process a list of texts.
+    def batch_multi_process(self, texts: Iterator[str], n_process: Optional[int] = None, batch_size: Optional[int] = None) -> Iterator[Doc]:
+        r''' Batch process a list of texts in parallel.
 
         Args:
             texts (`Iterator[str]`):
@@ -113,8 +112,10 @@ class Pipe(object):
             Iterator[Doc]:
                 The spacy documents with the extracted entities
         '''
-        n_process = n_process if n_process is not None else max(mp.cpu_count() - 1, 1)
-        batch_size = batch_size if batch_size is not None else 1000
+        component_name = spacy.util.get_object_name(self._remove_unserializables)
+        Language.component(name=component_name, func=self._remove_unserializables)
+        self.nlp.add_pipe(component_name, name="remove_unserializables", last=True)
+
         return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
 
     def force_remove(self, component_name: str) -> None:
@@ -127,6 +128,14 @@ class Pipe(object):
         del self.nlp
         gc.collect()
 
+    @staticmethod
+    def _remove_unserializables(doc: Doc) -> Doc:
+        for x in dir(doc._):
+            if x in ['get', 'set', 'has']:
+                continue
+            setattr(doc._, x, None)
+        return doc
+
     def __call__(self,
                  text: Union[str, List[str]],
                  n_process: Optional[int] = None,
@@ -134,6 +143,6 @@ class Pipe(object):
         if isinstance(text, str):
             return self.nlp(text)
         elif isinstance(text, list):
-            return self.batch_process(text, n_process, batch_size)
+            return self.batch_multi_process(text, n_process, batch_size)
         else:
             raise ValueError("The input text should be either a string or a list of strings")
