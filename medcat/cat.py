@@ -58,6 +58,7 @@ class CAT(object):
         >>>spacy_doc = cat("Put some text here")
         >>>print(spacy_doc.ents) # Detected entites
     '''
+    DEFAULT_MAX_DOCUMENT_LENGTH = 1000000
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
@@ -94,7 +95,7 @@ class CAT(object):
             self._meta_annotations = True
 
         # Set max document length
-        self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
+        self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)
 
 
     def get_spacy_nlp(self):
@@ -123,7 +124,7 @@ class CAT(object):
 
         if isinstance(text, str):
             if text and len(text) > 0:
-                return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
+                return self.nlp(text[0:self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)])
             else:
                 return None
                 # return self.nlp("")     # For conformity, previously returning None
@@ -131,7 +132,7 @@ class CAT(object):
             truncated = []
             for t in text:
                 if isinstance(t, str) and len(t) > 0:
-                    truncated.append(t[0:self.config.preprocessing.get('max_document_length', 1000000)])
+                    truncated.append(t[0:self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)])
                 else:
                     truncated.append("")
             return self.nlp(truncated)
@@ -731,7 +732,7 @@ class CAT(object):
         def _generate_texts(data):
             for _, text in data:
                 if isinstance(text, str) and len(text) > 0:
-                    yield text[0:self.config.preprocessing.get('max_document_length', 1000000)]
+                    yield text[0:self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)]
                 else:
                     yield ""
 
