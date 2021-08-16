@@ -60,6 +60,7 @@ class CDB(object):
         self.cui2snames = {}
         self.cui2context_vectors = {}
         self.cui2count_train = {}
+        self.cui2info = {}
         self.cui2tags = {} # Used to add custom tags to CUIs
         self.cui2type_ids = {}
         self.cui2preferred_name = {}
@@ -165,14 +166,14 @@ class CDB(object):
         self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
 
-    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
+    def add_concept(self, cui: str, names: Dict, ontologies: set, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
 
         Args:
             cui (`str`):
-                Concept ID or unique identifer in this database, all concepts that have
+                Concept ID or unique identifier in this database, all concepts that have
                 the same CUI will be merged internally.
             names (`Dict[str, Dict]`):
                 Names for this concept, or the value that if found in free text can be linked to this concept.

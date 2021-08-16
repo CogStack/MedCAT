@@ -1,15 +1,8 @@
-import os
-import json
-import datetime
 import getpass
-import requests
-import pandas as pd
-from datetime import datetime
-from datetime import timedelta
 import elasticsearch
 import elasticsearch.helpers
 
-from typing import Dict, List
+from typing import Dict
 
 class CogStackConn(object):
     def __init__(self, host, port=9200, username: str=None, password: str=None, scheme: str='https',

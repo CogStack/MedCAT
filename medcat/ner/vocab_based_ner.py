@@ -8,7 +8,7 @@ class NER(object):
     log = logging.getLogger(__name__)
 
     # Custom pipeline component name
-    name = 'vocab_based_ner'
+    name = 'cat_ner'
 
     def __init__(self, cdb, config):
         self.config = config
