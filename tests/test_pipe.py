@@ -74,23 +74,44 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(PipeTests.linker.name, Language.get_factory_meta(PipeTests.linker.name).factory)
 
     def test_add_meta_cat(self):
-        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat, "cat_name")
+        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
         self.assertEqual(PipeTests.meta_cat.name, Language.get_factory_meta(PipeTests.meta_cat.name).factory)
 
     def test_batch_process(self):
+        PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
+        PipeTests.undertest.add_token_normalizer(PipeTests.config, spell_checker=PipeTests.spell_checker)
+        PipeTests.undertest.add_ner(PipeTests.ner)
+        PipeTests.undertest.add_linker(PipeTests.linker)
+        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+
         docs = list(self.undertest.batch_multi_process([PipeTests.text, "", PipeTests.text]))
+
         self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual("", docs[1].text)
         self.assertEqual(PipeTests.text, docs[2].text)
 
     def test_single_text(self):
+        PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
+        PipeTests.undertest.add_token_normalizer(PipeTests.config, spell_checker=PipeTests.spell_checker)
+        PipeTests.undertest.add_ner(PipeTests.ner)
+        PipeTests.undertest.add_linker(PipeTests.linker)
+        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+
         doc = self.undertest(PipeTests.text)
+
         self.assertEqual(PipeTests.text, doc.text)
 
     def test_multi_texts(self):
+        PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
+        PipeTests.undertest.add_token_normalizer(PipeTests.config, spell_checker=PipeTests.spell_checker)
+        PipeTests.undertest.add_ner(PipeTests.ner)
+        PipeTests.undertest.add_linker(PipeTests.linker)
+        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+
         docs = list(self.undertest([PipeTests.text, PipeTests.text]))
+
         self.assertEqual(2, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual(PipeTests.text, docs[1].text)
