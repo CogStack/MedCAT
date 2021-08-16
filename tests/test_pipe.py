@@ -85,7 +85,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
-        docs = list(self.undertest.batch_multi_process([PipeTests.text, "", PipeTests.text], n_process=2))
+        docs = list(self.undertest.batch_multi_process([PipeTests.text, "", PipeTests.text], n_process=1))
 
         self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
@@ -110,7 +110,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
-        docs = list(self.undertest([PipeTests.text, PipeTests.text], n_process=2))
+        docs = list(self.undertest([PipeTests.text, PipeTests.text], n_process=1))
 
         self.assertEqual(2, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
