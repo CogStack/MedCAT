@@ -91,5 +91,6 @@ class A_NERTests(unittest.TestCase):
         self.text_post_pipe = self.nlp(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
 
+
 if __name__ == '__main__':
     unittest.main()

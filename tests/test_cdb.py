@@ -50,3 +50,7 @@ class CDBTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile() as f:
             self.undertest.save(f.name)
             self.undertest.load(f.name)
+
+
+if __name__ == '__main__':
+    unittest.main()

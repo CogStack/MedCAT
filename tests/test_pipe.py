@@ -115,3 +115,7 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(2, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual(PipeTests.text, docs[1].text)
+
+
+if __name__ == '__main__':
+    unittest.main()
