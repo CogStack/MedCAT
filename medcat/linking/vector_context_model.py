@@ -163,7 +163,7 @@ class ContextModel(object):
 
 
     def train(self, cui, entity, doc, negative=False, names=[]):
-        r''' Update the context represenation for this CUI, given it's correct location (entity)
+        r''' Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
 
         Args:

@@ -9,6 +9,7 @@ from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
 from typing import Union, List
 from collections.abc import Iterable
+from spacy.tokens import Span
 
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
@@ -125,6 +126,7 @@ class CAT(object):
                 return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
             else:
                 return None
+                # return self.nlp("")     # For conformity, previously returning None
         elif isinstance(text, list):
             truncated = []
             for t in text:
@@ -174,7 +176,7 @@ class CAT(object):
             cui_counts (dict):
                 Number of occurrence for each CUI
             examples (dict):
-                Examples for each of the fp, fn, tp. Foramt will be examples['fp']['cui'][<list_of_examples>]
+                Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>]
         '''
         tp = 0
         fp = 0
@@ -207,10 +209,7 @@ class CAT(object):
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
-                if type(doc['annotations']) == list:
-                    anns = doc['annotations']
-                elif type(doc['annotations']) == dict:
-                    anns = doc['annotations'].values()
+                anns = self._get_doc_annotations(doc)
 
                 # Apply document level filtering if
                 if use_cui_doc_limit:
@@ -439,7 +438,7 @@ class CAT(object):
 
     def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
                               description='', full_build=True, negative=False, devalue_others=False, do_add_concept=True):
-        r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name and concept alraedy exist. Perform
+        r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
         training if spacy_entity and spacy_doc are set.
 
         Args:
@@ -488,7 +487,7 @@ class CAT(object):
                          use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
                          never_terminate=False, train_from_false_positives=False):
         r''' TODO: Refactor, left from old
-        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simiulated
+        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
 
         Args:
@@ -497,7 +496,7 @@ class CAT(object):
             reset_cui_count (boolean):
                 Used for training with weight_decay (annealing). Each concept has a count that is there
                 from the beginning of the CDB, that count is used for annealing. Resetting the count will
-                significantly incrase the training impact. This will reset the count only for concepts
+                significantly increase the training impact. This will reset the count only for concepts
                 that exist in the the training data.
             nepochs (int):
                 Number of epochs for which to run the training.
@@ -509,7 +508,7 @@ class CAT(object):
             terminate_last (boolean):
                 If true, concept termination will be done after all training.
             use_overlaps (boolean):
-                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
             use_cui_doc_limit (boolean):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
@@ -564,11 +563,7 @@ class CAT(object):
             cuis = []
             for project in train_set['projects']:
                 for doc in project['documents']:
-                    if type(doc['annotations']) == list:
-                        doc_annotations = doc['annotations']
-                    elif type(doc['annotations']) == dict:
-                        doc_annotations = doc['annotations'].values()
-
+                    doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
                         cuis.append(ann['cui'])
             for cui in set(cuis):
@@ -579,11 +574,7 @@ class CAT(object):
         if not never_terminate:
             for project in train_set['projects']:
                 for doc in project['documents']:
-                    if type(doc['annotations']) == list:
-                        doc_annotations = doc['annotations']
-                    elif type(doc['annotations']) == dict:
-                        doc_annotations = doc['annotations'].values()
-
+                    doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
@@ -594,11 +585,7 @@ class CAT(object):
                 for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
-                    if type(doc['annotations']) == list:
-                        doc_annotations = doc['annotations']
-                    elif type(doc['annotations']) == dict:
-                        doc_annotations = doc['annotations'].values()
-
+                    doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
                         if not ann.get('killed', False):
                             cui = ann['cui']
@@ -627,11 +614,7 @@ class CAT(object):
                 # Remove entities that were terminated, but after all training is done
                 for project in train_set['projects']:
                     for doc in project['documents']:
-                        if type(doc['annotations']) == list:
-                            doc_annotations = doc['annotations']
-                        elif type(doc['annotations']) == dict:
-                            doc_annotations = doc['annotations'].values()
-
+                        doc_annotations = self._get_doc_annotations(doc)
                         for ann in doc_annotations:
                             if ann.get('killed', False):
                                 self.unlink_concept_name(ann['cui'], ann['value'])
@@ -796,7 +779,16 @@ class CAT(object):
         if doc is not None:
             out_ent = {}
             if self.config.general.get('show_nested_entities', False):
-                _ents = doc._.ents
+                _ents = []
+                for _ent in doc._.ents:
+                    entity = Span(doc, _ent['start'], _ent['end'], label=_ent['label'])
+                    entity._.cui = _ent['cui']
+                    entity._.detected_name = _ent['detected_name']
+                    entity._.context_similarity = _ent['context_similarity']
+                    entity._.id = _ent['id']
+                    if 'meta_anns' in _ent:
+                        entity._.meta_anns = _ent['meta_anns']
+                    _ents.append(entity)
             else:
                 _ents = doc.ents
 
@@ -848,6 +840,15 @@ class CAT(object):
                 else:
                     out['entities'][ent._.id] = cui
         return out
+
+    @staticmethod
+    def _get_doc_annotations(doc):
+        if type(doc['annotations']) == list:
+            return doc['annotations']
+        elif type(doc['annotations']) == dict:
+            return doc['annotations'].values()
+        else:
+            return None
 
     def destroy_pipe(self):
         self.nlp.destroy()

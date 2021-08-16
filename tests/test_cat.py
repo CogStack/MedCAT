@@ -66,3 +66,24 @@ class CATTests(unittest.TestCase):
         self.undertest.train(["The dog is not a house", "The house is not a dog"])
         self.undertest.cdb.print_stats()
 
+    def test_get_entities(self):
+        text = "The dog is sitting outside the house."
+        out = self.undertest.get_entities(text)
+        self.assertEqual({}, out["entities"])
+        self.assertEqual([], out["tokens"])
+
+    def test_get_entities_from_texts(self):
+        texts = ["The dog is sitting outside the house.", "", "The dog is sitting outside the house."]
+        out = self.undertest.get_entities(texts)
+        self.assertEqual(3, len(out))
+
+    def test_train_supervised(self):
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json"), nepochs=1)
+        self.assertEqual({}, fp)
+        self.assertEqual({}, fn)
+        self.assertEqual({}, tp)
+        self.assertEqual({}, p)
+        self.assertEqual({}, r)
+        self.assertEqual({}, f1)
+        self.assertEqual({}, cui_counts)
+        self.assertEqual({}, examples)
