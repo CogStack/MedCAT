@@ -88,3 +88,7 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, f1)
         self.assertEqual({}, cui_counts)
         self.assertEqual({}, examples)
+
+
+if __name__ == '__main__':
+    unittest.main()

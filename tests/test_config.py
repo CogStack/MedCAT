@@ -9,3 +9,7 @@ class ConfigTests(unittest.TestCase):
     def test_pickleability(self):
         with tempfile.TemporaryFile() as f:
             pickle.dump(Config(), f)
+
+
+if __name__ == '__main__':
+    unittest.main()
