@@ -51,6 +51,7 @@ class A_NERTests(unittest.TestCase):
         cls.config.ner['max_skip_tokens'] = 1
         cls.config.ner['upper_case_limit_len'] = 4
         cls.config.linking['disamb_length_limit'] = 2
+        cls.config.general["spacy_model"] = "en_core_sci_sm"
 
         print("Add concepts")
         cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar', cls.nlp, {}, cls.config))
