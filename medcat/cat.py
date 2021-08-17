@@ -545,7 +545,8 @@ class CAT(object):
                 FP/FN examples of sentences for each CUI
         '''
         fp = fn = tp = p = r = f1 = cui_counts = examples = {}
-        data = json.load(open(data_path))
+        with open(data_path) as f:
+            data = json.load(f)
         cui_counts = {}
 
         if test_size == 0:
