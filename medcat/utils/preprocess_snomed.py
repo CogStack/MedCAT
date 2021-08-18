@@ -20,17 +20,19 @@ class Snomed:
         self.extension = extension
         self.release = data_path[-16:-8]
 
-    def __parse_file(filename, first_row_header=True, columns=None):
-        with open(filename, encoding='utf-8') as f:
-            entities = [[n.strip() for n in line.split('\t')] for line in f]
-            return pd.DataFrame(entities[1:], columns=entities[0] if first_row_header else columns)
 
-    def to_concept_csv(self):
+    def to_concept_df(self):
         """
 
-        :return:
+        :return: SNOMED CT concept DataFrame
         """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
+
+        def parse_file(filename, first_row_header=True, columns=None):
+            with open(filename, encoding='utf-8') as f:
+                entities = [[n.strip() for n in line.split('\t')] for line in f]
+                return pd.DataFrame(entities[1:], columns=entities[0] if first_row_header else columns)
+
         int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_INT_{self.release}.txt')
         active_terms = int_terms[int_terms.active == '1']
         del int_terms
@@ -67,6 +69,7 @@ class Snomed:
         active_snomed_df['type_ids'] = active_snomed_df['description_type_ids'].apply(
             lambda x: int(hashlib.sha256(x.encode('utf-8')).hexdigest(), 16) % 10 ** 8)
 
+        return active_snomed_df
 
     def list_all_relationships(self):
         """
@@ -79,7 +82,7 @@ class Snomed:
         active_relat = int_relat[int_relat.active == '1']
         del int_relat
         # ToDO: complete function
-
+        return
 
     def relationship2json(self, relationshipcode, output_jsonfile):
         """
@@ -102,7 +105,7 @@ class Snomed:
                 pass
         with open(output_jsonfile, 'w') as json_file:
             json.dump(relationship, json_file)
-
+        return
 
     def map_snomed2icd10(self):
         """
@@ -118,6 +121,7 @@ class Snomed:
             drop=True)
 
         # TODO: finish function
+        return
 
 
 
@@ -128,4 +132,7 @@ snomedct_path = "/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_In
 
 print(snomedct_path[-16:-8])
 snomed = Snomed(snomedct_path)
+df = snomed.to_concept_df()
+print(df.head())
+
 
