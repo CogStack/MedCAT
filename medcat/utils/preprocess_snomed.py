@@ -18,7 +18,7 @@ class Snomed:
         self.data_path = data_path
         self.extension = extension
 
-        self.release = data_path[37:45]  # TODO: fix if not direct path
+        self.release = data_path[-16:-9]  # TODO: check if correct
 
     def __parse_file(filename, first_row_header=True, columns=None):
         with open(filename, encoding='utf-8') as f:
@@ -81,7 +81,13 @@ class Snomed:
         # ToDO: complete function
 
 
-    def relationship2json(self, relationshipcode, outfile):
+    def relationship2json(self, relationshipcode, output_jsonfile):
+        """
+
+        :param relationshipcode(str):
+        :param output_jsonfile:
+        :return: json dict format of relationship mapping
+        """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
         int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_INT_{self.release}.txt')
         active_relat = int_relat[int_relat.active == '1']
@@ -94,11 +100,15 @@ class Snomed:
                 relationship[_].append(v['sourceId'])
             else:
                 pass
-        with open(outfile, 'w') as json_file:
+        with open(output_jsonfile, 'w') as json_file:
             json.dump(relationship, json_file)
 
 
     def map_snomed2icd10(self):
+        """
+
+        :return: SNOMED to ICD10 mapping DataFrame
+        """
         refset_terminology = f'{self.data_path}/Snapshot/Refset/Map'
         mappings = parse_file(f'{path}/{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_INT_{release}.txt')
         mappings = mappings[mappings.active == '1']
@@ -111,4 +121,8 @@ class Snomed:
 
 
 
+
+# Test functions
+
+snomed = Snomed("/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z")
 
