@@ -84,7 +84,7 @@ class Snomed:
         active_relat = int_relat[int_relat.active == '1']
         del int_relat
 
-        all_rela = [relationship for relationship in active_relat["destinationId"].unique()]
+        all_rela = [relationship for relationship in active_relat["typeId"].unique()]
         return all_rela
 
     def relationship2json(self, relationshipcode, output_jsonfile):
@@ -135,6 +135,7 @@ snomedct_path = "/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_In
 
 snomed = Snomed(snomedct_path)
 df = snomed.list_all_relationships()
-print(df)
+for value in df:
+    print(value)
 
 
