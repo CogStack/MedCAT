@@ -4,6 +4,12 @@ import json
 import hashlib
 
 
+def parse_file(filename, first_row_header=True, columns=None):
+    with open(filename, encoding='utf-8') as f:
+        entities = [[n.strip() for n in line.split('\t')] for line in f]
+        return pd.DataFrame(entities[1:], columns=entities[0] if first_row_header else columns)
+
+
 class Snomed:
     r"""
     Pre-process SNOMED CT release files:
@@ -12,6 +18,7 @@ class Snomed:
             Path to the unzipped SNOMED CT folder
         extension (optional):
             Is a SNOMED CT extension release file set
+            # TODO allow for extensions
 
     """
 
@@ -27,11 +34,6 @@ class Snomed:
         :return: SNOMED CT concept DataFrame
         """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
-
-        def parse_file(filename, first_row_header=True, columns=None):
-            with open(filename, encoding='utf-8') as f:
-                entities = [[n.strip() for n in line.split('\t')] for line in f]
-                return pd.DataFrame(entities[1:], columns=entities[0] if first_row_header else columns)
 
         int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_INT_{self.release}.txt')
         active_terms = int_terms[int_terms.active == '1']
@@ -65,7 +67,7 @@ class Snomed:
         active_snomed_df = pd.merge(active_snomed_df, temp_df[['cui', 'description_type_ids']], on='cui', how='left')
         del temp_df
 
-        # Hash semantic tag to get a 8 digit code
+        # Hash semantic tag to get a 8 digit type_id code
         active_snomed_df['type_ids'] = active_snomed_df['description_type_ids'].apply(
             lambda x: int(hashlib.sha256(x.encode('utf-8')).hexdigest(), 16) % 10 ** 8)
 
@@ -81,8 +83,9 @@ class Snomed:
         int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_INT_{self.release}.txt')
         active_relat = int_relat[int_relat.active == '1']
         del int_relat
-        # ToDO: complete function
-        return
+
+        all_rela = [relationship for relationship in active_relat["destinationId"].unique()]
+        return all_rela
 
     def relationship2json(self, relationshipcode, output_jsonfile):
         """
@@ -130,9 +133,8 @@ class Snomed:
 
 snomedct_path = "/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z"
 
-print(snomedct_path[-16:-8])
 snomed = Snomed(snomedct_path)
-df = snomed.to_concept_df()
-print(df.head())
+df = snomed.list_all_relationships()
+print(df)
 
 
