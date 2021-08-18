@@ -72,36 +72,36 @@ class CAT(object):
         self.log.setLevel(self.config.general['log_level'])
 
         # Build the pipeline
-        self.nlp = Pipe(tokenizer=spacy_split_all, config=self.config)
-        self.nlp.add_tagger(tagger=tag_skip_and_punct,
-                            name='skip_and_punct',
-                            additional_fields=['is_punct'])
+        self.pipe = Pipe(tokenizer=spacy_split_all, config=self.config)
+        self.pipe.add_tagger(tagger=tag_skip_and_punct,
+                             name='skip_and_punct',
+                             additional_fields=['is_punct'])
 
         spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=self.config, data_vocab=vocab)
-        self.nlp.add_token_normalizer(spell_checker=spell_checker, config=self.config)
+        self.pipe.add_token_normalizer(spell_checker=spell_checker, config=self.config)
 
         # Add NER
         self.ner = NER(self.cdb, self.config)
-        self.nlp.add_ner(self.ner)
+        self.pipe.add_ner(self.ner)
 
         # Add LINKER
         self.linker = Linker(self.cdb, vocab, self.config)
-        self.nlp.add_linker(self.linker)
+        self.pipe.add_linker(self.linker)
 
         # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
         for meta_cat in meta_cats:
-            self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
+            self.pipe.add_meta_cat(meta_cat, meta_cat.category_name)
             self._meta_annotations = True
 
         # Set max document length
-        self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)
+        self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)
 
 
     def get_spacy_nlp(self):
         ''' Returns the spacy pipeline with MedCAT
         '''
-        return self.nlp.nlp
+        return self.pipe.nlp
 
     def __call__(self, text: Union[str, List[str]], do_train: bool = False):
         r'''
@@ -124,18 +124,17 @@ class CAT(object):
 
         if isinstance(text, str):
             if text and len(text) > 0:
-                return self.nlp(text[0:self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)])
+                return self.pipe(text[0:self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)])
             else:
                 return None
-                # return self.nlp("")     # For conformity, previously returning None
         elif isinstance(text, list):
             truncated = []
             for t in text:
                 if isinstance(t, str) and len(t) > 0:
                     truncated.append(t[0:self.config.preprocessing.get('max_document_length', CAT.DEFAULT_MAX_DOCUMENT_LENGTH)])
                 else:
-                    truncated.append("")
-            return self.nlp(truncated)
+                    truncated.append(None)
+            return self.pipe(truncated)
         else:
             raise ValueError("The input text should be either a string or a list of strings")
 
@@ -640,12 +639,32 @@ class CAT(object):
             doc = self(text)
             out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         elif isinstance(text, Iterable):
-            out = []
-            docs = self.nlp.batch_multi_process(text, n_process, batch_size)
-            for doc in docs:
-                out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
+            if n_process == 1:
+                out = []
+                docs = self(text)
+                for doc in docs:
+                    out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
+            else:
+                out = []
+                self.pipe.set_error_handler(self._pipe_error_handler)
+                try:
+                    docs = self.pipe.batch_multi_process(text, n_process, batch_size)
+                    cur_doc = None
+                    for t in text:
+                        try:
+                            if cur_doc is None:
+                                cur_doc = next(docs)
+                            if t == cur_doc.text:
+                                out.append(self._doc_to_out(cur_doc, cnf_annotation_output, only_cui, addl_info))
+                                cur_doc = None
+                            else:
+                                out.append(None)
+                        except StopIteration:
+                            out.append(None)
+                finally:
+                    self.pipe.reset_error_handler()
         else:
-            raise ValueError("The input text should be either a string or a list of strings")
+            raise ValueError("The input text should be either a string or a sequence of strings")
         return out
 
     def get_json(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
@@ -721,14 +740,14 @@ class CAT(object):
 
         return out
 
-    def multiprocessing_pipe(self, in_data, nproc=None, batch_size=None, only_cui=False, addl_info=[]):
+    def multiprocessing_pipe(self, in_data, nproc=None, batch_size=None, only_cui=False, addl_info=[], return_dict=False):
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  an iterator or array with format: [(id, text), (id, text), ...]
         nproc:  the number of processors
         batch_size: the number of texts to buffer
 
-        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
+        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
         '''
         def _generate_texts(data):
             for _, text in data:
@@ -747,10 +766,14 @@ class CAT(object):
 
         entities = self.get_entities(text=_generate_texts(in_data), only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
-        out = []
-        for idx in range(len(in_data)):
-            entities[idx]['text'] = in_data[idx][1]
-            out.append((in_data[idx][0], entities[idx]))
+        if return_dict:
+            out = {}
+            for idx in range(len(in_data)):
+                out[in_data[idx][0]] = entities[idx]
+        else:
+            out = []
+            for idx in range(len(in_data)):
+                out.append((in_data[idx][0], entities[idx]))
 
         return out
 
@@ -844,6 +867,11 @@ class CAT(object):
         return out
 
     @staticmethod
+    def _pipe_error_handler(proc_name, proc, docs, e):
+        CAT.log.warning("Exception raised when when applying component {}".format(proc_name))
+        CAT.log.warning(e, stack_info=True)
+
+    @staticmethod
     def _get_doc_annotations(doc):
         if type(doc['annotations']) == list:
             return doc['annotations']
@@ -853,4 +881,4 @@ class CAT(object):
             return None
 
     def destroy_pipe(self):
-        self.nlp.destroy()
+        self.pipe.destroy()

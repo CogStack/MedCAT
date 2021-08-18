@@ -86,12 +86,13 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
-        docs = list(self.undertest.batch_multi_process([PipeTests.text, "", PipeTests.text], n_process=1))
+        PipeTests.undertest.set_error_handler(_error_handler)
+        docs = list(self.undertest.batch_multi_process([PipeTests.text, None, PipeTests.text], n_process=2, batch_size=1))
+        PipeTests.undertest.reset_error_handler()
 
-        self.assertEqual(3, len(docs))
+        self.assertEqual(2, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
-        self.assertEqual("", docs[1].text)
-        self.assertEqual(PipeTests.text, docs[2].text)
+        self.assertEqual(PipeTests.text, docs[1].text)
 
     def test_single_text(self):
         PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
@@ -116,6 +117,9 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(2, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual(PipeTests.text, docs[1].text)
+
+def _error_handler(proc_name, proc, docs, e):
+    print("Exception raised when when applying component {}".format(proc_name))
 
 
 if __name__ == '__main__':
