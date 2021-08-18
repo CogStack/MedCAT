@@ -4,7 +4,7 @@ import json
 import hashlib
 
 
-class Snomed:
+class Snomed():
     r"""
     Pre-process SNOMED CT release files:
     Args:
@@ -18,7 +18,7 @@ class Snomed:
         self.data_path = data_path
         self.extension = extension
 
-        self.release = data_path[-16:-9]  # TODO: check if correct
+        self.release = data_path[-16:-8]
 
     def __parse_file(filename, first_row_header=True, columns=None):
         with open(filename, encoding='utf-8') as f:
@@ -124,5 +124,5 @@ class Snomed:
 
 # Test functions
 
-snomed = Snomed("/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z")
+
 
