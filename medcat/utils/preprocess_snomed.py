@@ -4,20 +4,20 @@ import json
 import hashlib
 
 
-class Snomed():
+class Snomed:
     r"""
     Pre-process SNOMED CT release files:
     Args:
         data_path:
             Path to the unzipped SNOMED CT folder
         extension (optional):
+            Is a SNOMED CT extension release file set
 
     """
 
-    def __int__(self, data_path, extension=None):
+    def __init__(self, data_path, extension=None):
         self.data_path = data_path
         self.extension = extension
-
         self.release = data_path[-16:-8]
 
     def __parse_file(filename, first_row_header=True, columns=None):
@@ -124,5 +124,8 @@ class Snomed():
 
 # Test functions
 
+snomedct_path = "/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z"
 
+print(snomedct_path[-16:-8])
+snomed = Snomed(snomedct_path)
 
