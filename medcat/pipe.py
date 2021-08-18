@@ -3,6 +3,7 @@ import gc
 from spacy.tokens import Token, Doc, Span
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
+from spacy.util import raise_error
 
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
@@ -10,7 +11,7 @@ from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.config import Config
 
-from typing import List, Optional, Union, Iterator, Callable
+from typing import List, Optional, Union, Iterable, Callable
 from multiprocessing import cpu_count
 
 
@@ -32,7 +33,6 @@ class Pipe(object):
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
         self.nlp.tokenizer = tokenizer(self.nlp)
-        self.nlp
         self.config = config
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
@@ -113,20 +113,20 @@ class Pipe(object):
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
 
-    def batch_multi_process(self, texts: Iterator[str], n_process: Optional[int] = None, batch_size: Optional[int] = None) -> Iterator[Doc]:
+    def batch_multi_process(self, texts: Iterable[str], n_process: Optional[int] = None, batch_size: Optional[int] = None) -> Iterable[Doc]:
         r''' Batch process a list of texts in parallel.
 
         Args:
-            texts (`Iterator[str]`):
-                The input text strings.
+            texts (`Iterable[str]`):
+                The input sequence of texts to process.
             n_process (`int`):
                 The number of processes running in parallel. Defaults to max(mp.cpu_count() - 1, 1).
             batch_size (`int`):
                 The number of texts to buffer. Defaults to 1000.
 
         Return:
-            Iterator[Doc]:
-                The spacy documents with the extracted entities
+            Iterable[Doc]:
+                The output sequence of spacy documents with the extracted entities
         '''
         instance_name = "ensure_serializable"
         try:
@@ -140,6 +140,12 @@ class Pipe(object):
         batch_size = batch_size if batch_size is not None else 1000
 
         return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
+
+    def set_error_handler(self, error_handler):
+        self.nlp.set_error_handler(error_handler)
+
+    def reset_error_handler(self):
+        self.nlp.set_error_handler(raise_error)
 
     def force_remove(self, component_name: str) -> None:
         try:
@@ -171,13 +177,13 @@ class Pipe(object):
         doc._.ents = new_ents
         return doc
 
-    def __call__(self,
-                 text: Union[str, List[str]],
-                 n_process: Optional[int] = None,
-                 batch_size: Optional[int] = None) -> Union[Doc, List[Doc]]:
+    def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
             return self.nlp(text)
-        elif isinstance(text, list):
-            return self.batch_multi_process(iter(text), n_process, batch_size)
+        elif isinstance(text, Iterable):
+            docs = []
+            for t in text:
+                docs.append(self.nlp(t))
+            return docs
         else:
-            raise ValueError("The input text should be either a string or a list of strings")
+            raise ValueError("The input text should be either a string or a sequence of strings")
