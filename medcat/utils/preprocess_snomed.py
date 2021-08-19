@@ -1,6 +1,6 @@
 import os
-import pandas as pd
 import json
+import pandas as pd
 import hashlib
 
 
@@ -18,7 +18,7 @@ class Snomed:
             Path to the unzipped SNOMED CT folder
         extension (optional):
             Is a SNOMED CT extension release file set
-            # TODO allow for extensions
+            # TODO: allow for extensions
 
     """
 
@@ -26,7 +26,6 @@ class Snomed:
         self.data_path = data_path
         self.extension = extension
         self.release = data_path[-16:-8]
-
 
     def to_concept_df(self):
         """
@@ -90,9 +89,9 @@ class Snomed:
     def relationship2json(self, relationshipcode, output_jsonfile):
         """
 
-        :param relationshipcode(str):
-        :param output_jsonfile:
-        :return: json dict format of relationship mapping
+        :param relationshipcode: The SCTID or unique concept identifier of the relationship type
+        :param output_jsonfile: Name of json file output. Tip: include SNOMED edition
+        :return: json file  of relationship mapping
         """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
         int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_INT_{self.release}.txt')
@@ -116,26 +115,12 @@ class Snomed:
         :return: SNOMED to ICD10 mapping DataFrame
         """
         refset_terminology = f'{self.data_path}/Snapshot/Refset/Map'
-        mappings = parse_file(f'{path}/{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_INT_{release}.txt')
+        mappings = parse_file(f'{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_INT_{self.release}.txt')
         mappings = mappings[mappings.active == '1']
-
-        icd10_refset_id = '447562003'
         icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
             drop=True)
 
-        # TODO: finish function
-        return
+        return icd_mappings
 
-
-
-
-# Test functions
-
-snomedct_path = "/Users/shek/Documents/MedShr/medshr-nlp/SNOMED/data/SnomedCT_InternationalRF2_PRODUCTION_20210131T120000Z"
-
-snomed = Snomed(snomedct_path)
-df = snomed.list_all_relationships()
-for value in df:
-    print(value)
 
 
