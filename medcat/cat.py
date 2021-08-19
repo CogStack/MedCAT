@@ -7,8 +7,7 @@ from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
-from typing import Union, List, Tuple, Optional, Any, Dict
-from collections.abc import Iterable
+from typing import Union, List, Tuple, Optional, Any, Dict, Iterable
 from spacy.tokens import Span, Doc
 
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -102,7 +101,7 @@ class CAT(object):
         '''
         return self.pipe.nlp
 
-    def __call__(self, text: Union[str, Iterable], do_train: bool = False):
+    def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple[str]]], do_train: bool = False):
         r'''
         Push the text through the pipeline.
 
@@ -620,7 +619,7 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
-                     text: Union[str, Iterable],
+                     text: Union[str, List[Tuple[str]]],
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
@@ -634,7 +633,7 @@ class CAT(object):
         if isinstance(text, str):
             doc = self(text)
             out: Dict = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
-        elif isinstance(text, Iterable):
+        elif isinstance(text, List):
             if n_process == 1:
                 out: List[Dict] = []
                 docs = self(self._generate_trimmed_texts(text))
@@ -737,7 +736,7 @@ class CAT(object):
         return out
 
     def multiprocessing_pipe(self,
-                             in_data: List[Tuple],
+                             in_data: List[Tuple[str]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
@@ -864,15 +863,16 @@ class CAT(object):
     def _get_trimmed_text(self, text: str):
         return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else None
 
-    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]):
+    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple[str]]]):
         for text in texts:
+            text_: str
             if isinstance(text, str):
-                text = text
+                text_ = text
             elif isinstance(text, Tuple):
-                text = text[1]
+                text_ = text[1]
             else:
                 raise ValueError("The input should be an iterable with format: either [text, text, ...] or [(id, text), (id, text), ...]")
-            yield self._get_trimmed_text(text)
+            yield self._get_trimmed_text(text_)
 
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
