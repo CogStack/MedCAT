@@ -619,7 +619,7 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
-                     text: Union[str, List[Tuple[str]]],
+                     text: Union[str, List[Tuple]],
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
@@ -634,7 +634,7 @@ class CAT(object):
             doc = self(text)
             out: Dict = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         elif isinstance(text, List):
-            if n_process == 1:
+            if n_process is None or n_process == 1:
                 out: List[Dict] = []
                 docs = self(self._generate_trimmed_texts(text))
                 for doc in docs:
@@ -736,7 +736,7 @@ class CAT(object):
         return out
 
     def multiprocessing_pipe(self,
-                             in_data: List[Tuple[str]],
+                             in_data: List[Tuple],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
@@ -863,16 +863,12 @@ class CAT(object):
     def _get_trimmed_text(self, text: str):
         return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else None
 
-    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple[str]]]):
+    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[str]:
         for text in texts:
-            text_: str
-            if isinstance(text, str):
-                text_ = text
-            elif isinstance(text, Tuple):
-                text_ = text[1]
+            if isinstance(text, Tuple):
+                yield self._get_trimmed_text(text[1])
             else:
-                raise ValueError("The input should be an iterable with format: either [text, text, ...] or [(id, text), (id, text), ...]")
-            yield self._get_trimmed_text(text_)
+                yield self._get_trimmed_text(text)
 
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):

@@ -95,9 +95,9 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
 
-    def test_get_entities_from_texts(self):
+    def test_get_entities_from_in_data(self):
         texts = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
-        out = self.undertest.get_entities(texts)
+        out = self.undertest.get_entities(texts, n_process=2)
         self.assertEqual(3, len(out))
 
     def test_train_supervised(self):
@@ -111,9 +111,23 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, cui_counts)
         self.assertEqual({}, examples)
 
-    def test_error_handling_single_process(self):
+    def test_no_error_handling_on_none_input(self):
+        with self.assertRaises(Exception):
+            self.undertest.get_entities(None)
+
+    def test_no_error_handling_on_empty_string_input(self):
+        with self.assertRaises(Exception):
+            self.undertest.get_entities("")
+
+
+    def test_no_error_handling_on_single_process_with_none(self):
         with self.assertRaises(Exception):
             self.undertest.get_entities(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
+
+
+    def test_no_error_handling_on_single_process_with_empty_string(self):
+        with self.assertRaises(Exception):
+            self.undertest.get_entities(["The dog is sitting outside the house.", "", "The dog is sitting outside the house."], n_process=1, batch_size=2)
 
     def test_error_handling_multi_processes(self):
         out = self.undertest.get_entities([(1, "The dog is sitting outside the house."),
