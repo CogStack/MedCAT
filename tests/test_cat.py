@@ -95,9 +95,9 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
 
-    def test_get_entities_from_texts(self):
-        texts = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
-        out = self.undertest.get_entities(texts)
+    def test_get_entities_from_in_data(self):
+        in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
+        out = self.undertest.get_entities(in_data)
         self.assertEqual(3, len(out))
 
     def test_train_supervised(self):
