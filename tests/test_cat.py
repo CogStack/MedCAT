@@ -31,6 +31,13 @@ class CATTests(unittest.TestCase):
         doc = self.undertest(text)
         self.assertEqual(text, doc.text)
 
+    def test_pipeline(self):
+        texts = ["The dog is sitting outside the house.", "The dog is sitting outside the house."]
+        docs = self.undertest(texts)
+        self.assertEqual(2, len(docs))
+        self.assertEqual(texts[0], docs[0].text)
+        self.assertEqual(texts[1], docs[1].text)
+
     @unittest.skip("WIP")
     def test_multiprocessing(self):
         in_data = [
@@ -48,11 +55,10 @@ class CATTests(unittest.TestCase):
         self.assertEqual(3, out[2][0])
         self.assertEqual("The dog is sitting outside the house.", out[2][1]["text"])
 
-    @unittest.skip("WIP")
     def test_multiprocessing_pipe(self):
         in_data = [
             (1, "The dog is sitting outside the house."),
-            (2, ""),
+            (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house.")
         ]
         out = self.undertest.multiprocessing_pipe(in_data, nproc=2)
@@ -65,11 +71,10 @@ class CATTests(unittest.TestCase):
         self.assertEqual(3, out[2][0])
         self.assertEqual({'entities': {}, 'tokens': []}, out[2][1])
 
-    @unittest.skip("WIP")
     def test_multiprocessing_pipe_return_dict(self):
         in_data = [
             (1, "The dog is sitting outside the house."),
-            (2, ""),
+            (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house.")
         ]
         out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=True)
@@ -91,7 +96,7 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out["tokens"])
 
     def test_get_entities_from_texts(self):
-        texts = ["The dog is sitting outside the house.", "", "The dog is sitting outside the house."]
+        texts = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
         out = self.undertest.get_entities(texts)
         self.assertEqual(3, len(out))
 
@@ -111,11 +116,11 @@ class CATTests(unittest.TestCase):
             self.undertest.get_entities(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
 
     def test_error_handling_multi_processes(self):
-        out = self.undertest.get_entities(["The dog is sitting outside the house.",
-                                           "The dog is sitting outside the house.",
-                                           "The dog is sitting outside the house.",
-                                           None,
-                                           None], n_process=2, batch_size=2)
+        out = self.undertest.get_entities([(1, "The dog is sitting outside the house."),
+                                           (2, "The dog is sitting outside the house."),
+                                           (3, "The dog is sitting outside the house."),
+                                           (4, None),
+                                           (5, None)], n_process=2, batch_size=2)
         self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
