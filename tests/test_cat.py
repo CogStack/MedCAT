@@ -96,8 +96,8 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out["tokens"])
 
     def test_get_entities_from_in_data(self):
-        texts = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
-        out = self.undertest.get_entities(texts, n_process=2)
+        in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
+        out = self.undertest.get_entities(in_data, n_process=2)
         self.assertEqual(3, len(out))
 
     def test_train_supervised(self):
@@ -119,11 +119,9 @@ class CATTests(unittest.TestCase):
         with self.assertRaises(Exception):
             self.undertest.get_entities("")
 
-
     def test_no_error_handling_on_single_process_with_none(self):
         with self.assertRaises(Exception):
             self.undertest.get_entities(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
-
 
     def test_no_error_handling_on_single_process_with_empty_string(self):
         with self.assertRaises(Exception):
