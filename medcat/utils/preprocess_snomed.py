@@ -148,7 +148,7 @@ class Snomed:
 
         output_dict = {}
         for i, snomed_release in enumerate(snomed_releases):
-            contents_path = os.path.join(data[i], "Snapshot", "Terminology")
+            contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
             for f in os.listdir(contents_path):
                 m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
                 if m:
