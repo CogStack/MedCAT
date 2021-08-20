@@ -133,24 +133,40 @@ class Snomed:
         :param output_jsonfile: Name of json file output. Tip: include SNOMED edition
         :return: json file  of relationship mapping
         """
-        contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
-        for f in os.listdir(contents_path):
-            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
-            if m:
-                snomed_v = m.group(1)
-        int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{self.release}.txt')
-        active_relat = int_relat[int_relat.active == '1']
-        del int_relat
+        snomed_releases = []
+        paths = []
+        if "Snapshot" in os.listdir(self.data_path):
+            paths.append(self.data_path)
+            snomed_releases.append(self.release)
+        else:
+            for folder in os.listdir(self.data_path):
+                if "SnomedCT" in folder:
+                    paths.append(os.path.join(self.data_path, folder))
+                    snomed_releases.append(folder[-16:-8])
+        if len(paths) == 0:
+            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
 
-        relationship = dict([(key, []) for key in active_relat["destinationId"].unique()])
-        for index, v in active_relat.iterrows():
-            if v['typeId'] == str(relationshipcode):
-                _ = v['destinationId']
-                relationship[_].append(v['sourceId'])
-            else:
-                pass
+        output_dict = {}
+        for i, snomed_release in enumerate(snomed_releases):
+            contents_path = os.path.join(data[i], "Snapshot", "Terminology")
+            for f in os.listdir(contents_path):
+                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                if m:
+                    snomed_v = m.group(1)
+            int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{snomed_release}.txt')
+            active_relat = int_relat[int_relat.active == '1']
+            del int_relat
+
+            relationship = dict([(key, []) for key in active_relat["destinationId"].unique()])
+            for index, v in active_relat.iterrows():
+                if v['typeId'] == str(relationshipcode):
+                    _ = v['destinationId']
+                    relationship[_].append(v['sourceId'])
+                else:
+                    pass
+            output_dict.update(relationship)
         with open(output_jsonfile, 'w') as json_file:
-            json.dump(relationship, json_file)
+            json.dump(output_dict, json_file)
         return
 
     def map_snomed2icd10(self):
@@ -158,6 +174,20 @@ class Snomed:
 
         :return: SNOMED to ICD10 mapping DataFrame
         """
+        snomed_releases = []
+        paths = []
+        if "Snapshot" in os.listdir(self.data_path):
+            paths.append(self.data_path)
+            snomed_releases.append(self.release)
+        else:
+            for folder in os.listdir(self.data_path):
+                if "SnomedCT" in folder:
+                    paths.append(os.path.join(self.data_path, folder))
+                    snomed_releases.append(folder[-16:-8])
+        if len(paths) == 0:
+            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
+
+
         refset_terminology = f'{self.data_path}/Snapshot/Refset/Map'
         for f in os.listdir(contents_path):
             m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
