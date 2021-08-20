@@ -36,8 +36,8 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 2. Get the scispacy models:
 
 `pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz`
-
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz`
+or
+`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_lg-0.4.0.tar.gz`
 
 3. Downlad the Vocabulary and CDB from the Models section bellow
 
