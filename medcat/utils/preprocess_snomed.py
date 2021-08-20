@@ -33,49 +33,65 @@ class Snomed:
 
         :return: SNOMED CT concept DataFrame
         """
-        contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
-        for f in os.listdir(contents_path):
-            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
-            if m:
-                snomed_v = m.group(1)
+        snomed_releases = []
+        paths = []
+        if "Snapshot" in os.listdir(self.data_path):
+            paths.append(self.data_path)
+            snomed_releases.append(self.release)
+        else:
+            for folder in os.listdir(self.data_path):
+                if "SnomedCT" in folder:
+                    paths.append(os.path.join(self.data_path, folder))
+                    snomed_releases.append(folder[-16:-8])
+        if len(paths) == 0:
+            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
 
-        int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_{snomed_v}_{self.release}.txt')
-        active_terms = int_terms[int_terms.active == '1']
-        del int_terms
+        df2merge = []
+        for i, snomed_release in enumerate(snomed_releases):
+            contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            for f in os.listdir(contents_path):
+                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                if m:
+                    snomed_v = m.group(1)
 
-        int_desc = parse_file(f'{contents_path}/sct2_Description_Snapshot-en_{snomed_v}_{self.release}.txt')
-        active_descs = int_desc[int_desc.active == '1']
-        del int_desc
+            int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_{snomed_v}_{snomed_release}.txt')
+            active_terms = int_terms[int_terms.active == '1']
+            del int_terms
 
-        _ = pd.merge(active_terms, active_descs, left_on=['id'], right_on=['conceptId'], how='inner')
-        del active_terms
-        del active_descs
+            int_desc = parse_file(f'{contents_path}/sct2_Description_Snapshot-en_{snomed_v}_{snomed_release}.txt')
+            active_descs = int_desc[int_desc.active == '1']
+            del int_desc
 
-        active_with_primary_desc = _[_['typeId'] == '900000000000003001']  # active description
-        active_with_synonym_desc = _[_['typeId'] == '900000000000013009']  # active synonym
-        del _
-        active_with_all_desc = pd.concat([active_with_primary_desc, active_with_synonym_desc])
+            _ = pd.merge(active_terms, active_descs, left_on=['id'], right_on=['conceptId'], how='inner')
+            del active_terms
+            del active_descs
 
-        active_snomed_df = active_with_all_desc[['id_x', 'term', 'typeId']]
-        del active_with_all_desc
+            active_with_primary_desc = _[_['typeId'] == '900000000000003001']  # active description
+            active_with_synonym_desc = _[_['typeId'] == '900000000000013009']  # active synonym
+            del _
+            active_with_all_desc = pd.concat([active_with_primary_desc, active_with_synonym_desc])
 
-        active_snomed_df.rename(columns={'id_x': 'cui', 'term': 'name', 'typeId': 'name_status'}, inplace=True)
-        active_snomed_df['ontologies'] = 'SNOMED-CT'
-        active_snomed_df['name_status'] = active_snomed_df['name_status'].replace(
-            ['900000000000003001', '900000000000013009'],
-            ['P', 'A'])
-        active_snomed_df.reset_index(drop=True, inplace=True)
+            active_snomed_df = active_with_all_desc[['id_x', 'term', 'typeId']]
+            del active_with_all_desc
 
-        temp_df = active_snomed_df[active_snomed_df['name_status'] == 'P'][['cui', 'name']]
-        temp_df['description_type_ids'] = temp_df['name'].str.extract(r"\((\w+\s?.?\s?\w+.?\w+.?\w+.?)\)$")
-        active_snomed_df = pd.merge(active_snomed_df, temp_df[['cui', 'description_type_ids']], on='cui', how='left')
-        del temp_df
+            active_snomed_df.rename(columns={'id_x': 'cui', 'term': 'name', 'typeId': 'name_status'}, inplace=True)
+            active_snomed_df['ontologies'] = 'SNOMED-CT'
+            active_snomed_df['name_status'] = active_snomed_df['name_status'].replace(
+                ['900000000000003001', '900000000000013009'],
+                ['P', 'A'])
+            active_snomed_df.reset_index(drop=True, inplace=True)
 
-        # Hash semantic tag to get a 8 digit type_id code
-        active_snomed_df['type_ids'] = active_snomed_df['description_type_ids'].apply(
-            lambda x: int(hashlib.sha256(x.encode('utf-8')).hexdigest(), 16) % 10 ** 8)
+            temp_df = active_snomed_df[active_snomed_df['name_status'] == 'P'][['cui', 'name']]
+            temp_df['description_type_ids'] = temp_df['name'].str.extract(r"\((\w+\s?.?\s?\w+.?\w+.?\w+.?)\)$")
+            active_snomed_df = pd.merge(active_snomed_df, temp_df[['cui', 'description_type_ids']], on='cui', how='left')
+            del temp_df
 
-        return active_snomed_df
+            # Hash semantic tag to get a 8 digit type_id code
+            active_snomed_df['type_ids'] = active_snomed_df['description_type_ids'].apply(
+                lambda x: int(hashlib.sha256(x.encode('utf-8')).hexdigest(), 16) % 10 ** 8)
+            df2merge.append(active_snomed_df)
+
+        return pd.concat(df2merge).reset_index(drop=True)
 
     def list_all_relationships(self):
         """
@@ -83,6 +99,19 @@ class Snomed:
 
         :return: List of all SNOMED CT relationships
         """
+        snomed_releases = []
+        paths = []
+        if "Snapshot" in os.listdir(self.data_path):
+            paths.append(self.data_path)
+            snomed_releases.append(self.release)
+        else:
+            for folder in os.listdir(self.data_path):
+                if "SnomedCT" in folder:
+                    paths.append(os.path.join(self.data_path, folder))
+                    snomed_releases.append(folder[-16:-8])
+        if len(paths) == 0:
+            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
+
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
         for f in os.listdir(contents_path):
             m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
