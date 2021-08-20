@@ -17,10 +17,6 @@ class Snomed:
     Args:
         data_path:
             Path to the unzipped SNOMED CT folder
-        extension (optional):
-            Is a SNOMED CT extension release file set
-            # TODO: allow for extensions
-
     """
 
     def __init__(self, data_path, extension=False):
