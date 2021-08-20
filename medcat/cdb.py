@@ -5,10 +5,11 @@ import dill
 import logging
 import numpy as np
 from typing import Dict, List, Set
+from functools import partial
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.ml_utils import get_lr_linking
-from medcat.config import Config
+from medcat.config import Config, weighted_average
 
 
 class CDB(object):
@@ -59,6 +60,7 @@ class CDB(object):
         self.cui2snames = {}
         self.cui2context_vectors = {}
         self.cui2count_train = {}
+        self.cui2info = {}
         self.cui2tags = {} # Used to add custom tags to CUIs
         self.cui2type_ids = {}
         self.cui2preferred_name = {}
@@ -164,14 +166,14 @@ class CDB(object):
         self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
 
-    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
+    def add_concept(self, cui: str, names: Dict, ontologies: set, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
 
         Args:
             cui (`str`):
-                Concept ID or unique identifer in this database, all concepts that have
+                Concept ID or unique identifier in this database, all concepts that have
                 the same CUI will be merged internally.
             names (`Dict[str, Dict]`):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
@@ -379,6 +381,11 @@ class CDB(object):
             data = dill.load(f)
             if config is None:
                 config = Config.from_dict(data['config'])
+
+                # Hacky way of supporting old CBDs
+                weighted_average_function = config.linking['weighted_average_function']
+                if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
+                    config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
 
