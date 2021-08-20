@@ -112,16 +112,18 @@ class Snomed:
         if len(paths) == 0:
             raise FileNotFoundError('Incorrect path to SNOMED CT directory')
 
-        contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
-        for f in os.listdir(contents_path):
-            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
-            if m:
-                snomed_v = m.group(1)
-        int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{self.release}.txt')
-        active_relat = int_relat[int_relat.active == '1']
-        del int_relat
+        all_rela = []
+        for i, snomed_release in enumerate(snomed_releases):
+            contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            for f in os.listdir(contents_path):
+                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                if m:
+                    snomed_v = m.group(1)
+            int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{snomed_release}.txt')
+            active_relat = int_relat[int_relat.active == '1']
+            del int_relat
 
-        all_rela = [relationship for relationship in active_relat["typeId"].unique()]
+            all_rela.extend([relationship for relationship in active_relat["typeId"].unique()])
         return all_rela
 
     def relationship2json(self, relationshipcode, output_jsonfile):
