@@ -1,5 +1,6 @@
 import spacy
 import gc
+import logging
 from spacy.tokens import Token, Doc, Span
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
@@ -9,7 +10,9 @@ from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
+from medcat.utils.loggers import add_handlers
 from medcat.config import Config
+
 
 from typing import List, Optional, Union, Iterable, Callable
 from multiprocessing import cpu_count
@@ -28,12 +31,17 @@ class Pipe(object):
         nlp (spacy.language.<lng>):
             The base spacy NLP pipeline.
     '''
+    log = logging.getLogger(__package__)
+    # Add file and console handlers
+    log = add_handlers(log)
     def __init__(self, tokenizer: Tokenizer, config: Config):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
         self.nlp.tokenizer = tokenizer(self.nlp)
         self.config = config
+        # Set log level
+        self.log.setLevel(self.config.general['log_level'])
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
         r''' Add any kind of a tagger for tokens.
@@ -179,11 +187,18 @@ class Pipe(object):
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
-            return self.nlp(text)
+            return self.nlp(text) if len(text) > 0 else None
         elif isinstance(text, Iterable):
             docs = []
             for t in text:
-                docs.append(self.nlp(t))
+                try:
+                    doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
+                except Exception as e:
+                    self.log.warning("Exception raised when processing text: {}".format(t[:50] + "..." if isinstance(t, str) else t))
+                    self.log.warning(e, stack_info=True)
+                    doc = None
+                docs.append(doc)
             return docs
         else:
-            raise ValueError("The input text should be either a string or a sequence of strings")
+            self.log.error("The input text should be either a string or a sequence of strings but got: {}".format(type(text)))
+            return None

@@ -3,6 +3,7 @@ import json
 import time
 import logging
 import math
+import itertools
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
@@ -126,7 +127,8 @@ class CAT(object):
         elif isinstance(text, Iterable):
             return self.pipe(self._generate_trimmed_texts(text))
         else:
-            raise ValueError("The input text should be either a string or a list of strings")
+            self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
+            return None
 
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
                      use_groups=False):
@@ -630,10 +632,7 @@ class CAT(object):
         return:  entities
         '''
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        if isinstance(text, str):
-            doc = self(text)
-            out: Dict = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
-        elif isinstance(text, List):
+        if isinstance(text, List):
             if n_process is None or n_process == 1:
                 out: List[Dict] = []
                 docs = self(self._generate_trimmed_texts(text))
@@ -644,22 +643,31 @@ class CAT(object):
                 self.pipe.set_error_handler(self._pipe_error_handler)
                 try:
                     docs = self.pipe.batch_multi_process(self._generate_trimmed_texts(text), n_process, batch_size)
-                    cur_doc = None
-                    for _, t in text:
-                        try:
-                            if cur_doc is None:
-                                cur_doc = next(docs)
-                            if t == cur_doc.text:
-                                out.append(self._doc_to_out(cur_doc, cnf_annotation_output, only_cui, addl_info))
-                                cur_doc = None
-                            else:
+                    docs_1, docs_2 = itertools.tee(docs)
+                    for doc in docs_1:
+                        out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
+
+                    # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround.
+                    if len(out) != len(text):
+                        self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
+                        out.clear()
+                        cur_doc = None
+                        for _, t in text:
+                            try:
+                                if cur_doc is None:
+                                    cur_doc = next(docs_2)
+                                if t == cur_doc.text:
+                                    out.append(self._doc_to_out(cur_doc, cnf_annotation_output, only_cui, addl_info))
+                                    cur_doc = None
+                                else:
+                                    out.append(None)
+                            except StopIteration:
                                 out.append(None)
-                        except StopIteration:
-                            out.append(None)
                 finally:
                     self.pipe.reset_error_handler()
         else:
-            raise ValueError("The input should be either a string or an iterable with format: [(id, text), (id, text), ...]")
+            doc = self(text)
+            out: Dict = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         return out
 
     def get_json(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
@@ -756,7 +764,7 @@ class CAT(object):
             torch.set_num_threads(1)
 
         n_process = nproc if nproc is not None else max(cpu_count() - 1, 1)
-        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / n_process)
+        batch_size = batch_size if batch_size is not None else n_process * 2    # math.ceil(len(in_data) / n_process)
 
         entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
@@ -872,8 +880,13 @@ class CAT(object):
 
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
-        CAT.log.warning("Exception raised when when applying component {}".format(proc_name))
+        CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
         CAT.log.warning(e, stack_info=True)
+        CAT.log.warning("Docs contained in the batch:")
+        if docs is not None:
+            for doc in docs:
+                if hasattr(doc, "text"):
+                    CAT.log.warning("{}...".format(doc.text[:50]))
 
     @staticmethod
     def _get_doc_annotations(doc):
