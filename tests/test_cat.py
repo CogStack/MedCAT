@@ -26,17 +26,27 @@ class CATTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.undertest.destroy_pipe()
 
-    def test_pipeline(self):
+    def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
         doc = self.undertest(text)
         self.assertEqual(text, doc.text)
 
-    def test_pipeline(self):
+    def test_callable_with_multi_texts(self):
         texts = ["The dog is sitting outside the house.", "The dog is sitting outside the house."]
         docs = self.undertest(texts)
         self.assertEqual(2, len(docs))
         self.assertEqual(texts[0], docs[0].text)
         self.assertEqual(texts[1], docs[1].text)
+
+    def test_callable_with_in_data(self):
+        in_data = [
+            (1, "The dog is sitting outside the house."),
+            (2, "The dog is sitting outside the house.")
+        ]
+        docs = self.undertest(in_data)
+        self.assertEqual(2, len(docs))
+        self.assertEqual(in_data[0][1], docs[0].text)
+        self.assertEqual(in_data[1][1], docs[1].text)
 
     @unittest.skip("WIP")
     def test_multiprocessing(self):
@@ -112,20 +122,34 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, examples)
 
     def test_no_error_handling_on_none_input(self):
-        with self.assertRaises(Exception):
-            self.undertest.get_entities(None)
+        out = self.undertest.get_entities(None)
+        self.assertEqual({}, out["entities"])
+        self.assertEqual([], out["tokens"])
 
     def test_no_error_handling_on_empty_string_input(self):
-        with self.assertRaises(Exception):
-            self.undertest.get_entities("")
+        out = self.undertest.get_entities("")
+        self.assertEqual({}, out["entities"])
+        self.assertEqual([], out["tokens"])
 
-    def test_no_error_handling_on_single_process_with_none(self):
-        with self.assertRaises(Exception):
-            self.undertest.get_entities(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
+    def test_no_raise_on_single_process_with_none(self):
+        out = self.undertest.get_entities(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
+        self.assertEqual(3, len(out))
+        self.assertEqual({}, out[0]["entities"])
+        self.assertEqual([], out[0]["tokens"])
+        self.assertEqual({}, out[1]["entities"])
+        self.assertEqual([], out[1]["tokens"])
+        self.assertEqual({}, out[2]["entities"])
+        self.assertEqual([], out[2]["tokens"])
 
-    def test_no_error_handling_on_single_process_with_empty_string(self):
-        with self.assertRaises(Exception):
-            self.undertest.get_entities(["The dog is sitting outside the house.", "", "The dog is sitting outside the house."], n_process=1, batch_size=2)
+    def test_no_raise_on_single_process_with_empty_string(self):
+        out = self.undertest.get_entities(["The dog is sitting outside the house.", "", "The dog is sitting outside the house."], n_process=1, batch_size=2)
+        self.assertEqual(3, len(out))
+        self.assertEqual({}, out[0]["entities"])
+        self.assertEqual([], out[0]["tokens"])
+        self.assertEqual({}, out[1]["entities"])
+        self.assertEqual([], out[1]["tokens"])
+        self.assertEqual({}, out[2]["entities"])
+        self.assertEqual([], out[2]["tokens"])
 
     def test_error_handling_multi_processes(self):
         out = self.undertest.get_entities([(1, "The dog is sitting outside the house."),
