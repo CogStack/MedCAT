@@ -19,9 +19,8 @@ class Snomed:
             Path to the unzipped SNOMED CT folder
     """
 
-    def __init__(self, data_path, extension=False):
+    def __init__(self, data_path,):
         self.data_path = data_path
-        self.extension = extension
         self.release = data_path[-16:-8]
 
     def to_concept_df(self):
@@ -196,5 +195,17 @@ class Snomed:
             df2merge.append(icd_mappings)
         return pd.concat(df2merge)
 
+
+class opcs4:
+    """
+    Pre-process OPCS4 release files:
+    Args:
+        data_path:
+            Path to the unzipped OPCS4 folder
+    """
+
+    def __init__(self, data_path):
+        self.data_path = data_path
+        self.release = data_path[-16:-8]
 
 
