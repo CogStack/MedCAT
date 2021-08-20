@@ -2,6 +2,7 @@ import os
 import json
 import pandas as pd
 import hashlib
+import re
 
 
 def parse_file(filename, first_row_header=True, columns=None):
@@ -22,7 +23,7 @@ class Snomed:
 
     """
 
-    def __init__(self, data_path, extension=None):
+    def __init__(self, data_path, extension=False):
         self.data_path = data_path
         self.extension = extension
         self.release = data_path[-16:-8]
@@ -33,12 +34,16 @@ class Snomed:
         :return: SNOMED CT concept DataFrame
         """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
+        for f in os.listdir(contents_path):
+            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+            if m:
+                snomed_v = m.group(1)
 
-        int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_INT_{self.release}.txt')
+        int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_{snomed_v}_{self.release}.txt')
         active_terms = int_terms[int_terms.active == '1']
         del int_terms
 
-        int_desc = parse_file(f'{contents_path}/sct2_Description_Snapshot-en_INT_{self.release}.txt')
+        int_desc = parse_file(f'{contents_path}/sct2_Description_Snapshot-en_{snomed_v}_{self.release}.txt')
         active_descs = int_desc[int_desc.active == '1']
         del int_desc
 
@@ -79,7 +84,11 @@ class Snomed:
         :return: List of all SNOMED CT relationships
         """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
-        int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_INT_{self.release}.txt')
+        for f in os.listdir(contents_path):
+            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+            if m:
+                snomed_v = m.group(1)
+        int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{self.release}.txt')
         active_relat = int_relat[int_relat.active == '1']
         del int_relat
 
@@ -94,7 +103,11 @@ class Snomed:
         :return: json file  of relationship mapping
         """
         contents_path = os.path.join(self.data_path, "Snapshot", "Terminology")
-        int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_INT_{self.release}.txt')
+        for f in os.listdir(contents_path):
+            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+            if m:
+                snomed_v = m.group(1)
+        int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{self.release}.txt')
         active_relat = int_relat[int_relat.active == '1']
         del int_relat
 
@@ -115,7 +128,11 @@ class Snomed:
         :return: SNOMED to ICD10 mapping DataFrame
         """
         refset_terminology = f'{self.data_path}/Snapshot/Refset/Map'
-        mappings = parse_file(f'{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_INT_{self.release}.txt')
+        for f in os.listdir(contents_path):
+            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+            if m:
+                snomed_v = m.group(1)
+        mappings = parse_file(f'{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_{snomed_v}_{self.release}.txt')
         mappings = mappings[mappings.active == '1']
         icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
             drop=True)
