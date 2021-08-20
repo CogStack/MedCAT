@@ -186,19 +186,19 @@ class Snomed:
                     snomed_releases.append(folder[-16:-8])
         if len(paths) == 0:
             raise FileNotFoundError('Incorrect path to SNOMED CT directory')
-
-
-        refset_terminology = f'{self.data_path}/Snapshot/Refset/Map'
-        for f in os.listdir(contents_path):
-            m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
-            if m:
-                snomed_v = m.group(1)
-        mappings = parse_file(f'{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_{snomed_v}_{self.release}.txt')
-        mappings = mappings[mappings.active == '1']
-        icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
-            drop=True)
-
-        return icd_mappings
+        df2merge = []
+        for i, snomed_release in enumerate(snomed_releases):
+            refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
+            for f in os.listdir(refset_terminology):
+                m = re.search(r'der2_iisssccRefset_ExtendedMapSnapshot_(.*)_\d*.txt', f)
+                if m:
+                    snomed_v = m.group(1)
+            mappings = parse_file(f'{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_{snomed_v}_{snomed_release}.txt')
+            mappings = mappings[mappings.active == '1']
+            icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
+                drop=True)
+            df2merge.append(icd_mappings)
+        return pd.concat(df2merge)
 
 
 
