@@ -26,7 +26,7 @@ class Snomed:
     def to_concept_df(self):
         """
 
-        :return: SNOMED CT concept DataFrame
+        :return: SNOMED CT concept DataFrame ready for MEDCAT CDB creation
         """
         snomed_releases = []
         paths = []
@@ -124,8 +124,8 @@ class Snomed:
     def relationship2json(self, relationshipcode, output_jsonfile):
         """
 
-        :param relationshipcode: The SCTID or unique concept identifier of the relationship type
-        :param output_jsonfile: Name of json file output. Tip: include SNOMED edition
+        :param relationshipcode: A single SCTID or unique concept identifier of the relationship type
+        :param output_jsonfile: Name of json file output. Tip: include SNOMED edition to avoid downstream confusions
         :return: json file  of relationship mapping
         """
         snomed_releases = []
@@ -167,7 +167,7 @@ class Snomed:
     def map_snomed2icd10(self):
         """
 
-        :return: SNOMED to ICD10 mapping DataFrame
+        :return: SNOMED to ICD10 mapping DataFrame which includes all metadata
         """
         snomed_releases = []
         paths = []
@@ -196,16 +196,34 @@ class Snomed:
         return pd.concat(df2merge)
 
 
-class opcs4:
-    """
-    Pre-process OPCS4 release files:
-    Args:
-        data_path:
-            Path to the unzipped OPCS4 folder
-    """
+    def map_snomed2opcs4(self):
+        """
 
-    def __init__(self, data_path):
-        self.data_path = data_path
-        self.release = data_path[-16:-8]
-
-
+        :return: SNOMED to OPSC4 mapping DataFrame which includes all metadata
+        """
+        snomed_releases = []
+        paths = []
+        if "Snapshot" in os.listdir(self.data_path):
+            paths.append(self.data_path)
+            snomed_releases.append(self.release)
+        else:
+            for folder in os.listdir(self.data_path):
+                if "SnomedCT" in folder:
+                    paths.append(os.path.join(self.data_path, folder))
+                    snomed_releases.append(folder[-16:-8])
+        if len(paths) == 0:
+            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
+        df2merge = []
+        for i, snomed_release in enumerate(snomed_releases):
+            refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
+            print(refset_terminology)
+            for f in os.listdir(refset_terminology):
+                m = re.search(r'der2_iisssciRefset_ExtendedMapSnapshot_(.*)_\d*.txt', f)
+                if m:
+                    snomed_v = m.group(1)
+            mappings = parse_file(f'{refset_terminology}/der2_iisssciRefset_ExtendedMapSnapshot_{snomed_v}_{snomed_release}.txt')
+            mappings = mappings[mappings.active == '1']
+            icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
+                drop=True)
+            df2merge.append(icd_mappings)
+        return pd.concat(df2merge)
