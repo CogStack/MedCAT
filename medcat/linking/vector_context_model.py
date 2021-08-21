@@ -163,12 +163,12 @@ class ContextModel(object):
 
 
     def train(self, cui, entity, doc, negative=False, names=[]):
-        r''' Update the context represenation for this CUI, given it's correct location (entity)
+        r''' Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
 
         Args:
             names (List[str]/Dict):
-                Optinaly used to update the `status` of a name-cui pair in the CDB.
+                Optionally used to update the `status` of a name-cui pair in the CDB.
         '''
         # Context vectors to be calculated
         if len(entity) > 0: # Make sure there is something
