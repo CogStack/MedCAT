@@ -36,4 +36,5 @@ class CATTests(unittest.TestCase):
         self.assertEqual(["house", "dog", "test"], list(vocab.vocab.keys()))
 
 
-
+if __name__ == '__main__':
+    unittest.main()
