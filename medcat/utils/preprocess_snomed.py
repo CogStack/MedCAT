@@ -223,6 +223,8 @@ class Snomed:
                 m = re.search(r'der2_iisssciRefset_ExtendedMapSnapshot_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
+                else:
+                    raise FileNotFoundError("This SNOMED release does not contain OPCS mapping files")
             mappings = parse_file(f'{refset_terminology}/der2_iisssciRefset_ExtendedMapSnapshot_{snomed_v}_{snomed_release}.txt')
             mappings = mappings[mappings.active == '1']
             icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
