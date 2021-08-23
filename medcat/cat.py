@@ -3,12 +3,12 @@ import json
 import time
 import logging
 import math
-import itertools
+import types
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
-from typing import Union, List, Tuple, Optional, Any, Dict, Iterable
+from typing import Union, List, Tuple, Optional, Any, Dict, Iterable, Generator
 from spacy.tokens import Span, Doc
 
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -102,7 +102,7 @@ class CAT(object):
         '''
         return self.pipe.nlp
 
-    def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple[str]]], do_train: bool = False):
+    def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple]], do_train: bool = False):
         r'''
         Push the text through the pipeline.
 
@@ -124,8 +124,10 @@ class CAT(object):
         if isinstance(text, str):
             text = self._get_trimmed_text(text)
             return self.pipe(text)
-        elif isinstance(text, Iterable):
+        elif isinstance(text, types.GeneratorType):
             return self.pipe(self._generate_trimmed_texts(text))
+        elif isinstance(text, Iterable):
+            return self.pipe(self._get_trimmed_texts(text))
         else:
             self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
             return None
@@ -621,53 +623,49 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
-                     text: Union[str, List[Tuple]],
+                     text: Union[str, Iterable[str], Iterable[Tuple]],
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
-                     batch_size: Optional[int] = None) -> Union[Dict, List[Dict]]:
+                     batch_size: Optional[int] = None) -> Union[Dict, List[Union[Dict, None]]]:
         r''' Get entities
-
+p
         text:  text to be annotated
         return:  entities
         '''
+        out: Union[Dict, List[Union[Dict, None]]]
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        if isinstance(text, List):
+        if text is None or isinstance(text, str):
+            doc = self(text)
+            out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
+        else:
             if n_process is None or n_process == 1:
-                out: List[Dict] = []
+                out = []
                 docs = self(self._generate_trimmed_texts(text))
                 for doc in docs:
                     out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
             else:
-                out: List[Dict] = []
+                out = []
                 self.pipe.set_error_handler(self._pipe_error_handler)
                 try:
-                    docs = self.pipe.batch_multi_process(self._generate_trimmed_texts(text), n_process, batch_size)
-                    docs_1, docs_2 = itertools.tee(docs)
-                    for doc in docs_1:
+                    texts = list(self._generate_trimmed_texts(text))
+                    docs = self.pipe.batch_multi_process(self._generate_trimmed_texts(text), n_process, batch_size, len(texts))
+
+                    for doc in docs:
                         out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
 
-                    # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround.
-                    if len(out) != len(text):
+                    # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
+                    # which also assumes texts are different from each others.
+                    if len(out) < len(texts):
                         self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
-                        out.clear()
-                        cur_doc = None
-                        for _, t in text:
-                            try:
-                                if cur_doc is None:
-                                    cur_doc = next(docs_2)
-                                if t == cur_doc.text:
-                                    out.append(self._doc_to_out(cur_doc, cnf_annotation_output, only_cui, addl_info))
-                                    cur_doc = None
-                                else:
-                                    out.append(None)
-                            except StopIteration:
+                        for i in range(len(texts)):
+                            if i == len(out):
                                 out.append(None)
+                            elif out[i]['text'] != texts[i]:
+                                out.insert(i, None)
                 finally:
                     self.pipe.reset_error_handler()
-        else:
-            doc = self(text)
-            out: Dict = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
+
         return out
 
     def get_json(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
@@ -744,12 +742,13 @@ class CAT(object):
         return out
 
     def multiprocessing_pipe(self,
-                             in_data: List[Tuple],
+                             in_data: Union[List[Tuple], Iterable[Tuple]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
-                             return_dict: bool = False) -> Union[List[Tuple[str, Any]], Dict]:
+                             return_dict: bool = False,
+                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
@@ -758,22 +757,24 @@ class CAT(object):
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
         '''
+        out: Union[List[Tuple], Dict]
         if self._meta_annotations:
             # Hack for torch using multithreading, which is not good here
             import torch
             torch.set_num_threads(1)
 
-        n_process = nproc if nproc is not None else max(cpu_count() - 1, 1)
-        batch_size = batch_size if batch_size is not None else n_process * 2    # math.ceil(len(in_data) / n_process)
+        in_data = list(in_data) if isinstance(in_data, types.GeneratorType) else in_data
+        n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
+        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * n_process))
 
         entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
         if return_dict:
-            out: Dict = {}
+            out = {}
             for idx in range(len(in_data)):
                 out[in_data[idx][0]] = entities[idx]
         else:
-            out: List[Tuple[str, Any]] = []
+            out = []
             for idx in range(len(in_data)):
                 out.append((in_data[idx][0], entities[idx]))
 
@@ -793,7 +794,6 @@ class CAT(object):
                     try:
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
-                        doc['text'] = text
                         out.append((id, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
@@ -802,7 +802,7 @@ class CAT(object):
             sleep(1)
 
     def _doc_to_out(self, doc: Doc, cnf_annotation_output: Dict, only_cui: bool, addl_info: List[str]) -> Dict:
-        out = {'entities': {}, 'tokens': []}
+        out: Dict = {'entities': {}, 'tokens': []}
         if doc is not None:
             out_ent = {}
             if self.config.general.get('show_nested_entities', False):
@@ -866,24 +866,34 @@ class CAT(object):
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
+            out['text'] = doc.text
         return out
 
-    def _get_trimmed_text(self, text: str):
+    def _get_trimmed_text(self, text: str) -> Optional[str]:
         return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else None
 
-    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[str]:
+    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Generator[Optional[str], None, None]:
         for text in texts:
             if isinstance(text, Tuple):
                 yield self._get_trimmed_text(text[1])
             else:
                 yield self._get_trimmed_text(text)
 
+    def _get_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[Union[str, None]]:
+        trimmed = []
+        for text in texts:
+            if isinstance(text, Tuple):
+                trimmed.append(self._get_trimmed_text(text[1]))
+            else:
+                trimmed.append(self._get_trimmed_text(text))
+        return trimmed
+
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
         CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
         CAT.log.warning(e, stack_info=True)
-        CAT.log.warning("Docs contained in the batch:")
         if docs is not None:
+            CAT.log.warning("Docs contained in the batch:")
             for doc in docs:
                 if hasattr(doc, "text"):
                     CAT.log.warning("{}...".format(doc.text[:50]))
