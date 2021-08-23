@@ -78,7 +78,9 @@ class Snomed:
 
             temp_df = active_snomed_df[active_snomed_df['name_status'] == 'P'][['cui', 'name']]
             temp_df['description_type_ids'] = temp_df['name'].str.extract(r"\((\w+\s?.?\s?\w+.?\w+.?\w+.?)\)$")
-            active_snomed_df = pd.merge(active_snomed_df, temp_df[['cui', 'description_type_ids']], on='cui', how='left')
+            active_snomed_df = pd.merge(active_snomed_df, temp_df.loc[:, ['cui', 'description_type_ids']],
+                                        on='cui',
+                                        how='left')
             del temp_df
 
             # Hash semantic tag to get a 8 digit type_id code
