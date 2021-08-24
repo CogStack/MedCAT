@@ -14,6 +14,7 @@ tmp/
 medcat.egg-info/
 build/
 .idea
+.vscode
 venv
 db.sqlite3
 .ipynb_checkpoints
