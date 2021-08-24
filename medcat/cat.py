@@ -648,8 +648,8 @@ p
                 out = []
                 self.pipe.set_error_handler(self._pipe_error_handler)
                 try:
-                    texts = list(self._generate_trimmed_texts(text))
-                    docs = self.pipe.batch_multi_process(self._generate_trimmed_texts(text), n_process, batch_size, len(texts))
+                    texts = self._get_trimmed_texts(text)
+                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size, len(texts))
 
                     for doc in docs:
                         out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
