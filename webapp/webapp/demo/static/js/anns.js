@@ -5,7 +5,7 @@ let info = new Vue({
   el: '#train-annotations',
   delimiters: ['[[', ']]'],
   data: {
-    selected_concept: doc_json['annotations'][0],
+    selected_concept: doc_json['annotations'] == undefined ? { "msg": "No documents yet" } : doc_json['annotations'][0],
     show: false,
     elementVisible: false,
     msg: ''
