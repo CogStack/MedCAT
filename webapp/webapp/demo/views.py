@@ -50,16 +50,6 @@ def get_html_and_json(text):
         for key in ent.keys():
             if key == 'pretty_name':
                 new_ent['Pretty Name'] = ent[key]
-            if key == 'start':
-                new_ent['Start Index'] = ent[key]
-            if key == 'end':
-                new_ent['End Index'] = ent[key]
-            if key == 'cui':
-                new_ent['Identifier'] = ent[key]
-            if key == 'types':
-                new_ent['Type'] = ", ".join(ent[key])
-            if key == 'acc':
-                new_ent['Confidence Score'] = ent[key]
             if key == 'icd10':
                 icd10 = ent.get('icd10', [])
                 new_ent['ICD-10 Code'] = icd10[-1]['chapter'] if icd10 else '-'
@@ -67,6 +57,16 @@ def get_html_and_json(text):
             if key == 'opcs':
                 opcs = ent.get('opcs', [])
                 new_ent['OPCS Code'] = opcs[-1]['chapter'] if opcs else '-'
+            if key == 'cui':
+                new_ent['Identifier'] = ent[key]
+            if key == 'types':
+                new_ent['Type'] = ", ".join(ent[key])
+            if key == 'acc':
+                new_ent['Confidence Score'] = ent[key]
+            if key == 'start':
+                new_ent['Start Index'] = ent[key]
+            if key == 'end':
+                new_ent['End Index'] = ent[key]
             if key == 'id':
                 new_ent['id'] = ent[key]
             if key == 'meta_anns':
