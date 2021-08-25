@@ -5,7 +5,7 @@ from django.shortcuts import render
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
-from medcat.utils.vocab import Vocab
+from medcat.vocab import Vocab
 from urllib.request import urlretrieve
 #from medcat.meta_cat import MetaCAT
 from .models import *
@@ -25,18 +25,16 @@ try:
 
     if not os.path.exists(cdb_path):
         cdb_url = os.getenv('CDB_URL')
-        print("*"*399)
+        print("*" * 399)
         print(cdb_url)
         urlretrieve(cdb_url, cdb_path)
 
-    vocab = Vocab()
-    vocab.load_dict(vocab_path)
-    cdb = CDB()
-    cdb.load_dict(cdb_path)
-#    mc_negated = MetaCAT(save_dir=neg_path)
-#    mc_negated.load()
-#    cat = CAT(cdb=cdb, vocab=vocab, meta_cats=[mc_negated])
-    cat = CAT(cdb=cdb, vocab=vocab)
+    vocab = Vocab.load(vocab_path)
+    cdb = CDB.load(cdb_path)
+    #    mc_negated = MetaCAT(save_dir=neg_path)
+    #    mc_negated.load()
+    #    cat = CAT(cdb=cdb, vocab=vocab, meta_cats=[mc_negated])
+    cat = CAT(cdb=cdb, vocab=vocab, config=cdb.config)
     cat.spacy_cat.MIN_ACC = 0.30
     cat.spacy_cat.MIN_ACC_TH = 0.30
     cat.spacy_cat.ACC_ALWAYS = True
@@ -47,9 +45,7 @@ def get_html_and_json(text):
     doc = cat(text)
 
     a = json.loads(cat.get_json(text))
-    for i in range(len(a['entities'])):
-        ent = a['entities'][i]
-
+    for id, ent in a['annotations'].items():
         new_ent = {}
         for key in ent.keys():
             if key == 'pretty_name':
@@ -60,34 +56,26 @@ def get_html_and_json(text):
                 new_ent['End Index'] = ent[key]
             if key == 'cui':
                 new_ent['Identifier'] = ent[key]
-            if key == 'type':
-                new_ent['Type'] = ent[key]
+            if key == 'types':
+                new_ent['Type'] = ", ".join(ent[key])
             if key == 'acc':
                 new_ent['Confidence Score'] = ent[key]
-
-            new_ent['ICD-10 Code'] = "-"
-            new_ent['OPCS Code'] = "-"
-
+            if key == 'icd10':
+                icd10 = ent.get('icd10', [])
+                new_ent['ICD-10 Code'] = icd10[-1]['chapter'] if icd10 else '-'
+            new_ent['OPCS Code'] = '-'
+            if key == 'opcs':
+                opcs = ent.get('opcs', [])
+                new_ent['OPCS Code'] = opcs[-1]['chapter'] if opcs else '-'
             if key == 'id':
                 new_ent['id'] = ent[key]
+            if key == 'meta_anns':
+                meta_anns = ent.get("meta_anns", {})
+                if meta_anns:
+                    for meta_ann in meta_anns.keys():
+                        new_ent[meta_ann] = meta_anns[meta_ann]['value']
 
-        if ent['meta_anns']:
-            for meta_ann in ent['meta_anns'].keys():
-                new_ent[meta_ann] = ent['meta_anns'][meta_ann]['value']
-
-        icd10 = ent['info'].get('icd10', [])
-        if icd10:
-            code = icd10[-1]['chapter']
-            new_ent['ICD-10 Code'] = code
-
-        opcs = ent['info'].get('opcs', [])
-        if opcs:
-            code = opcs[-1]['chapter']
-            new_ent['OPCS Code'] = code
-
-
-
-        a['entities'][i] = new_ent
+        a['annotations'][id] = new_ent
 
     doc_json = json.dumps(a)
 
