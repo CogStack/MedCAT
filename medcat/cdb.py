@@ -382,7 +382,7 @@ class CDB(object):
             if config is None:
                 config = Config.from_dict(data['config'])
 
-                # Hacky way of supporting old CBDs
+                # Hacky way of supporting old CDBs
                 weighted_average_function = config.linking['weighted_average_function']
                 if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
                     config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
