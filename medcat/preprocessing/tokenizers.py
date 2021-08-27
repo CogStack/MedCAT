@@ -148,7 +148,7 @@ class TokenizerWrapperBPE(object):
 
 
     def save(self, dir_path, name='bbpe'):
-        self.hf_tokenizers.save_model(dir_path, name=name)
+        self.hf_tokenizers.save_model(dir_path, prefix=name)
 
     @classmethod
     def load(cls, dir_path, name='bbpe', **kwargs):
