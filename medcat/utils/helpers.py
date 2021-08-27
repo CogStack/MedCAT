@@ -44,7 +44,7 @@ def doc2html(doc):
             markup += html.escape(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.acc * span._.acc + 0.12), 'text': html.escape(span.text)}
+        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.context_similarity * span._.context_similarity + 0.12), 'text': html.escape(span.text)}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
@@ -69,7 +69,7 @@ def json2html(doc):
             markup += html.escape(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(1 * 1 + 0.12), 'text': html.escape(span['str'])}
+        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(span._.context_similarity * span._.context_similarity + 0.12), 'text': html.escape(span['str'])}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end

@@ -1,3 +1,5 @@
+import types
+
 import spacy
 import gc
 import logging
@@ -5,6 +7,7 @@ from spacy.tokens import Token, Doc, Span
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from spacy.util import raise_error
+from tqdm.autonotebook import tqdm
 
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
@@ -14,7 +17,7 @@ from medcat.utils.loggers import add_handlers
 from medcat.config import Config
 
 
-from typing import List, Optional, Union, Iterable, Callable
+from typing import List, Optional, Union, Iterable, Callable, Generator
 from multiprocessing import cpu_count
 
 
@@ -121,7 +124,11 @@ class Pipe(object):
         #of {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
 
-    def batch_multi_process(self, texts: Iterable[str], n_process: Optional[int] = None, batch_size: Optional[int] = None) -> Iterable[Doc]:
+    def batch_multi_process(self,
+                            texts: Iterable[str],
+                            n_process: Optional[int] = None,
+                            batch_size: Optional[int] = None,
+                            total: Optional[int] = None) -> Generator[Doc, None, None]:
         r''' Batch process a list of texts in parallel.
 
         Args:
@@ -131,9 +138,11 @@ class Pipe(object):
                 The number of processes running in parallel. Defaults to max(mp.cpu_count() - 1, 1).
             batch_size (`int`):
                 The number of texts to buffer. Defaults to 1000.
+            total (`int`):
+                The number of texts in total.
 
         Return:
-            Iterable[Doc]:
+            Generator[Doc]:
                 The output sequence of spacy documents with the extracted entities
         '''
         instance_name = "ensure_serializable"
@@ -147,7 +156,7 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        return self.nlp.pipe(texts, n_process=n_process, batch_size=batch_size)
+        return self.nlp.pipe(texts if total is None else tqdm(texts, total=total), n_process=n_process, batch_size=batch_size)
 
     def set_error_handler(self, error_handler):
         self.nlp.set_error_handler(error_handler)
@@ -190,7 +199,7 @@ class Pipe(object):
             return self.nlp(text) if len(text) > 0 else None
         elif isinstance(text, Iterable):
             docs = []
-            for t in text:
+            for t in text if isinstance(text, types.GeneratorType) else tqdm(text, total=len(text)):
                 try:
                     doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
