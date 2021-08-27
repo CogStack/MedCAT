@@ -119,6 +119,23 @@ class PipeTests(unittest.TestCase):
         self.assertIsNone(docs[1])
         self.assertEqual(PipeTests.text, docs[2].text)
 
+    def test_callable_with_generated_texts(self):
+        def _generate_texts(texts):
+            yield from texts
+
+        PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
+        PipeTests.undertest.add_token_normalizer(PipeTests.config, spell_checker=PipeTests.spell_checker)
+        PipeTests.undertest.add_ner(PipeTests.ner)
+        PipeTests.undertest.add_linker(PipeTests.linker)
+        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+
+        docs = list(self.undertest(_generate_texts([PipeTests.text, None, PipeTests.text])))
+
+        self.assertEqual(3, len(docs))
+        self.assertEqual(PipeTests.text, docs[0].text)
+        self.assertIsNone(docs[1])
+        self.assertEqual(PipeTests.text, docs[2].text)
+
 def _error_handler(proc_name, proc, docs, e):
     print("Exception raised when when applying component {}".format(proc_name))
 
