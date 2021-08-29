@@ -2,6 +2,12 @@
 
 The idea behind dvc is to have one standard git repository containing only the references to the data & model files used for machine learning. This git repo will also contain a basic python file for running a pipeline that generates new model files for use (eventually scalable  so that it pulls data from multiple locations).
 
+# Run the docker container 
+
+docker-compose -f vc_repo_docker_compose.yml up -d
+
+Copy your add .pub key file to the `docker_ssh_config` folder or add the key to `authorized_keys`.
+
 # Installing DVC and other repo requirements
 
 Dvc can be installed in multiple ways, but luckily, there is a python package maintend by it's developers, and is included in the requirements.txt file.

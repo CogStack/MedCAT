@@ -1,0 +1,32 @@
+version: "3.5"
+services:
+ medcat-model-repository:
+    container_name: medcat_model_repository
+    hostname: medcat-model-repository-openssh-server
+    image: linuxserver/openssh-server:latest
+    shm_size : 128mb
+    restart: unless-stopped
+    environment: 
+      - PUID=1000
+      - PGID=1000
+      - TZ=Europe/London
+      - PUBLIC_KEY_DIR=/config/.ssh/
+      - SUDO_ACCESS=true
+      #- PASSWORD_ACCESS=true
+      #- USER_PASSWORD=pass
+      - USER_NAME=admin
+    volumes:
+      - model-repository:/model_repository/
+      - ./docker_ssh_config/:/config:rw
+      - ./setup_model_dir.sh:/model_repository/setup_model_dir.sh:ro
+    ports:
+      - "2222:2222"
+    expose:
+      - 2222
+    command: bash -c "bash /model_repository/setup_model_dir.sh && tail -f /dev/null"
+    tty: true
+    privileged: true
+    
+volumes:
+  model-repository:
+    external: false

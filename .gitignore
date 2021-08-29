@@ -48,3 +48,4 @@ tmp.py
 # others 
 /medcat/config/*
 /medcat/models/*
+/tutorial/version_control/docker_ssh_config
