@@ -12,9 +12,14 @@ from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 from medcat.cli.modelstats import MetaCATStats
 
+
 class MetaCAT(object):
     r''' TODO: Add documentation
     '''
+
+    # Custom pipeline component name
+    name = 'meta_cat'
+
     def __init__(self, tokenizer=None, embeddings=None, cntx_left=20, cntx_right=20,
                  save_dir='./meta_cat/', pad_id=30000, device='cpu'):
         self.tokenizer = tokenizer
@@ -34,7 +39,6 @@ class MetaCAT(object):
         self.model_config = {}
 
         self.model = None
-
         self.meta_cat_stats = MetaCATStats()
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
@@ -261,10 +265,11 @@ class MetaCAT(object):
         self.model.load_state_dict(torch.load(path, map_location=self.device))
 
     @classmethod
-    def load(cls, save_dir, model='lstm', **kwargs):
+    def load(cls, save_dir, model='lstm', device='cpu', **kwargs):
         ''' Load from full save
         '''
         mc = cls(save_dir=save_dir)
+        mc.device = device
         mc._load(model=model, **kwargs)
 
         return mc
@@ -276,7 +281,7 @@ class MetaCAT(object):
         # Load configuration
         self.load_config()
 
-        tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
+        tokenizer_name = self.model_config.get('tokenizer_name', 'bbpe')
         # Load tokenizer if it is None
         if self.tokenizer is None:
             if 'bbpe' in tokenizer_name:

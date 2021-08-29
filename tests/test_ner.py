@@ -5,13 +5,10 @@ from medcat.pipe import Pipe
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.vocab import Vocab
 from medcat.preprocessing.cleaners import prepare_name
-from medcat.linking.vector_context_model import ContextModel
-from functools import partial
 from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
 import logging
 from medcat.cdb import CDB
-from spacy.tokens import Span
 import os
 import requests
 import unittest
@@ -23,12 +20,13 @@ class A_NERTests(unittest.TestCase):
         print("Set up CDB")
         cls.config = Config()
         cls.config.general['log_level'] = logging.INFO
+        cls.config.general["spacy_model"] = "en_core_sci_sm"
         cls.cdb = CDB(config=cls.config)
 
         print("Set up Vocab")
         vocab_path = "./tmp_vocab.dat"
         if not os.path.exists(vocab_path):
-            tmp = requests.get("https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat")
+            tmp = requests.get("https://medcat.rosalind.kcl.ac.uk/media/vocab.dat")
             with open(vocab_path, 'wb') as f:
                 f.write(tmp.content)
 
@@ -37,7 +35,7 @@ class A_NERTests(unittest.TestCase):
 
         print("Set up NLP pipeline")
         cls.nlp = Pipe(tokenizer=spacy_split_all, config=cls.config)
-        cls.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=cls.config),
+        cls.nlp.add_tagger(tagger=tag_skip_and_punct,
                        name='skip_and_punct',
                        additional_fields=['is_punct'])
 
@@ -54,6 +52,7 @@ class A_NERTests(unittest.TestCase):
         cls.config.ner['max_skip_tokens'] = 1
         cls.config.ner['upper_case_limit_len'] = 4
         cls.config.linking['disamb_length_limit'] = 2
+        cls.config.general["spacy_model"] = "en_core_sci_sm"
 
         print("Add concepts")
         cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar', cls.nlp, {}, cls.config))
@@ -63,6 +62,10 @@ class A_NERTests(unittest.TestCase):
         print("Add test text")
         cls.text = "CDB - I was running and then Movar    Virus attacked and CDb"
         cls.text_post_pipe = cls.nlp(cls.text)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.nlp.destroy()
 
     def test_aa_cdb_names_output(self):
         target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
@@ -89,6 +92,7 @@ class A_NERTests(unittest.TestCase):
         self.config.ner['min_name_len'] = 4
         self.text_post_pipe = self.nlp(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
+
 
 if __name__ == '__main__':
     unittest.main()

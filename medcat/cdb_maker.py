@@ -29,6 +29,7 @@ class CDBMaker(object):
     '''
     log = logging.getLogger(__package__)
     log = add_handlers(log)
+
     def __init__(self, config, cdb=None, name_max_words=20):
         self.config = config
         # Set log level
@@ -44,28 +45,28 @@ class CDBMaker(object):
 
         # Build the required spacy pipeline
         self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
+        self.nlp.add_tagger(tagger=tag_skip_and_punct,
                             name='skip_and_punct',
                             additional_fields=['is_punct'])
 
 
     def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None, index_col=False, full_build=False, only_existing_cuis=False, **kwargs):
-        r''' Compile one or multipe CSVs into a CDB.
+        r''' Compile one or multiple CSVs into a CDB.
 
         Args:
             csv_paths (`List[str]`):
                 An array of paths to the csv files that should be processed
-            full_build (`bool`, defautls to `True`):
+            full_build (`bool`, defaults to `True`):
                 If False only the core portions of the CDB will be built (the ones required for
                 the functioning of MedCAT). If True, everything will be added to the CDB - this
                 usually includes concept descriptions, various forms of names etc (take care that
                 this option produces a much larger CDB).
             sep (`str`, defaults to `,`):
-                If necessarya a custom separator for the csv files
+                If necessary a custom separator for the csv files
             encoding (`str`, optional):
-                Encoing to be used for reading the CSV file
+                Encoding to be used for reading the CSV file
             escapechar (`str`, optional):
-                Escapechar for the CSV
+                Escape char for the CSV
             index_col (`bool`, defaults_to `False`):
                 Index column for pandas read_csv
             only_existing_cuis (`bool`, defaults to False):
@@ -170,3 +171,6 @@ class CDBMaker(object):
                                    type_ids, description, full_build))
 
         return self.cdb
+
+    def destroy_pipe(self):
+        self.nlp.destroy()

@@ -1,10 +1,19 @@
 import re
 import logging
+import jsonpickle
+from functools import partial
+
+
+def weighted_average(step, factor):
+    return max(0.1, 1 - (step ** 2 * factor))
 
 def weighted_average(step, factor):
     return max(0.1, 1 - (step ** 2 * factor))
     
 class Config(object):
+
+    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+
     def __init__(self):
         # CDB Maker
         self.cdb_maker = {
@@ -109,8 +118,8 @@ class Config(object):
                 # Do we want to calculate context similarity even for concepts that are not ambigous.
                 'always_calculate_similarity': False,
                 # Weights for a weighted average
-                #'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.02)),
-                'weighted_average_function': lambda step: max(0.1, 1-(step**2*0.0004)),
+                #'weighted_average_function': partial(weighted_average, factor=0.02),
+                'weighted_average_function': partial(weighted_average, factor=0.0004),
                 # Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
                 #and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
                 #if the cdb was trained with calculate_dynamic_threshold = True.
@@ -144,6 +153,15 @@ class Config(object):
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
 
+    def __iter__(self):
+        for attr, value in self.__dict__.items():
+            yield attr, value
+
+    def __str__(self):
+        json_obj = {}
+        for attr, value in self:
+            json_obj[attr] = value
+        return jsonpickle.encode(json_obj)
 
     @classmethod
     def from_dict(cls, d):

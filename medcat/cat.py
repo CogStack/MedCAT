@@ -1,16 +1,19 @@
 import sys
 from medcat.vocab import Vocab
+from medcat.cdb import CDB
 import traceback
 import json
 import time
 import logging
-from functools import partial
+import math
+import types
 from copy import deepcopy
 from tqdm.autonotebook import tqdm
-from multiprocessing import Process, Manager, Queue, Pool, Array
+from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
+from typing import Union, List, Tuple, Optional, Any, Dict, Iterable, Generator
+from spacy.tokens import Span, Doc
 
-from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -50,7 +53,7 @@ class CAT(object):
             Concept database used with this CAT instance, please do not assign
             this value directly.
         config (medcat.config.Config):
-            The global configuration for medcat. Usuall cdb.config can be used for this
+            The global configuration for medcat. Usually cdb.config can be used for this
             field.
         vocab (medcat.utils.vocab.Vocab):
             The vocabulary object used with this instance, please do not assign
@@ -76,30 +79,30 @@ class CAT(object):
         self.log.setLevel(self.config.general['log_level'])
 
         # Build the pipeline
-        self.nlp = Pipe(tokenizer=spacy_split_all, config=self.config)
-        self.nlp.add_tagger(tagger=partial(tag_skip_and_punct, config=self.config),
-                            name='skip_and_punct',
-                            additional_fields=['is_punct'])
+        self.pipe = Pipe(tokenizer=spacy_split_all, config=self.config)
+        self.pipe.add_tagger(tagger=tag_skip_and_punct,
+                             name='skip_and_punct',
+                             additional_fields=['is_punct'])
 
         spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=self.config, data_vocab=vocab)
-        self.nlp.add_token_normalizer(spell_checker=spell_checker, config=self.config)
+        self.pipe.add_token_normalizer(spell_checker=spell_checker, config=self.config)
 
         # Add NER
         self.ner = NER(self.cdb, self.config)
-        self.nlp.add_ner(self.ner)
+        self.pipe.add_ner(self.ner)
 
         # Add LINKER
         self.linker = Linker(self.cdb, vocab, self.config)
-        self.nlp.add_linker(self.linker)
+        self.pipe.add_linker(self.linker)
 
         # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
         for meta_cat in meta_cats:
-            self.nlp.add_meta_cat(meta_cat, meta_cat.category_name)
+            self.pipe.add_meta_cat(meta_cat, meta_cat.category_name)
             self._meta_annotations = True
 
         # Set max document length
-        self.nlp.nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
+        self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
 
         # MedCAT Export data
         self.trainer_data = trainer_data
@@ -109,31 +112,36 @@ class CAT(object):
     def get_spacy_nlp(self):
         ''' Returns the spacy pipeline with MedCAT
         '''
-        return self.nlp.nlp
+        return self.pipe.nlp
 
-
-    def __call__(self, text, do_train=False):
+    def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple]], do_train: bool = False):
         r'''
         Push the text through the pipeline.
 
         Args:
-            text (string):
-                The text to be annotated, if it is longer than self.config.preprocessing['max_document_length'] it will be trimmed
-                to that length.
+            text (string/Iterable):
+                The text or the sequence of texts or the sequence of (id, text) to be annotated, if the text length is longer
+                than self.config.preprocessing['max_document_length'] it will be trimmed to that length.
             do_train (bool, defaults to `False`):
                 This causes so many screwups when not there, so I'll force training
                 to False. To run training it is much better to use the self.train() function
                 but for some special cases I'm leaving it here also.
         Returns:
-            A spacy document with the extracted entities
+            A single spacy document or multiple spacy documents with the extracted entities
         '''
-        # Should we train - do not use this for training, unles you know what you are doing. Use the
+        # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
         self.config.linking['train'] = do_train
 
-        if text and len(text) > 0:
-            return self.nlp(text[0:self.config.preprocessing.get('max_document_length', 1000000)])
+        if isinstance(text, str):
+            text = self._get_trimmed_text(text)
+            return self.pipe(text)
+        elif isinstance(text, types.GeneratorType):
+            return self.pipe(self._generate_trimmed_texts(text))
+        elif isinstance(text, Iterable):
+            return self.pipe(self._get_trimmed_texts(text))
         else:
+            self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
             return None
 
     def save_model(self, vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json"):
@@ -198,7 +206,6 @@ class CAT(object):
 
         return CAT(cdb, config=cdb.config, vocab=vocab, trainer_data=medcat_export)
 
-
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
                      use_groups=False):
         r''' TODO: Refactor and make nice
@@ -237,7 +244,7 @@ class CAT(object):
             cui_counts (dict):
                 Number of occurrence for each CUI
             examples (dict):
-                Examples for each of the fp, fn, tp. Foramt will be examples['fp']['cui'][<list_of_examples>]
+                Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>]
         '''
         tp = 0
         fp = 0
@@ -274,10 +281,7 @@ class CAT(object):
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
-                if type(doc['annotations']) == list:
-                    anns = doc['annotations']
-                elif type(doc['annotations']) == dict:
-                    anns = doc['annotations'].values()
+                anns = self._get_doc_annotations(doc)
 
                 # Apply document level filtering if
                 if use_cui_doc_limit:
@@ -416,9 +420,8 @@ class CAT(object):
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
-
     def train(self, data_iterator, fine_tune=True, progress_print=1000):
-        """ Runs training on the data, note that the maximum lenght of a line
+        """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
         data_iterator:
@@ -450,7 +453,6 @@ class CAT(object):
 
         self.config.linking['train'] = False
 
-
     def add_cui_to_group(self, cui, group_name, reset_all_groups=False):
         r'''
         Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
@@ -473,7 +475,6 @@ class CAT(object):
 
         # Add group_name
         self.cdb.addl_info['cui2group'][cui] = group_name
-
 
     def unlink_concept_name(self, cui, name, preprocessed_name=False):
         r'''
@@ -506,10 +507,9 @@ class CAT(object):
         for cui in cuis:
             self.cdb.remove_names(cui=cui, names=names)
 
-
     def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
                               description='', full_build=True, negative=False, devalue_others=False, do_add_concept=True):
-        r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name and concept alraedy exist. Perform
+        r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
         training if spacy_entity and spacy_doc are set.
 
         Args:
@@ -553,13 +553,12 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
 
-
     def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
                          print_stats=0, use_filters=False, terminate_last=False, use_overlaps=False,
                          use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
                          never_terminate=False, train_from_false_positives=False):
         r''' TODO: Refactor, left from old
-        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simiulated
+        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
 
         Args:
@@ -568,7 +567,7 @@ class CAT(object):
             reset_cui_count (boolean):
                 Used for training with weight_decay (annealing). Each concept has a count that is there
                 from the beginning of the CDB, that count is used for annealing. Resetting the count will
-                significantly incrase the training impact. This will reset the count only for concepts
+                significantly increase the training impact. This will reset the count only for concepts
                 that exist in the the training data.
             nepochs (int):
                 Number of epochs for which to run the training.
@@ -580,7 +579,7 @@ class CAT(object):
             terminate_last (boolean):
                 If true, concept termination will be done after all training.
             use_overlaps (boolean):
-                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
             use_cui_doc_limit (boolean):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
@@ -616,7 +615,8 @@ class CAT(object):
                 FP/FN examples of sentences for each CUI
         '''
         fp = fn = tp = p = r = f1 = cui_counts = examples = {}
-        data = json.load(open(data_path))
+        with open(data_path) as f:
+            data = json.load(f)
         cui_counts = {}
 
         if test_size == 0:
@@ -635,11 +635,7 @@ class CAT(object):
             cuis = []
             for project in train_set['projects']:
                 for doc in project['documents']:
-                    if type(doc['annotations']) == list:
-                        doc_annotations = doc['annotations']
-                    elif type(doc['annotations']) == dict:
-                        doc_annotations = doc['annotations'].values()
-
+                    doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
                         cuis.append(ann['cui'])
             for cui in set(cuis):
@@ -650,11 +646,7 @@ class CAT(object):
         if not never_terminate:
             for project in train_set['projects']:
                 for doc in project['documents']:
-                    if type(doc['annotations']) == list:
-                        doc_annotations = doc['annotations']
-                    elif type(doc['annotations']) == dict:
-                        doc_annotations = doc['annotations'].values()
-
+                    doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
@@ -665,11 +657,7 @@ class CAT(object):
                 for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
-                    if type(doc['annotations']) == list:
-                        doc_annotations = doc['annotations']
-                    elif type(doc['annotations']) == dict:
-                        doc_annotations = doc['annotations'].values()
-
+                    doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
                         if not ann.get('killed', False):
                             cui = ann['cui']
@@ -698,11 +686,7 @@ class CAT(object):
                 # Remove entities that were terminated, but after all training is done
                 for project in train_set['projects']:
                     for doc in project['documents']:
-                        if type(doc['annotations']) == list:
-                            doc_annotations = doc['annotations']
-                        elif type(doc['annotations']) == dict:
-                            doc_annotations = doc['annotations'].values()
-
+                        doc_annotations = self._get_doc_annotations(doc)
                         for ann in doc_annotations:
                             if ann.get('killed', False):
                                 self.unlink_concept_name(ann['cui'], ann['value'])
@@ -715,73 +699,51 @@ class CAT(object):
                                                          use_groups=use_groups)
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
-
-    def get_entities(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies', 'cui2snomed']):
+    def get_entities(self,
+                     text: Union[str, Iterable[str], Iterable[Tuple]],
+                     only_cui: bool = False,
+                     addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                     n_process: Optional[int] = None,
+                     batch_size: Optional[int] = None) -> Union[Dict, List[Union[Dict, None]]]:
         r''' Get entities
-
+p
         text:  text to be annotated
         return:  entities
         '''
+        out: Union[Dict, List[Union[Dict, None]]]
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        doc = self(text)
-        out = {'entities': {}, 'tokens': []}
-        if doc is not None:
-            out_ent = {}
-            if self.config.general.get('show_nested_entities', False):
-                _ents = doc._.ents
+        if text is None or isinstance(text, str):
+            doc = self(text)
+            out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
+        else:
+            if n_process is None or n_process == 1:
+                out = []
+                docs = self(self._generate_trimmed_texts(text))
+                for doc in docs:
+                    out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
             else:
-                _ents = doc.ents
+                out = []
+                self.pipe.set_error_handler(self._pipe_error_handler)
+                try:
+                    texts = self._get_trimmed_texts(text)
+                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size, len(texts))
 
-            if cnf_annotation_output.get("lowercase_context", True):
-                doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
-            else:
-                doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
+                    for doc in docs:
+                        out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
 
-            if cnf_annotation_output.get('doc_extended_info', False):
-                # Add tokens if extended info
-                out['tokens'] = doc_tokens
-
-            context_left = cnf_annotation_output.get('context_left', -1)
-            context_right = cnf_annotation_output.get('context_right', -1)
-            doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
-
-            for ind, ent in enumerate(_ents):
-                cui = str(ent._.cui)
-                if not only_cui:
-                    out_ent['pretty_name'] = self.cdb.cui2preferred_name.get(cui, '')
-                    out_ent['cui'] = cui
-                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
-                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
-                    out_ent['source_value'] = ent.text
-                    out_ent['detected_name'] = str(ent._.detected_name)
-                    out_ent['acc'] = float(ent._.context_similarity)
-                    out_ent['context_similarity'] = float(ent._.context_similarity)
-                    out_ent['start'] = ent.start_char
-                    out_ent['end'] = ent.end_char
-                    for addl in addl_info:
-                        tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
-                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
-                    out_ent['id'] = ent._.id
-                    out_ent['meta_anns'] = {}
-
-                    if doc_extended_info:
-                        out_ent['start_tkn'] = ent.start
-                        out_ent['end_tkn'] = ent.end
-
-                    if context_left > 0 and context_right > 0:
-                        out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
-                        out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
-                        out_ent['context_center'] = doc_tokens[ent.start:ent.end]
-
-                    if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                        out_ent['meta_anns'] = ent._.meta_anns
-
-                    out['entities'][out_ent['id']] = dict(out_ent)
-                else:
-                    out['entities'][ent._.id] = cui
+                    # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
+                    # which also assumes texts are different from each others.
+                    if len(out) < len(texts):
+                        self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
+                        for i in range(len(texts)):
+                            if i == len(out):
+                                out.append(None)
+                            elif out[i]['text'] != texts[i]:
+                                out.insert(i, None)
+                finally:
+                    self.pipe.reset_error_handler()
 
         return out
-
 
     def get_json(self, text, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']):
         """ Get output in json format
@@ -793,7 +755,6 @@ class CAT(object):
         out = {'annotations': ents, 'text': text}
 
         return json.dumps(out)
-
 
     def multiprocessing(self, in_data, nproc=8, batch_size_chars=1000000, only_cui=False, addl_info=[]):
         r''' Run multiprocessing NOT FOR TRAINING
@@ -828,7 +789,7 @@ class CAT(object):
         for id, text in in_data:
             data.append((id, str(text)))
             nchars += len(str(text))
-            if  nchars >= batch_size_chars:
+            if nchars >= batch_size_chars:
                 in_q.put(data)
                 data = []
                 nchars = 0
@@ -857,6 +818,44 @@ class CAT(object):
 
         return out
 
+    def multiprocessing_pipe(self,
+                             in_data: Union[List[Tuple], Iterable[Tuple]],
+                             nproc: Optional[int] = None,
+                             batch_size: Optional[int] = None,
+                             only_cui: bool = False,
+                             addl_info: List[str] = [],
+                             return_dict: bool = False,
+                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
+        r''' Run multiprocessing NOT FOR TRAINING
+
+        in_data:  a list with format: [(id, text), (id, text), ...]
+        nproc:  the number of processors
+        batch_size: the number of texts to buffer
+
+        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
+        '''
+        out: Union[List[Tuple], Dict]
+        if self._meta_annotations:
+            # Hack for torch using multithreading, which is not good here
+            import torch
+            torch.set_num_threads(1)
+
+        in_data = list(in_data) if isinstance(in_data, types.GeneratorType) else in_data
+        n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
+        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * n_process))
+
+        entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
+                                     n_process=n_process, batch_size=batch_size)
+        if return_dict:
+            out = {}
+            for idx in range(len(in_data)):
+                out[in_data[idx][0]] = entities[idx]
+        else:
+            out = []
+            for idx in range(len(in_data)):
+                out.append((in_data[idx][0], entities[idx]))
+
+        return out
 
     def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
         cnt = 0
@@ -872,10 +871,118 @@ class CAT(object):
                     try:
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
-                        doc['text'] = text
                         out.append((id, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
                         self.log.warning(e, stack_info=True)
 
             sleep(1)
+
+    def _doc_to_out(self, doc: Doc, cnf_annotation_output: Dict, only_cui: bool, addl_info: List[str]) -> Dict:
+        out: Dict = {'entities': {}, 'tokens': []}
+        if doc is not None:
+            out_ent = {}
+            if self.config.general.get('show_nested_entities', False):
+                _ents = []
+                for _ent in doc._.ents:
+                    entity = Span(doc, _ent['start'], _ent['end'], label=_ent['label'])
+                    entity._.cui = _ent['cui']
+                    entity._.detected_name = _ent['detected_name']
+                    entity._.context_similarity = _ent['context_similarity']
+                    entity._.id = _ent['id']
+                    if 'meta_anns' in _ent:
+                        entity._.meta_anns = _ent['meta_anns']
+                    _ents.append(entity)
+            else:
+                _ents = doc.ents
+
+            if cnf_annotation_output.get("lowercase_context", True):
+                doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
+            else:
+                doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
+
+            if cnf_annotation_output.get('doc_extended_info', False):
+                # Add tokens if extended info
+                out['tokens'] = doc_tokens
+
+            context_left = cnf_annotation_output.get('context_left', -1)
+            context_right = cnf_annotation_output.get('context_right', -1)
+            doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
+
+            for ind, ent in enumerate(_ents):
+                cui = str(ent._.cui)
+                if not only_cui:
+                    out_ent['pretty_name'] = self.cdb.get_name(cui)
+                    out_ent['cui'] = cui
+                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
+                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                    out_ent['source_value'] = ent.text
+                    out_ent['detected_name'] = str(ent._.detected_name)
+                    out_ent['acc'] = float(ent._.context_similarity)
+                    out_ent['context_similarity'] = float(ent._.context_similarity)
+                    out_ent['start'] = ent.start_char
+                    out_ent['end'] = ent.end_char
+                    for addl in addl_info:
+                        tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
+                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
+                    out_ent['id'] = ent._.id
+                    out_ent['meta_anns'] = {}
+
+                    if doc_extended_info:
+                        out_ent['start_tkn'] = ent.start
+                        out_ent['end_tkn'] = ent.end
+
+                    if context_left > 0 and context_right > 0:
+                        out_ent['context_left'] = doc_tokens[max(ent.start - context_left, 0):ent.start]
+                        out_ent['context_right'] = doc_tokens[ent.end:min(ent.end + context_right, len(doc_tokens))]
+                        out_ent['context_center'] = doc_tokens[ent.start:ent.end]
+
+                    if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
+                        out_ent['meta_anns'] = ent._.meta_anns
+
+                    out['entities'][out_ent['id']] = dict(out_ent)
+                else:
+                    out['entities'][ent._.id] = cui
+            out['text'] = doc.text
+        return out
+
+    def _get_trimmed_text(self, text: str) -> Optional[str]:
+        return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else None
+
+    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Generator[Optional[str], None, None]:
+        for text in texts:
+            if isinstance(text, Tuple):
+                yield self._get_trimmed_text(text[1])
+            else:
+                yield self._get_trimmed_text(text)
+
+    def _get_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[Union[str, None]]:
+        trimmed = []
+        for text in texts:
+            if isinstance(text, Tuple):
+                trimmed.append(self._get_trimmed_text(text[1]))
+            else:
+                trimmed.append(self._get_trimmed_text(text))
+        return trimmed
+
+    @staticmethod
+    def _pipe_error_handler(proc_name, proc, docs, e):
+        CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
+        CAT.log.warning(e, stack_info=True)
+        if docs is not None:
+            CAT.log.warning("Docs contained in the batch:")
+            for doc in docs:
+                if hasattr(doc, "text"):
+                    CAT.log.warning("{}...".format(doc.text[:50]))
+
+    @staticmethod
+    def _get_doc_annotations(doc):
+        if type(doc['annotations']) == list:
+            return doc['annotations']
+        elif type(doc['annotations']) == dict:
+            return doc['annotations'].values()
+        else:
+            return None
+
+    def destroy_pipe(self):
+        self.pipe.destroy()

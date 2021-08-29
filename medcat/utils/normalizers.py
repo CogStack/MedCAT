@@ -1,9 +1,6 @@
-#import hunspell
 import re
-from collections import Counter
-from spacy.tokens import Span
 import spacy
-import os
+
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
 
@@ -89,6 +86,9 @@ class TokenNormalizer(object):
         config
         spell_checker
     '''
+
+    # Custom pipeline component name
+    name = 'token_normalizer'
 
     def __init__(self, config, spell_checker=None):
         self.config = config

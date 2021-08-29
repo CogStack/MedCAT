@@ -1,10 +1,11 @@
 import unittest
+import logging
+import os
+import numpy as np
 from medcat.cdb_maker import CDBMaker
 from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.preprocessing.cleaners import prepare_name
-import numpy as np
-import logging
 
 #cdb.csv
 #cui  name  ontologies  name_status type_ids  description
@@ -20,16 +21,25 @@ import logging
 
 #TESTS RUN IN ALPHABETICAL ORDER - CONTROLLING WITH '[class_letter]Class and test_[classletter subclassletter]' function syntax
 
+
 class A_CDBMakerLoadTests(unittest.TestCase):
-    
+
     @classmethod
     def setUpClass(cls):
         print("Load test database csvs for load tests")
         config = Config()
         config.general['log_level'] = logging.DEBUG
-        maker = CDBMaker(config)
-        csvs = ['../examples/cdb.csv', '../examples/cdb_2.csv']
-        cls.cdb = maker.prepare_csvs(csvs, full_build=True)
+        config.general["spacy_model"] = "en_core_sci_sm"
+        cls.maker = CDBMaker(config)
+        csvs = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb_2.csv')
+        ]
+        cls.cdb = cls.maker.prepare_csvs(csvs, full_build=True)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.maker.destroy_pipe()
 
     def test_aa_cdb_names_length(self):
         self.assertEqual(len(self.cdb.cui2names), 3, "Should equal 3")
@@ -53,10 +63,10 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(self.cdb.name2cuis, target_result)
 
     def test_ag_cdb_cuis_to_tags_length(self):
-        self.assertEqual(len(self.cdb.cui2tags), 3, "Should equal 3")
+        self.assertEqual(len(self.cdb.cui2tags), 0, "Should equal 0")
 
     def test_ah_cdb_cuis_to_tags_output(self):
-        target_result = {'C0000039': [], 'C0000139': [], 'C0000239': []}
+        target_result = {}
         self.assertEqual(self.cdb.cui2tags, target_result)
 
     def test_ai_cdb_cui_to_preferred_name_length(self):
@@ -67,17 +77,17 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         self.assertEqual(self.cdb.cui2preferred_name, target_result)
 
     def test_ak_cdb_cui_to_context_vectors_length(self):
-        self.assertEqual(len(self.cdb.cui2context_vectors), 3, "Should equal 3")
+        self.assertEqual(len(self.cdb.cui2context_vectors), 0, "Should equal 0")
 
     def test_al_cdb_cui_to_context_vectors_output(self):
-        target_result = {'C0000039': {}, 'C0000139': {}, 'C0000239': {}}
+        target_result = {}
         self.assertEqual(self.cdb.cui2context_vectors, target_result)
 
     def test_am_cdb_cui_to_count_train_length(self):
-        self.assertEqual(len(self.cdb.cui2count_train), 3, "Should equal 3")
+        self.assertEqual(len(self.cdb.cui2count_train), 0, "Should equal 0")
 
     def test_an_cdb_cui_to_count_train_output(self):
-        target_result = {'C0000039': 0, 'C0000139': 0, 'C0000239': 0}
+        target_result = {}
         self.assertEqual(self.cdb.cui2count_train, target_result)
 
     def test_ao_cdb_name_to_cui_to_status_length(self):
@@ -109,10 +119,18 @@ class B_CDBMakerEditTests(unittest.TestCase):
         print("Load test database csvs for edit tests")
         cls.config = Config()
         cls.config.general['log_level'] = logging.DEBUG
+        cls.config.general["spacy_model"] = "en_core_sci_sm"
         cls.maker = CDBMaker(cls.config)
-        csvs = ['../examples/cdb.csv', '../examples/cdb_2.csv']
+        csvs = [
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
+            os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb_2.csv')
+        ]
         cls.cdb = cls.maker.prepare_csvs(csvs, full_build=True)
         cls.cdb2 = CDB(cls.config)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.maker.destroy_pipe()
 
     def test_ba_addition_of_new_name(self):
         self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config), name_status='P', full_build=True)
@@ -176,9 +194,8 @@ class B_CDBMakerEditTests(unittest.TestCase):
 
     def test_bh_reset_training(self):
         self.cdb.reset_training()
-        target_result = {'C0000039': {}, 'C0000139': {}}
+        target_result = {}
         self.assertEqual(self.cdb.cui2context_vectors, target_result)
-        self.assertEqual(self.cdb.cui2count_train['C0000139'], 0, "Count should equal 0")
 
 
 if __name__ == '__main__':
