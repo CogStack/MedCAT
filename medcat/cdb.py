@@ -357,7 +357,7 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save_model(self, organisation_name="", model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", output_save_path=".",  output_file_name="cdb.dat"):
+    def save_model(self, organisation_name="", model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", authors=[], output_save_path=".",  output_file_name="cdb.dat"):
         """
             This method should NOT be used outside of version control purposes. Use the save() method instead.
         
@@ -376,25 +376,27 @@ class CDB(object):
             self.vc_model_tag_data.commit_hash = commit_hash
         if git_repo_url.strip() != "":
             self.vc_model_tag_data.git_repo = git_repo_url
+        if len(authors) > 0:
+            self.vc_model_tag_data.authors = authors
 
         if not hasattr(self, "cdb_stats"):
             self.cdb_stats = CDBStats()
     
         self.cdb_stats.number_of_concepts = len(self.cui2names)
-        self.cdb_stats.number_of_names = len(self.name2cui)
-        self.cdb_stats.number_of_concepts_received_training = len(self.cui2context_vec)
-        self.cdb_stats.number_of_seen_training_examples = sum(self.cui_count.values())
-        self.cdb_stats.average_training_example_per_concept = np.average(list(self.cui_count.values()))
+        self.cdb_stats.number_of_names = len(self.name2cuis)
+        self.cdb_stats.number_of_concepts_received_training = len(self.cui2context_vectors)
+        self.cdb_stats.number_of_seen_training_examples = sum(self.cui2count_train.values())
+        self.cdb_stats.average_training_example_per_concept = np.average(list(self.cui2count_train.values()))
 
         with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
             dill.dump(self, f)
          
     @classmethod     
-    def load_model(self, model_full_tag_name, input_file_name="cdb.dat"):
+    def load_model(self, model_full_tag_name, input_file_name="cdb.dat", bypass_model_path=False):
         """ Loads variables of this object
             This is used to search the site-packages models folder for installed models..
         """
-        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name)
+        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name, bypass_model_path=bypass_model_path)
         
         if data is False:
             logging.error("Could not load concept database from model: " + model_full_tag_name)

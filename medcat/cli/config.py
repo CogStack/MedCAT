@@ -18,6 +18,8 @@ env_var_field_mapping = {
                          "storage_server_model_repo_path" : "STORAGE_SERVER_MODEL_REPO_PATH"
                         }
 
+test_mode_settings = ['storage_server_username', 'storage_server_password', 'storage_server_model_repo_path', 'storage_server_remote_name']
+
 def config():
     """
         Reads the user input and sets the repository configurations.
@@ -27,7 +29,7 @@ def config():
     for k,v in env_var_field_mapping.items():
         while True:
             input_val = input("Please input your " + k + " (" + v + ") : ")
-            if k in ['storage_server_username', 'storage_server_password', 'storage_server_model_repo_path', 'storage_server_remote_name']:
+            if k in test_mode_settings:
                 logging.info("the value is optional, leave this value empty as it should be used for TESTING purposes only, the storage password and model repo path & name are stored globally for testing")
 
             config_data[v] = input_val.strip()
@@ -45,7 +47,8 @@ def config():
                        break
                 else:
                     break
-            if input_val.strip() != "":
+
+            if k in test_mode_settings or input_val.strip() != "":
                 break
 
     generate_medcat_config_file(config_data)
@@ -81,11 +84,11 @@ def get_auth_environment_vars():
                 }
     try:
         env_medcat_config_file = get_medcat_config_settings()
-
+      
         for k,v in auth_vars.items():
-            if v.strip() == "" and env_var_field_mapping[k] in env_medcat_config_file.keys() and env_medcat_config_file[env_var_field_mapping[k]] != "":
+            if k not in test_mode_settings and v.strip() == "" and env_var_field_mapping[k] in env_medcat_config_file.keys() and env_medcat_config_file[env_var_field_mapping[k]] != "":
                 auth_vars[k] = env_medcat_config_file[env_var_field_mapping[k]]
-            if auth_vars[k].strip() == "" and k not in ['storage_server_username', 'storage_server_password', 'storage_server_model_repo_path', 'storage_server_remote_name']:
+            if auth_vars[k].strip() == "" and k not in test_mode_settings:
                 logging.error("Please set your configuration settings by using the 'python3 -m medcat config' command or by exporting the global variable in your current session 'export " + env_var_field_mapping[k] + "=your_value' !")
                 logging.error("CONFIG NOT SET for : " + k + " , from environment var : " + env_var_field_mapping[k])
                 sys.exit()
@@ -148,7 +151,6 @@ def get_git_api_request_url():
 
 def get_git_api_upload_url():
     return "https://uploads.github.com/repos/" + get_git_user_project() + "/"
-
 
 if __name__ == '__main__':
   fire.Fire(config)

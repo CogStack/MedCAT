@@ -1,6 +1,9 @@
 import re
 import logging
 
+def weighted_average(step, factor):
+    return max(0.1, 1 - (step ** 2 * factor))
+    
 class Config(object):
     def __init__(self):
         # CDB Maker

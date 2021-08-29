@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import os
 import json
 import pickle
@@ -9,6 +10,7 @@ from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
+from medcat.cli.modelstats import MetaCATStats
 
 class MetaCAT(object):
     r''' TODO: Add documentation
@@ -26,7 +28,6 @@ class MetaCAT(object):
         self.pad_id = pad_id
         self.device = torch.device(device)
 
-
         self.category_name = None
         self.category_values = {}
         self.i_category_values = {}
@@ -34,6 +35,7 @@ class MetaCAT(object):
 
         self.model = None
 
+        self.meta_cat_stats = MetaCATStats()
 
     def train(self, json_path, category_name=None, model_name='lstm', lr=0.01, test_size=0.1,
               batch_size=100, nepochs=20, class_weights=None, cv=0,
@@ -129,6 +131,14 @@ class MetaCAT(object):
 
         print("Best/Average scores: F1: {}, P: {}, R: {}".format(f1, p, r))
 
+        self.meta_cat_stats.f1 = f1
+        self.meta_cat_stats.recall = r
+        self.meta_cat_stats.precision = p
+        self.meta_cat_stats.learning_rate = lr
+        self.meta_cat_stats.nepochs = nepochs
+        self.meta_cat_stats.cls_report = cls_report
+        self.meta_cat_stats.score_average = score_average 
+
         return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
 
 
@@ -208,7 +218,10 @@ class MetaCAT(object):
                    'pad_id': self.pad_id,
                    'cntx_left': self.cntx_left,
                    'cntx_right': self.cntx_right,
-                   'model_config': self.model_config}
+                   'model_config': self.model_config,
+                   'meta_cat_stats': asdict(self.meta_cat_stats)
+                   }
+                   
         with open(path, 'wb') as f:
             pickle.dump(to_save, f)
 
@@ -227,6 +240,7 @@ class MetaCAT(object):
         self.cntx_right = to_load['cntx_right']
         self.pad_id = to_load.get('pad_id', 0)
         self.model_config = to_load.get('model_config', {})
+        self.meta_cat_stats = to_load.get('meta_cat_stats', MetaCATStats())
 
 
     def load_model(self, model='lstm'):

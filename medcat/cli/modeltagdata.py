@@ -1,4 +1,5 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List
 
 @dataclass
 class ModelTagData:
@@ -11,4 +12,4 @@ class ModelTagData:
     parent_model_tag: str = ""
     storage_location: str = ""
     medcat_version: str = ""
-    authors : str = ""
+    authors : List[str] = field(default_factory=list)

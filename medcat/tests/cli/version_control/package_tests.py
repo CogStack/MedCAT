@@ -111,12 +111,7 @@ class PackageTests(unittest.TestCase):
         os.chdir(self.unit_testing_model_path_origin)
         with unittest.mock.patch('builtins.input', side_effect=["yes", "yes", "no", "yes"]):
             self.assertEqual(package(self.tmp_full_model_tag_name), True)
-    
-    def test_download_base_unit_test_model(self):
-        os.chdir(get_local_model_storage_path())
-        with unittest.mock.patch('builtins.input', side_effect=["yes", "yes", "yes"]):
-            self.assertEqual(download(self.tmp_full_model_tag_name), True)
-     
+    """"""
     def test_package_model_improvement(self):
         new_release_tmp_path = os.path.join(get_local_model_storage_path(), "_unit_test_new_release_tmp_")
 
@@ -201,3 +196,8 @@ class PackageTests(unittest.TestCase):
 
         with unittest.mock.patch('builtins.input', side_effect=["Yes", "Yes", "unit_test_specialist_model", "y", "y", "Yes"]):
             self.assertEqual(package(), True)
+    
+    def test_download_base_unit_test_model(self):
+        os.chdir(get_local_model_storage_path())
+        with unittest.mock.patch('builtins.input', side_effect=["yes", "yes", "yes"]):
+            self.assertEqual(download(self.tmp_full_model_tag_name), True)

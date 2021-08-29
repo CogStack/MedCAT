@@ -48,8 +48,8 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
     
     data = False
 
-    if "json" in full_file_path:
-        with open(full_file_path, "r") as f:
+    if type(full_file_path) is str and "MedCAT_Export.json" in full_file_path:
+        with open(full_file_path, "r", encoding="utf8") as f:
             data = json.loads(f.read())
             if "trainer_stats" not in data.keys():
                 data["trainer_stats"] = asdict(TrainerStats())
