@@ -9,8 +9,11 @@ def tag_skip_and_punct(nlp, name, config):
          config (`medcat.config.Config`):
              Global config for medcat.
     '''
-
     return _Tagger(nlp, name, config)
+
+
+# This is not elegant.
+tag_skip_and_punct.name = "tag_skip_and_punct"
 
 
 class _Tagger(object):

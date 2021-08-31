@@ -59,6 +59,9 @@ class NerArchiveTests(unittest.TestCase):
 
         self.text = "CDB - I was running and then Movar    Virus attacked and CDb"
 
+    def tearDown(self) -> None:
+        self.nlp.destroy()
+
     def test_limits_for_tokens_and_uppercase(self):
         self.config.ner['max_skip_tokens'] = 1
         self.config.ner['upper_case_limit_len'] = 4

@@ -44,7 +44,7 @@ def doc2html(doc):
             markup += html.escape(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.acc * span._.acc + 0.12), 'text': html.escape(span.text)}
+        ent = {'label': '', 'id': span._.id, 'bg': "rgb(74, 154, 239, {})".format(span._.context_similarity * span._.context_similarity + 0.12), 'text': html.escape(span.text)}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
@@ -69,7 +69,7 @@ def json2html(doc):
             markup += html.escape(fragment)
             if len(fragments) > 1 and i != len(fragments) - 1:
                 markup += "</br>"
-        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(1 * 1 + 0.12), 'text': html.escape(span['str'])}
+        ent = {'label': '', 'id': span['id'], 'bg': "rgb(74, 154, 239, {})".format(span._.context_similarity * span._.context_similarity + 0.12), 'text': html.escape(span['str'])}
         # Add the entity
         markup += TPL_ENT.format(**ent)
         offset = end
@@ -404,13 +404,11 @@ def dep_check_scispacy():
     import subprocess
     import sys
     try:
-        nlp = spacy.load("en_core_sci_md")
+        _ = spacy.load("en_core_sci_md")
     except:
         print("Installing the missing models for scispacy\n")
-        pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.2.4/en_core_sci_md-0.2.4.tar.gz'
+        pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz'
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
-
-
 
 
 def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, lr=1, groups=None, **kwargs):
