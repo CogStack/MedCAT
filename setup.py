@@ -21,7 +21,7 @@ setuptools.setup(
         'numpy<1.21.0,>=1.19.0',
         'pandas~=1.0',
         'gensim~=3.8',
-        'spacy<3.1.0,>=3.0.1',
+        'spacy<3.1.0',
         'scipy~=1.5',
         'transformers~=4.5.1',
         'torch~=1.8.1',
@@ -35,8 +35,8 @@ setuptools.setup(
         'dvc~=2.6.4',
         'fire~=0.4.0',
         'wexpect~=4.0.0',
-        'pexpect~=4.8.0'
-        'jsonpickle~=2.0.0',
+        'pexpect~=4.8.0',
+        'jsonpickle~=2.0.0'
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
