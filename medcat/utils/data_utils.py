@@ -865,8 +865,6 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
     return out_data
 
-
-
 def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False, cui_filter=None, replace_center=None, prerequisite={}):
     """ Convert the data from a json format into a CSV-like format for training.
 

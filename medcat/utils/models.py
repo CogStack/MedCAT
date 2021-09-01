@@ -38,6 +38,7 @@ class LSTM(nn.Module):
                            num_layers=self.num_layers,
                            dropout=dropout,
                            bidirectional=self.bid)
+                           
         self.fc1 = nn.Linear(self.hidden_size, nclasses)
 
         self.d1 = nn.Dropout(dropout)

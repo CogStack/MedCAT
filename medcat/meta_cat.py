@@ -31,7 +31,6 @@ class MetaCAT(object):
         self.pad_id = pad_id
         self.device = torch.device(device)
 
-
         self.category_name = None
         self.category_values = {}
         self.i_category_values = {}

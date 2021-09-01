@@ -14,10 +14,12 @@ tmp/
 medcat.egg-info/
 build/
 .idea
-.vscode
 venv
 db.sqlite3
 .ipynb_checkpoints
+
+# vscode 
+.vscode
 
 #tmp and similar files
 .nfs*
@@ -42,4 +44,9 @@ tmp.py
 
 # models files
 *.dat
+# others 
+/medcat/config/*
+/medcat/models/*
+/tutorial/version_control/docker_ssh_config
+
 !examples/*.dat
