@@ -1,4 +1,8 @@
 import logging
+import joblib
+from typing import Iterable, Generator
+from spacy.tokens import Doc
+from spacy.util import minibatch
 from medcat.ner.vocab_based_annotator import maybe_annotate_name
 
 
@@ -14,6 +18,19 @@ class NER(object):
         self.config = config
         self.cdb = cdb
 
+    def pipe(self, stream: Iterable[Doc], batch_size: int = 128) -> Generator[Doc, None, None]:
+        n_jobs = max(joblib.cpu_count() - 1, 1)
+        parallel = joblib.Parallel(n_jobs=n_jobs, backend="multiprocessing")
+        for docs in minibatch(stream, size=batch_size):
+            try:
+                yield from parallel(joblib.delayed(self)(doc) for doc in docs)
+            except Exception as e:
+                self.log.warning(e, stack_info=True)
+                self.log.warning("Docs contained in the failed mini batch:")
+                for doc in docs:
+                    if hasattr(doc, "text"):
+                        self.log.warning("{}...".format(doc.text[:50]))
+
     def __call__(self, doc):
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
         doc._.ents and each entity can have the entitiy._.link_candidates - that the linker will resolve.
@@ -25,7 +42,6 @@ class NER(object):
             doc (`spacy.tokens.Doc`):
                 Spacy document with detected entities.
         '''
-
         # Just take the tokens we need
         _doc = [tkn for tkn in doc if not tkn._.to_skip]
         for i in range(len(_doc)):
