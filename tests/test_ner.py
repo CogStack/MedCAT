@@ -1,3 +1,8 @@
+import logging
+import os
+import requests
+import unittest
+from spacy.lang.en import English
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.ner.vocab_based_ner import NER
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -7,12 +12,7 @@ from medcat.vocab import Vocab
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
-import logging
 from medcat.cdb import CDB
-import os
-import requests
-import unittest
-from spacy.lang.en import English
 
 
 class A_NERTests(unittest.TestCase):
@@ -98,6 +98,20 @@ class A_NERTests(unittest.TestCase):
         nlp = English()
 
         docs = list(self.ner.pipe([nlp.make_doc(self.text), nlp.make_doc(self.text), nlp.make_doc(self.text)]))
+
+        self.assertEqual(3, len(docs))
+        self.assertEqual(self.text, docs[0].text)
+        self.assertEqual(self.text, docs[1].text)
+        self.assertEqual(self.text, docs[2].text)
+
+    def test_pipe2(self):
+        nlp = English()
+        docs = [nlp.make_doc(self.text), nlp.make_doc(self.text), nlp.make_doc(self.text)]
+        for doc in docs:
+            for token in doc:
+                token._.to_skip = False
+
+        docs = list(self.link(docs))
 
         self.assertEqual(3, len(docs))
         self.assertEqual(self.text, docs[0].text)

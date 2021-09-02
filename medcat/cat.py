@@ -746,7 +746,7 @@ p
 
     def multiprocessing_pipe(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = 1,  # 1 because multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
+                             nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],

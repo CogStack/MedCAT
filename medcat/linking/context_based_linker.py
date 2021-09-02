@@ -1,5 +1,10 @@
 import random
 import logging
+import joblib
+from typing import Iterable, Generator
+from spacy.tokens import Doc
+from spacy.tokens.underscore import Underscore
+from spacy.util import minibatch
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
 
@@ -39,6 +44,23 @@ class Linker(object):
             if add_negative and self.config.linking['negative_probability'] >= random.random():
                 self.context_model.train_using_negative_sampling(cui)
             self.train_counter[name] = self.train_counter.get(name, 0) + 1
+
+    def pipe(self, stream: Iterable[Doc], batch_size: int = None, n_process: int = None) -> Generator[Doc, None, None]:
+        batch_size = self.config.ner['batch_size'] if batch_size is None else batch_size
+        n_process = self.config.ner['n_process'] if n_process is None else n_process
+        execute = joblib.Parallel(n_jobs=n_process)
+        for docs in minibatch(stream, size=batch_size):
+            try:
+                run_pipe_on_one = joblib.delayed(Linker._run_pipe_on_one)
+                tasks = (run_pipe_on_one(self, doc, Underscore.get_state()) for doc in docs)
+                yield from execute(tasks)
+            except Exception as e:
+                self.log.warning(e, stack_info=True)
+                self.log.warning("Docs contained in the failed mini batch:")
+                for doc in docs:
+                    if hasattr(doc, "text"):
+                        self.log.warning("{}...".format(doc.text[:50]))
+                yield from docs
 
 
     def __call__(self, doc):
@@ -144,3 +166,8 @@ class Linker(object):
                     main_anns.append(ent)
 
         doc.ents = list(doc.ents) + main_anns
+
+    @staticmethod
+    def _run_pipe_on_one(ner, doc, underscore_state):
+        Underscore.load_state(underscore_state)
+        return ner(doc)
