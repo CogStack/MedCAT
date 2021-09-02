@@ -2,6 +2,7 @@ import logging
 import joblib
 from typing import Iterable, Generator
 from spacy.tokens import Doc
+from spacy.tokens.underscore import Underscore
 from spacy.util import minibatch
 from medcat.ner.vocab_based_annotator import maybe_annotate_name
 
@@ -18,18 +19,22 @@ class NER(object):
         self.config = config
         self.cdb = cdb
 
-    def pipe(self, stream: Iterable[Doc], batch_size: int = 128) -> Generator[Doc, None, None]:
-        n_jobs = max(joblib.cpu_count() - 1, 1)
-        parallel = joblib.Parallel(n_jobs=n_jobs, backend="multiprocessing")
+    def pipe(self, stream: Iterable[Doc], batch_size: int = None, n_process: int = None) -> Generator[Doc, None, None]:
+        batch_size = self.config.ner['batch_size'] if batch_size is None else batch_size
+        n_process = self.config.ner['n_process'] if n_process is None else n_process
+        execute = joblib.Parallel(n_jobs=n_process)
         for docs in minibatch(stream, size=batch_size):
             try:
-                yield from parallel(joblib.delayed(self)(doc) for doc in docs)
+                run_pipe_on_one = joblib.delayed(NER._run_pipe_on_one)
+                tasks = (run_pipe_on_one(self, doc, Underscore.get_state()) for doc in docs)
+                yield from execute(tasks)
             except Exception as e:
                 self.log.warning(e, stack_info=True)
                 self.log.warning("Docs contained in the failed mini batch:")
                 for doc in docs:
                     if hasattr(doc, "text"):
                         self.log.warning("{}...".format(doc.text[:50]))
+                yield from docs
 
     def __call__(self, doc):
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
@@ -96,3 +101,8 @@ class NER(object):
                         break
 
         return doc
+
+    @staticmethod
+    def _run_pipe_on_one(ner, doc, underscore_state):
+        Underscore.load_state(underscore_state)
+        return ner(doc)

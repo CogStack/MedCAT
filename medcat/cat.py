@@ -635,11 +635,13 @@ p
         '''
         out: Union[Dict, List[Union[Dict, None]]]
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        if text is None or isinstance(text, str):
+        if text is None:
+            out = self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info)
+        elif isinstance(text, str):
             doc = self(text)
             out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         else:
-            if n_process is None or n_process == 1:
+            if n_process is None:
                 out = []
                 docs = self(self._generate_trimmed_texts(text))
                 for doc in docs:
@@ -652,6 +654,7 @@ p
                     docs = self.pipe.batch_multi_process(texts, n_process, batch_size, len(texts))
 
                     for doc in docs:
+                        doc = None if doc.text.strip() == '' else doc
                         out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
 
                     # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
@@ -743,7 +746,7 @@ p
 
     def multiprocessing_pipe(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
+                             nproc: Optional[int] = 1,  # 1 because multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
@@ -870,7 +873,7 @@ p
         return out
 
     def _get_trimmed_text(self, text: str) -> Optional[str]:
-        return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else None
+        return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else ""
 
     def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Generator[Optional[str], None, None]:
         for text in texts:
