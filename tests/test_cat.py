@@ -68,9 +68,9 @@ class CATTests(unittest.TestCase):
         in_data = [
             (1, "The dog is sitting outside the house."),
             (2, "The dog is sitting outside the house."),
-            (3, "The dog is sitting outside the house.")
+            (3, "The dog is sitting outside the house."),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2)
+        out = self.undertest.multiprocessing_pipe(in_data)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -86,7 +86,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house.")
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=True)
+        out = self.undertest.multiprocessing_pipe(in_data, return_dict=True)
         self.assertTrue(type(out) == dict)
         self.assertEqual(3, len(out))
         self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[1])
@@ -106,7 +106,7 @@ class CATTests(unittest.TestCase):
 
     def test_get_entities_from_in_data(self):
         in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
-        out = self.undertest.get_entities(in_data, n_process=2)
+        out = self.undertest.get_entities(in_data, n_process=1)
         self.assertEqual(3, len(out))
 
     def test_train_supervised(self):
@@ -155,7 +155,7 @@ class CATTests(unittest.TestCase):
                                            (2, "The dog is sitting outside the house."),
                                            (3, "The dog is sitting outside the house."),
                                            (4, None),
-                                           (5, None)], n_process=2, batch_size=2)
+                                           (5, None)], n_process=1, batch_size=2)
         self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])

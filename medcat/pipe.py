@@ -126,7 +126,7 @@ class Pipe(object):
 
     def batch_multi_process(self,
                             texts: Iterable[str],
-                            n_process: Optional[int] = None,
+                            n_process: Optional[int] = 1, # 1 because multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
                             batch_size: Optional[int] = None,
                             total: Optional[int] = None) -> Generator[Doc, None, None]:
         r''' Batch process a list of texts in parallel.

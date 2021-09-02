@@ -390,6 +390,10 @@ class CDB(object):
                     config.ner['n_process'] = n_process_and_batch_size()['n_process']
                 if getattr(config.ner, 'batch_size', None) is None:
                     config.ner['batch_size'] = n_process_and_batch_size()['batch_size']
+                if getattr(config.linking, 'n_process', None) is None:
+                    config.linking['n_process'] = n_process_and_batch_size()['n_process']
+                if getattr(config.linking, 'batch_size', None) is None:
+                    config.linking['batch_size'] = n_process_and_batch_size()['batch_size']
 
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
