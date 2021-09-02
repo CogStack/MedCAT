@@ -1,11 +1,23 @@
 import re
 import logging
 import jsonpickle
+import math
 from functools import partial
+from multiprocessing import cpu_count
 
 
 def weighted_average(step, factor):
     return max(0.1, 1 - (step ** 2 * factor))
+
+
+def n_process_and_batch_size(override_n_process=None, override_batch_size=None, total_size=1000, batch_factor=2):
+    n_process = max(cpu_count() - 1, 1) if override_n_process is None else override_n_process
+    batch_size = math.ceil(total_size / (batch_factor * n_process)) if override_batch_size is None else override_batch_size
+    return {
+        "n_process": n_process,
+        "batch_size": batch_size
+    }
+
 
 class Config(object):
 
@@ -92,6 +104,10 @@ class Config(object):
                 'upper_case_limit_len': 3,
                 # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
                 'try_reverse_word_order': False,
+                # Number of processors used by the NER pipeline component
+                'n_process': n_process_and_batch_size()["n_process"],
+                # Batch size used by the NER pipeline component during multiprocessing
+                'batch_size': n_process_and_batch_size()["batch_size"],
                 }
 
         self.linking = {
