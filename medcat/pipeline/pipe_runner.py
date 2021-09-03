@@ -17,8 +17,7 @@ class PipeRunner(object):
         PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
 
     def pipe(self, stream: Iterable[Doc], **kwargs) -> Generator[Doc, None, None]:
-        if kwargs.get("n_process") == 1:
-            # Multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
+        if kwargs.get("parallel", False):
             for docs in minibatch(stream, size=self.batch_size):
                 try:
                     run_pipe_on_one = delayed(self._run_pipe_on_one)
@@ -30,12 +29,15 @@ class PipeRunner(object):
                     for doc in docs:
                         if hasattr(doc, "text"):
                             self.log.warning("{}...".format(doc.text[:50]))
-                    yield from docs
+                    yield from [None] * len(docs)
         else:
-            # Multiprocessing will be conducted at the pipeline level.
-            # And texts will be processed sequentially inside components.
             for doc in stream:
-                yield self(doc)
+                try:
+                    yield self(doc)
+                except Exception as e:
+                    self.log.warning(e, stack_info=True)
+                    self.log.warning("Failed doc: {}...".format(doc.text[:50]))
+                    yield None
 
     def __call__(self, doc: Doc) -> Doc:
         raise NotImplementedError("__call__ is not implemented.")

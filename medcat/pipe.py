@@ -163,16 +163,26 @@ class Pipe(object):
                                  batch_size=batch_size,
                                  component_cfg={
                                      NER.name: {
-                                         'n_process': n_process
+                                         'parallel': True
                                      },
                                      Linker.name: {
-                                         'n_process': n_process
+                                         'parallel': True
                                      }
                                  })
         else:
             # Multiprocessing will be conducted at the pipeline level.
-            # And texts will be processed sequentially inside components.
-            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total), n_process=n_process, batch_size=batch_size)
+            # Then texts will be processed sequentially inside components.
+            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total),
+                                 n_process=n_process,
+                                 batch_size=batch_size,
+                                 component_cfg={
+                                     NER.name: {
+                                         'parallel': False
+                                     },
+                                     Linker.name: {
+                                         'parallel': False
+                                     }
+                                 })
 
     def set_error_handler(self, error_handler):
         self.nlp.set_error_handler(error_handler)
