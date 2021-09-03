@@ -14,7 +14,7 @@ class NER(PipeRunner):
     def __init__(self, cdb, config):
         self.config = config
         self.cdb = cdb
-        super().__init__(self.config.linking['workers'], self.config.linking['batch_size'])
+        super().__init__(self.config.linking['workers'])
 
     def __call__(self, doc):
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the

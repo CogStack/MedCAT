@@ -12,13 +12,12 @@ class PipeRunner(object):
     _execute = None
     _time_out_in_secs = 3600
 
-    def __init__(self, workers: int, batch_size: int):
-        self.batch_size = batch_size
+    def __init__(self, workers: int):
         PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
 
-    def pipe(self, stream: Iterable[Doc], **kwargs) -> Generator[Doc, None, None]:
+    def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Generator[Doc, None, None]:
         if kwargs.get("parallel", False):
-            for docs in minibatch(stream, size=self.batch_size):
+            for docs in minibatch(stream, size=batch_size):
                 try:
                     run_pipe_on_one = delayed(self._run_pipe_on_one)
                     tasks = (run_pipe_on_one(self, doc, Underscore.get_state()) for doc in docs)
