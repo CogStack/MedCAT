@@ -746,7 +746,7 @@ p
 
     def multiprocessing_pipe(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
+                             nproc: Optional[int] = 1,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
@@ -755,7 +755,7 @@ p
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors
+        nproc:  the number of processors (when set to 1, batch_size will be ignored. Instead, workers and batch_size in Config are honoured)
         batch_size: the number of texts to buffer
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}

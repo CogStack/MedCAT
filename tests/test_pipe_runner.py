@@ -13,7 +13,7 @@ class PipeRunnerTests(unittest.TestCase):
     def test_pipe_single_process_multi_workers(self):
         docs = list(_PipeRunnerImpl(workers=2, batch_size=1).pipe(
             [self.nlp.make_doc(self.text), self.nlp.make_doc(self.text), self.nlp.make_doc(self.text)],
-            n_process=1
+            parallel=True
         ))
 
         self.assertEqual(3, len(docs))
@@ -24,7 +24,18 @@ class PipeRunnerTests(unittest.TestCase):
     def test_pipe_multi_processes_single_work(self):
         docs = list(_PipeRunnerImpl(workers=1, batch_size=1).pipe(
             [self.nlp.make_doc(self.text), self.nlp.make_doc(self.text), self.nlp.make_doc(self.text)],
-            n_process=2
+            parallel=False
+        ))
+
+        self.assertEqual(3, len(docs))
+        self.assertEqual(self.text, docs[0].text)
+        self.assertEqual(self.text, docs[1].text)
+        self.assertEqual(self.text, docs[2].text)
+
+    def test_pipe_multi_processes_multi_workers(self):
+        docs = list(_PipeRunnerImpl(workers=2, batch_size=1).pipe(
+            [self.nlp.make_doc(self.text), self.nlp.make_doc(self.text), self.nlp.make_doc(self.text)],
+            parallel=True
         ))
 
         self.assertEqual(3, len(docs))
