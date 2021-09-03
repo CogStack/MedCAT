@@ -87,7 +87,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house.")
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, return_dict=True)
+        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=True)
         self.assertTrue(type(out) == dict)
         self.assertEqual(3, len(out))
         self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[1])
@@ -107,7 +107,7 @@ class CATTests(unittest.TestCase):
 
     def test_get_entities_from_in_data(self):
         in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
-        out = self.undertest.get_entities(in_data, n_process=1)
+        out = self.undertest.get_entities(in_data, n_process=2)
         self.assertEqual(3, len(out))
 
     def test_train_supervised(self):
