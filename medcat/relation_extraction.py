@@ -1,11 +1,22 @@
 import logging
-from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
+import os
+import numpy
+import spacy
+import datasets
+import os
+import torch
+import torch.nn
+from torch.nn.modules.module import T
+
+from medcat.preprocessing.tokenizers import TokenizerWrapperBERT, TokenizerWrapperBPE
 from medcat.pipe import Pipe
 from medcat.vocab import Vocab
 from medcat.config import Config
+from medcat.utils.models import LSTM
 from spacy.tokens import Doc
-from typing import Dict, Iterable, List, Set
-import spacy
+from typing import Dict, Iterable, List, Set, Tuple
+from transformers import AutoTokenizer, AutoModelForTokenClassification, Trainer, TrainingArguments
+
 
 Doc.set_extension("relations", default=[], force=True)
 
@@ -14,6 +25,8 @@ class RelationalModel(object):
     def __init__(self, docs):
         self.docs = docs
         self.predictions = []
+
+        self.create_base_relations()
 
     def get_model(self):
         return self.docs, self.predictions
@@ -27,8 +40,11 @@ class RelationalModel(object):
         if doc_id in self.docs.keys():
             return self.docs[doc_id]._.relations
         return []
-         
-    def get_instances(self, doc, max_length=100000):
+
+    def get_instances(self, doc, max_length=100000) -> List[Tuple]:
+       """
+            Creates a list of tuples based on pairs of entities detected (ent1, ent2) for one spacy document.
+       """
        relation_instances = []
        for ent1 in doc.ents:
            for ent2 in doc.ents:
@@ -48,13 +64,21 @@ class RelationExtraction(object):
 
     name : str = "rel"
 
-    def __init__(self, vocab: Vocab, config: Config = None, model: RelationalModel = None,  tokenizer = TokenizerWrapperBPE(), embeddings=None, threshold: float = 0.1):
+    def __init__(self, vocab: Vocab, config: Config = None, model: RelationalModel = None,  tokenizer = None, embeddings=None, threshold: float = 0.1):
        self.vocab = vocab
        self.config = config
        self.model = model
        self.cfg = {"labels": [], "threshold": threshold }
        self.tokenizer = tokenizer
        self.embeddings = embeddings
+
+       if self.tokenizer is None:
+           self.tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"))
+
+       if self.embeddings is None:
+           embeddings = numpy.load(os.path.join("./", "embeddings.npy"), allow_pickle=False)
+           self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
+
 
     def __call__(self, doc_id) -> Doc:
         
@@ -65,7 +89,7 @@ class RelationExtraction(object):
             logging.info("Could not determine any instances in doc - returning doc as is.")
             return self.model.docs[doc_id]
 
-        predictions = self.predict(doc)
+        #predictions = self.predict(doc)
 
         #self.set_annotations([doc], predictions)
 
