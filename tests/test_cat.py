@@ -5,6 +5,7 @@ from medcat.cdb import CDB
 from medcat.cat import CAT
 
 
+# TODO: add parameterised tests covering both n_process = 1 and > 1
 class CATTests(unittest.TestCase):
 
     @classmethod
@@ -155,7 +156,7 @@ class CATTests(unittest.TestCase):
                                            (2, "The dog is sitting outside the house."),
                                            (3, "The dog is sitting outside the house."),
                                            (4, None),
-                                           (5, None)], n_process=1, batch_size=2)
+                                           (5, None)], n_process=2, batch_size=2)
         self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])

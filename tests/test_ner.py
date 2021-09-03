@@ -94,29 +94,6 @@ class A_NERTests(unittest.TestCase):
         self.text_post_pipe = self.pipe(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
 
-    def test_pipe(self):
-        nlp = English()
-
-        docs = list(self.ner.pipe([nlp.make_doc(self.text), nlp.make_doc(self.text), nlp.make_doc(self.text)]))
-
-        self.assertEqual(3, len(docs))
-        self.assertEqual(self.text, docs[0].text)
-        self.assertEqual(self.text, docs[1].text)
-        self.assertEqual(self.text, docs[2].text)
-
-    def test_pipe2(self):
-        nlp = English()
-        docs = [nlp.make_doc(self.text), nlp.make_doc(self.text), nlp.make_doc(self.text)]
-        for doc in docs:
-            for token in doc:
-                token._.to_skip = False
-
-        docs = list(self.link(docs))
-
-        self.assertEqual(3, len(docs))
-        self.assertEqual(self.text, docs[0].text)
-        self.assertEqual(self.text, docs[1].text)
-        self.assertEqual(self.text, docs[2].text)
 
 if __name__ == '__main__':
     unittest.main()
