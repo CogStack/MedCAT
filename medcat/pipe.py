@@ -126,7 +126,7 @@ class Pipe(object):
 
     def batch_multi_process(self,
                             texts: Iterable[str],
-                            n_process: Optional[int] = 1, # 1 because multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
+                            n_process: Optional[int] = None,
                             batch_size: Optional[int] = None,
                             total: Optional[int] = None) -> Generator[Doc, None, None]:
         r''' Batch process a list of texts in parallel.
@@ -156,7 +156,23 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        return self.nlp.pipe(texts if total is None else tqdm(texts, total=total), n_process=n_process, batch_size=batch_size)
+        if n_process == 1:
+            # Multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
+            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total),
+                                 n_process=n_process,
+                                 batch_size=batch_size,
+                                 component_cfg={
+                                     NER.name: {
+                                         'n_process': n_process
+                                     },
+                                     Linker.name: {
+                                         'n_process': n_process
+                                     }
+                                 })
+        else:
+            # Multiprocessing will be conducted at the pipeline level.
+            # And texts will be processed sequentially inside components.
+            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total), n_process=n_process, batch_size=batch_size)
 
     def set_error_handler(self, error_handler):
         self.nlp.set_error_handler(error_handler)

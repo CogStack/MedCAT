@@ -9,7 +9,7 @@ from functools import partial
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.ml_utils import get_lr_linking
-from medcat.config import Config, weighted_average, n_process_and_batch_size
+from medcat.config import Config, weighted_average, workers_and_batch_size
 
 
 class CDB(object):
@@ -387,13 +387,13 @@ class CDB(object):
                 if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
                     config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
                 if getattr(config.ner, 'n_process', None) is None:
-                    config.ner['n_process'] = n_process_and_batch_size()['n_process']
+                    config.ner['workers'] = workers_and_batch_size()['workers']
                 if getattr(config.ner, 'batch_size', None) is None:
-                    config.ner['batch_size'] = n_process_and_batch_size()['batch_size']
+                    config.ner['batch_size'] = workers_and_batch_size()['batch_size']
                 if getattr(config.linking, 'n_process', None) is None:
-                    config.linking['n_process'] = n_process_and_batch_size()['n_process']
+                    config.linking['workers'] = workers_and_batch_size()['workers']
                 if getattr(config.linking, 'batch_size', None) is None:
-                    config.linking['batch_size'] = n_process_and_batch_size()['batch_size']
+                    config.linking['batch_size'] = workers_and_batch_size()['batch_size']
 
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
