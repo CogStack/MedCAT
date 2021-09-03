@@ -1,7 +1,6 @@
 import re
 import logging
 import jsonpickle
-import math
 from functools import partial
 from multiprocessing import cpu_count
 
@@ -10,13 +9,8 @@ def weighted_average(step, factor):
     return max(0.1, 1 - (step ** 2 * factor))
 
 
-def workers_and_batch_size(load_size, batch_size=None, batch_factor=2, workers=None):
-    workers = max(cpu_count() - 1, 1) if workers is None else workers
-    batch_size = math.ceil(load_size / (batch_factor * workers)) if batch_size is None else batch_size
-    return {
-        "workers": workers,
-        "batch_size": batch_size
-    }
+def workers(workers_override=None):
+    return max(cpu_count() - 1, 1) if workers_override is None else workers_override
 
 
 class Config(object):
@@ -105,9 +99,7 @@ class Config(object):
                 # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
                 'try_reverse_word_order': False,
                 # Number of workers used by the NER pipeline component
-                'workers': workers_and_batch_size(load_size=10000)["workers"],
-                # Batch size used by the NER pipeline component during multiprocessing
-                'batch_size': workers_and_batch_size(load_size=10000)["workers"],
+                'workers': workers(),
                 }
 
         self.linking = {
@@ -159,9 +151,7 @@ class Config(object):
                     'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
                     },
                 # Number of workers used by the Linker pipeline component
-                'workers': workers_and_batch_size(load_size=10000)["workers"],
-                # Batch size used by the Linker pipeline component during multiprocessing
-                'batch_size': workers_and_batch_size(load_size=10000)["batch_size"],
+                'workers': workers(),
                 }
 
 

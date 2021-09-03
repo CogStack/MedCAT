@@ -755,7 +755,7 @@ p
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors (when set to 1, batch_size will be ignored. Instead, workers and batch_size in Config are honoured)
+        nproc:  the number of processors (when set to 1, workers in Config is honoured during component-level multiprocessing)
         batch_size: the number of texts to buffer
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
