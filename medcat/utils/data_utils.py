@@ -867,22 +867,40 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
 
 
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False, cui_filter=None, replace_center=None, prerequisite={}):
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False,
+                      cui_filter=None, replace_center=None, prerequisites={},
+                      lowercase=True):
     """ Convert the data from a json format into a CSV-like format for training.
 
-    data:  json file from MedCAT
-    cntx_left:  size of the context
-    cntx_right:  size of the context
-    tokenizer:  instance of the <FastTokenizer> class from huggingface
-    replace_center:  if not None the center word (concept) will be replaced with whatever is set
+    Args:
+        data (`dict`):
+            Loaded output of MedCATtrainer. If we have a `my_export.json` from MedCATtrainer, than data = json.load(<my_export>).
+        cntx_left (`int`):
+            Size of context to get from the left of the concept
+        cntx_right (`int`):
+            Size of context to get from the right of the concept
+        tokenizer (`medcat.tokenizers.meta_cat_tokenizers`):
+            Something to split text into tokens for the LSTM/BERT/whatever meta models.
+        replace_center (`str`, optional):
+            If not None the center word (concept) will be replaced with whatever this is.
+        prerequisites (`dict`, optional):
+            A map of prerequisities, for example our data has two meta-annotations (experiencer, negation). Assume I want to create
+            a dataset for `negation` but only in those cases where `experiencer=patient`, my prerequisites would be:
+                {'Experiencer': 'Patient'} - Take care that the CASE has to match whatever is in the data
+        lowercase (`bool`, defaults to True):
+            Should the text be lowercased before tokenization
 
-    return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
+    Returns:
+        out_data (`dict`):
+            Example: {'category_name': [('<category_value>', '<[tokens]>', '<center_token>'), ...], ...}
     """
     out_data = {}
 
     for project in data['projects']:
         for document in project['documents']:
             text = str(document['text'])
+            if lowercase:
+                text = text.lower()
 
             if len(text) > 0:
                 doc_text = tokenizer(text)
@@ -894,10 +912,10 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
 
                     skip = False
 
-                    if 'meta_anns' in ann and prerequisite:
+                    if 'meta_anns' in ann and prerequisites:
                         # It is possible to require certain meta_anns to exist and have a specific value
-                        for meta_ann in prerequisite:
-                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisite[meta_ann]:
+                        for meta_ann in prerequisites:
+                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisites[meta_ann]:
                                 # Skip this annotation as the prerequisite is not met
                                 skip = True
                                 break
@@ -920,6 +938,8 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                                 cpos = cntx_left + min(0, ind-cntx_left)
 
                                 if replace_center is not None:
+                                    if lowercase:
+                                        replace_center = replace_center.lower()
                                     for p_ind, pair in enumerate(doc_text['offset_mapping']):
                                         if start >= pair[0] and start < pair[1]:
                                             s_ind = p_ind
@@ -927,7 +947,8 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                                             e_ind = p_ind
 
                                     ln = e_ind - s_ind
-                                    tkns[cpos:cpos+ln+1] = [tokenizer(replace_center)['input_ids'][0]]
+                                    tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
+
 
                             else:
                                 _start = max(0, start - cntx_left)
@@ -961,21 +982,37 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                                     out_data[name].append(sample)
                                 else:
                                     out_data[name] = [sample]
-
     return out_data
 
 
-def encode_category_values(data, vals=None):
+def encode_category_values(data, existing_category_value2id={}):
+    r''' Converts the category values in the data outputed by `prepare_from_json`
+    into integere values.
+
+    Args:
+        data (`dict`):
+            Output of `prepare_from_json`
+        existing_category_value2id(`dict`, optional, defaults to `{}`):
+            Map from category_value to id (old/existing)
+
+    Returns:
+        data (`dict`):
+            New data with integeres inplace of strings for categry values.
+        category_value2id (`dict`):
+            Map rom category value to ID for all categories in the data.
+    '''
     data = list(data)
-    if vals is None:
-        vals = set([x[0] for x in data])
-        vals = {name:i for i,name in enumerate(vals)}
+    category_value2id = {}
+    category_values = set([x[0] for x in data])
+    for c in category_values:
+        if c not in category_value2id:
+            category_value2id[c] = len(category_value2id)
 
     # Map values to numbers
     for i in range(len(data)):
-        data[i][0] = vals[data[i][0]]
+        data[i][0] = category_value2id[data[i][0]]
 
-    return data, vals
+    return data, category_value2id
 
 
 def make_mc_train_test(data, cdb, seed=17, test_size=0.2):

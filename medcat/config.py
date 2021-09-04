@@ -177,7 +177,7 @@ class Config(object):
     def parse_config_file(self, path):
         r'''
         Parses a configuration file in text format. Must be like:
-                <variable>.<key> = <value>
+                cat.<variable>.<key> = <value>
                 ...
             Where:
                 variable: linking, general, ner, ...
@@ -186,7 +186,8 @@ class Config(object):
         '''
         with open(path, 'r') as f:
             for line in f:
-                if line.strip() and not line.startswith("#"):
+                if line.strip() and line.startswith("cat."):
+                    line = line[4:]
                     left, right = line.split("=")
                     variable, key = left.split(".")
                     variable = variable.strip()

@@ -33,7 +33,16 @@ def get_batch(ind, batch_size, x, y, cpos, device):
     return x_batch.to(device), y_batch.to(device), c_batch.to(device)
 
 
-def eval_network(net, data, max_seq_len=41, pad_id=30000, batch_size=100, device='cpu', ignore_cpos=False, score_average='weighted'):
+def eval_network(net, data, config, save_dir_path=None):
+    " TODO: Refactor "
+    max_seq_len = config.general['cntx_left'] + config.general['cntx_right'] + 10
+    pad_id = config.model['padding_idx']
+    batch_size = config.train['batch_size']
+    device = config.general['device']
+    ignore_cpos = config.model['ignore_cpos']
+    score_average = config.train['score_average']
+
+
     # TODO: It is simply wrong to do things this way (whole function)
     y = np.array([x[0] for x in data])
     x = [x[1] for x in data]
@@ -47,6 +56,8 @@ def eval_network(net, data, max_seq_len=41, pad_id=30000, batch_size=100, device
     c_test = torch.tensor(cent, dtype=torch.long)
 
     device = torch.device(device) # Create a torch device
+    # Move network to the right device
+    net.to(device)
 
     num_batches_test = int(np.ceil(len(x_test) / batch_size))
     test_outs = []
@@ -77,19 +88,20 @@ def eval_network(net, data, max_seq_len=41, pad_id=30000, batch_size=100, device
     return cls_report
 
 
-def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=30000, batch_size=100,
-                  nepochs=20, device='cpu', save_dir='./meta_cat/', class_weights=None, ignore_cpos=False,
-                  auto_save_model=True, score_average='weighted'):
+def train_network(net, data, config, save_dir_path=None):
+    max_seq_len = config.general['cntx_left'] + config.general['cntx_right'] + 10
+
     # Split data
     y = np.array([x[0] for x in data])
     x = [x[1] for x in data]
     cent = np.array([x[2] for x in data])
 
     # Pad X and convert to array
+    pad_id = config.model['padding_idx']
     x = np.array([(sample + [pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len] for sample in x])
 
     x_train, x_test, y_train, y_test, c_train, c_test = train_test_split(x, y,
-            cent, test_size=test_size)
+            cent, test_size=config.train['test_size'])
 
     x_train = torch.tensor(x_train, dtype=torch.long)
     y_train = torch.tensor(y_train, dtype=torch.long)
@@ -99,23 +111,26 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
     y_test = torch.tensor(y_test, dtype=torch.long)
     c_test = torch.tensor(c_test, dtype=torch.long)
 
-    device = torch.device(device) # Create a torch device
+    device = torch.device(config.general['device']) # Create a torch device
+    class_weights = config.train['class_weights']
     if class_weights is not None:
         class_weights = torch.FloatTensor(class_weights).to(device)
         criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
     else:
         criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
     parameters = filter(lambda p: p.requires_grad, net.parameters())
-    optimizer = optim.Adam(parameters, lr=lr)
+    optimizer = optim.Adam(parameters, lr=config.train['lr'])
     net.to(device) # Move the network to device
 
-    batch_size = 40
+    batch_size = config.train['batch_size']
     # Calculate the number of batches given training size len(x_train)
     num_batches = int(np.ceil(len(x_train) / batch_size))
     best_f1 = 0
     best_p = 0
     best_r = 0
     best_cls_report = None
+    nepochs = config.train['nepochs']
+    ignore_cpos = config.model['ignore_cpos']
     for epoch in range(nepochs):
         running_loss_train = []
         running_loss_test = []
@@ -127,7 +142,8 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
             x_train_batch, y_train_batch, cpos_train_batch = get_batch(ind=i,
                                                                        batch_size=batch_size,
                                                                        x=x_train,
-                                                                       y=y_train, cpos=c_train,
+                                                                       y=y_train,
+                                                                       cpos=c_train,
                                                                        device=device)
             optimizer.zero_grad()
             outputs = net(x_train_batch, cpos_train_batch, ignore_cpos=ignore_cpos)
@@ -166,6 +182,7 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
         print(classification_report(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1)))
         print("Train Loss: {:5}\nTest Loss:  {:5}\n\n".format(train_loss, test_loss))
         print("\n\n\n")
+        score_average = config.train['score_average']
         f1 = f1_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average=score_average)
         precision = precision_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average=score_average)
         recall = recall_score(y_test, np.argmax(np.concatenate(test_outs, axis=0), axis=1), average=score_average)
@@ -173,10 +190,10 @@ def train_network(net, data, lr=0.01, test_size=0.1, max_seq_len=41, pad_id=3000
 
         if f1 > best_f1:
             print("=" * 50)
-            if auto_save_model:
-                path = os.path.join(save_dir, "lstm.dat")
+            if config.train['auto_save_model']:
+                path = os.path.join(save_dir_path, 'model.dat')
                 torch.save(net.state_dict(), path)
-                print("Model saved at epoch: {} and f1: {}".format(epoch, f1))
+                print("Model saved to {} at epoch: {} and f1: {}".format(path, epoch, f1))
 
             best_f1 = f1
             best_p = precision
