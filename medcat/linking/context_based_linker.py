@@ -2,9 +2,10 @@ import random
 import logging
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
+from medcat.pipeline.pipe_runner import PipeRunner
 
 
-class Linker(object):
+class Linker(PipeRunner):
     r''' Link to a biomedical database.
 
     Args:
@@ -24,6 +25,7 @@ class Linker(object):
         self.context_model = ContextModel(self.cdb, self.vocab, self.config)
         # Counter for how often did a pair (name,cui) appear and was used during training
         self.train_counter = {}
+        super().__init__(self.config.linking['workers'])
 
     def _train(self, cui, entity, doc, add_negative=True):
         name = "{} - {}".format(entity._.detected_name, cui)
@@ -39,7 +41,6 @@ class Linker(object):
             if add_negative and self.config.linking['negative_probability'] >= random.random():
                 self.context_model.train_using_negative_sampling(cui)
             self.train_counter[name] = self.train_counter.get(name, 0) + 1
-
 
     def __call__(self, doc):
         r'''

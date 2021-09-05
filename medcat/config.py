@@ -2,10 +2,16 @@ import re
 import logging
 import jsonpickle
 from functools import partial
+from multiprocessing import cpu_count
 
 
 def weighted_average(step, factor):
     return max(0.1, 1 - (step ** 2 * factor))
+
+
+def workers(workers_override=None):
+    return max(cpu_count() - 1, 1) if workers_override is None else workers_override
+
 
 class Config(object):
 
@@ -92,6 +98,8 @@ class Config(object):
                 'upper_case_limit_len': 3,
                 # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
                 'try_reverse_word_order': False,
+                # Number of workers used by the NER pipeline component
+                'workers': workers(),
                 }
 
         self.linking = {
@@ -141,7 +149,9 @@ class Config(object):
                 # Filters
                 'filters': {
                     'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
-                    }
+                    },
+                # Number of workers used by the Linker pipeline component
+                'workers': workers(),
                 }
 
 
