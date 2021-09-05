@@ -6,7 +6,7 @@ class ConfigMetaCAT(object):
 
     def __init__(self):
         self.general = {
-                'device': 'cuda',
+                'device': 'cpu',
                 'seed': 13,
                 'category_name': None, # What category is this meta_cat model predicting/training
                 'category_value2id': {}, # Map from category values to ID, if empty it will be autocalculated during training
