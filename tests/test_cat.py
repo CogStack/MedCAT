@@ -5,6 +5,7 @@ from medcat.cdb import CDB
 from medcat.cat import CAT
 
 
+# TODO: add parameterised tests covering both n_process = 1 and > 1
 class CATTests(unittest.TestCase):
 
     @classmethod
@@ -56,7 +57,6 @@ class CATTests(unittest.TestCase):
             (3, "The dog is sitting outside the house.")
         ]
         out = list(self.undertest.multiprocessing(in_data, nproc=1))
-        import pdb; pdb.set_trace()
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
         self.assertEqual("The dog is sitting outside the house.", out[0][1]["text"])
@@ -69,9 +69,9 @@ class CATTests(unittest.TestCase):
         in_data = [
             (1, "The dog is sitting outside the house."),
             (2, "The dog is sitting outside the house."),
-            (3, "The dog is sitting outside the house.")
+            (3, "The dog is sitting outside the house."),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2)
+        out = self.undertest.multiprocessing_pipe(in_data)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -160,11 +160,19 @@ class CATTests(unittest.TestCase):
         self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
+        self.assertEqual("The dog is sitting outside the house.", out[0]["text"])
         self.assertEqual({}, out[1]["entities"])
         self.assertEqual([], out[1]["tokens"])
-        self.assertIsNone(out[2])
-        self.assertIsNone(out[3])
-        self.assertIsNone(out[4])
+        self.assertEqual("The dog is sitting outside the house.", out[1]["text"])
+        self.assertEqual({}, out[2]["entities"])
+        self.assertEqual([], out[2]["tokens"])
+        self.assertEqual("The dog is sitting outside the house.", out[2]["text"])
+        self.assertEqual({}, out[3]["entities"])
+        self.assertEqual([], out[3]["tokens"])
+        self.assertFalse(hasattr(out[2], "text"))
+        self.assertEqual({}, out[4]["entities"])
+        self.assertEqual([], out[4]["tokens"])
+        self.assertFalse(hasattr(out[4], "text"))
 
 
 if __name__ == '__main__':

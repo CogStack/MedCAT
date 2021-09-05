@@ -1,3 +1,8 @@
+import logging
+import os
+import requests
+import unittest
+from spacy.lang.en import English
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.ner.vocab_based_ner import NER
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -7,11 +12,7 @@ from medcat.vocab import Vocab
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
-import logging
 from medcat.cdb import CDB
-import os
-import requests
-import unittest
 
 
 class A_NERTests(unittest.TestCase):
@@ -34,19 +35,19 @@ class A_NERTests(unittest.TestCase):
 
 
         print("Set up NLP pipeline")
-        cls.nlp = Pipe(tokenizer=spacy_split_all, config=cls.config)
-        cls.nlp.add_tagger(tagger=tag_skip_and_punct,
-                       name='skip_and_punct',
-                       additional_fields=['is_punct'])
+        cls.pipe = Pipe(tokenizer=spacy_split_all, config=cls.config)
+        cls.pipe.add_tagger(tagger=tag_skip_and_punct,
+                            name='skip_and_punct',
+                            additional_fields=['is_punct'])
 
         cls.spell_checker = BasicSpellChecker(cdb_vocab=cls.cdb.vocab, config=cls.config, data_vocab=cls.vocab)
-        cls.nlp.add_token_normalizer(spell_checker=cls.spell_checker, config=cls.config)
+        cls.pipe.add_token_normalizer(spell_checker=cls.spell_checker, config=cls.config)
         cls.ner = NER(cls.cdb, cls.config)
-        cls.nlp.add_ner(cls.ner)
+        cls.pipe.add_ner(cls.ner)
 
         print("Set up Linker")
         cls.link = Linker(cls.cdb, cls.vocab, cls.config)
-        cls.nlp.add_linker(cls.link)
+        cls.pipe.add_linker(cls.link)
 
         print("Set limits for tokens and uppercase")
         cls.config.ner['max_skip_tokens'] = 1
@@ -55,17 +56,17 @@ class A_NERTests(unittest.TestCase):
         cls.config.general["spacy_model"] = "en_core_sci_sm"
 
         print("Add concepts")
-        cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar', cls.nlp, {}, cls.config))
-        cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar viruses', cls.nlp, {}, cls.config))
-        cls.cdb.add_names(cui='S-229005', names=prepare_name('CDB', cls.nlp, {}, cls.config))
+        cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar', cls.pipe, {}, cls.config))
+        cls.cdb.add_names(cui='S-229004', names=prepare_name('Movar viruses', cls.pipe, {}, cls.config))
+        cls.cdb.add_names(cui='S-229005', names=prepare_name('CDB', cls.pipe, {}, cls.config))
 
         print("Add test text")
         cls.text = "CDB - I was running and then Movar    Virus attacked and CDb"
-        cls.text_post_pipe = cls.nlp(cls.text)
+        cls.text_post_pipe = cls.pipe(cls.text)
 
     @classmethod
     def tearDownClass(cls) -> None:
-        cls.nlp.destroy()
+        cls.pipe.destroy()
 
     def test_aa_cdb_names_output(self):
         target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
@@ -80,17 +81,17 @@ class A_NERTests(unittest.TestCase):
 
     def test_ad_max_skip_entities_length(self):
         self.config.ner['max_skip_tokens'] = 3
-        self.text_post_pipe = self.nlp(self.text)
+        self.text_post_pipe = self.pipe(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 3, "Should equal 3")
 
     def test_ae_upper_case_entities_length(self):
         self.config.ner['upper_case_limit_len'] = 3
-        self.text_post_pipe = self.nlp(self.text)
+        self.text_post_pipe = self.pipe(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 4, "Should equal 4")
 
     def test_af_min_name_entities_length(self):
         self.config.ner['min_name_len'] = 4
-        self.text_post_pipe = self.nlp(self.text)
+        self.text_post_pipe = self.pipe(self.text)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
 
 
