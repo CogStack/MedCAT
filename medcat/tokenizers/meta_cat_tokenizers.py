@@ -47,6 +47,8 @@ class TokenizerWrapperBPE(object):
                     })
 
             return output
+        else:
+            raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
 
 
     def save(self, dir_path):
@@ -72,19 +74,31 @@ class TokenizerWrapperBERT(object):
         hf_tokenizers (`transformers.models.bert.tokenization_bert_fast.BertTokenizerFast`):
             A huggingface Fast BERT.
     '''
-    name = 'bert'
+    name = 'bert-tokenizer'
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
 
 
     def __call__(self, text):
-        res = self.hf_tokenizers.encode_plus(text,
-                return_offsets_mapping=True, add_special_tokens=False)
+        if isinstance(text, str):
+            result = self.hf_tokenizers.encode_plus(text, return_offsets_mapping=True,
+                    add_special_tokens=False)
 
-        return {'offset_mapping': res['offset_mapping'],
-                'input_ids': res['input_ids'],
-                'tokens':  self.hf_tokenizers.convert_ids_to_tokens(res['input_ids']),
-                }
+            return {'offset_mapping': result['offset_mapping'],
+                    'input_ids': result['input_ids'],
+                    'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
+                    }
+        elif isinstance(text, list):
+            results = self.hf_tokenizers.encode_batch(text)
+            output = []
+            for result in results:
+                output.append({'offset_mapping': result['offset_mapping'],
+                    'input_ids': result['input_ids'],
+                    'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
+                    })
+            return output
+        else:
+            raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
 
 
     def save(self, dir_path):
