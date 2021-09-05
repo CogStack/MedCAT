@@ -13,31 +13,32 @@ class LSTM(nn.Module):
 
         self.config = config
         # Get the required sizes
-        vocab_size = len(embeddings)
-        embedding_size = len(embeddings[0])
+        vocab_size = config.general['vocab_size']
+        embedding_size = config.model['input_size']
 
         # Initialize embeddings
-        self.embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=config['padding_idx'])
-        self.embeddings.load_state_dict({'weight': embeddings})
-        # Disable training for the embeddings - IMPORTANT
-        self.embeddings.weight.requires_grad = config['emb_grad']
+        self.embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=config.model['padding_idx'])
+        if embeddings is not None:
+            self.embeddings.load_state_dict({'weight': embeddings})
+            # Disable training for the embeddings - IMPORTANT
+            self.embeddings.weight.requires_grad = config.model['emb_grad']
 
         # Create the RNN cell - devide 
-        self.rnn = nn.LSTM(input_size=config['input_size'],
-                           hidden_size=config['hidden_size'] // config['num_directions'],
-                           num_layers=config['num_layers'],
-                           dropout=config['dropout'],
-                           bidirectional=config['num_directions'] == 2)
-        self.fc1 = nn.Linear(config['hidden_size'], config['nclasses'])
+        self.rnn = nn.LSTM(input_size=config.model['input_size'],
+                           hidden_size=config.model['hidden_size'] // config.model['num_directions'],
+                           num_layers=config.model['num_layers'],
+                           dropout=config.model['dropout'],
+                           bidirectional=config.model['num_directions'] == 2)
+        self.fc1 = nn.Linear(config.model['hidden_size'], config.model['nclasses'])
 
-        self.d1 = nn.Dropout(config['dropout'])
+        self.d1 = nn.Dropout(config.model['dropout'])
 
 
     def forward(self, input_ids, center_positions, attention_mask=None, ignore_cpos=False):
         x = input_ids
         # Get the mask from x
         if attention_mask is None:
-            mask = x != self.config['padding_idx']
+            mask = x != self.config.model['padding_idx']
         else:
             mask = attention_mask
 
@@ -59,9 +60,9 @@ class LSTM(nn.Module):
         # If this is  True we will always take the last state and not CPOS
         if ignore_cpos:
             x = hidden[0]
-            x = x.view(self.config['num_layers'], self.config['num_directions'], -1,
-                       self.config['hidden_size']//self.config['num_directions'])
-            x = x[-1, :, :, :].permute(1, 2, 0).reshape(-1, self.config['hidden_size'])
+            x = x.view(self.config.model['num_layers'], self.config.model['num_directions'], -1,
+                       self.config.model['hidden_size']//self.config.model['num_directions'])
+            x = x[-1, :, :, :].permute(1, 2, 0).reshape(-1, self.config.model['hidden_size'])
         else:
             x = x[row_indices, center_positions, :]
 

@@ -38,7 +38,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
             if len(text) > 0:
                 doc_text = tokenizer(text)
 
-                for ann in document['annotations']:
+                for ann in document.get('annotations', document.get('entities', {}).values()): # A hack to suport entities and annotations
                     cui = ann['cui']
                     skip = False
                     if 'meta_anns' in ann and prerequisites:

@@ -1,6 +1,5 @@
 from sklearn.model_selection import train_test_split
 import numpy as np
-from medcat.utils.models import LSTM as MODEL
 from sklearn.metrics import classification_report, f1_score, confusion_matrix, precision_score, recall_score
 import torch
 from torch import nn

@@ -19,27 +19,29 @@ class MetaCAT(object):
     name = 'meta_cat'
 
     def __init__(self, tokenizer=None, embeddings=None, config=None):
+        if config is None:
+            config = ConfigMetaCAT()
+        self.config = config
         set_all_seeds(config.general['seed'])
-        self.tokenizer = tokenizer
-        if config is not None:
-            self.config = config
-        else:
-            self.config = ConfigMetaCAT()
-        self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
-
-        self.model = self.get_model()
 
         if tokenizer is not None:
             # Set it in the config
             config.general['tokenizer_name'] = tokenizer.name
+            config.general['vocab_size'] = tokenizer.get_size()
+            # We will also set the padding
+            config.model['padding_idx'] = tokenizer.get_pad_id()
+        self.tokenizer = tokenizer
+
+        embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
+        self.model = self.get_model(embeddings=embeddings)
 
 
-    def get_model(self):
+    def get_model(self, embeddings):
         config = self.config
         model = None
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
-            model = LSTM(self.embeddings, config.model)
+            model = LSTM(embeddings, config)
 
         return model
 
@@ -59,7 +61,8 @@ class MetaCAT(object):
         t_config = self.config.train
 
         # Load the medcattrainer export
-        data = json.load(open(json_path, 'r'))
+        with open(json_path, 'r') as f:
+            data = json.load(f)
 
         # Create directories if they don't exist
         if t_config['auto_save_model']:
@@ -105,7 +108,8 @@ class MetaCAT(object):
         g_config = self.config.general
         t_config = self.config.train
 
-        data = json.load(open(json_path, 'r'))
+        with open(json_path, 'r') as f:
+            data = json.load(f)
 
         # Prepare the data
         data = prepare_from_json(data, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
@@ -145,9 +149,6 @@ class MetaCAT(object):
         # Save config
         self.config.save(os.path.join(save_dir_path, 'config.json'))
 
-        # Save embeddings
-        np.save(os.path.join(save_dir_path, 'embeddings.npy'), np.array(self.embeddings))
-
         # Save the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         torch.save(self.model.state_dict(), model_save_path)
@@ -182,12 +183,12 @@ class MetaCAT(object):
         if config.general['tokenizer_name'] == 'bbpe':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBPE
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
-
-        # Load embeddings
-        embeddings = np.load(os.path.join(save_dir_path, 'embeddings.npy'))
+        elif config.general['tokenizer_name'] == 'bert-tokenizer':
+            from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
+            tokenizer = TokenizerWrapperBERT.load(save_dir_path)
 
         # Create meta_cat
-        meta_cat = cls(tokenizer=tokenizer, embeddings=embeddings, config=config)
+        meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
 
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
@@ -254,66 +255,88 @@ class MetaCAT(object):
         return ent_id2ind, samples
 
 
-    def pipe(self, docs):
+    def batch_generator(self, stream, batch_size_chars):
+        docs = []
+        char_count = 0
+        for doc in stream:
+            char_count += len(doc.text)
+            docs.append(doc)
+            if char_count < batch_size_chars:
+                continue
+            yield docs
+            docs = []
+
+        # If there is anything left return that also
+        if len(docs) > 0:
+            yield docs
+
+
+    def pipe(self, stream, *args, **kwargs):
         r''' Process many documents at once.
 
         Args:
-            docs (List[spacy.tokens.Doc]):
-                List of spacy documents, could be good to not have millions at once.
+            stream (Iterable[spacy.tokens.Doc]):
+                List of spacy documents.
         '''
+        # Just in case
+        if stream is None or not stream:
+            return stream
+
         config = self.config
         id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
+        batch_size_chars = config.general['pipe_batch_size_in_chars']
 
-        if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
-            if config.general['lowercase']:
-                all_text = [doc.text.lower() for doc in docs]
-            else:
-                all_text = [doc.text for doc in docs]
-
-            all_text_processed = self.tokenizer(all_text)
-            doc_ind2positions = {}
-            data = [] # The thing that goes into the model
-            for i, doc in enumerate(docs):
-                ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
-                                                            offset_mapping=all_text_processed[i]['offset_mapping'],
-                                                            lowercase=config.general['lowercase'])
-                doc_ind2positions[i] = (len(data), len(data) + len(samples), ent_id2ind) # Needed so we know where is what in the big data array
-                data.extend(samples)
-                if config.general['save_and_reuse_tokens']:
-                    doc._.share_tokens = (samples, doc_ind2positions[i])
-        else:
-            # This means another model has already processed the data and we can just use it. This is a
-            #dangerous option - as it assumes the other model has the same tokenizer and context size.
-            data = []
-            doc_ind2positions = {}
-            for i, doc in enumerate(docs):
-                data.extend(doc._.share_tokens[0])
-                doc_ind2positions[i] = doc._.share_tokens[1]
-
-        all_predictions, all_confidences = predict(self.model, data, config)
-        for i, doc in enumerate(docs):
-            start_ind, end_ind, ent_id2ind = doc_ind2positions[i]
-
-            predictions = all_predictions[start_ind:end_ind]
-            confidences = all_confidences[start_ind:end_ind]
-            if config.general['annotate_overlapping']:
-                ents = doc._.ents
-            else:
-                ents = doc.ents
-
-            for ent in ents:
-                ent_ind = ent_id2ind[ent._.id]
-                value = id2category_value[predictions[ent_ind]]
-                confidence = confidences[ent_ind]
-                if ent._.meta_anns is None:
-                    ent._.meta_anns = {config.general['category_name']: {'value': value,
-                                                                         'confidence': confidence,
-                                                                         'name': config.general['category_name']}}
+        for docs in self.batch_generator(stream, batch_size_chars):
+            if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
+                if config.general['lowercase']:
+                    all_text = [doc.text.lower() for doc in docs]
                 else:
-                    ent._.meta_anns[config.general['category_name']] = {'value': value,
-                                                                        'confidence': confidence,
-                                                                        'name': config.general['category_name']}
-        return docs
+                    all_text = [doc.text for doc in docs]
+
+                all_text_processed = self.tokenizer(all_text)
+                doc_ind2positions = {}
+                data = [] # The thing that goes into the model
+                for i, doc in enumerate(docs):
+                    ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
+                                                                offset_mapping=all_text_processed[i]['offset_mapping'],
+                                                                lowercase=config.general['lowercase'])
+                    doc_ind2positions[i] = (len(data), len(data) + len(samples), ent_id2ind) # Needed so we know where is what in the big data array
+                    data.extend(samples)
+                    if config.general['save_and_reuse_tokens']:
+                        doc._.share_tokens = (samples, doc_ind2positions[i])
+            else:
+                # This means another model has already processed the data and we can just use it. This is a
+                #dangerous option - as it assumes the other model has the same tokenizer and context size.
+                data = []
+                doc_ind2positions = {}
+                for i, doc in enumerate(docs):
+                    data.extend(doc._.share_tokens[0])
+                    doc_ind2positions[i] = doc._.share_tokens[1]
+
+            all_predictions, all_confidences = predict(self.model, data, config)
+            for i, doc in enumerate(docs):
+                start_ind, end_ind, ent_id2ind = doc_ind2positions[i]
+
+                predictions = all_predictions[start_ind:end_ind]
+                confidences = all_confidences[start_ind:end_ind]
+                if config.general['annotate_overlapping']:
+                    ents = doc._.ents
+                else:
+                    ents = doc.ents
+
+                for ent in ents:
+                    ent_ind = ent_id2ind[ent._.id]
+                    value = id2category_value[predictions[ent_ind]]
+                    confidence = confidences[ent_ind]
+                    if ent._.meta_anns is None:
+                        ent._.meta_anns = {config.general['category_name']: {'value': value,
+                                                                             'confidence': float(confidence),
+                                                                             'name': config.general['category_name']}}
+                    else:
+                        ent._.meta_anns[config.general['category_name']] = {'value': value,
+                                                                            'confidence': float(confidence),
+                                                                            'name': config.general['category_name']}
+                yield doc
 
 
     def __call__(self, doc):
@@ -326,6 +349,6 @@ class MetaCAT(object):
         '''
 
         # Just call the pipe method
-        doc = self.pipe([doc])[0]
+        doc = next(self.pipe(iter([doc])))
 
         return doc

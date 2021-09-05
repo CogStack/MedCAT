@@ -85,11 +85,16 @@ def predict(model, data, config):
         logits = model(x, cpos, ignore_cpos=ignore_cpos)
         all_logits.append(logits.detach().cpu().numpy())
 
-    logits = np.concatenate(all_logits, axis=0)
-    predictions = np.argmax(logits, axis=1)
-    confidence = np.max(softmax(logits, axis=1), axis=1)
+    predictions = []
+    confidences = []
 
-    return predictions, confidence
+    # Can be that there are not logits, data is empty
+    if all_logits:
+        logits = np.concatenate(all_logits, axis=0)
+        predictions = np.argmax(logits, axis=1)
+        confidences = np.max(softmax(logits, axis=1), axis=1)
+
+    return predictions, confidences
 
 
 def split_list_train_test(data, test_size, shuffle=True):
@@ -120,8 +125,9 @@ def print_report(epoch, running_loss, all_logits, y, name='Train'):
         y
         name
     '''
-    print(f'Epoch: {epoch} ' + "*"*50 + f"  {name}")
-    print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
+    if all_logits:
+        print(f'Epoch: {epoch} ' + "*"*50 + f"  {name}")
+        print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
 
 def train_model(model, data, config, save_dir_path=None):
@@ -232,6 +238,8 @@ def eval_model(model, data, config):
     num_batches = math.ceil(len(data) / batch_size_eval)
     running_loss = []
     all_logits = []
+    model.to(device)
+    model.eval()
     for i in range(num_batches):
         x, cpos, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
         logits = model(x, cpos, ignore_cpos=ignore_cpos)
@@ -242,3 +250,8 @@ def eval_model(model, data, config):
         all_logits.append(logits.detach().cpu().numpy())
 
     print_report(0, running_loss, all_logits, y=y_eval, name='Eval')
+
+    score_average = config.train['score_average']
+    f1 = f1_score(y_eval, np.argmax(np.concatenate(all_logits, axis=0), axis=1), average=score_average)
+
+    return {'f1': f1}
