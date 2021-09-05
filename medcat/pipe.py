@@ -156,7 +156,33 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        return self.nlp.pipe(texts if total is None else tqdm(texts, total=total), n_process=n_process, batch_size=batch_size)
+        if n_process == 1:
+            # Multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
+            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total),
+                                 n_process=n_process,
+                                 batch_size=batch_size,
+                                 component_cfg={
+                                     NER.name: {
+                                         'parallel': True
+                                     },
+                                     Linker.name: {
+                                         'parallel': True
+                                     }
+                                 })
+        else:
+            # Multiprocessing will be conducted at the pipeline level.
+            # Then texts will be processed sequentially inside components.
+            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total),
+                                 n_process=n_process,
+                                 batch_size=batch_size,
+                                 component_cfg={
+                                     NER.name: {
+                                         'parallel': False
+                                     },
+                                     Linker.name: {
+                                         'parallel': False
+                                     }
+                                 })
 
     def set_error_handler(self, error_handler):
         self.nlp.set_error_handler(error_handler)
