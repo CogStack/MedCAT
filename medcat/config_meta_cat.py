@@ -10,6 +10,7 @@ class ConfigMetaCAT(object):
                 'seed': 13,
                 'category_name': None, # What category is this meta_cat model predicting/training
                 'category_value2id': {}, # Map from category values to ID, if empty it will be autocalculated during training
+                'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
                 'lowercase': True, # If true all input text will be lowercased
                 'cntx_left': 15, # Number of tokens to take from the left of the concept
                 'cntx_right': 10, # Number of tokens to take from the right of the concept
@@ -20,7 +21,8 @@ class ConfigMetaCAT(object):
                 #context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
                 #so you need to be sure that the models for which this is turned on have the same tokenizer and context size, during
                 #a deployment.
-                'save_and_reuse_tokens': False, 
+                'save_and_reuse_tokens': False,
+                'pipe_batch_size_in_chars': 20000000,
                 }
         self.model = {
                 'model_name': 'lstm',
@@ -30,7 +32,7 @@ class ConfigMetaCAT(object):
                 'dropout': 0.5,
                 'num_directions': 2, # 2 - bidirectional model, 1 - unidirectional
                 'nclasses': 2, # Number of classes that this model will output
-                'padding_idx': 30000,
+                'padding_idx': -1,
                 'emb_grad': True, # If True the embeddings will also be trained
                 'ignore_cpos': False, # If set to True center positions will be ignored when calculating represenation
                 }

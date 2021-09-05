@@ -16,6 +16,10 @@ class TokenizerWrapperBPE(object):
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
 
+        if hf_tokenizers is not None:
+            # For whatever reason added tokens do not persist with this tokenizer, what to do
+            tokenizer.hf_tokenizers.add_tokens(['<PAD>'])
+
 
     def __call__(self, text):
         r''' Tokenize some text
@@ -63,7 +67,24 @@ class TokenizerWrapperBPE(object):
         tokenizer.hf_tokenizers = ByteLevelBPETokenizer.from_file(vocab_filename=vocab_file,
                                                                   merges_filename=merges_file,
                                                                   **kwargs)
+        # For whatever reason added tokens do not persist with this tokenizer, so we added it at each load
+        tokenizer.hf_tokenizers.add_tokens(['<PAD>'])
         return tokenizer
+
+
+    def get_size(self):
+        return self.hf_tokenizers.get_vocab_size()
+
+
+    def token_to_id(self, token):
+        return self.hf_tokenizers.token_to_id(token)
+
+
+    def get_pad_id(self):
+        pad = self.token_to_id('<PAD>')
+        if pad is None:
+            raise Exception("No <PAD> token in the vocabulary of the tokenizer, please add it")
+        return pad
 
 
 class TokenizerWrapperBERT(object):
@@ -89,12 +110,13 @@ class TokenizerWrapperBERT(object):
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
                     }
         elif isinstance(text, list):
-            results = self.hf_tokenizers.encode_batch(text)
+            results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True,
+                    add_special_tokens=False)
             output = []
-            for result in results:
-                output.append({'offset_mapping': result['offset_mapping'],
-                    'input_ids': result['input_ids'],
-                    'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
+            for ind in range(len(results['input_ids'])):
+                output.append({'offset_mapping': results['offset_mapping'][ind],
+                    'input_ids': results['input_ids'][ind],
+                    'tokens':  self.hf_tokenizers.convert_ids_to_tokens(results['input_ids'][ind]),
                     })
             return output
         else:
@@ -109,7 +131,19 @@ class TokenizerWrapperBERT(object):
     @classmethod
     def load(cls, dir_path, **kwargs):
         tokenizer = cls()
-        path = os.path.join(dir_path, self.name)
+        path = os.path.join(dir_path, cls.name)
         tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
 
         return tokenizer
+
+
+    def get_size(self):
+        return len(self.hf_tokenizers.vocab)
+
+
+    def token_to_id(self, token):
+        return self.hf_tokenizers.convert_tokens_to_ids(token)
+
+
+    def get_pad_id(self):
+        return self.hf_tokenizers.pad_token_id

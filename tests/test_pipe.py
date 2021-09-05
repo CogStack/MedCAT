@@ -13,7 +13,9 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.utils.normalizers import BasicSpellChecker, TokenNormalizer
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
+from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 from transformers import AutoTokenizer
+
 
 
 class PipeTests(unittest.TestCase):
@@ -38,7 +40,10 @@ class PipeTests(unittest.TestCase):
         cls.spell_checker = BasicSpellChecker(cdb_vocab=cls.cdb.vocab, config=cls.config, data_vocab=cls.vocab)
         cls.ner = NER(cls.cdb, cls.config)
         cls.linker = Linker(cls.cdb, cls.vocab, cls.config)
-        cls.meta_cat = MetaCAT(tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased"))
+
+        _tokenizer = TokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
+        cls.meta_cat = MetaCAT(tokenizer=_tokenizer)
+
         cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
 
