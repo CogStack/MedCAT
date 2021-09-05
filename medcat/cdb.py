@@ -9,7 +9,7 @@ from functools import partial
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.ml_utils import get_lr_linking
-from medcat.config import Config, weighted_average
+from medcat.config import Config, weighted_average, workers
 
 
 class CDB(object):
@@ -386,6 +386,11 @@ class CDB(object):
                 weighted_average_function = config.linking['weighted_average_function']
                 if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
                     config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
+                if getattr(config.ner, 'workers', None) is None:
+                    config.ner['workers'] = workers()
+                if getattr(config.linking, 'workers', None) is None:
+                    config.linking['workers'] = workers()
+
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
 
