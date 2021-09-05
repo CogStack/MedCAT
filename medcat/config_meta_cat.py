@@ -14,7 +14,7 @@ class ConfigMetaCAT(object):
                 'cntx_left': 15, # Number of tokens to take from the left of the concept
                 'cntx_right': 10, # Number of tokens to take from the right of the concept
                 'replace_center': None, # If set the center (concept) will be replaced with this string
-                'batch_size_eval': 1000,
+                'batch_size_eval': 5000,
                 'annotate_overlapping': False, # If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents
                 # This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
                 #context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
@@ -37,9 +37,10 @@ class ConfigMetaCAT(object):
 
         self.train = {
                 'batch_size': 100,
-                'nepochs': 20,
+                'nepochs': 50,
                 'lr': 0.001,
                 'test_size': 0.1,
+                'shuffle_data': True, # Used only during training, if set the dataset will be shuffled before train/test split
                 'class_weights': None,
                 'score_average': 'weighted', # What to use for averaging F1/P/R across labels
                 'prerequisites': {},

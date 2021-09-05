@@ -5,10 +5,10 @@ import numpy as np
 import torch
 from scipy.special import softmax
 
-from medcat.utils.ml_utils import train_network, eval_network
-from medcat.utils.meta_cat.ml_utils import predict
-from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
 from medcat.config_meta_cat import ConfigMetaCAT
+
+from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
+from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 
 
 class MetaCAT(object):
@@ -32,6 +32,7 @@ class MetaCAT(object):
         if tokenizer is not None:
             # Set it in the config
             config.general['tokenizer_name'] = tokenizer.name
+
 
     def get_model(self):
         config = self.config
@@ -89,7 +90,7 @@ class MetaCAT(object):
             # We already have everything, just get the data
             data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
 
-        (f1, p, r, cls_report) = train_network(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
+        report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
         # If autosave, then load the best model here
         if t_config['auto_save_model']:
@@ -97,7 +98,7 @@ class MetaCAT(object):
             device = torch.device(g_config['device'])
             self.model.load_state_dict(torch.load(path, map_location=device))
 
-        return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
+        return report
 
 
     def eval(self, json_path):
@@ -123,41 +124,9 @@ class MetaCAT(object):
         data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
 
         # Run evaluation
-        result = eval_network(self.model, data, config=self.config)
+        result = eval_model(self.model, data, config=self.config)
 
         return result
-
-
-    def predict_one(self, text, start, end):
-        """ A test function, not useful in any other case
-        """
-        # Always cpu
-        config = self.config
-        device = torch.device('cpu')
-        if config.general['lowercase']:
-            text = text.lower()
-
-        doc_text = self.tokenizer(text)
-        ind = 0
-        for ind, pair in enumerate(doc_text['offset_mapping']):
-            if start >= pair[0] and start <= pair[1]:
-                break
-        cntx_left = config.general['cntx_left']
-        cntx_right = config.general['cntx_right']
-        _start = max(0, ind - cntx_left)
-        _end = min(len(doc_text['tokens']), ind + 1 + cntx_right)
-        tkns = doc_text['input_ids'][_start:_end]
-        cpos = cntx_left + min(0, ind-cntx_left)
-
-        x = torch.tensor([tkns], dtype=torch.long).to(device)
-        cpos = torch.tensor([cpos], dtype=torch.long).to(device)
-
-        self.model.eval()
-        outputs_test = self.model(x, cpos)
-
-        category_value2id = config.general['category_value2id']
-        inv_map = {v: k for k, v in category_value2id.items()}
-        return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
 
     def save(self, save_dir_path):
@@ -227,7 +196,7 @@ class MetaCAT(object):
 
         return meta_cat
 
-    def prepare_document(self, doc, input_ids, offset_mapping):
+    def prepare_document(self, doc, input_ids, offset_mapping, lowercase):
         r'''
 
         Args:
@@ -289,7 +258,7 @@ class MetaCAT(object):
         r''' Process many documents at once.
 
         Args:
-            docs (List[spacy_documents]):
+            docs (List[spacy.tokens.Doc]):
                 List of spacy documents, could be good to not have millions at once.
         '''
         config = self.config
@@ -306,8 +275,8 @@ class MetaCAT(object):
             data = [] # The thing that goes into the model
             for i, doc in enumerate(docs):
                 ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
-                                                            offset_mapping=all_text_processed[i]['offset_mapping'])
-
+                                                            offset_mapping=all_text_processed[i]['offset_mapping'],
+                                                            lowercase=config.general['lowercase'])
                 doc_ind2positions[i] = (len(data), len(data) + len(samples), ent_id2ind) # Needed so we know where is what in the big data array
                 data.extend(samples)
                 if config.general['save_and_reuse_tokens']:
@@ -348,7 +317,13 @@ class MetaCAT(object):
 
 
     def __call__(self, doc):
-        """ Spacy pipe method """
+        ''' Process one document, used in the spacy pipeline for sequential
+        document processing.
+
+        Args:
+            doc (spacy.tokens.Doc):
+                A spacy document
+        '''
 
         # Just call the pipe method
         doc = self.pipe([doc])[0]
