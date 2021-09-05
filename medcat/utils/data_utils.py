@@ -867,7 +867,7 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
 
 
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=False,
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer, 
                       cui_filter=None, replace_center=None, prerequisites={},
                       lowercase=True):
     """ Convert the data from a json format into a CSV-like format for training.
@@ -925,43 +925,28 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer, cntx_in_chars=Fals
                             start = ann['start']
                             end = ann['end']
 
-                            if not cntx_in_chars:
-                                # Get the index of the center token
-                                ind = 0
-                                for ind, pair in enumerate(doc_text['offset_mapping']):
+                            # Get the index of the center token
+                            ind = 0
+                            for ind, pair in enumerate(doc_text['offset_mapping']):
+                                if start >= pair[0] and start < pair[1]:
+                                    break
+
+                            _start = max(0, ind - cntx_left)
+                            _end = min(len(doc_text['input_ids']), ind + 1 + cntx_right)
+                            tkns = doc_text['input_ids'][_start:_end]
+                            cpos = cntx_left + min(0, ind-cntx_left)
+
+                            if replace_center is not None:
+                                if lowercase:
+                                    replace_center = replace_center.lower()
+                                for p_ind, pair in enumerate(doc_text['offset_mapping']):
                                     if start >= pair[0] and start < pair[1]:
-                                        break
+                                        s_ind = p_ind
+                                    if end > pair[0] and end <= pair[1]:
+                                        e_ind = p_ind
 
-                                _start = max(0, ind - cntx_left)
-                                _end = min(len(doc_text['input_ids']), ind + 1 + cntx_right)
-                                tkns = doc_text['input_ids'][_start:_end]
-                                cpos = cntx_left + min(0, ind-cntx_left)
-
-                                if replace_center is not None:
-                                    if lowercase:
-                                        replace_center = replace_center.lower()
-                                    for p_ind, pair in enumerate(doc_text['offset_mapping']):
-                                        if start >= pair[0] and start < pair[1]:
-                                            s_ind = p_ind
-                                        if end > pair[0] and end <= pair[1]:
-                                            e_ind = p_ind
-
-                                    ln = e_ind - s_ind
-                                    tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
-
-
-                            else:
-                                _start = max(0, start - cntx_left)
-                                _end = min(len(text), end + cntx_right)
-                                t_left = tokenizer(text[_start:start])['input_ids']
-                                t_right = tokenizer(text[end:_end])['input_ids']
-                                if replace_center is None:
-                                    t_center = tokenizer(text[start:end])['input_ids']
-                                else:
-                                    t_center = tokenizer(replace_center)['input_ids']
-
-                                tkns = t_left + t_center + t_right
-                                cpos = len(t_left)
+                                ln = e_ind - s_ind
+                                tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
 
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
                             meta_anns = []

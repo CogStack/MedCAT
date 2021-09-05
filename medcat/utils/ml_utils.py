@@ -7,6 +7,7 @@ from torch import nn
 import torch.nn.functional as F
 import torch.optim as optim
 import os
+import math
 
 
 def get_lr_linking(config, cui_count, params, similarity):
@@ -33,11 +34,47 @@ def get_batch(ind, batch_size, x, y, cpos, device):
     return x_batch.to(device), y_batch.to(device), c_batch.to(device)
 
 
+def create_batch_piped_data(data, start_ind, end_ind, device, pad_id):
+    max_seq_len = max([len(x[0]) for x in data])
+    print(max_seq_len)
+    x = [x[0][0:max_seq_len] + [pad_id]*max(0, max_seq_len - len(x[0])) for x in data[start_ind:end_ind]]
+    print(x)
+    cpos = [x[1] for x in data[start_ind:end_ind]]
+
+    x = torch.tensor(x, dtype=torch.long).to(device)
+    cpos = torch.tensor(cpos, dtype=torch.long).to(device)
+
+    return x, cpos
+
+
+def process_piped_data(model, data, config):
+    pad_id = config.model['padding_idx']
+    batch_size = config.general['batch_size_eval']
+    device = config.general['device']
+    ignore_cpos = config.model['ignore_cpos']
+
+    model.eval()
+    model.to(device)
+
+    num_batches = math.ceil(len(data) / batch_size)
+    all_logits = []
+    for i in range(num_batches):
+        x, cpos = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
+        logits = model(x, cpos, ignore_cpos=ignore_cpos)
+        all_logits.append(logits.detach().cpu().numpy())
+
+    logits = np.concatenate(all_logits, axis=0)
+    predictions = np.argmax(logits, axis=1)
+    confidence = np.max(logits, axis=1)
+
+    return predictions, confidence
+
+
 def eval_network(net, data, config, save_dir_path=None):
     " TODO: Refactor "
     max_seq_len = config.general['cntx_left'] + config.general['cntx_right'] + 10
     pad_id = config.model['padding_idx']
-    batch_size = config.train['batch_size']
+    batch_size = config.general['batch_size_eval']
     device = config.general['device']
     ignore_cpos = config.model['ignore_cpos']
     score_average = config.train['score_average']
