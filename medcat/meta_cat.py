@@ -6,9 +6,8 @@ import torch
 from scipy.special import softmax
 
 from medcat.utils.ml_utils import train_network, eval_network
+from medcat.utils.meta_cat.ml_utils import predict
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
-from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
-from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 from medcat.config_meta_cat import ConfigMetaCAT
 
 
@@ -38,7 +37,7 @@ class MetaCAT(object):
         config = self.config
         model = None
         if config.model['model_name'] == 'lstm':
-            from medcat.utils.models import LSTM
+            from medcat.utils.meta_cat.models import LSTM
             model = LSTM(self.embeddings, config.model)
 
         return model
@@ -70,7 +69,7 @@ class MetaCAT(object):
 
         # Prepare the data
         data = prepare_from_json(data, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], cntx_in_chars=g_config['cntx_in_chars'], prerequisites=t_config['prerequisites'],
+                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
                 lowercase=g_config['lowercase'])
 
         # Check is the name there
@@ -109,7 +108,7 @@ class MetaCAT(object):
 
         # Prepare the data
         data = prepare_from_json(data, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], cntx_in_chars=g_config['cntx_in_chars'], prerequisites=t_config['prerequisites'],
+                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
                 lowercase=g_config['lowercase'])
 
         # Check is the name there
@@ -189,11 +188,28 @@ class MetaCAT(object):
 
 
     @classmethod
-    def load(cls, save_dir_path):
+    def load(cls, save_dir_path, config_dict=None):
+        r''' Load a meta_cat object.
+
+        Args:
+            save_dir_path (`str`):
+                The directory where all was saved.
+            config_dict (`dict`):
+                This can be used to overwrite saved parameters for this meta_cat
+                instance. Why? It is needed in certain cases where we autodeploy stuff.
+
+        Returns:
+            meta_cat (`medcat.MetaCAT`):
+                You don't say
+        '''
         # Load config
         config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
 
-        # Load tokenizer
+        # Overwrite loaded paramters with something new
+        if config_dict is not None:
+            config.merge_config(config_dict)
+
+        # Load tokenizer (TODO: This should be converted into a factory or something)
         if config.general['tokenizer_name'] == 'bbpe':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBPE
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
@@ -211,65 +227,130 @@ class MetaCAT(object):
 
         return meta_cat
 
+    def prepare_document(self, doc, input_ids, offset_mapping):
+        r'''
+
+        Args:
+            doc - spacy
+            input_ids
+            offset_mapping
+        '''
+        config = self.config
+        cntx_left = config.general['cntx_left']
+        cntx_right = config.general['cntx_right']
+        replace_center = config.general['replace_center']
+
+        # Should we annotate overlapping entities
+        if config.general['annotate_overlapping']:
+            ents = doc._.ents
+        else:
+            ents = doc.ents
+
+        samples = []
+        last_ind = 0
+        ent_id2ind = {} # Map form entitiy ID to where is it in the samples array
+        for ent in sorted(ents, key=lambda ent: ent.start_char):
+            start = ent.start_char
+            end = ent.end_char
+
+            ind = 0
+            # Start where the last ent was found, cannot be before it as we've sorted
+            for ind, pair in enumerate(offset_mapping[last_ind:]):
+                if start >= pair[0] and start < pair[1]:
+                    break
+            ind = last_ind + ind # If we did not start from 0 in the for loop
+            last_ind = ind
+
+            _start = max(0, ind - cntx_left)
+            _end = min(len(input_ids), ind + 1 + cntx_right)
+            tkns = input_ids[_start:_end]
+            cpos = cntx_left + min(0, ind-cntx_left)
+
+            if replace_center is not None:
+                if lowercase:
+                    replace_center = replace_center.lower()
+                # We start from ind
+                s_ind = ind
+                e_ind = ind + 1
+                for _ind, pair in enumerate(offset_mapping[ind:]):
+                    if end > pair[0] and end <= pair[1]:
+                        e_ind = _ind
+                        break
+                ln = e_ind - s_ind # Length of the concept in tokens
+                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
+
+            samples.append([tkns, cpos])
+            ent_id2ind[ent._.id] = len(samples) - 1
+
+        return ent_id2ind, samples
+
+
+    def pipe(self, docs):
+        r''' Process many documents at once.
+
+        Args:
+            docs (List[spacy_documents]):
+                List of spacy documents, could be good to not have millions at once.
+        '''
+        config = self.config
+        id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
+
+        if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
+            if config.general['lowercase']:
+                all_text = [doc.text.lower() for doc in docs]
+            else:
+                all_text = [doc.text for doc in docs]
+
+            all_text_processed = self.tokenizer(all_text)
+            doc_ind2positions = {}
+            data = [] # The thing that goes into the model
+            for i, doc in enumerate(docs):
+                ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
+                                                            offset_mapping=all_text_processed[i]['offset_mapping'])
+
+                doc_ind2positions[i] = (len(data), len(data) + len(samples), ent_id2ind) # Needed so we know where is what in the big data array
+                data.extend(samples)
+                if config.general['save_and_reuse_tokens']:
+                    doc._.share_tokens = (samples, doc_ind2positions[i])
+        else:
+            # This means another model has already processed the data and we can just use it. This is a
+            #dangerous option - as it assumes the other model has the same tokenizer and context size.
+            data = []
+            doc_ind2positions = {}
+            for i, doc in enumerate(docs):
+                data.extend(doc._.share_tokens[0])
+                doc_ind2positions[i] = doc._.share_tokens[1]
+
+        all_predictions, all_confidences = predict(self.model, data, config)
+        for i, doc in enumerate(docs):
+            start_ind, end_ind, ent_id2ind = doc_ind2positions[i]
+
+            predictions = all_predictions[start_ind:end_ind]
+            confidences = all_confidences[start_ind:end_ind]
+            if config.general['annotate_overlapping']:
+                ents = doc._.ents
+            else:
+                ents = doc.ents
+
+            for ent in ents:
+                ent_ind = ent_id2ind[ent._.id]
+                value = id2category_value[predictions[ent_ind]]
+                confidence = confidences[ent_ind]
+                if ent._.meta_anns is None:
+                    ent._.meta_anns = {config.general['category_name']: {'value': value,
+                                                                         'confidence': confidence,
+                                                                         'name': config.general['category_name']}}
+                else:
+                    ent._.meta_anns[config.general['category_name']] = {'value': value,
+                                                                        'confidence': confidence,
+                                                                        'name': config.general['category_name']}
+        return docs
+
 
     def __call__(self, doc):
         """ Spacy pipe method """
-        config = self.config
-        device = torch.device(config.general['device'])
 
-        data = []
-        id2row = {}
-        text = doc.text
-        if config.general['lowercase']:
-            text = text.lower()
-        doc_text = self.tokenizer(text)
-        x = []
-        cpos = []
-        # Needed later
-
-        id2category_value = {v: k for k, v in self.config.general['category_value2id'].items(l)}
-
-        # Only loop through non overlapping entities
-        for ent in doc.ents:
-            start = ent.start_char
-            end = ent.end_char
-            ind = 0
-            for ind, pair in enumerate(doc_text['offset_mapping']):
-                if start >= pair[0] and start <= pair[1]:
-                    break
-            _start = max(0, ind - self.cntx_left)
-            _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
-            _ids = doc_text['input_ids'][_start:_end]
-            _cpos = self.cntx_left + min(0, ind-self.cntx_left)
-
-            id2row[ent._.id] = len(x)
-            x.append(_ids)
-            cpos.append(_cpos)
-
-        max_seq_len = (self.cntx_left+self.cntx_right+1)
-        x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
-                      for sample in x])
-
-        x = torch.tensor(x, dtype=torch.long).to(device)
-        cpos = torch.tensor(cpos, dtype=torch.long).to(device)
-
-        # Nearly impossible that we need batches, so I'll ignore it
-        if len(x) >  0:
-            self.model.eval()
-            outputs = self.model(x, cpos).detach().to('cpu').numpy()
-            confidences = softmax(outputs, axis=1)
-            outputs = np.argmax(outputs, axis=1)
-
-            for ent in doc.ents:
-                val = id2category_value[outputs[id2row[ent._.id]]]
-                confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
-                if ent._.meta_anns is None:
-                    ent._.meta_anns = {self.category_name: {'value': val,
-                                                            'confidence': confidence,
-                                                            'name': self.category_name}}
-                else:
-                    ent._.meta_anns[self.category_name] = {'value': val,
-                                                           'confidence': confidence,
-                                                           'name': self.category_name}
+        # Just call the pipe method
+        doc = self.pipe([doc])[0]
 
         return doc

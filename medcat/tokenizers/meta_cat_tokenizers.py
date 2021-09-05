@@ -21,21 +21,32 @@ class TokenizerWrapperBPE(object):
         r''' Tokenize some text
 
         Args:
-            text (`str`):
-                Text to be tokenized.
+            text (`Union(str, List[str])`):
+                Text/texts to be tokenized.
 
         Returns:
-            res (`dict`):
-                Dictionary containing `offset_mapping`, `input_ids` and `tokens` corresponding to the
-                input text.
+            res (`Union(dict, List[dict])`):
+                Dictionary/ies containing `offset_mapping`, `input_ids` and `tokens` corresponding to the
+                input text/s.
 
         '''
-        res = self.hf_tokenizers.encode(text)
+        if isinstance(text, str):
+            result = self.hf_tokenizers.encode(text)
 
-        return {'offset_mapping': res.offsets,
-                'input_ids': res.ids,
-                'tokens': res.tokens,
-                }
+            return {'offset_mapping': result.offsets,
+                    'input_ids': result.ids,
+                    'tokens': result.tokens,
+                    }
+        elif isinstance(text, list):
+            results = self.hf_tokenizers.encode_batch(text)
+            output = []
+            for result in results:
+                output.append({'offset_mapping': result.offsets,
+                    'input_ids': result.ids,
+                    'tokens': result.tokens,
+                    })
+
+            return output
 
 
     def save(self, dir_path):

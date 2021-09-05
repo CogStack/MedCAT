@@ -11,10 +11,16 @@ class ConfigMetaCAT(object):
                 'category_name': None, # What category is this meta_cat model predicting/training
                 'category_value2id': {}, # Map from category values to ID, if empty it will be autocalculated during training
                 'lowercase': True, # If true all input text will be lowercased
-                'cntx_in_chars': False, # If True the context size is measured in number of characters, otherwise in tokens
-                'cntx_left': 15,
-                'cntx_right': 10,
+                'cntx_left': 15, # Number of tokens to take from the left of the concept
+                'cntx_right': 10, # Number of tokens to take from the right of the concept
                 'replace_center': None, # If set the center (concept) will be replaced with this string
+                'batch_size_eval': 1000,
+                'annotate_overlapping': False, # If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents
+                # This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
+                #context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
+                #so you need to be sure that the models for which this is turned on have the same tokenizer and context size, during
+                #a deployment.
+                'save_and_reuse_tokens': False, 
                 }
         self.model = {
                 'model_name': 'lstm',
@@ -32,7 +38,7 @@ class ConfigMetaCAT(object):
         self.train = {
                 'batch_size': 100,
                 'nepochs': 20,
-                'lr': 0.01,
+                'lr': 0.001,
                 'test_size': 0.1,
                 'class_weights': None,
                 'score_average': 'weighted', # What to use for averaging F1/P/R across labels
@@ -57,10 +63,7 @@ class ConfigMetaCAT(object):
 
 
     def merge_config(self, config_dict):
-        r''' We update the current class dictionary with the loaded one,
-        very strange solution - idea is to keep new fields that were potentially added
-        after this config was created, but to overwrite fields that exist in the loaded
-        config.
+        r''' Merge a config_dict with the existing config object.
 
         Args:
             config_dict (`dict`):
