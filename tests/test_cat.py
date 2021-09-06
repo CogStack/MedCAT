@@ -67,15 +67,31 @@ class CATTests(unittest.TestCase):
 
     def test_multiprocessing_pipe(self):
         in_data = [
-            (1, "The dog is sitting outside the house."),
+            (1, "The dog is sitting outside the house and second csv."),
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house."),
         ]
+
+        d_entities = {0: {'pretty_name': 'Second Csv',
+                  'cui': 'C0000239',
+                  'tuis': [],
+                  'types': [],
+                  'source_value': 'second csv',
+                  'detected_name': 'second~csv',
+                  'acc': 1.0,
+                  'context_similarity': 1.0,
+                  'start': 41,
+                  'end': 51,
+                  'icd10': [],
+                  'ontologies': [],
+                  'snomed': [],
+                  'id': 0,
+                  'meta_anns': {}}}
         out = self.undertest.multiprocessing_pipe(in_data)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[0][1])
+        self.assertEqual({'entities': d_entities, 'tokens': [], 'text': "The dog is sitting outside the house and second csv."}, out[0][1])
         self.assertEqual(2, out[1][0])
         self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[1][1])
         self.assertEqual(3, out[2][0])
