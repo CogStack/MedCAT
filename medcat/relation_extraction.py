@@ -1,11 +1,13 @@
 import logging
 import os
 import numpy
+from numpy.random import permutation
 import spacy
 import datasets
 import os
 import torch
 import torch.nn
+import regex as re
 from torch.nn.modules.module import T
 
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT, TokenizerWrapperBPE
@@ -25,6 +27,7 @@ class RelationalModel(object):
     def __init__(self, docs):
         self.docs = docs
         self.predictions = []
+        self.default_blank_relation = "[BLANK]"
 
         self.create_base_relations()
 
@@ -41,16 +44,22 @@ class RelationalModel(object):
             return self.docs[doc_id]._.relations
         return []
 
-    def get_instances(self, doc, max_length=100000) -> List[Tuple]:
-       """
-            Creates a list of tuples based on pairs of entities detected (ent1, ent2) for one spacy document.
+    def get_instances(self, doc, window_size=250) -> List[Tuple]:
+       """  
+            doc : SpacyDoc
+
+            window_size : int
+                Character distance between any two entities start positions.
+
+            Creates a list of tuples based on pairs of entities detected (relation, ent1, ent2) for one spacy document.
        """
        relation_instances = []
        for ent1 in doc.ents:
            for ent2 in doc.ents:
                if ent1 != ent2:
-                   if max_length and abs(ent2.start - ent1.start) <= max_length:
-                       relation_instances.append((ent1, ent2))
+                   if window_size and abs(ent2.start - ent1.start) <= window_size:
+                       relation_instances.append((self.default_blank_relation, ent1, ent2))
+
        return relation_instances
     
     def get_all_instances(self):
@@ -58,6 +67,23 @@ class RelationalModel(object):
         for doc in self.docs:
             relation_instances.extend(doc._.relations)
         return relation_instances
+    
+    def get_subject_objects(self, entity):
+        root = entity.root
+        subject = None; objs = []; pairs = []
+        for child in root.children:
+            if child.dep_ in ["nsubj", "nsubjpass"]:
+                if len(re.findall("[a-z]+",child.text.lower())) > 0: # filter out all numbers/symbols
+                    subject = child; 
+            elif child.dep_ in ["dobj", "attr", "prep", "ccomp"]:
+                objs.append(child); 
+        if (subject is not None) and (len(objs) > 0):
+            for a, b in permutation([subject] + [obj for obj in objs], 2):
+                a_ = [w for w in a.subtree]
+                b_ = [w for w in b.subtree]
+                pairs.append((a_[0] if (len(a_) == 1) else a_ , b_[0] if (len(b_) == 1) else b_))
+                
+        return pairs
 
 
 class RelationExtraction(object):
@@ -79,6 +105,8 @@ class RelationExtraction(object):
            embeddings = numpy.load(os.path.join("./", "embeddings.npy"), allow_pickle=False)
            self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
 
+       self.spacy_nlp = spacy.load("en_core_sci_lg")
+
 
     def __call__(self, doc_id) -> Doc:
         
@@ -89,9 +117,6 @@ class RelationExtraction(object):
             logging.info("Could not determine any instances in doc - returning doc as is.")
             return self.model.docs[doc_id]
 
-        #predictions = self.predict(doc)
-
-        #self.set_annotations([doc], predictions)
 
         return doc
 
