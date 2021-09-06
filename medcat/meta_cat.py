@@ -10,6 +10,10 @@ from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 
+# It should be safe to do this always, as all other multiprocessing
+#will be finished before data comes to meta_cat
+os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
 
 class MetaCAT(object):
     r''' TODO: Add documentation
