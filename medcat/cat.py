@@ -651,9 +651,9 @@ p
                 self.pipe.set_error_handler(self._pipe_error_handler)
                 try:
                     texts = self._get_trimmed_texts(text)
-                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size, len(texts))
+                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size)
 
-                    for doc in docs:
+                    for doc in tqdm(docs, total=len(texts)):
                         doc = None if doc.text.strip() == '' else doc
                         out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
 
@@ -772,14 +772,15 @@ p
 
         entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
+
         if return_dict:
             out = {}
             for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx]
+                out[in_data[idx][0]] = entities[idx] if 'text' in entities[idx] else None
         else:
             out = []
             for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx]))
+                out.append((in_data[idx][0], entities[idx] if 'text' in entities[idx] else None))
 
         return out
 
