@@ -1,0 +1,40 @@
+name: publish-to-pypi
+
+on:
+  push:
+    branches: [ production ]
+
+jobs:
+  build-n-publish-to-pypi:
+    runs-on: ubuntu-18.04
+    concurrency: build-n-publish-to-pypi
+
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Install pypa/build
+        run: >-
+          python -m
+          pip install
+          build
+          --user
+
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python -m
+          build
+          --sdist
+          --wheel
+          --outdir dist/
+          .
+
+      - name: Publish medcat distributions to PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@master
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
