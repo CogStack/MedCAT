@@ -15,6 +15,7 @@ setuptools.setup(
         "template": __version__,
         "dev_template": __version__ + "-dev.{sha}",
         "dirty_template": __version__ + "-dirty.{sha}",
+        "starting_version": __version__,
         "version_callback": None,
         "version_file": None,
         "count_commits_from_version_file": False,
