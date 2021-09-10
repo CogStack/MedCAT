@@ -3,13 +3,24 @@ from setuptools.command.install import install
 from setuptools.command.develop import develop
 from setuptools.command.egg_info import egg_info
 
+__version__ = "1.1.3"
+
 with open("./README.md", "r") as fh:
     long_description = fh.read()
 
 
 setuptools.setup(
     name="medcat",
-    version="1.1.3",
+    version_config={
+        "template": __version__,
+        "dev_template": __version__ + "-dev.{sha}",
+        "dirty_template": __version__ + "-dirty.{sha}",
+        "version_callback": None,
+        "version_file": None,
+        "count_commits_from_version_file": False,
+        "branch_formatter": None,
+    },
+    setup_requires=["setuptools-git-versioning"],
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",

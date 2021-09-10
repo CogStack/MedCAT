@@ -33,7 +33,7 @@ jobs:
           --outdir dist/
           .
 
-      - name: Publish medcat distributions to PyPI
+      - name: Publish production distribution to PyPI
         if: startsWith(github.ref, 'refs/tags')
         uses: pypa/gh-action-pypi-publish@master
         with:
