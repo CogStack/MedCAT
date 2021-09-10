@@ -10,7 +10,10 @@ jobs:
     concurrency: build-n-publish-to-pypi
 
     steps:
-      - uses: actions/checkout@master
+      - name: Checkout production
+        uses: actions/checkout@v2
+        with:
+          ref: 'production'
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v2

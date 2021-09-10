@@ -36,7 +36,10 @@ jobs:
     needs: [build]
 
     steps:
-      - uses: actions/checkout@master
+      - name: Checkout master
+        uses: actions/checkout@v2
+        with:
+          ref: 'master'
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
