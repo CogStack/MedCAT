@@ -39,7 +39,7 @@ jobs:
       - name: Checkout master
         uses: actions/checkout@v2
         with:
-          ref: 'master'
+          ref: 'CAT-33'
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
