@@ -30,8 +30,8 @@ jobs:
           python -m unittest discover
 
   publish-to-test-pypi:
-    if: github.event_name == 'push' && github.ref == 'refs/heads/CAT-33'
 
+    if: github.repository == 'CogStack/MedCAT' && github.event_name == 'push' && github.ref == 'refs/heads/CAT-33' && ${{ !startsWith(github.ref, 'refs/tags') }}
     runs-on: ubuntu-18.04
     needs: [build]
 
@@ -40,6 +40,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           ref: 'CAT-33'
+          fetch-depth: 0
 
       - name: Set up Python 3.9
         uses: actions/setup-python@v2
@@ -53,6 +54,12 @@ jobs:
           build
           --user
 
+      - name: Configure the version
+        run: >-
+          sed --in-place
+          "s/node-and-date/no-local-version/g"
+          setup.py
+
       - name: Build a binary wheel and a source tarball
         run: >-
           python -m
@@ -63,7 +70,7 @@ jobs:
           .
 
       - name: Publish dev distribution to Test PyPI
-        uses: pypa/gh-action-pypi-publish@master
+        uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
           repository_url: https://test.pypi.org/legacy/
