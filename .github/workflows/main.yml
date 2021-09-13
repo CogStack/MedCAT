@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ CAT-33 ]
+    branches: [ master ]
   pull_request:
     branches: [ master ]
 
@@ -31,7 +31,7 @@ jobs:
 
   publish-to-test-pypi:
 
-    if: github.repository == 'CogStack/MedCAT' && github.event_name == 'push' && github.ref == 'refs/heads/CAT-33' && ${{ !startsWith(github.ref, 'refs/tags') }}
+    if: github.repository == 'CogStack/MedCAT' && github.event_name == 'push' && startsWith(github.ref, 'refs/tags') != true
     runs-on: ubuntu-18.04
     needs: [build]
 
@@ -39,7 +39,7 @@ jobs:
       - name: Checkout master
         uses: actions/checkout@v2
         with:
-          ref: 'CAT-33'
+          ref: 'master'
           fetch-depth: 0
 
       - name: Set up Python 3.9
