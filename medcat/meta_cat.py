@@ -5,13 +5,14 @@ import numpy as np
 import torch
 from scipy.special import softmax
 
+from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
 
-class MetaCAT(object):
+class MetaCAT(PipeRunner):
     r''' TODO: Add documentation
     '''
 

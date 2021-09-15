@@ -381,15 +381,7 @@ class CDB(object):
             data = dill.load(f)
             if config is None:
                 config = Config.from_dict(data['config'])
-
-                # Hacky way of supporting old CDBs
-                weighted_average_function = config.linking['weighted_average_function']
-                if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
-                    config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
-                if getattr(config.ner, 'workers', None) is None:
-                    config.ner['workers'] = workers()
-                if getattr(config.linking, 'workers', None) is None:
-                    config.linking['workers'] = workers()
+                cls._ensure_backward_compatibility(config)
 
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
@@ -675,3 +667,14 @@ class CDB(object):
                          'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res
+
+    @staticmethod
+    def _ensure_backward_compatibility(config):
+        # Hacky way of supporting old CDBs
+        weighted_average_function = config.linking['weighted_average_function']
+        if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
+            config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
+        if getattr(config.ner, 'workers', None) is None:
+            config.ner['workers'] = workers()
+        if getattr(config.linking, 'workers', None) is None:
+            config.linking['workers'] = workers()
