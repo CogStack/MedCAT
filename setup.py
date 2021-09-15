@@ -9,7 +9,8 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="1.1.3",
+    setup_requires=["setuptools_scm"],
+    use_scm_version={"local_scheme": "no-local-version", "fallback_version": "unknown"},
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",

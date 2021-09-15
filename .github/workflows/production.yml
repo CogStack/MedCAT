@@ -1,0 +1,53 @@
+name: production
+
+on:
+  push:
+    branches: [ production ]
+  release:
+    types: [ published ]
+
+jobs:
+  build-n-publish-to-pypi:
+    runs-on: ubuntu-18.04
+    concurrency: build-n-publish-to-pypi
+    if: github.repository == 'CogStack/MedCAT'
+
+    steps:
+      - name: Checkout production
+        uses: actions/checkout@v2
+        with:
+          ref: 'production'
+          fetch-depth: 0
+
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.9
+
+      - name: Run UATs
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+          python -m unittest discover
+
+      - name: Install pypa/build
+        run: >-
+          python -m
+          pip install
+          build
+          --user
+
+      - name: Build a binary wheel and a source tarball
+        run: >-
+          python -m
+          build
+          --sdist
+          --wheel
+          --outdir dist/
+          .
+
+      - name: Publish production distribution to PyPI
+        if: startsWith(github.ref, 'refs/tags')
+        uses: pypa/gh-action-pypi-publish@v1.4.2
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
