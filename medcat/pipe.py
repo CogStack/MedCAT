@@ -1,5 +1,4 @@
 import types
-
 import spacy
 import gc
 import logging
@@ -8,15 +7,13 @@ from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from spacy.util import raise_error
 from tqdm.autonotebook import tqdm
-
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.utils.loggers import add_handlers
 from medcat.config import Config
-
-
+from medcat.pipeline.pipe_runner import PipeRunner
 from typing import List, Optional, Union, Iterable, Callable, Generator
 from multiprocessing import cpu_count
 
@@ -127,8 +124,7 @@ class Pipe(object):
     def batch_multi_process(self,
                             texts: Iterable[str],
                             n_process: Optional[int] = None,
-                            batch_size: Optional[int] = None,
-                            total: Optional[int] = None) -> Generator[Doc, None, None]:
+                            batch_size: Optional[int] = None) -> Generator[Doc, None, None]:
         r''' Batch process a list of texts in parallel.
 
         Args:
@@ -156,33 +152,26 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        if n_process == 1:
-            # Multiprocessing will be conducted inside pipeline components so as to work with multi-core GPUs.
-            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total),
-                                 n_process=n_process,
-                                 batch_size=batch_size,
-                                 component_cfg={
-                                     NER.name: {
-                                         'parallel': True
-                                     },
-                                     Linker.name: {
-                                         'parallel': True
-                                     }
-                                 })
-        else:
-            # Multiprocessing will be conducted at the pipeline level.
-            # Then texts will be processed sequentially inside components.
-            return self.nlp.pipe(texts if total is None else tqdm(texts, total=total),
-                                 n_process=n_process,
-                                 batch_size=batch_size,
-                                 component_cfg={
-                                     NER.name: {
-                                         'parallel': False
-                                     },
-                                     Linker.name: {
-                                         'parallel': False
-                                     }
-                                 })
+        # If n_process == 1, multiprocessing will be either conducted inside pipeline components (when 'parallel' is set
+        # to True) or not happen at all (when 'parallel' is set to False) so as to be able to work with multi-core GPUs.
+        # Otherwise, multiprocessing will be conducted at the top level of the pipeline, i.e., texts will be processed
+        # sequentially inside each pipeline component.
+        component_cfg = {
+            NER.name: {
+                'parallel': True if n_process == 1 else False
+            },
+            Linker.name: {
+                'parallel': True if n_process == 1 else False
+            },
+            MetaCAT.name: {
+                'parallel': False
+            }
+        }
+
+        return self.nlp.pipe(texts,
+                             n_process=n_process,
+                             batch_size=batch_size,
+                             component_cfg=component_cfg)
 
     def set_error_handler(self, error_handler):
         self.nlp.set_error_handler(error_handler)
@@ -202,23 +191,7 @@ class Pipe(object):
 
     @staticmethod
     def _ensure_serializable(doc: Doc) -> Doc:
-        new_ents = []
-        for ent in doc._.ents:
-            serializable = {
-                "start": ent.start,
-                "end": ent.end,
-                "label": ent.label,
-                "cui": ent._.cui,
-                "detected_name": ent._.detected_name,
-                "context_similarity": ent._.context_similarity,
-                "id": ent._.id
-            }
-            if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                serializable['meta_anns'] = ent._.meta_anns
-            new_ents.append(serializable)
-        doc._.ents.clear()
-        doc._.ents = new_ents
-        return doc
+        return PipeRunner.serialize_entities(doc)
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
@@ -230,7 +203,7 @@ class Pipe(object):
                     doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
                     self.log.warning("Exception raised when processing text: {}".format(t[:50] + "..." if isinstance(t, str) else t))
-                    self.log.warning(e, stack_info=True)
+                    self.log.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
             return docs

@@ -5,7 +5,6 @@ from medcat.cdb import CDB
 from medcat.cat import CAT
 
 
-# TODO: add parameterised tests covering both n_process = 1 and > 1
 class CATTests(unittest.TestCase):
 
     @classmethod
@@ -32,12 +31,19 @@ class CATTests(unittest.TestCase):
         doc = self.undertest(text)
         self.assertEqual(text, doc.text)
 
+    def test_callable_with_single_empty_text(self):
+        self.assertIsNone(self.undertest(""))
+
+    def test_callable_with_single_none_text(self):
+        self.assertIsNone(self.undertest(None))
+
     def test_callable_with_multi_texts(self):
-        texts = ["The dog is sitting outside the house.", "The dog is sitting outside the house."]
+        texts = ["The dog is sitting outside the house.", "", None]
         docs = self.undertest(texts)
-        self.assertEqual(2, len(docs))
+        self.assertEqual(3, len(docs))
         self.assertEqual(texts[0], docs[0].text)
-        self.assertEqual(texts[1], docs[1].text)
+        self.assertIsNone(docs[1])
+        self.assertIsNone(docs[2])
 
     def test_callable_with_in_data(self):
         in_data = [
@@ -71,8 +77,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house."),
         ]
-
-        out = self.undertest.multiprocessing_pipe(in_data)
+        out = self.undertest.multiprocessing_pipe(in_data, nproc=2)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -81,6 +86,22 @@ class CATTests(unittest.TestCase):
         self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[1][1])
         self.assertEqual(3, out[2][0])
         self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[2][1])
+
+    def test_multiprocessing_pipe_with_malformed_texts(self):
+        in_data = [
+            (1, "The dog is sitting outside the house."),
+            (2, ""),
+            (3, None),
+        ]
+        out = self.undertest.multiprocessing_pipe(in_data, nproc=1, batch_size=1)
+        self.assertTrue(type(out) == list)
+        self.assertEqual(3, len(out))
+        self.assertEqual(1, out[0][0])
+        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[0][1])
+        self.assertEqual(2, out[1][0])
+        self.assertIsNone(out[1][1])
+        self.assertEqual(3, out[2][0])
+        self.assertIsNone(out[2][1])
 
     def test_multiprocessing_pipe_return_dict(self):
         in_data = [
