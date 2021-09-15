@@ -663,9 +663,9 @@ p
                         self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
                         for i in range(len(texts)):
                             if i == len(out):
-                                out.append(None)
+                                out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                             elif out[i]['text'] != texts[i]:
-                                out.insert(i, None)
+                                out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                 finally:
                     self.pipe.reset_error_handler()
 
@@ -801,7 +801,7 @@ p
                         out.append((id, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
-                        self.log.warning(e, stack_info=True)
+                        self.log.warning(e, exc_info=True, stack_info=True)
 
             sleep(1)
 
@@ -895,7 +895,7 @@ p
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
         CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
-        CAT.log.warning(e, stack_info=True)
+        CAT.log.warning(e, exc_info=True, stack_info=True)
         if docs is not None:
             CAT.log.warning("Docs contained in the batch:")
             for doc in docs:

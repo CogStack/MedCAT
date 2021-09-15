@@ -1,5 +1,4 @@
 import types
-
 import spacy
 import gc
 import logging
@@ -8,15 +7,13 @@ from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from spacy.util import raise_error
 from tqdm.autonotebook import tqdm
-
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.utils.loggers import add_handlers
 from medcat.config import Config
-
-
+from medcat.pipeline.pipe_runner import PipeRunner
 from typing import List, Optional, Union, Iterable, Callable, Generator
 from multiprocessing import cpu_count
 
@@ -194,23 +191,7 @@ class Pipe(object):
 
     @staticmethod
     def _ensure_serializable(doc: Doc) -> Doc:
-        new_ents = []
-        for ent in doc._.ents:
-            serializable = {
-                "start": ent.start,
-                "end": ent.end,
-                "label": ent.label,
-                "cui": ent._.cui,
-                "detected_name": ent._.detected_name,
-                "context_similarity": ent._.context_similarity,
-                "id": ent._.id
-            }
-            if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                serializable['meta_anns'] = ent._.meta_anns
-            new_ents.append(serializable)
-        doc._.ents.clear()
-        doc._.ents = new_ents
-        return doc
+        return PipeRunner.serialize_entities(doc)
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
@@ -222,7 +203,7 @@ class Pipe(object):
                     doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
                     self.log.warning("Exception raised when processing text: {}".format(t[:50] + "..." if isinstance(t, str) else t))
-                    self.log.warning(e, stack_info=True)
+                    self.log.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
             return docs
