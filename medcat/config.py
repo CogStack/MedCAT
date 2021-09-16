@@ -68,6 +68,8 @@ class Config(object):
                 'full_unlink': False,
                 # Additional checking whether the concepts are uppercase or not before linking concepts
                 'check_upper_case_names': False,
+                # Number of workers used by a parallelizable pipeline component
+                'workers': workers(),
                 }
 
         self.preprocessing = {
@@ -98,8 +100,6 @@ class Config(object):
                 'upper_case_limit_len': 3,
                 # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
                 'try_reverse_word_order': False,
-                # Number of workers used by the NER pipeline component
-                'workers': workers(),
                 }
 
         self.linking = {
@@ -150,8 +150,6 @@ class Config(object):
                 'filters': {
                     'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
                     },
-                # Number of workers used by the Linker pipeline component
-                'workers': workers(),
                 }
 
 

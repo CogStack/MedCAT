@@ -674,7 +674,5 @@ class CDB(object):
         weighted_average_function = config.linking['weighted_average_function']
         if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
             config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
-        if getattr(config.ner, 'workers', None) is None:
-            config.ner['workers'] = workers()
-        if getattr(config.linking, 'workers', None) is None:
-            config.linking['workers'] = workers()
+        if getattr(config.general, 'workers', None) is None:
+            config.general['workers'] = workers()
