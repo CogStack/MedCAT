@@ -22,7 +22,6 @@ tag_skip_and_punct.name = "tag_skip_and_punct"
 class _Tagger(PipeRunner):
 
     def __init__(self, nlp, name, config):
-        self.nlp = nlp
         self.name = name
         self.config = config
         super().__init__(self.config.general['workers'])

@@ -69,7 +69,7 @@ class Pipe(object):
             Token.set_extension(field, default=False, force=True)
 
     def add_token_normalizer(self, config: Config, name: Optional[str] = None, spell_checker: Optional[BasicSpellChecker] = None) -> None:
-        token_normalizer = TokenNormalizer(spell_checker=spell_checker, config=config)
+        token_normalizer = TokenNormalizer(config=config, spell_checker=spell_checker)
         component_name = spacy.util.get_object_name(token_normalizer)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=token_normalizer)

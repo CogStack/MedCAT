@@ -15,7 +15,8 @@ class PipeRunner(Pipe):
     _time_out_in_secs = 3600
 
     def __init__(self, workers: int):
-        PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
+        if PipeRunner._execute is None or workers != PipeRunner._execute.n_jobs:
+            PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
 
     def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Generator[Doc, None, None]:
         error_handler = self.get_error_handler()
