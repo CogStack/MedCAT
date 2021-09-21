@@ -674,6 +674,18 @@ class CDB(object):
         weighted_average_function = config.linking['weighted_average_function']
         if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
             config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
+        if getattr(config.preprocessing, 'max_document_length', None) is None:
+            config.preprocessing['max_document_length'] = 1000000
+        if getattr(config.preprocessing, 'skip_stopwords', None) is None:
+            config.preprocessing['skip_stopwords'] = False
+        if getattr(config.preprocessing, 'words_to_skip', None) is None:
+            config.preprocessing['words_to_skip'] = {'nos'}
+        if getattr(config.preprocessing, 'keep_punct', None) is None:
+            config.preprocessing['keep_punct'] = {'.', ':'}
+        if getattr(config.preprocessing, 'min_len_normalize', None) is None:
+            config.preprocessing['min_len_normalize'] = 5
+        if getattr(config.preprocessing, 'stopwords', None) is None:
+            config.preprocessing['stopwords'] = None
         if getattr(config.ner, 'workers', None) is None:
             config.ner['workers'] = workers()
         if getattr(config.linking, 'workers', None) is None:
