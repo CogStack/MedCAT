@@ -686,7 +686,5 @@ class CDB(object):
             config.preprocessing['min_len_normalize'] = 5
         if getattr(config.preprocessing, 'stopwords', None) is None:
             config.preprocessing['stopwords'] = None
-        if getattr(config.ner, 'workers', None) is None:
-            config.ner['workers'] = workers()
-        if getattr(config.linking, 'workers', None) is None:
-            config.linking['workers'] = workers()
+        if getattr(config.general, 'workers', None) is None:
+            config.general['workers'] = workers()
