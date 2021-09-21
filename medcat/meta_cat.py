@@ -4,20 +4,21 @@ import pickle
 import numpy as np
 import torch
 from scipy.special import softmax
+from multiprocessing import Lock
 
-from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.ml_utils import train_network, eval_network
 from medcat.utils.data_utils import prepare_from_json, encode_category_values, set_all_seeds
 from medcat.preprocessing.tokenizers import TokenizerWrapperBPE
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
 
-class MetaCAT(PipeRunner):
+class MetaCAT(object):
     r''' TODO: Add documentation
     '''
 
     # Custom pipeline component name
     name = 'meta_cat'
+    _global_lock = Lock()
 
     def __init__(self, tokenizer=None, embeddings=None, cntx_left=20, cntx_right=20,
                  save_dir='./meta_cat/', pad_id=30000, device='cpu'):
@@ -286,57 +287,58 @@ class MetaCAT(PipeRunner):
         self.load_model(model=model)
 
     def __call__(self, doc, lowercase=True):
-        """ Spacy pipe method """
-        data = []
-        id2row = {}
-        text = doc.text
-        if lowercase:
-            text = text.lower()
-        doc_text = self.tokenizer(text)
-        x = []
-        cpos = []
+        with MetaCAT._global_lock:
+            """ Spacy pipe method """
+            data = []
+            id2row = {}
+            text = doc.text
+            if lowercase:
+                text = text.lower()
+            doc_text = self.tokenizer(text)
+            x = []
+            cpos = []
 
-        # Only loop through non overlapping entities
-        for ent in doc.ents:
-            start = ent.start_char
-            end = ent.end_char
-            ind = 0
-            for ind, pair in enumerate(doc_text['offset_mapping']):
-                if start >= pair[0] and start <= pair[1]:
-                    break
-            _start = max(0, ind - self.cntx_left)
-            _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
-            _ids = doc_text['input_ids'][_start:_end]
-            _cpos = self.cntx_left + min(0, ind-self.cntx_left)
-
-            id2row[ent._.id] = len(x)
-            x.append(_ids)
-            cpos.append(_cpos)
-
-        max_seq_len = (self.cntx_left+self.cntx_right+1)
-        x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
-                      for sample in x])
-
-        x = torch.tensor(x, dtype=torch.long).to(self.device)
-        cpos = torch.tensor(cpos, dtype=torch.long).to(self.device)
-
-        # Nearly impossible that we need batches, so I'll ignore it
-        if len(x) >  0:
-            self.model.eval()
-            outputs = self.model(x, cpos).detach().to('cpu').numpy()
-            confidences = softmax(outputs, axis=1)
-            outputs = np.argmax(outputs, axis=1)
-
+            # Only loop through non overlapping entities
             for ent in doc.ents:
-                val = self.i_category_values[outputs[id2row[ent._.id]]]
-                confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
-                if ent._.meta_anns is None:
-                    ent._.meta_anns = {self.category_name: {'value': val,
-                                                            'confidence': confidence,
-                                                            'name': self.category_name}}
-                else:
-                    ent._.meta_anns[self.category_name] = {'value': val,
-                                                           'confidence': confidence,
-                                                           'name': self.category_name}
+                start = ent.start_char
+                end = ent.end_char
+                ind = 0
+                for ind, pair in enumerate(doc_text['offset_mapping']):
+                    if start >= pair[0] and start <= pair[1]:
+                        break
+                _start = max(0, ind - self.cntx_left)
+                _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
+                _ids = doc_text['input_ids'][_start:_end]
+                _cpos = self.cntx_left + min(0, ind-self.cntx_left)
+
+                id2row[ent._.id] = len(x)
+                x.append(_ids)
+                cpos.append(_cpos)
+
+            max_seq_len = (self.cntx_left+self.cntx_right+1)
+            x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
+                          for sample in x])
+
+            x = torch.tensor(x, dtype=torch.long).to(self.device)
+            cpos = torch.tensor(cpos, dtype=torch.long).to(self.device)
+
+            # Nearly impossible that we need batches, so I'll ignore it
+            if len(x) >  0:
+                self.model.eval()
+                outputs = self.model(x, cpos).detach().to('cpu').numpy()
+                confidences = softmax(outputs, axis=1)
+                outputs = np.argmax(outputs, axis=1)
+
+                for ent in doc.ents:
+                    val = self.i_category_values[outputs[id2row[ent._.id]]]
+                    confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
+                    if ent._.meta_anns is None:
+                        ent._.meta_anns = {self.category_name: {'value': val,
+                                                                'confidence': confidence,
+                                                                'name': self.category_name}}
+                    else:
+                        ent._.meta_anns[self.category_name] = {'value': val,
+                                                               'confidence': confidence,
+                                                               'name': self.category_name}
 
         return doc

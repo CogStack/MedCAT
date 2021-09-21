@@ -1,7 +1,7 @@
 import logging
 import gc
 from joblib import Parallel, delayed
-from typing import Iterable, Generator, Tuple
+from typing import Iterable, Generator, Tuple, Callable
 from spacy.tokens import Doc, Span
 from spacy.tokens.underscore import Underscore
 from spacy.pipeline import Pipe
@@ -12,21 +12,27 @@ class PipeRunner(Pipe):
 
     log = logging.getLogger(__name__)
     _execute = None
+    _delayed = None
     _time_out_in_secs = 3600
 
     def __init__(self, workers: int):
-        PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
+        if PipeRunner._execute is None or workers > PipeRunner._execute.n_jobs:
+            PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
+        if PipeRunner._delayed is None:
+            PipeRunner._delayed = delayed(PipeRunner._run_pipe_on_one)
+
+    def __call__(self, doc: Doc):
+        raise NotImplementedError("Method __call__ has not been implemented.")
 
     def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Generator[Doc, None, None]:
         error_handler = self.get_error_handler()
         if kwargs.get("parallel", False):
             for docs in minibatch(stream, size=batch_size):
-                docs = [PipeRunner.serialize_entities(doc) for doc in docs]  # This could be slow for large batches
+                docs = [PipeRunner.serialize_entities(doc) for doc in docs]
                 try:
-                    run_pipe_on_one = delayed(self._run_pipe_on_one)
-                    tasks = (run_pipe_on_one(self, doc, Underscore.get_state()) for doc in docs)
-                    for doc in PipeRunner._execute(tasks):
-                        yield PipeRunner.deserialize_entities(doc)  # This could be slow for large batches
+                    tasks = (PipeRunner._delayed(self.__call__, doc, Underscore.get_state()) for doc in docs)
+                    for output_doc in PipeRunner._execute(tasks):
+                        yield PipeRunner.deserialize_entities(output_doc)
                 except Exception as e:
                     error_handler(self.name, self, docs, e)
                     yield from [None] * len(docs)
@@ -81,9 +87,9 @@ class PipeRunner(Pipe):
         return doc
 
     @staticmethod
-    def _run_pipe_on_one(pipe_runner: "PipeRunner", doc: Doc, underscore_state: Tuple) -> Doc:
+    def _run_pipe_on_one(call: Callable, doc: Doc, underscore_state: Tuple) -> Doc:
         Underscore.load_state(underscore_state)
         doc = PipeRunner.deserialize_entities(doc)
-        doc = pipe_runner(doc)
+        doc = call(doc)
         doc = PipeRunner.serialize_entities(doc)
         return doc

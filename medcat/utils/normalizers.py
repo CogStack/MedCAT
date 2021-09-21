@@ -1,5 +1,6 @@
 import re
 import spacy
+from medcat.pipeline.pipe_runner import PipeRunner
 
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
@@ -79,7 +80,7 @@ class BasicSpellChecker(object):
         pass
 
 
-class TokenNormalizer(object):
+class TokenNormalizer(PipeRunner):
     r''' Will normalize all tokens in a spacy document.
 
     Args:
@@ -94,6 +95,7 @@ class TokenNormalizer(object):
         self.config = config
         self.spell_checker = spell_checker
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
+        super().__init__(self.config.general['workers'])
 
     def __call__(self, doc):
         for token in doc:

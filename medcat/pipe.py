@@ -14,6 +14,7 @@ from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.utils.loggers import add_handlers
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
+from medcat.preprocessing.taggers import tag_skip_and_punct
 from typing import List, Optional, Union, Iterable, Callable, Generator
 from multiprocessing import cpu_count
 
@@ -68,7 +69,7 @@ class Pipe(object):
             Token.set_extension(field, default=False, force=True)
 
     def add_token_normalizer(self, config: Config, name: Optional[str] = None, spell_checker: Optional[BasicSpellChecker] = None) -> None:
-        token_normalizer = TokenNormalizer(spell_checker=spell_checker, config=config)
+        token_normalizer = TokenNormalizer(config=config, spell_checker=spell_checker)
         component_name = spacy.util.get_object_name(token_normalizer)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=token_normalizer)
@@ -156,15 +157,19 @@ class Pipe(object):
         # to True) or not happen at all (when 'parallel' is set to False) so as to be able to work with multi-core GPUs.
         # Otherwise, multiprocessing will be conducted at the top level of the pipeline, i.e., texts will be processed
         # sequentially inside each pipeline component.
+        is_parallel = True if n_process == 1 else False
         component_cfg = {
+            tag_skip_and_punct.name: {
+                'parallel': is_parallel
+            },
+            TokenNormalizer.name: {
+                'parallel': is_parallel
+            },
             NER.name: {
-                'parallel': True if n_process == 1 else False
+                'parallel': is_parallel
             },
             Linker.name: {
-                'parallel': True if n_process == 1 else False
-            },
-            MetaCAT.name: {
-                'parallel': False
+                'parallel': is_parallel
             }
         }
 
