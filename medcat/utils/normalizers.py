@@ -63,7 +63,7 @@ class BasicSpellChecker(object):
         letters    = 'abcdefghijklmnopqrstuvwxyz'
 
         if self.config.general['diacritics']:
-            letters += 'àáâãäåæçèéêëìíîï00F0ðñòóôõöøùúûüýþÿ'
+            letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
 
         splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
         deletes    = [L + R[1:]               for L, R in splits if R]
