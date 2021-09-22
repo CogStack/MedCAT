@@ -29,10 +29,16 @@ def spacy_extended(nlp):
             )
 
 
-def spacy_split_all(nlp):
-    infix_re = re.compile(r'''[^A-Za-z0-9\@]''')
-    suffix_re = re.compile(r'''[^A-Za-z0-9\@]$''')
-    prefix_re = re.compile(r'''^[^A-Za-z0-9\@]''')
+def spacy_split_all(nlp, config):
+
+    token_characters = r'[^A-Za-z0-9\@]'
+
+    if config.general['diacritics']:
+        token_characters = r'[^A-Za-zÀ-ÖØ-öø-ÿ0-9\@]'
+
+    infix_re = re.compile(token_characters)
+    suffix_re = re.compile(token_characters + r'$')
+    prefix_re = re.compile(r'^' + token_characters)
     return Tokenizer(nlp.vocab,
             rules={},
             token_match=None,
