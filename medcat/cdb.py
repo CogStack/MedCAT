@@ -669,22 +669,25 @@ class CDB(object):
         return res
 
     @staticmethod
-    def _ensure_backward_compatibility(config):
+    def _ensure_backward_compatibility(config: Config):
         # Hacky way of supporting old CDBs
         weighted_average_function = config.linking['weighted_average_function']
         if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
             config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
-        if getattr(config.preprocessing, 'max_document_length', None) is None:
+        if config.preprocessing.get('max_document_length', None) is None:
             config.preprocessing['max_document_length'] = 1000000
-        if getattr(config.preprocessing, 'skip_stopwords', None) is None:
+        if config.preprocessing.get('skip_stopwords', None) is None:
             config.preprocessing['skip_stopwords'] = False
-        if getattr(config.preprocessing, 'words_to_skip', None) is None:
+        if config.preprocessing.get('words_to_skip', None) is None:
             config.preprocessing['words_to_skip'] = {'nos'}
-        if getattr(config.preprocessing, 'keep_punct', None) is None:
+        if config.preprocessing.get('keep_punct', None) is None:
             config.preprocessing['keep_punct'] = {'.', ':'}
-        if getattr(config.preprocessing, 'min_len_normalize', None) is None:
+        if config.preprocessing.get('min_len_normalize', None) is None:
             config.preprocessing['min_len_normalize'] = 5
-        if getattr(config.preprocessing, 'stopwords', None) is None:
+        if config.preprocessing.get('stopwords', None) is None:
             config.preprocessing['stopwords'] = None
-        if getattr(config.general, 'workers', None) is None:
+        if config.general.get('workers', None) is None:
             config.general['workers'] = workers()
+        disabled_comps = config.general.get('spacy_disabled_components', [])
+        if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
+            config.general['spacy_disabled_components'].append('lemmatizer')
