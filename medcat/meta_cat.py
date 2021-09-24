@@ -32,8 +32,6 @@ class MetaCAT(object):
         self.save_dir = save_dir
         self.pad_id = pad_id
         self.device = torch.device(device)
-
-
         self.category_name = None
         self.category_values = {}
         self.i_category_values = {}
@@ -137,7 +135,6 @@ class MetaCAT(object):
 
         return {'f1':f1, 'p':p, 'r':r, 'cls_report': cls_report}
 
-
     def eval(self, json_path, batch_size=100, lowercase=True, ignore_cpos=False, cui_filter=None, score_average='weighted',
             replace_center=None):
         data = json.load(open(json_path, 'r'))
@@ -160,7 +157,6 @@ class MetaCAT(object):
                 batch_size=batch_size, device=self.device, ignore_cpos=ignore_cpos, score_average=score_average)
 
         return result
-
 
     def predict_one(self, text, start, end):
         """ A test function, not useful in any other case
@@ -186,7 +182,6 @@ class MetaCAT(object):
         inv_map = {v: k for k, v in self.category_values.items()}
         return inv_map[int(np.argmax(outputs_test.detach().to('cpu').numpy()[0]))]
 
-
     def save(self, full_save=True):
         tokenizer_name = self.model_config.get('tokenizer_name', 'unk')
         if full_save:
@@ -204,7 +199,6 @@ class MetaCAT(object):
         #save the config.
         self.save_config()
 
-
     def save_config(self):
         # TODO: Add other parameters, e.g replace_center, ignore_cpos etc.
         path = os.path.join(self.save_dir, 'vars.dat')
@@ -217,7 +211,6 @@ class MetaCAT(object):
                    'model_config': self.model_config}
         with open(path, 'wb') as f:
             pickle.dump(to_save, f)
-
 
     def load_config(self):
         """ Loads variables of this object
@@ -233,7 +226,6 @@ class MetaCAT(object):
         self.cntx_right = to_load['cntx_right']
         self.pad_id = to_load.get('pad_id', 0)
         self.model_config = to_load.get('model_config', {})
-
 
     def load_model(self, model='lstm'):
         # Load MODEL
@@ -262,7 +254,6 @@ class MetaCAT(object):
 
         return mc
 
-
     def _load(self, model='lstm', **kwargs):
         """ Loads model and config for this meta annotation
         """
@@ -287,58 +278,65 @@ class MetaCAT(object):
         self.load_model(model=model)
 
     def __call__(self, doc, lowercase=True):
-        with MetaCAT._global_lock:
-            """ Spacy pipe method """
-            data = []
-            id2row = {}
-            text = doc.text
-            if lowercase:
-                text = text.lower()
-            doc_text = self.tokenizer(text)
-            x = []
-            cpos = []
+        """ Spacy pipe method """
+        data = []
+        id2row = {}
+        text = doc.text
+        if lowercase:
+            text = text.lower()
+        doc_text = self.tokenizer(text)
+        x = []
+        cpos = []
 
-            # Only loop through non overlapping entities
+        # Only loop through non overlapping entities
+        for ent in doc.ents:
+            start = ent.start_char
+            end = ent.end_char
+            ind = 0
+            for ind, pair in enumerate(doc_text['offset_mapping']):
+                if start >= pair[0] and start <= pair[1]:
+                    break
+            _start = max(0, ind - self.cntx_left)
+            _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
+            _ids = doc_text['input_ids'][_start:_end]
+            _cpos = self.cntx_left + min(0, ind-self.cntx_left)
+
+            id2row[ent._.id] = len(x)
+            x.append(_ids)
+            cpos.append(_cpos)
+
+        max_seq_len = (self.cntx_left+self.cntx_right+1)
+        x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
+                      for sample in x])
+
+        if self.device == 'cpu':
+            doc = self._set_meta_anns(x, cpos, doc, id2row)
+        else:
+            with MetaCAT._global_lock:
+                doc = self._set_meta_anns(x, cpos, doc, id2row)
+
+        return doc
+
+    def _set_meta_anns(self, x, cpos, doc, id2row):
+        x = torch.tensor(x, dtype=torch.long).to(self.device)
+        cpos = torch.tensor(cpos, dtype=torch.long).to(self.device)
+
+        # Nearly impossible that we need batches, so I'll ignore it
+        if len(x) > 0:
+            self.model.eval()
+            outputs = self.model(x, cpos).detach().to('cpu').numpy()
+            confidences = softmax(outputs, axis=1)
+            outputs = np.argmax(outputs, axis=1)
+
             for ent in doc.ents:
-                start = ent.start_char
-                end = ent.end_char
-                ind = 0
-                for ind, pair in enumerate(doc_text['offset_mapping']):
-                    if start >= pair[0] and start <= pair[1]:
-                        break
-                _start = max(0, ind - self.cntx_left)
-                _end = min(len(doc_text['tokens']), ind + 1 + self.cntx_right)
-                _ids = doc_text['input_ids'][_start:_end]
-                _cpos = self.cntx_left + min(0, ind-self.cntx_left)
-
-                id2row[ent._.id] = len(x)
-                x.append(_ids)
-                cpos.append(_cpos)
-
-            max_seq_len = (self.cntx_left+self.cntx_right+1)
-            x = np.array([(sample + [self.pad_id] * max(0, max_seq_len - len(sample)))[0:max_seq_len]
-                          for sample in x])
-
-            x = torch.tensor(x, dtype=torch.long).to(self.device)
-            cpos = torch.tensor(cpos, dtype=torch.long).to(self.device)
-
-            # Nearly impossible that we need batches, so I'll ignore it
-            if len(x) >  0:
-                self.model.eval()
-                outputs = self.model(x, cpos).detach().to('cpu').numpy()
-                confidences = softmax(outputs, axis=1)
-                outputs = np.argmax(outputs, axis=1)
-
-                for ent in doc.ents:
-                    val = self.i_category_values[outputs[id2row[ent._.id]]]
-                    confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
-                    if ent._.meta_anns is None:
-                        ent._.meta_anns = {self.category_name: {'value': val,
-                                                                'confidence': confidence,
-                                                                'name': self.category_name}}
-                    else:
-                        ent._.meta_anns[self.category_name] = {'value': val,
-                                                               'confidence': confidence,
-                                                               'name': self.category_name}
-
+                val = self.i_category_values[outputs[id2row[ent._.id]]]
+                confidence = confidences[id2row[ent._.id], outputs[id2row[ent._.id]]]
+                if ent._.meta_anns is None:
+                    ent._.meta_anns = {self.category_name: {'value': val,
+                                                            'confidence': confidence,
+                                                            'name': self.category_name}}
+                else:
+                    ent._.meta_anns[self.category_name] = {'value': val,
+                                                           'confidence': confidence,
+                                                           'name': self.category_name}
         return doc
