@@ -14,11 +14,121 @@ def workers(workers_override=None):
     # return max(cpu_count() - 1, 1) if workers_override is None else workers_override
     return 1
 
-class Config(object):
+
+class BaseConfig(object):
+    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+
+
+    def __init__(self):
+        pass
+
+
+    def __iter__(self):
+        for attr, value in self.__dict__.items():
+            yield attr, value
+
+
+    def save(self, save_path):
+        r''' Save the config into a .json file
+
+        Args:
+            save_path (`str`):
+                Where to save the created json file
+        '''
+        # We want to save the dict here, not the whole class
+        json_string = jsonpickle.encode(self.__dict__)
+
+        with open(save_path, 'w') as f:
+            f.write(json_string)
+
+
+    def merge_config(self, config_dict):
+        r''' Merge a config_dict with the existing config object.
+
+        Args:
+            config_dict (`dict`):
+                A dictionary which key/values should be added to this class.
+        '''
+        for key in config_dict.keys():
+            if key in self.__dict__ and isinstance(self.__dict__[key], dict):
+                self.__dict__[key].update(config_dict[key])
+            else:
+                self.__dict__[key] = config_dict[key]
+
+
+    def parse_config_file(self, path):
+        r'''
+        Parses a configuration file in text format. Must be like:
+                cat.<variable>.<key> = <value>
+                ...
+            Where:
+                variable: linking, general, ner, ...
+                key: a key in the config dict e.g. subsample_after for linking
+                value: the value for the key, will be parsed with `eval`
+        '''
+        with open(path, 'r') as f:
+            for line in f:
+                if line.strip() and line.startswith("cat."):
+                    line = line[4:]
+                    left, right = line.split("=")
+                    variable, key = left.split(".")
+                    variable = variable.strip()
+                    key = key.strip()
+                    value = eval(right.strip())
+
+                    attr = getattr(self, variable)
+                    attr[key] = value
+
+        self.rebuild_re()
+
+
+    def rebuild_re():
+        pass
+
+
+    def __str__(self):
+        json_obj = {}
+        for attr, value in self:
+            json_obj[attr] = value
+        return jsonpickle.encode(json_obj)
+
+
+    @classmethod
+    def load(cls, save_path):
+        r''' Load config from a json file, note that fields that
+        did not exist in the old config but do exist in the current
+        version of the ConfigMetaCAT class will be kept.
+
+        Args:
+            save_path (`str`):
+                Path to the json file to load
+        '''
+        config = cls()
+
+        # Read the jsonpickle string
+        with open(save_path) as f:
+            config_dict = jsonpickle.decode(f.read())
+
+        config.merge_config(config_dict)
+
+        return config
+
+
+    @classmethod
+    def from_dict(cls, config_dict):
+        config = cls()
+        config.merge_config(config_dict)
+
+        return config
+
+
+class Config(BaseConfig):
 
     jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
 
     def __init__(self):
+        super().__init__()
+
         # CDB Maker
         self.cdb_maker = {
                # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
@@ -159,51 +269,9 @@ class Config(object):
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
 
-    def __iter__(self):
-        for attr, value in self.__dict__.items():
-            yield attr, value
-
-    def __str__(self):
-        json_obj = {}
-        for attr, value in self:
-            json_obj[attr] = value
-        return jsonpickle.encode(json_obj)
-
-    @classmethod
-    def from_dict(cls, d):
-        config = cls()
-        config.__dict__ = d
-
-        return config
 
     def rebuild_re(self):
         # Some regex that we will need
         self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
-
-
-    def parse_config_file(self, path):
-        r'''
-        Parses a configuration file in text format. Must be like:
-                cat.<variable>.<key> = <value>
-                ...
-            Where:
-                variable: linking, general, ner, ...
-                key: a key in the config dict e.g. subsample_after for linking
-                value: the value for the key, will be parsed with `eval`
-        '''
-        with open(path, 'r') as f:
-            for line in f:
-                if line.strip() and line.startswith("cat."):
-                    line = line[4:]
-                    left, right = line.split("=")
-                    variable, key = left.split(".")
-                    variable = variable.strip()
-                    key = key.strip()
-                    value = eval(right.strip())
-
-                    attr = getattr(self, variable)
-                    attr[key] = value
-
-        self.rebuild_re()
