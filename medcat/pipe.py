@@ -112,15 +112,18 @@ class Pipe(object):
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('context_similarity', default=-1, force=True)
 
+
     def add_meta_cat(self, meta_cat: MetaCAT, name: Optional[str] = None) -> None:
         component_name = spacy.util.get_object_name(meta_cat)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=meta_cat)
         self.nlp.add_pipe(component_name, name=name, last=True)
 
-        # Only the meta_anns field is needed, it will be a dictionary 
-        #of {category_name: value, ...}
+        # meta_anns is a dictionary like {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
+        # Used for sharing pre-processed data/tokens
+        Doc.set_extension('share_tokens', default=None, force=True)
+
 
     def batch_multi_process(self,
                             texts: Iterable[str],
