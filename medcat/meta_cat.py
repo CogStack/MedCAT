@@ -4,6 +4,7 @@ import pickle
 import numpy as np
 import torch
 from scipy.special import softmax
+from multiprocessing import Lock
 
 from medcat.config_meta_cat import ConfigMetaCAT
 
@@ -21,6 +22,7 @@ class MetaCAT(object):
 
     # Custom pipeline component name
     name = 'meta_cat'
+    _global_lock = Lock()
 
     def __init__(self, tokenizer=None, embeddings=None, config=None):
         if config is None:
@@ -176,6 +178,7 @@ class MetaCAT(object):
             meta_cat (`medcat.MetaCAT`):
                 You don't say
         '''
+
         # Load config
         config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
 
