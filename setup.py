@@ -9,7 +9,8 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="1.1.3",
+    setup_requires=["setuptools_scm"],
+    use_scm_version={"local_scheme": "no-local-version", "fallback_version": "unknown"},
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
@@ -17,7 +18,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
-              'medcat.tokenizers', 'medcat.utils.meta_cat'],
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline'],
     install_requires=[
         'numpy<1.21.0,>=1.19.0',
         'pandas~=1.0',

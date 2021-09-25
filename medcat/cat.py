@@ -651,9 +651,9 @@ p
                 self.pipe.set_error_handler(self._pipe_error_handler)
                 try:
                     texts = self._get_trimmed_texts(text)
-                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size, len(texts))
+                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size)
 
-                    for doc in docs:
+                    for doc in tqdm(docs, total=len(texts)):
                         doc = None if doc.text.strip() == '' else doc
                         out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
 
@@ -663,9 +663,9 @@ p
                         self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
                         for i in range(len(texts)):
                             if i == len(out):
-                                out.append(None)
+                                out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                             elif out[i]['text'] != texts[i]:
-                                out.insert(i, None)
+                                out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                 finally:
                     self.pipe.reset_error_handler()
 
@@ -772,14 +772,15 @@ p
 
         entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
+
         if return_dict:
             out = {}
             for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx]
+                out[in_data[idx][0]] = entities[idx] if 'text' in entities[idx] else None
         else:
             out = []
             for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx]))
+                out.append((in_data[idx][0], entities[idx] if 'text' in entities[idx] else None))
 
         return out
 
@@ -800,7 +801,7 @@ p
                         out.append((id, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
-                        self.log.warning(e, stack_info=True)
+                        self.log.warning(e, exc_info=True, stack_info=True)
 
             sleep(1)
 
@@ -894,7 +895,7 @@ p
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
         CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
-        CAT.log.warning(e, stack_info=True)
+        CAT.log.warning(e, exc_info=True, stack_info=True)
         if docs is not None:
             CAT.log.warning("Docs contained in the batch:")
             for doc in docs:
