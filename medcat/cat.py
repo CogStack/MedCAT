@@ -90,7 +90,7 @@ class CAT(object):
         # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
         for meta_cat in meta_cats:
-            self.pipe.add_meta_cat(meta_cat, meta_cat.category_name)
+            self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
             self._meta_annotations = True
 
         # Set max document length
