@@ -1,10 +1,13 @@
 import jsonpickle
+from medcat.config import BaseConfig
 
 
-class ConfigMetaCAT(object):
+class ConfigMetaCAT(BaseConfig):
     jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
 
     def __init__(self):
+        super().__init__()
+
         self.general = {
                 'device': 'cpu',
                 'seed': 13,
@@ -49,52 +52,3 @@ class ConfigMetaCAT(object):
                 'cui_filter': None, # If set only this CUIs will be used for training
                 'auto_save_model': True, # Should do model be saved during training for best results
                 }
-
-
-    def save(self, save_path):
-        r''' Save the config into a .json file
-
-        Args:
-            save_path (`str`):
-                Where to save the created json file
-        '''
-        # We want to save the dict here, not the whole class
-        json_string = jsonpickle.encode(self.__dict__)
-
-        with open(save_path, 'w') as f:
-            f.write(json_string)
-
-
-    def merge_config(self, config_dict):
-        r''' Merge a config_dict with the existing config object.
-
-        Args:
-            config_dict (`dict`):
-                A dictionary which key/values should be added to this class.
-        '''
-        for key in config_dict.keys():
-            if key in self.__dict__:
-                self.__dict__[key].update(config_dict[key])
-            else:
-                self.__dict__[key] = config_dict[key]
-
-
-    @classmethod
-    def load(cls, save_path):
-        r''' Load config from a json file, note that fields that
-        did not exist in the old config but do exist in the current
-        version of the ConfigMetaCAT class will be kept.
-
-        Args:
-            save_path (`str`):
-                Path to the json file to load
-        '''
-        config = cls()
-
-        # Read the jsonpickle string
-        with open(save_path) as f:
-            config_dict = jsonpickle.decode(f.read())
-
-        config.merge_config(config_dict)
-
-        return config
