@@ -39,7 +39,7 @@ class Pipe(object):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
-        self.nlp.tokenizer = tokenizer(self.nlp)
+        self.nlp.tokenizer = tokenizer(self.nlp, config)
         self.config = config
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
@@ -112,15 +112,18 @@ class Pipe(object):
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('context_similarity', default=-1, force=True)
 
+
     def add_meta_cat(self, meta_cat: MetaCAT, name: Optional[str] = None) -> None:
         component_name = spacy.util.get_object_name(meta_cat)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=meta_cat)
         self.nlp.add_pipe(component_name, name=name, last=True)
 
-        # Only the meta_anns field is needed, it will be a dictionary 
-        #of {category_name: value, ...}
+        # meta_anns is a dictionary like {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
+        # Used for sharing pre-processed data/tokens
+        Doc.set_extension('share_tokens', default=None, force=True)
+
 
     def batch_multi_process(self,
                             texts: Iterable[str],
@@ -153,23 +156,27 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        # If n_process == 1, multiprocessing will be either conducted inside pipeline components (when 'parallel' is set
-        # to True) or not happen at all (when 'parallel' is set to False) so as to be able to work with multi-core GPUs.
-        # Otherwise, multiprocessing will be conducted at the top level of the pipeline, i.e., texts will be processed
-        # sequentially inside each pipeline component.
-        is_parallel = True if n_process == 1 else False
+        # If n_process == -1, multiprocessing will be either conducted inside pipeline components (when 'parallel' is
+        # set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing will be
+        # conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
+        if n_process == -1:
+            inner_parallel = True
+            n_process = 1
+        else:
+            inner_parallel = False
+
         component_cfg = {
             tag_skip_and_punct.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             },
             TokenNormalizer.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             },
             NER.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             },
             Linker.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             }
         }
 
