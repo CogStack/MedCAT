@@ -10,9 +10,7 @@ def weighted_average(step, factor):
 
 
 def workers(workers_override=None):
-    # FIXME
-    # return max(cpu_count() - 1, 1) if workers_override is None else workers_override
-    return 1
+    return max(cpu_count() - 1, 1) if workers_override is None else workers_override
 
 
 class BaseConfig(object):
