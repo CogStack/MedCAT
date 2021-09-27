@@ -156,23 +156,27 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        # If n_process == 1, multiprocessing will be either conducted inside pipeline components (when 'parallel' is set
-        # to True) or not happen at all (when 'parallel' is set to False) so as to be able to work with multi-core GPUs.
-        # Otherwise, multiprocessing will be conducted at the top level of the pipeline, i.e., texts will be processed
-        # sequentially inside each pipeline component.
-        is_parallel = True if n_process == 1 else False
+        # If n_process == -1, multiprocessing will be either conducted inside pipeline components (when 'parallel' is
+        # set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing will be
+        # conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
+        if n_process == -1:
+            inner_parallel = True
+            n_process = 1
+        else:
+            inner_parallel = False
+
         component_cfg = {
             tag_skip_and_punct.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             },
             TokenNormalizer.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             },
             NER.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             },
             Linker.name: {
-                'parallel': is_parallel
+                'parallel': inner_parallel
             }
         }
 

@@ -22,7 +22,7 @@ class MetaCAT(object):
 
     # Custom pipeline component name
     name = 'meta_cat'
-    _global_lock = Lock()
+    _component_lock = Lock()
 
     def __init__(self, tokenizer=None, embeddings=None, config=None):
         if config is None:
@@ -41,7 +41,6 @@ class MetaCAT(object):
         embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=embeddings)
 
-
     def get_model(self, embeddings):
         config = self.config
         model = None
@@ -50,7 +49,6 @@ class MetaCAT(object):
             model = LSTM(embeddings, config)
 
         return model
-
 
     def train(self, json_path, save_dir_path=None):
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
@@ -109,7 +107,6 @@ class MetaCAT(object):
 
         return report
 
-
     def eval(self, json_path):
         g_config = self.config.general
         t_config = self.config.train
@@ -138,7 +135,6 @@ class MetaCAT(object):
 
         return result
 
-
     def save(self, save_dir_path):
         r''' Save all components of this class to a file
 
@@ -162,7 +158,6 @@ class MetaCAT(object):
         # This is everything we need to save from the class, we do not
         #save the class itself.
 
-
     @classmethod
     def load(cls, save_dir_path, config_dict=None):
         r''' Load a meta_cat object.
@@ -180,7 +175,8 @@ class MetaCAT(object):
         '''
 
         # Load config
-        config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
+        config_file_path = os.path.join(save_dir_path, 'config.json')
+        config = ConfigMetaCAT.load(config_file_path) if os.path.isfile(config_file_path) else ConfigMetaCAT()
 
         # Overwrite loaded paramters with something new
         if config_dict is not None:
@@ -261,7 +257,6 @@ class MetaCAT(object):
 
         return ent_id2ind, samples
 
-
     def batch_generator(self, stream, batch_size_chars):
         docs = []
         char_count = 0
@@ -276,7 +271,6 @@ class MetaCAT(object):
         # If there is anything left return that also
         if len(docs) > 0:
             yield docs
-
 
     def pipe(self, stream, *args, **kwargs):
         r''' Process many documents at once.
@@ -293,6 +287,13 @@ class MetaCAT(object):
         id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
         batch_size_chars = config.general['pipe_batch_size_in_chars']
 
+        if config.general['device'] == 'cpu':
+            yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
+        else:
+            with MetaCAT._component_lock:
+                yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
+
+    def _set_meta_anns(self, stream, batch_size_chars, config, id2category_value):
         for docs in self.batch_generator(stream, batch_size_chars):
             if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
                 if config.general['lowercase']:
@@ -344,7 +345,6 @@ class MetaCAT(object):
                                                                             'confidence': float(confidence),
                                                                             'name': config.general['category_name']}
                 yield doc
-
 
     def __call__(self, doc):
         ''' Process one document, used in the spacy pipeline for sequential

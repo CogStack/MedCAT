@@ -746,7 +746,7 @@ p
 
     def multiprocessing_pipe(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = 1,
+                             nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
@@ -768,7 +768,7 @@ p
 
         in_data = list(in_data) if isinstance(in_data, types.GeneratorType) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
-        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * n_process))
+        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
         entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)

@@ -16,6 +16,7 @@ class PipeRunner(Pipe):
     _time_out_in_secs = 3600
 
     def __init__(self, workers: int):
+        self.workers = workers
         if PipeRunner._execute is None or workers > PipeRunner._execute.n_jobs:
             PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
         if PipeRunner._delayed is None:
@@ -27,7 +28,7 @@ class PipeRunner(Pipe):
     def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Generator[Doc, None, None]:
         error_handler = self.get_error_handler()
         if kwargs.get("parallel", False):
-            for docs in minibatch(stream, size=batch_size):
+            for docs in minibatch(stream, size=self.workers):
                 docs = [PipeRunner.serialize_entities(doc) for doc in docs]
                 try:
                     tasks = (PipeRunner._delayed(self.__call__, doc, Underscore.get_state()) for doc in docs)
