@@ -182,6 +182,10 @@ class Config(BaseConfig):
                 'check_upper_case_names': False,
                 # Number of workers used by a parallelizable pipeline component
                 'workers': workers(),
+                # Should the labels of entities (shown in displacy) be pretty or just 'concept'. Slows down the annotation pipeline
+                #should not be used when annotating millions of documents. If `None` it will be the string "concept", if `short` it will be CUI,
+                #if `long` it will be CUI | Name | Confidence
+                'make_pretty_labels': None,
                 }
 
         self.preprocessing = {
