@@ -168,6 +168,9 @@ class Config(BaseConfig):
                 # Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
                 #for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language.
                 'spell_check': True,
+                # Should we process diacritics - for languages other than English, symbols such as 'é, ë, ö' can be relevant.
+                # Note that this makes spell_check slower.
+                'diacritics': False,
                 # If True the spell checker will try harder to find mistakes, this can slow down
                 #things drastically.
                 'spell_check_deep': False,
