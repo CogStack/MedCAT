@@ -39,7 +39,7 @@ class Pipe(object):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
-        self.nlp.tokenizer = tokenizer(self.nlp)
+        self.nlp.tokenizer = tokenizer(self.nlp, config)
         self.config = config
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
