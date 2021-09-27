@@ -175,7 +175,10 @@ class MetaCAT(object):
         '''
 
         # Load config
-        config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
+        if os.path.isfile(os.path.join(save_dir_path, 'config.json')):
+            config = ConfigMetaCAT.load()
+        else:
+            config = ConfigMetaCAT()
 
         # Overwrite loaded paramters with something new
         if config_dict is not None:
