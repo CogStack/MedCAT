@@ -20,6 +20,7 @@ class ConfigMetaCAT(BaseConfig):
                 'replace_center': None, # If set the center (concept) will be replaced with this string
                 'batch_size_eval': 5000,
                 'annotate_overlapping': False, # If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents
+                'tokenizer_name': 'bbpe',
                 # This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
                 #context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
                 #so you need to be sure that the models for which this is turned on have the same tokenizer and context size, during

@@ -1,6 +1,7 @@
 import os
 import json
 import pickle
+import logging
 import numpy as np
 import torch
 from scipy.special import softmax
@@ -10,6 +11,7 @@ from medcat.config_meta_cat import ConfigMetaCAT
 
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
+from medcat.utils.loggers import add_handlers
 
 # It should be safe to do this always, as all other multiprocessing
 #will be finished before data comes to meta_cat
@@ -24,6 +26,9 @@ class MetaCAT(object):
     name = 'meta_cat'
     _component_lock = Lock()
 
+    log = logging.getLogger(__package__)
+    # Add file and console handlers
+    log = add_handlers(log)
     def __init__(self, tokenizer=None, embeddings=None, config=None):
         if config is None:
             config = ConfigMetaCAT()
@@ -176,7 +181,12 @@ class MetaCAT(object):
 
         # Load config
         config_file_path = os.path.join(save_dir_path, 'config.json')
-        config = ConfigMetaCAT.load(config_file_path) if os.path.isfile(config_file_path) else ConfigMetaCAT()
+        if os.path.isfile(config_file_path):
+            config = ConfigMetaCAT.load(config_file_path)
+        else:
+            config = ConfigMetaCAT()
+            log.warning("No config was found in the save directory, using the default one. " + \
+                        "This can cause problems, make sure it is what you want.")
 
         # Overwrite loaded paramters with something new
         if config_dict is not None:
