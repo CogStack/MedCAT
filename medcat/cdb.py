@@ -515,13 +515,13 @@ class CDB(object):
         names_to_keep = set()
         snames_to_keep = set()
         for cui in cuis_to_keep:
-            names_to_keep.update(self.cui2names[cui])
-            snames_to_keep.update(self.cui2snames[cui])
+            names_to_keep.update(self.cui2names.get(cui, []))
+            snames_to_keep.update(self.cui2snames.get(cui, []))
 
         # Based on the names get also the indirect CUIs that have to be kept
         all_cuis_to_keep = set()
         for name in names_to_keep:
-            all_cuis_to_keep.update(self.name2cuis[name])
+            all_cuis_to_keep.update(self.name2cuis.get(name, []))
 
         new_name2cuis = {}
         new_name2cuis2status = {}
@@ -535,22 +535,24 @@ class CDB(object):
 
         # Subset cui2<whatever>
         for cui in all_cuis_to_keep:
-            new_cui2names[cui] = self.cui2names[cui]
-            new_cui2snames[cui] = self.cui2snames[cui]
-            if cui in self.cui2context_vectors:
-                new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
-                # We assume that it must have the cui2count_train if it has a vector
-                new_cui2count_train[cui] = self.cui2count_train[cui]
-            if cui in self.cui2tags:
-                new_cui2tags[cui] = self.cui2tags[cui]
-            new_cui2type_ids[cui] = self.cui2type_ids[cui]
-            if cui in self.cui2preferred_name:
-                new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
+            if cui in self.cui2names:
+                new_cui2names[cui] = self.cui2names[cui]
+                new_cui2snames[cui] = self.cui2snames[cui]
+                if cui in self.cui2context_vectors:
+                    new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
+                    # We assume that it must have the cui2count_train if it has a vector
+                    new_cui2count_train[cui] = self.cui2count_train[cui]
+                if cui in self.cui2tags:
+                    new_cui2tags[cui] = self.cui2tags[cui]
+                new_cui2type_ids[cui] = self.cui2type_ids[cui]
+                if cui in self.cui2preferred_name:
+                    new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
 
         # Subset name2<whatever>
         for name in names_to_keep:
-            new_name2cuis[name] = self.name2cuis[name]
-            new_name2cuis2status[name] = self.name2cuis2status[name]
+            if name in self.name2cuis:
+                new_name2cuis[name] = self.name2cuis[name]
+                new_name2cuis2status[name] = self.name2cuis2status[name]
 
         # Replace everything
         self.name2cuis = new_name2cuis
