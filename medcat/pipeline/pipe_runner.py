@@ -49,7 +49,7 @@ class PipeRunner(Pipe):
             serializable = {
                 "start": ent.start,
                 "end": ent.end,
-                "label": ent.label,
+                "label": ent.label_,
                 "cui": ent._.cui,
                 "detected_name": ent._.detected_name,
                 "context_similarity": ent._.context_similarity,
