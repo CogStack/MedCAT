@@ -94,6 +94,13 @@ class MetaCAT(object):
         data = data[category_name]
 
         category_value2id = g_config['category_value2id']
+        # Make sure the config number of classes is the same as the one found in the data
+        if len(category_value2id) != self.config.model['nclasses']:
+            self.log.warning("The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
+                             self.config.model['nclasses'], len(category_value2id)))
+            self.log.warning("Auto-setting the nclasses value in config.")
+            self.config.model['nclasses'] = len(category_value2id)
+
         if not category_value2id:
             # Encode the category values
             data, category_value2id = encode_category_values(data)
