@@ -761,6 +761,10 @@ p
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
         '''
         out: Union[List[Tuple], Dict]
+
+        if nproc == 0:
+            raise ValueError("nproc cannot be set to zero")
+
         if self._meta_annotations:
             # Hack for torch using multithreading, which is not good here
             import torch
