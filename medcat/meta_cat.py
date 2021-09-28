@@ -47,7 +47,6 @@ class MetaCAT(PipeRunner):
 
         embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=embeddings)
-        super().__init__(self.config.general['workers'])
 
     def get_model(self, embeddings):
         config = self.config
