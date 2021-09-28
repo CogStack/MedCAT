@@ -100,7 +100,6 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
     return out_data
 
 
-
 def encode_category_values(data, existing_category_value2id={}):
     r''' Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
@@ -131,5 +130,47 @@ def encode_category_values(data, existing_category_value2id={}):
     return data, category_value2id
 
 
+def json_to_fake_spacy(data, id2text):
+    r''' Creates a generator of fake spacy documents, used for running
+    meta_cat pipe separately from main cat pipeline.
 
+    Args:
+        data(`dict`):
+            Output from cat formated as: {<id>: <output of get_entities, ...}
+        id2text(`dict`):
+            Map from document id to text of that documetn
 
+    Returns:
+        generator:
+            Generator of spacy like documents that can be feed into meta_cat.pipe
+    '''
+
+    class Empty(object):
+        def __init__(self):
+            pass
+
+    class Span(object):
+        def __init__(self, start_char, end_char, id):
+            self._ = Empty()
+            self.start_char = start_char
+            self.end_char = end_char
+            self._.id = id
+            self._.meta_anns = None
+
+    class Doc(object):
+        def __init__(self, text, id):
+            self._ = Empty()
+            self._.share_tokens = None
+            self.ents = []
+            # We do not have overlapps at this stage
+            self._ents = self.ents
+            self.text = text
+            self.id = id
+
+    for id in data.keys():
+        ents = data[id]['entities'].values()
+
+        doc = Doc(text=id2text[id], id=id)
+        doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
+
+        yield doc
