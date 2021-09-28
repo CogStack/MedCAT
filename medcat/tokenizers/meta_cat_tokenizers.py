@@ -18,7 +18,7 @@ class TokenizerWrapperBPE(object):
 
         if hf_tokenizers is not None:
             # For whatever reason added tokens do not persist with this tokenizer, what to do
-            tokenizer.hf_tokenizers.add_tokens(['<PAD>'])
+            self.hf_tokenizers.add_tokens(['<PAD>'])
 
 
     def __call__(self, text):
