@@ -43,8 +43,8 @@ class MetaCAT(object):
             config.model['padding_idx'] = tokenizer.get_pad_id()
         self.tokenizer = tokenizer
 
-        embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
-        self.model = self.get_model(embeddings=embeddings)
+        self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
+        self.model = self.get_model(embeddings=self.embeddings)
 
     def get_model(self, embeddings):
         config = self.config
@@ -94,13 +94,6 @@ class MetaCAT(object):
         data = data[category_name]
 
         category_value2id = g_config['category_value2id']
-        # Make sure the config number of classes is the same as the one found in the data
-        if len(category_value2id) != self.config.model['nclasses']:
-            self.log.warning("The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                             self.config.model['nclasses'], len(category_value2id)))
-            self.log.warning("Auto-setting the nclasses value in config.")
-            self.config.model['nclasses'] = len(category_value2id)
-
         if not category_value2id:
             # Encode the category values
             data, category_value2id = encode_category_values(data)
@@ -108,6 +101,14 @@ class MetaCAT(object):
         else:
             # We already have everything, just get the data
             data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
+
+        # Make sure the config number of classes is the same as the one found in the data
+        if len(category_value2id) != self.config.model['nclasses']:
+            self.log.warning("The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
+                             self.config.model['nclasses'], len(category_value2id)))
+            self.log.warning("Auto-setting the nclasses value in config and rebuilding the model.")
+            self.config.model['nclasses'] = len(category_value2id)
+            self.model = self.get_model(embeddings=self.embeddings)
 
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
