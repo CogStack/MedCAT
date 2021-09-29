@@ -146,7 +146,7 @@ class MetaCAT(PipeRunner):
         data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
 
         # Run evaluation
-        result = eval_model(self.model, data, config=self.config)
+        result = eval_model(self.model, data, config=self.config, tokenizer=self.tokenizer)
 
         return result
 

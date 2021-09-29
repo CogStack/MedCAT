@@ -213,7 +213,7 @@ def train_model(model, data, config, save_dir_path=None):
     return winner_report
 
 
-def eval_model(model, data, config):
+def eval_model(model, data, config, tokenizer):
     r''' Evaluate a trained model on the provided data
 
     Args:
@@ -252,6 +252,24 @@ def eval_model(model, data, config):
     print_report(0, running_loss, all_logits, y=y_eval, name='Eval')
 
     score_average = config.train['score_average']
-    f1 = f1_score(y_eval, np.argmax(np.concatenate(all_logits, axis=0), axis=1), average=score_average)
+    predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
+    f1 = f1_score(y_eval, predictions, average=score_average)
 
-    return {'f1': f1}
+    examples = {'FP': {}, 'FN': {}, 'TP': {}}
+    id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
+    for i, p in enumerate(predictions):
+        y = id2category_value[y_eval[i]]
+        p = id2category_value[p]
+        c = data[i][1]
+        tkns = data[i][0]
+        text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<"+ tokenizer.hf_tokenizers.decode(tkns[c:c+1]).strip() + ">> " + \
+                tokenizer.hf_tokenizers.decode(tkns[c+1:])
+        info = "Predicted: {}, True: {}".format(p, y)
+        if p != y:
+            # We made a mistake
+            examples['FN'][y] = examples['FN'].get(y, []) + [(info, text)]
+            examples['FP'][p] = examples['FP'].get(p, []) + [(info, text)]
+        else:
+            examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
+
+    return {'f1': f1, 'examples': examples}
