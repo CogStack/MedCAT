@@ -17,10 +17,6 @@ class PipeRunner(Pipe):
 
     def __init__(self, workers: int):
         self.workers = workers
-        if PipeRunner._execute is None or workers > PipeRunner._execute.n_jobs:
-            PipeRunner._execute = Parallel(n_jobs=workers, timeout=PipeRunner._time_out_in_secs)
-        if PipeRunner._delayed is None:
-            PipeRunner._delayed = delayed(PipeRunner._run_pipe_on_one)
 
     def __call__(self, doc: Doc):
         raise NotImplementedError("Method __call__ has not been implemented.")
@@ -28,6 +24,7 @@ class PipeRunner(Pipe):
     def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Generator[Doc, None, None]:
         error_handler = self.get_error_handler()
         if kwargs.get("parallel", False):
+            self._lazy_init_pool()
             for docs in minibatch(stream, size=self.workers):
                 docs = [PipeRunner.serialize_entities(doc) for doc in docs]
                 try:
@@ -52,7 +49,7 @@ class PipeRunner(Pipe):
             serializable = {
                 "start": ent.start,
                 "end": ent.end,
-                "label": ent.label,
+                "label": ent.label_,
                 "cui": ent._.cui,
                 "detected_name": ent._.detected_name,
                 "context_similarity": ent._.context_similarity,
@@ -94,3 +91,9 @@ class PipeRunner(Pipe):
         doc = call(doc)
         doc = PipeRunner.serialize_entities(doc)
         return doc
+
+    def _lazy_init_pool(self):
+        if PipeRunner._execute is None or self.workers > PipeRunner._execute.n_jobs:
+            PipeRunner._execute = Parallel(n_jobs=self.workers, timeout=PipeRunner._time_out_in_secs)
+        if PipeRunner._delayed is None:
+            PipeRunner._delayed = delayed(PipeRunner._run_pipe_on_one)
