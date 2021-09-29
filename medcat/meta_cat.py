@@ -262,10 +262,10 @@ class MetaCAT(object):
                     replace_center = replace_center.lower()
                 # We start from ind
                 s_ind = ind
-                e_ind = ind + 1
+                e_ind = ind
                 for _ind, pair in enumerate(offset_mapping[ind:]):
                     if end > pair[0] and end <= pair[1]:
-                        e_ind = _ind
+                        e_ind = _ind + ind
                         break
                 ln = e_ind - s_ind # Length of the concept in tokens
                 tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
