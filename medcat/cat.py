@@ -61,6 +61,7 @@ class CAT(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
+
     def __init__(self, cdb, config, vocab, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab

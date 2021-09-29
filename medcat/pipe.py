@@ -154,9 +154,9 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        # If n_process < 0, multiprocessing will be either conducted inside pipeline components based on the con(when 'parallel' is
-        # set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing will be
-        # conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
+        # If n_process < 0, multiprocessing will be either conducted inside pipeline components based on the con(when
+        # 'parallel' is set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing
+        # will be conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
         if n_process < 0:
             inner_parallel = True
             n_process = 1
