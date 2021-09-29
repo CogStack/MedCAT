@@ -103,6 +103,86 @@ class CAT(object):
         '''
         return self.pipe.nlp
 
+
+    def create_model_pack(self, save_dir_path):
+        r''' Will crete a .zip file containing all the models in the current running instance
+        of MedCAT. This is not the most efficient way, for sure, but good enough for now.
+        '''
+        from zipfile import ZipFile
+        import shutil
+        from medcat.meta_cat import MetaCAT
+        import os
+
+        self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
+        _save_dir_path = save_dir_path
+        save_dir_path = os.path.join(save_dir_path, 'medcat_model_pack')
+
+        os.makedirs(save_dir_path, exist_ok=True)
+
+        # Save the used spacy model
+        spacy_path = os.path.join(save_dir_path, 'spacy_model')
+        shutil.copytree(self.pipe.nlp._path, spacy_path)
+
+        # Change the name of the spacy model in the config
+        self.config.general['spacy_model'] = 'spacy_model'
+
+        # Save the CDB
+        cdb_path = os.path.join(save_dir_path, "cdb.dat")
+        self.cdb.save(cdb_path)
+
+        # Save the Vocab
+        vocab_path = os.path.join(save_dir_path, "vocab.dat")
+        self.vocab.save(vocab_path)
+
+        # Save all meta_cats
+        for comp in self.pipe.nlp.components:
+            if isinstance(comp[1], MetaCAT):
+                name = comp[0]
+                meta_path = os.path.join(save_dir_path, "meta_" + name)
+                comp[1].save(meta_path)
+
+        shutil.make_archive(os.path.join(_save_dir_path, 'medcat_model_pack'), 'zip', root_dir=_save_dir_path, base_dir='medcat_model_pack')
+
+
+    @classmethod
+    def load_model_pack(cls, zip_path):
+        r''' Load everything
+        '''
+        import os
+        import shutil
+        from medcat.cdb import CDB
+        from medcat.vocab import Vocab
+        from medcat.meta_cat import MetaCAT
+
+        base_dir = os.path.dirname(zip_path)
+
+        model_pack_path = os.path.join(base_dir, 'medcat_model_pack')
+        if os.path.exists(model_pack_path):
+            print("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
+        else:
+            print("Unziping the model pack and loading models.")
+            shutil.unpack_archive(zip_path, extract_dir=base_dir)
+
+        # Load the CDB
+        cdb_path = os.path.join(model_pack_path, "cdb.dat")
+        cdb = CDB.load(cdb_path)
+
+        # Modify the config to contain full path to spacy model
+        cdb.config.general['spacy_model'] = os.path.join(model_pack_path, cdb.config.general['spacy_model'])
+
+        # Load Vocab
+        vocab_path = os.path.join(model_pack_path, "vocab.dat")
+        vocab = Vocab.load(vocab_path)
+
+        # Find meta models in the model_pack
+        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_cats = []
+        for meta_path in meta_paths:
+            meta_cats.append(MetaCAT.load(meta_path))
+
+        return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+
+
     def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple]], do_train: bool = False):
         r'''
         Push the text through the pipeline.
