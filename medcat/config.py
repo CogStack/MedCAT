@@ -151,6 +151,8 @@ class Config(BaseConfig):
                 }
 
         self.general = {
+                # What was used to build the CDB, e.g. SNOMED_202009
+                'cdb_source_name': '',
                 # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance 
                 'log_level': logging.INFO,
                 'log_format': '%(levelname)s:%(name)s: %(message)s',
