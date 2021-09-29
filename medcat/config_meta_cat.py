@@ -10,6 +10,7 @@ class ConfigMetaCAT(BaseConfig):
 
         self.general = {
                 'device': 'cpu',
+                'disable_component_lock': False,
                 'seed': 13,
                 'category_name': None, # What category is this meta_cat model predicting/training
                 'category_value2id': {}, # Map from category values to ID, if empty it will be autocalculated during training
