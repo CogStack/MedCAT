@@ -117,7 +117,7 @@ def encode_category_values(data, existing_category_value2id={}):
             Map rom category value to ID for all categories in the data.
     '''
     data = list(data)
-    category_value2id = {}
+    category_value2id = existing_category_value2id
     category_values = set([x[2] for x in data])
     for c in category_values:
         if c not in category_value2id:
