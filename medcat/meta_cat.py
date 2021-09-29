@@ -305,7 +305,7 @@ class MetaCAT(object):
         id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
         batch_size_chars = config.general['pipe_batch_size_in_chars']
 
-        if config.general['device'] == 'cpu':
+        if config.general['device'] == 'cpu' or config.general['disable_component_lock']:
             yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
         else:
             with MetaCAT._component_lock:
