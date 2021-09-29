@@ -6,19 +6,20 @@ import numpy as np
 import torch
 from scipy.special import softmax
 from multiprocessing import Lock
-
+from spacy.tokens import Doc
+from typing import Iterable, Generator
 from medcat.config_meta_cat import ConfigMetaCAT
-
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 from medcat.utils.loggers import add_handlers
+from medcat.pipeline.pipe_runner import PipeRunner
 
 # It should be safe to do this always, as all other multiprocessing
 #will be finished before data comes to meta_cat
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
-class MetaCAT(object):
+class MetaCAT(PipeRunner):
     r''' TODO: Add documentation
     '''
 
@@ -29,6 +30,7 @@ class MetaCAT(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
+
     def __init__(self, tokenizer=None, embeddings=None, config=None):
         if config is None:
             config = ConfigMetaCAT()
@@ -188,13 +190,7 @@ class MetaCAT(object):
         '''
 
         # Load config
-        config_file_path = os.path.join(save_dir_path, 'config.json')
-        if os.path.isfile(config_file_path):
-            config = ConfigMetaCAT.load(config_file_path)
-        else:
-            config = ConfigMetaCAT()
-            log.warning("No config was found in the save directory, using the default one. " + \
-                        "This can cause problems, make sure it is what you want.")
+        config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
 
         # Overwrite loaded paramters with something new
         if config_dict is not None:
@@ -275,7 +271,8 @@ class MetaCAT(object):
 
         return ent_id2ind, samples
 
-    def batch_generator(self, stream, batch_size_chars):
+    @staticmethod
+    def batch_generator(stream, batch_size_chars):
         docs = []
         char_count = 0
         for doc in stream:
@@ -290,7 +287,8 @@ class MetaCAT(object):
         if len(docs) > 0:
             yield docs
 
-    def pipe(self, stream, *args, **kwargs):
+    # Override
+    def pipe(self, stream: Iterable[Doc], *args, **kwargs) -> Generator[Doc, None, None]:
         r''' Process many documents at once.
 
         Args:
@@ -313,56 +311,60 @@ class MetaCAT(object):
 
     def _set_meta_anns(self, stream, batch_size_chars, config, id2category_value):
         for docs in self.batch_generator(stream, batch_size_chars):
-            if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
-                if config.general['lowercase']:
-                    all_text = [doc.text.lower() for doc in docs]
-                else:
-                    all_text = [doc.text for doc in docs]
-
-                all_text_processed = self.tokenizer(all_text)
-                doc_ind2positions = {}
-                data = [] # The thing that goes into the model
-                for i, doc in enumerate(docs):
-                    ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
-                                                                offset_mapping=all_text_processed[i]['offset_mapping'],
-                                                                lowercase=config.general['lowercase'])
-                    doc_ind2positions[i] = (len(data), len(data) + len(samples), ent_id2ind) # Needed so we know where is what in the big data array
-                    data.extend(samples)
-                    if config.general['save_and_reuse_tokens']:
-                        doc._.share_tokens = (samples, doc_ind2positions[i])
-            else:
-                # This means another model has already processed the data and we can just use it. This is a
-                #dangerous option - as it assumes the other model has the same tokenizer and context size.
-                data = []
-                doc_ind2positions = {}
-                for i, doc in enumerate(docs):
-                    data.extend(doc._.share_tokens[0])
-                    doc_ind2positions[i] = doc._.share_tokens[1]
-
-            all_predictions, all_confidences = predict(self.model, data, config)
-            for i, doc in enumerate(docs):
-                start_ind, end_ind, ent_id2ind = doc_ind2positions[i]
-
-                predictions = all_predictions[start_ind:end_ind]
-                confidences = all_confidences[start_ind:end_ind]
-                if config.general['annotate_overlapping']:
-                    ents = doc._.ents
-                else:
-                    ents = doc.ents
-
-                for ent in ents:
-                    ent_ind = ent_id2ind[ent._.id]
-                    value = id2category_value[predictions[ent_ind]]
-                    confidence = confidences[ent_ind]
-                    if ent._.meta_anns is None:
-                        ent._.meta_anns = {config.general['category_name']: {'value': value,
-                                                                             'confidence': float(confidence),
-                                                                             'name': config.general['category_name']}}
+            try:
+                if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
+                    if config.general['lowercase']:
+                        all_text = [doc.text.lower() for doc in docs]
                     else:
-                        ent._.meta_anns[config.general['category_name']] = {'value': value,
-                                                                            'confidence': float(confidence),
-                                                                            'name': config.general['category_name']}
-                yield doc
+                        all_text = [doc.text for doc in docs]
+
+                    all_text_processed = self.tokenizer(all_text)
+                    doc_ind2positions = {}
+                    data = [] # The thing that goes into the model
+                    for i, doc in enumerate(docs):
+                        ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
+                                                                    offset_mapping=all_text_processed[i]['offset_mapping'],
+                                                                    lowercase=config.general['lowercase'])
+                        doc_ind2positions[i] = (len(data), len(data) + len(samples), ent_id2ind) # Needed so we know where is what in the big data array
+                        data.extend(samples)
+                        if config.general['save_and_reuse_tokens']:
+                            doc._.share_tokens = (samples, doc_ind2positions[i])
+                else:
+                    # This means another model has already processed the data and we can just use it. This is a
+                    #dangerous option - as it assumes the other model has the same tokenizer and context size.
+                    data = []
+                    doc_ind2positions = {}
+                    for i, doc in enumerate(docs):
+                        data.extend(doc._.share_tokens[0])
+                        doc_ind2positions[i] = doc._.share_tokens[1]
+
+                all_predictions, all_confidences = predict(self.model, data, config)
+                for i, doc in enumerate(docs):
+                    start_ind, end_ind, ent_id2ind = doc_ind2positions[i]
+
+                    predictions = all_predictions[start_ind:end_ind]
+                    confidences = all_confidences[start_ind:end_ind]
+                    if config.general['annotate_overlapping']:
+                        ents = doc._.ents
+                    else:
+                        ents = doc.ents
+
+                    for ent in ents:
+                        ent_ind = ent_id2ind[ent._.id]
+                        value = id2category_value[predictions[ent_ind]]
+                        confidence = confidences[ent_ind]
+                        if ent._.meta_anns is None:
+                            ent._.meta_anns = {config.general['category_name']: {'value': value,
+                                                                                 'confidence': float(confidence),
+                                                                                 'name': config.general['category_name']}}
+                        else:
+                            ent._.meta_anns[config.general['category_name']] = {'value': value,
+                                                                                'confidence': float(confidence),
+                                                                                'name': config.general['category_name']}
+                yield from docs
+            except Exception as e:
+                self.get_error_handler()(self.name, self, docs, e)
+                yield from [None] * len(docs)
 
     def __call__(self, doc):
         ''' Process one document, used in the spacy pipeline for sequential

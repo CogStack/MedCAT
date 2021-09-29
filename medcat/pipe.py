@@ -112,7 +112,6 @@ class Pipe(object):
         Span.set_extension('cui', default=-1, force=True)
         Span.set_extension('context_similarity', default=-1, force=True)
 
-
     def add_meta_cat(self, meta_cat: MetaCAT, name: Optional[str] = None) -> None:
         component_name = spacy.util.get_object_name(meta_cat)
         name = name if name is not None else component_name
@@ -123,7 +122,6 @@ class Pipe(object):
         Span.set_extension('meta_anns', default=None, force=True)
         # Used for sharing pre-processed data/tokens
         Doc.set_extension('share_tokens', default=None, force=True)
-
 
     def batch_multi_process(self,
                             texts: Iterable[str],
@@ -156,10 +154,10 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        # If n_process == -1, multiprocessing will be either conducted inside pipeline components (when 'parallel' is
-        # set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing will be
-        # conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
-        if n_process == -1:
+        # If n_process < 0, multiprocessing will be either conducted inside pipeline components based on the con(when
+        # 'parallel' is set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing
+        # will be conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
+        if n_process < 0:
             inner_parallel = True
             n_process = 1
         else:
