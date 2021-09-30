@@ -12,18 +12,19 @@ services:
       - TZ=Europe/London
       - PUBLIC_KEY_DIR=/config/.ssh/
       - SUDO_ACCESS=true
-      #- PASSWORD_ACCESS=true
+      - PASSWORD_ACCESS=false
       #- USER_PASSWORD=pass
       - USER_NAME=admin
+      - HOME=/model_repository
     volumes:
-      - model-repository:/model_repository/
+      - model-repository/:/config/model_repository
       - ./docker_ssh_config/:/config:rw
-      - ./setup_model_dir.sh:/model_repository/setup_model_dir.sh:ro
+      - ./setup_environment.sh:/model_repository/setup_environment.sh:ro
     ports:
       - "2222:2222"
     expose:
       - 2222
-    command: bash -c "bash /model_repository/setup_model_dir.sh && tail -f /dev/null"
+    command: bash -c "bash /model_repository/setup_environment.sh && tail -f /dev/null"
     tty: true
     privileged: true
     

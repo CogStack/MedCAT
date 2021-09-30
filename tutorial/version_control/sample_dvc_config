@@ -1,0 +1,4 @@
+[core]
+    remote = kcl-rosalind-repo
+['remote "kcl-rosalind-repo"']
+    url = ../../tutorial/version_control/model_repository

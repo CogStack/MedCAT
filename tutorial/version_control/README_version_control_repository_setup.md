@@ -167,6 +167,14 @@ Entire system: if you are an administrator and wish to store the DVC remote data
 
 More info: https://dvc.org/doc/command-reference/config
 
+### Local folder example ( stored models inside a local folder)
+
+dvc remote add -d ssh-storage-name "/path/to/my/own/folder"
+
+Please include drive letters / FULL absolute filesystem path to that folder, otherwise there might be issues.
+
+An example dvc config file is available `sample_dvc_config` in the current folder. It will store all models in the /models/tutorial/version_control/ folder by default.
+Useful for running the unit tests with `python3 -m unittest medcat/tests/cli/version_control/package_tests.py`.
 
 # STEP 3 : Commit the changes to the base repo.
 
