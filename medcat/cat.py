@@ -104,7 +104,7 @@ class CAT(object):
         return self.pipe.nlp
 
 
-    def create_model_pack(self, save_dir_path):
+    def create_model_pack(self, save_dir_path, model_pack_name='medcat_model_pack'):
         r''' Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
         '''
@@ -115,7 +115,7 @@ class CAT(object):
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
-        save_dir_path = os.path.join(save_dir_path, 'medcat_model_pack')
+        save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
         os.makedirs(save_dir_path, exist_ok=True)
 
@@ -141,7 +141,7 @@ class CAT(object):
                 meta_path = os.path.join(save_dir_path, "meta_" + name)
                 comp[1].save(meta_path)
 
-        shutil.make_archive(os.path.join(_save_dir_path, 'medcat_model_pack'), 'zip', root_dir=_save_dir_path, base_dir='medcat_model_pack')
+        shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
 
 
     @classmethod
@@ -155,13 +155,15 @@ class CAT(object):
         from medcat.meta_cat import MetaCAT
 
         base_dir = os.path.dirname(zip_path)
+        filename = os.path.basename(zip_path)
+        foldername = filename.replace(".zip", '')
 
-        model_pack_path = os.path.join(base_dir, 'medcat_model_pack')
+        model_pack_path = os.path.join(base_dir, foldername)
         if os.path.exists(model_pack_path):
             print("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
         else:
             print("Unziping the model pack and loading models.")
-            shutil.unpack_archive(zip_path, extract_dir=base_dir)
+            shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
 
         # Load the CDB
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
