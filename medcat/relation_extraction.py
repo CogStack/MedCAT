@@ -5,7 +5,7 @@ import numpy
 import spacy
 import datasets
 import logging
-import os
+import pandas
 import torch
 import torch.nn
 import regex as re
@@ -42,7 +42,7 @@ class RelationalModel(object):
             if len(doc._.relations) == 0:
                 doc._.ents = doc.ents
                 #doc._.relations = self.get_instances(doc)
-                doc._.relations = self.create_pretraining_corpus(doc.text, self.spacy_nlp)
+                doc._.relations = self.create_base_relation(doc.text, self.spacy_nlp)
     
     def __call__(self, doc_id):
         if doc_id in self.docs.keys():
@@ -66,10 +66,10 @@ class RelationalModel(object):
                        relation_instances.append((self.relation_labels[0], ent1, ent2))
                        
        return relation_instances
-    
+
     def get_all_instances(self):
         relation_instances = []
-        for doc in self.docs:
+        for doc_id, doc in self.docs.items():
             relation_instances.extend(doc._.relations)
         return relation_instances
     
@@ -90,7 +90,7 @@ class RelationalModel(object):
                 
         return pairs
         
-    def create_pretraining_corpus(self, raw_text, nlp, window_size=100):
+    def create_base_relation(self, raw_text, nlp, window_size=100):
         '''
         Input: Chunk of raw text
         Output: modified corpus of triplets (relation statement, entity1, entity2)
@@ -101,9 +101,9 @@ class RelationalModel(object):
         
         logging.info("Processing relation statements by entities...")
         entities_of_interest = ["PERSON", "NORP", "FAC", "ORG", "GPE", "LOC", "PRODUCT", "EVENT", \
-                                "WORK_OF_ART", "LAW", "LANGUAGE", "ENTITY"]
+                                "LAW", "LANGUAGE", "ENTITY"]
         length_doc = len(sents_doc)
-        D = []; ents_list = []
+        relations = []; ents_list = []
         for i in tqdm(range(len(ents))):
             e1 = ents[i]
             e1start = e1.start; e1end = e1.end
@@ -164,16 +164,8 @@ class RelationalModel(object):
                     assert (e2start - e1end) > 0
                     
                     r = (x, (e1start - left_r, e1end - left_r), (e2start - left_r, e2end - left_r))
-                    D.append((r, e1.text, e2.text))
+                    relations.append((r, e1.text, e2.text))
                     ents_list.append((e1.text, e2.text))
-                    #print(e1.text,",", e2.text)
-        logging.info("Processed dataset samples from named entity extraction:")
-        samples_D_idx = numpy.random.choice([idx for idx in range(len(D))],\
-                                        size=min(3, len(D)),\
-                                        replace=False)
-        for idx in samples_D_idx:
-            print(D[idx], '\n')
-        ref_D = len(D)
         
         logging.info("Processing relation statements by dependency tree parsing...")
         doc_sents = [s for s in sents_doc.sents]
@@ -188,7 +180,7 @@ class RelationalModel(object):
                 for pair in pairs:
                     e1, e2 = pair[0], pair[1]
                     
-                    if (len(e1) > 3) or (len(e2) > 3): # don't want entities that are too long
+                    if (len(e1) > 2) or (len(e2) > 2): # don't want entities that are too long
                         continue
                     
                     e1text, e2text = " ".join(w.text for w in e1) if isinstance(e1, list) else e1.text,\
@@ -200,16 +192,10 @@ class RelationalModel(object):
                         assert e2start != e2end
                         assert (e2start - e1end) > 0
                         r = ([w.text for w in sent_], (e1start - left_r, e1end - left_r), (e2start - left_r, e2end - left_r))
-                        D.append((r, e1text, e2text))
+                        relations.append((r, e1text, e2text))
                         ents_list.append((e1text, e2text))
         
-        if (len(D) - ref_D) > 0:
-            samples_D_idx = numpy.random.choice([idx for idx in range(ref_D, len(D))],\
-                                            size=min(3,(len(D) - ref_D)),\
-                                            replace=False)
-            for idx in samples_D_idx:
-                print(D[idx], '\n')
-        return D
+        return relations
 
 class RelationExtraction(object):
 
@@ -235,20 +221,26 @@ class RelationExtraction(object):
 
        if rel_model is None:
            self.rel_model = RelationalModel(docs, self.spacy_nlp)
-   
-       from medcat.utils.models import LSTM
-      # nclasses = len(self.category_values)
-      # bid = self.model_config.get("bid", True)
-      # num_layers = self.model_config.get("num_layers", 2)
-      # input_size = self.model_config.get("input_size", 300)
-      # hidden_size = self.model_config.get("hidden_size", 300)
-      # dropout = self.model_config.get("dropout", 0.5)
-
-       #self.model = LSTM(self.embeddings, self.pad_id, nclasses=nclasses, bid=bid, num_layers=num_layers,
-       #            input_size=input_size, hidden_size=hidden_size, dropout=dropout)
-       #path = os.path.join("./", 'lstm.dat')
 
        self.device = torch.device("cpu")
+    
+    def pretrain_dataset(self):
+       self.df = pandas.DataFrame(self.rel_model.get_all_instances(), columns=['r','e1','e2'])
+       self.e1s = list(self.df['e1'].unique())
+       self.e2s = list(self.df['e2'].unique())
+
+       self.tokenizer.hf_tokenizers.add_tokens(['[E1]', '[/E1]', '[E2]', '[/E2]', '[BLANK]'])
+       e1_id = self.tokenizer.convert_tokens_to_ids('[E1]')
+       e2_id = self.tokenizer.convert_tokens_to_ids('[E2]')
+       
+
+       # train_set = pretrain_dataset(args, D, batch_size=args.batch_size)
+       # train_length = len(train_set)
+
+
+
+
+
 
     def __call__(self, doc_id) -> Doc:
         
