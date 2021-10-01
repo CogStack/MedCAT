@@ -180,8 +180,6 @@ class Config(BaseConfig):
                 'show_nested_entities': False,
                 # When unlinking a name from a concept should we do full_unlink (means unlink a name from all concepts, not just the one in question)
                 'full_unlink': False,
-                # Additional checking whether the concepts are uppercase or not before linking concepts
-                'check_upper_case_names': False,
                 # Number of workers used by a parallelizable pipeline component
                 'workers': workers(),
                 # Should the labels of entities (shown in displacy) be pretty or just 'concept'. Slows down the annotation pipeline
@@ -213,6 +211,8 @@ class Config(BaseConfig):
                 # When checkng tokens for concepts you can have skipped tokens inbetween
                 #used ones (usually spaces, new lines etc). This number tells you how many skipped can you have.
                 'max_skip_tokens': 2,
+                # Check uppercase to distinguish uppercase and lowercase words that have a different meaning.
+                'check_upper_case_names': False,
                 # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
                 #it will be skipped.
                 'upper_case_limit_len': 3,

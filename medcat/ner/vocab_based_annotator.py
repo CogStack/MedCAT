@@ -28,28 +28,34 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
     '''
 
     log.debug("Maybe annotating name: {}".format(name))
-    check_upper_case_names = config.general.get('check_upper_case_names', False)
-    if not check_upper_case_names or (check_upper_case_names and all([x.is_upper for x in tkns]) == cdb.name_isupper.get(name, False)):
-        if len(name) >= config.ner['min_name_len']:
-            # Check the upper case limit, last part checks is it one token and uppercase
-            if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
-                # Everything is fine, mark name
-                entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
-                # Only set this property when using a vocab approach and where this name
-                #fits a name in the cdb. All standard name entity recognition models will not set this.
-                entity._.detected_name = name
-                entity._.link_candidates = cdb.name2cuis[name]
-                entity._.id = len(doc._.ents)
-                entity._.confidence = -1 #  This does not calculate confidence
-                # Append the entity to the document
-                doc._.ents.append(entity)
 
-                # Not necessary, but why not
-                log.debug("NER detected an entity." +
-                          "\n\tDetected name: {}".format(entity._.detected_name) +
-                          "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+    # Check uppercase to distinguish uppercase and lowercase words that have a different meaning.
+    if config.ner.get('check_upper_case_names'):
+        # Check whether name is completely uppercase in CDB.
+        if cdb.name_isupper.get(name, False):
+            # Check whether tokens are also in uppercase. If tokens are not in uppercase, there is a mismatch.
+            if not all([x.is_upper for x in tkns]):
+                return None
 
-                return entity
+    if len(name) >= config.ner['min_name_len']:
+        # Check the upper case limit, last part checks is it one token and uppercase
+        if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
+            # Everything is fine, mark name
+            entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
+            # Only set this property when using a vocab approach and where this name
+            #fits a name in the cdb. All standard name entity recognition models will not set this.
+            entity._.detected_name = name
+            entity._.link_candidates = cdb.name2cuis[name]
+            entity._.id = len(doc._.ents)
+            entity._.confidence = -1 #  This does not calculate confidence
+            # Append the entity to the document
+            doc._.ents.append(entity)
+
+            # Not necessary, but why not
+            log.debug("NER detected an entity." +
+                      "\n\tDetected name: {}".format(entity._.detected_name) +
+                      "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+            return entity
 
     return None
 
