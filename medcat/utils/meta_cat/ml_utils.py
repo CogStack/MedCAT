@@ -80,10 +80,12 @@ def predict(model, data, config):
 
     num_batches = math.ceil(len(data) / batch_size)
     all_logits = []
-    for i in range(num_batches):
-        x, cpos, _ = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
-        logits = model(x, cpos, ignore_cpos=ignore_cpos)
-        all_logits.append(logits.detach().cpu().numpy())
+
+    with torch.no_grad():
+        for i in range(num_batches):
+            x, cpos, _ = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
+            logits = model(x, cpos, ignore_cpos=ignore_cpos)
+            all_logits.append(logits.detach().cpu().numpy())
 
     predictions = []
     confidences = []
