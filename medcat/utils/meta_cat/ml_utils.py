@@ -187,13 +187,15 @@ def train_model(model, data, config, save_dir_path=None):
         all_logits_test = []
         running_loss_test = []
         model.eval()
-        for i in range(num_batches_test):
-            x, cpos, y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
-            logits = model(x, cpos, ignore_cpos=ignore_cpos)
 
-             # Track loss and logits
-            running_loss_test.append(loss.item())
-            all_logits_test.append(logits.detach().cpu().numpy())
+        with torch.no_grad():
+            for i in range(num_batches_test):
+                x, cpos, y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
+                logits = model(x, cpos, ignore_cpos=ignore_cpos)
+
+                 # Track loss and logits
+                running_loss_test.append(loss.item())
+                all_logits_test.append(logits.detach().cpu().numpy())
 
         print_report(epoch, running_loss, all_logits, y=y_train, name='Train')
         print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
@@ -242,14 +244,16 @@ def eval_model(model, data, config, tokenizer):
     all_logits = []
     model.to(device)
     model.eval()
-    for i in range(num_batches):
-        x, cpos, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
-        logits = model(x, cpos, ignore_cpos=ignore_cpos)
-        loss = criterion(logits, y)
 
-         # Track loss and logits
-        running_loss.append(loss.item())
-        all_logits.append(logits.detach().cpu().numpy())
+    with torch.no_grad():
+        for i in range(num_batches):
+            x, cpos, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
+            logits = model(x, cpos, ignore_cpos=ignore_cpos)
+            loss = criterion(logits, y)
+
+             # Track loss and logits
+            running_loss.append(loss.item())
+            all_logits.append(logits.detach().cpu().numpy())
 
     print_report(0, running_loss, all_logits, y=y_eval, name='Eval')
 
