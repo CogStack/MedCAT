@@ -795,17 +795,31 @@ p
 
         return docs
 
+    def batch_generator(self, data, batch_size_chars):
+        docs = []
+        char_count = 0
+        for doc in data:
+            char_count += len(doc[1])
+            docs.append(doc)
+            if char_count < batch_size_chars:
+                continue
+            yield docs
+            docs = []
+
+        if len(docs) > 0:
+            yield docs
+
     def multiprocessing(self,
-            in_data,
-            nproc=8,
-            batch_size_chars=1000000,
-            only_cui=False,
-            addl_info=[],
-            separate_gpu_components=True):
+                        data: Union[List[Tuple], Iterable[Tuple]],
+                        nproc: int = 8,
+                        batch_size_chars: int = 1000000,
+                        only_cui: bool = False,
+                        addl_info: List[str] = [],
+                        separate_gpu_components: bool = True) -> Dict:
         r''' Run multiprocessing NOT FOR TRAINING
 
         Args:
-            in_data (``):
+            data(``):
                 Iterator or array with format: [(id, text), (id, text), ...]
             nproc (`int`, defaults to 8):
                 Number of processors
@@ -837,27 +851,21 @@ p
         # Create processes
         procs = []
         for i in range(nproc):
-            p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
-                'addl_info': addl_info})
+            p = Process(target=self._mp_cons,
+                        kwargs={'in_q': in_q,
+                                'out_dict': out_dict,
+                                'pid': i,
+                                'only_cui': only_cui,
+                                'addl_info': addl_info})
             p.start()
             procs.append(p)
 
-        data = []
-        nchars = 0
         id2text = {}
-        for id, text in in_data:
+        for batch in self.batch_generator(data, batch_size_chars):
             if gpu_components:
                 # We need this for the json_to_fake_spacy
-                id2text[id] = text
-            text = str(text)
-            data.append((id, text))
-            nchars += len(text)
-            if nchars >= batch_size_chars:
-                in_q.put(data)
-                data = []
-                nchars = 0
-        # Put the last batch if it exists
-        if len(data) > 0: in_q.put(data)
+                id2text.update({k:v for k,v in batch})
+            in_q.put(batch)
 
         # Final data point for workers
         for _ in range(nproc): in_q.put(None)
