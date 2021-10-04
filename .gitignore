@@ -48,5 +48,6 @@ tmp.py
 /medcat/config/*
 /medcat/models/*
 /tutorial/version_control/docker_ssh_config
+/tutorial/version_control/model-repository
 
 !examples/*.dat

@@ -267,6 +267,7 @@ class Vocab(object):
             Saves variables of this object
             Files saved are in the model's folder
         """
+
         if organisation_name.strip() != "":
             self.vc_model_tag_data.organisation_name = organisation_name
         if model_name.strip() != "":

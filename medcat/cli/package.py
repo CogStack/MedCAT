@@ -7,6 +7,7 @@ import json
 import subprocess
 import logging
 import shutil
+import traceback
 import dill
 import pickle
 from git import Repo
@@ -14,7 +15,7 @@ from .download import get_all_available_model_tags
 from .system_utils import *
 from .modeltagdata import ModelTagData
 from medcat.cli.config import *
-from collections import namedtuple
+from dateutil import parser
 
 
 def verify_model_package(request_url, headers, full_model_tag_name):
@@ -126,14 +127,20 @@ def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_n
                                                                        version=version,
                                                                         commit_hash=commit_hash, git_repo=git_repo_url, parent_model_tag=parent_model_tag,
                                                                          medcat_version=get_medcat_package_version())
+
+    # remove the ".dvc" extension if any files contain it
+    changed_files = [changed_file_name[:-4] if changed_file_name.endswith(".dvc") else changed_file_name for changed_file_name in changed_files]
+
     for file_name in get_permitted_push_file_list(): 
         file_path = os.path.join(model_folder_path, file_name)
+
         if os.path.isfile(file_path) and file_name in changed_files:
             logging.info("Updating model object : " + organisation_name + "-" + model_name + "-" + str(version) + ", " + file_name + " with tag data...")
 
             loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
+ 
 
-            if get_model_binary_file_extension() in file_name:
+            if file_name.endswith(get_model_binary_file_extension()):
                 loaded_model_file.vc_model_tag_data = model_tag_data
 
                 with open(file_path, 'wb') as f:
@@ -142,44 +149,27 @@ def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_n
             if file_name == "MedCAT_Export.json":
                 with open(file_path, "w+", encoding="utf8") as f:
                     loaded_model_file["vc_model_tag_data"] = asdict(model_tag_data)
-
                     f.write(json.dumps(loaded_model_file))
 
             logging.info("Saving of : " + file_name + " is complete...")
 
 
-def detect_model_name_from_files(model_folder_path="."):
+def detect_model_name_from_files(model_folder_path="./"):
     model_data = {}
 
     for file_name in get_permitted_push_file_list(): 
         if os.path.isfile(os.path.join(model_folder_path, file_name)):
-            loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
+            loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True, ignore_non_model_files=False)
             if loaded_model_file != False :
                 model_data[file_name] = {}
-
-                if hasattr(loaded_model_file, "vc_model_tag_data"):
+                
+                if type(loaded_model_file) is not dict or hasattr(loaded_model_file, "vc_model_tag_data"):
                     model_data[file_name]["vc_model_tag_data"] = loaded_model_file.vc_model_tag_data
                 elif "vc_model_tag_data" in loaded_model_file.keys():
                     model_data[file_name]["vc_model_tag_data"] = ModelTagData(*loaded_model_file["vc_model_tag_data"].values())
 
-                #if type(loaded_model_file) is dict and "trainer_stats" in loaded_model_file.keys():
-                #    if len(loaded_model_file["trainer_stats"]["meta_tasks"]) == 0:
-                #        model_data[file_name]["trainer_stats"] = loaded_model_file["trainer_stats"]
-                #        project_names = []
-                #        meta_tasks = []
-                #    
-                #        for project in loaded_model_file["projects"]:
-                #            project_names.append(project["name"])
-                #            if len(project["documents"][0]) > 0:
-                #                if "annotations" in project["documents"][0].keys():
-                #                    if "meta_anns" in project["documents"][0]["annotations"][0].keys():
-                #                        meta_tasks.append(project["documents"][0]["annotations"][0]["meta_anns"][0]["name"])
-
-                #        project_names = set(project_names)
-                #        meta_tasks = set(meta_tasks)
-
-                #        model_data[file_name]["trainer_stats"]["meta_tasks"] = meta_tasks
-                #        model_data[file_name]["trainer_stats"]["project_names"] = project_names
+                if type(loaded_model_file) is dict and "trainer_stats" in loaded_model_file.keys():
+                    model_data[file_name]["trainer_stats"] = loaded_model_file["trainer_stats"]
                 
                 if hasattr(loaded_model_file, "cdb_stats"):
                     model_data[file_name]["cdb_stats"] = asdict(loaded_model_file.cdb_stats)
@@ -202,22 +192,54 @@ def upload_model(model_name, version):
     current_folder = os.getcwd()
 
     # get information about the model files we currently want to package
-    model_file_data = detect_model_name_from_files()
+    model_file_data = detect_model_name_from_files(current_folder)
 
-    # get model data that is most recent (higher version)
+    # get model file data that is most recent (higher version) from all the files
     previous_tag_model_data = False
 
     if model_file_data != False:
-        biggest_ver = {}
+        biggest_version = ()
+
+        # if a model has a parent model then we obviously need to take into account the version of the files that have a parent model
+        parent_found = False
+        ################################## PROBLEM PICKING THE VERSION BETWEEN MODELS WITH DIFFERENT PARENTS ##################################
+        print("==================================================================================================")
+        print(model_file_data)
+        print("==================================================================================================")
+        
         for file_name in model_file_data.keys():
             if "vc_model_tag_data" in model_file_data[file_name].keys():
                 if model_file_data[file_name]["vc_model_tag_data"].version != "":
-                    biggest_ver[file_name] = float(model_file_data[file_name]["vc_model_tag_data"].version)
+                    #current_version = int(''.join(map(str, str(model_file_data[file_name]["vc_model_tag_data"].version).split('.'))))
                     
-        if len(biggest_ver.keys()) > 0:
-            previous_tag_model_data = {}
-            previous_tag_model_data.update(model_file_data[max(biggest_ver, key=biggest_ver.get)]["vc_model_tag_data"])
-        
+                    current_model_parent = model_file_data[file_name]["vc_model_tag_data"].parent_model_name
+
+                    #if not parent_found:
+                    #    if len(biggest_ver.keys()) > 0:
+                    #        biggest_version_converted = int(''.join(map(str, str(biggest_ver[file_name]).split('.'))))
+                    #        if current_version > biggest_version_converted:
+                    #            biggest_ver[file_name] = int(model_file_data[file_name]["vc_model_tag_data"].version)
+                    #    else:
+                    #        biggest_ver[file_name] = int(model_file_data[file_name]["vc_model_tag_data"].version)
+
+                    if current_model_parent != "":
+                        parent_found = True
+                        #biggest_version[file_name] = int(model_file_data[file_name]["vc_model_tag_data"].version)
+                    
+                    current_timestamp = parser.parse(model_file_data[file_name]["vc_model_tag_data"].timestamp)
+
+                    if len(biggest_version) > 0:
+                        biggest_ver_timestamp = parser.parse(biggest_version[1])
+                        newest = max(current_timestamp, biggest_ver_timestamp)
+                        if newest == current_timestamp:
+                            biggest_version = ()
+                            biggest_version = (file_name, model_file_data[file_name]["vc_model_tag_data"].timestamp)
+                    else:
+                        biggest_version = (file_name, model_file_data[file_name]["vc_model_tag_data"].timestamp)
+                    
+        if len(biggest_version) > 0:
+            previous_tag_model_data = model_file_data[biggest_version[0]]["vc_model_tag_data"]
+
     # this is the predicted version number, will change to 1.0 if its a new release
     version = generate_model_version(model_name, version, previous_tag_model_data) 
 
@@ -290,7 +312,7 @@ def upload_model(model_name, version):
         # if there have been changes on the file hashes since the previous commit, then, we can inject the new release data into the model files
         # Update dvc repo files (if any) before checking for untracked files ( we need to regenerate dvc file hashes if there were changes)
         # We need to check the files before injecting new tag/release data into them, otherwise they will always be flagged as changed..
-        subprocess.run([sys.executable, "-m", "dvc", "commit"], cwd=new_model_package_folder, text=True)
+        subprocess.run([sys.executable, "-m", "dvc", "commit", "--force"], cwd=new_model_package_folder, text=True)
 
         os.chdir(new_model_package_folder)
         
@@ -301,8 +323,11 @@ def upload_model(model_name, version):
 
         if full_changed_file_list:
           
-            inject_tag_data_to_model_files(new_model_package_folder, model_name, parent_model_name,
-            version, str(repo.head.commit), git_repo_url, parent_model_tag, changed_files = full_changed_file_list)
+            inject_tag_data_to_model_files(new_model_package_folder, model_name, parent_model_name=parent_model_name,
+            version=version, commit_hash=str(repo.head.commit), git_repo_url=git_repo_url, parent_model_tag=parent_model_tag, changed_files=full_changed_file_list)
+            
+            for file_name in changed_files:
+                subprocess.run([sys.executable, "-m", "dvc", "commit", file_name, "--force"], cwd=new_model_package_folder, text=True)
 
             # get  newly changed files after the update
             changed_files = [ item.a_path for item in repo.index.diff(None) ]
@@ -411,7 +436,8 @@ def upload_model(model_name, version):
                 elif create_tag_request.status_code == 200:
                         logging.info("Success, created release : " + release_name + ", with tag : " + tag_name + " .")
                 else:
-                    tag_already_exists=True
+                    if "already exists" in create_tag_request.text:
+                        tag_already_exists = True
                             
                     if release_id == None:
                         req_release_data = requests.get(url=get_git_api_request_url() + "releases/tags/" + str(tag_name), headers=headers)
@@ -436,6 +462,7 @@ def upload_model(model_name, version):
             If the tag has been already pushed then it will be deleted from the git repo.
         """
         logging.error("description: " + repr(exception))
+        traceback.print_exc()
         logging.warning("Push process cancelled... reverting state...")
        
         if tag_name != "" and failed_after_tag_creation: 
@@ -475,20 +502,20 @@ def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_
     if model_file_data is not None:
         for file, data in model_file_data.items():
             if "trainer_stats" in data.keys():
-                model_card_json.update({"trainer_stats" : { k : str(v) if type(v) is not list else ''.join(map(str, v)) for k,v in data["trainer_stats"].items()}})
+                model_card_json.update({"trainer_stats" : { k : str(v) if type(v) is not list else "".join(map(str, v)) for k,v in data["trainer_stats"].items()}})
                 authors.extend(data["trainer_stats"]["authors"])
             if "cdb_stats" in data.keys():
                 model_card_json.update({"cdb_stats" : { k : str(v) for k,v in data["cdb_stats"].items()}})
 
-    model_card_json['model_name'] = model_name
-    model_card_json['tag_name'] = tag_name
-    model_card_json['version'] = version
-    model_card_json['model_authors'] = ''.join(map(str,set(authors)))
-    model_card_json['medcat_version'] = get_medcat_package_version()
+    model_card_json["model_name"] = model_name
+    model_card_json["tag_name"] = tag_name
+    model_card_json["version"] = version
+    model_card_json["model_authors"] = "".join(map(str,set(authors)))
+    model_card_json["medcat_version"] = get_medcat_package_version()
 
     if parent_model_name == "":
         model_card_json['parent_model_name'] = "N/A"
-        model_card_json['parent_model_tag_url'] = ""
+        model_card_json['parent_model_tag_url'] = "N/A"
     else:
         model_card_json['parent_model_name'] = parent_model_name
         model_card_json['parent_model_tag_url'] = git_repo_url[:-4] + "/releases/tag/" + parent_model_tag_name if str(git_repo_url).endswith(".git") else ""
@@ -516,8 +543,25 @@ def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_
             model_card = model_card.replace("<f1_score>", model_card_json["trainer_stats"]["concept_f1"])
             model_card = model_card.replace("<precision_score>", model_card_json["trainer_stats"]["concept_precision"])
             model_card = model_card.replace("<recall_score>", model_card_json["trainer_stats"]["concept_recall"])
-            #model_card = model_card.replace("<recall_score>", model_card_json["trainer_stats"]["meta_tasks"])
-            #model_card = model_card.replace("<recall_score>", model_card_json["trainer_stats"]["project_names"])
+            
+            # replace other tags | <meta_model_name> | <meta_model_tag> with empty since they arent used here, they are just placeholders
+            model_card = model_card.replace("<meta_model_tag> |", "")    
+            model_card = model_card.replace("<meta_tasks> |", "")    
+
+            meta_projects_data_md = ""
+            
+            meta_project_data = data["trainer_stats"]["meta_project_data"]
+
+            proj_count = 0
+            for meta_project_name, meta_project_tasks in meta_project_data.items():
+                proj_count += 1
+                meta_projects_data_md += meta_project_name + " | " + str(meta_project_tasks) + " | -  \n"
+                
+                if proj_count != len(meta_project_data.keys()):
+                    meta_projects_data_md += "|"
+
+            model_card = model_card.replace("<meta_model_name>", meta_projects_data_md)
+
         if "metacat_stats" in model_card_json.keys():
             model_card = model_card.replace("<meta_model_precision_score>", model_card_json["metacat_stats"]["precision"])
             model_card = model_card.replace("<meta_model_f1_score>", model_card_json["metacat_stats"]["f1"])

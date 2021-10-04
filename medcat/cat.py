@@ -143,14 +143,14 @@ class CAT(object):
         else:
             self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
             return None
-
+            
     def save_model(self, vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json"):
         
         self.vocab.save_model(output_file_name=vocab_output_file_name)
         self.cdb.save_model(output_file_name=cdb_output_file_name)
         
         if self.trainer_data != None:
-            fps, fns, tps, cui_precision, cui_recall, cui_f1, cui_counts, examples  = self._print_stats(self.trainer_data)
+            fps, fns, tps, cui_precision, cui_recall, cui_f1, cui_counts, examples = self._print_stats(self.trainer_data)
 
             tp = sum([v for i,v in tps.items()])
             fp = sum([v for i,v in fps.items()])
@@ -158,33 +158,36 @@ class CAT(object):
 
             precision = tp / (tp + fp)
             recall = tp / (tp + fn)
-            f1 = 2 * (precision*recall) / (precision + recall)
+            f1 = 2 * (precision * recall) / (precision + recall)
 
             self.trainer_stats = TrainerStats(epoch=0, concept_precision=precision, concept_f1=f1, concept_recall=recall, false_negatives=fn, false_positives=fp, true_positives=tp,
-            cui_counts=cui_counts) #TrainerStats(precision, f1, recall, fp, false_negatives=fn, tp, cui_counts)
+            cui_counts = sum(cui_counts.values())) #TrainerStats(precision, f1, recall, fp, false_negatives=fn, tp, cui_counts)
 
-            project_names = []
-            meta_tasks = []
-
+            meta_project_data = {}
+                
             for project in self.trainer_data["projects"]:
-                project_names.append(project["name"])
-                if len(project["documents"][0]) > 0:
-                    if "annotations" in project["documents"][0].keys():
-                        if "meta_anns" in project["documents"][0]["annotations"][0].keys():
-                            meta_tasks.append(project["documents"][0]["annotations"][0]["meta_anns"][0]["name"])
-                            
-            project_names = set(project_names)
-            meta_tasks = set(meta_tasks)
 
-            if len(self.trainer_stats["meta_tasks"]) == 0:
-                self.trainer_stats["meta_tasks"] = meta_tasks
-            if len(self.trainer_stats["project_names"]) == 0:
-                self.trainer_stats["project_names"] = project_names
+                meta_tasks = []
+
+                if len(project["documents"]) > 0:
+                    for doc in project["documents"]:
+                        if "annotations" in doc.keys():
+                            annotations = doc["annotations"]
+                            for annotation in annotations:
+                                if "meta_anns" in annotation.keys():
+                                    meta_anns = annotation["meta_anns"]
+                                    
+                                    for meta_ann in meta_anns:
+                                        meta_tasks.append(meta_ann["name"])
+
+                meta_project_data[project["name"]] = list(set(meta_tasks))
+            
+            self.trainer_stats.meta_project_data = meta_project_data
 
             self.trainer_data["trainer_stats"] = asdict(self.trainer_stats)
 
             with open(trainer_data_file_name, "w+") as f:
-                f.write(json.dumps(self.trainer_data))
+                json.dump(self.trainer_data, fp=f)
 
     @classmethod
     def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", bypass_model_path=False):
@@ -337,7 +340,6 @@ class CAT(object):
                                           "acc": float(ann._.context_similarity),
                                           "project index": pind,
                                           "document inedex": dind})
-
 
                 for iann, ann in enumerate(p_anns_norm):
                     cui = ann[1]

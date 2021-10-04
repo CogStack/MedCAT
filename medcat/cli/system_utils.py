@@ -8,8 +8,10 @@ import dill
 import pickle
 import logging
 import re
+
 import medcat
 import json
+import numpy
 
 from dataclasses import asdict
 
@@ -20,7 +22,7 @@ from medcat.cli.modelstats import CDBStats, TrainerStats
 if os.name == "nt":
     import win32api, win32con
 
-def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False):
+def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False, ignore_non_model_files=False):
     """
         Looks into the models directory in your /site-packages/medcat-{version}/model_name/ installation.
 
@@ -29,6 +31,10 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
         :param model_folder: path to model folder, the default is medcat's package folder,
                              use bypass_model_path=True if you wish to specify your own path
         :param bypass_model_path: will look into specified folder instead of model folder
+
+        :param ignore_non_model_files: this is used in the detection and injection of model tag data,
+                                       essentially some files are not actualy classes therefore they cannot hold any version data 
+                                       although they are part of the model as a whole for example modelcard.md or .npy files
 
         :return: file data
     """
@@ -47,56 +53,71 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
         full_file_path = os.path.join(model_folder, file_name)
     
     data = False
-
+    
     if type(full_file_path) is str and "MedCAT_Export.json" in full_file_path:
         with open(full_file_path, "r", encoding="utf8") as f:
-            data = json.loads(f.read())
+            data = json.load(f)
+        
             if "trainer_stats" not in data.keys():
                 data["trainer_stats"] = asdict(TrainerStats())
+            
+            if "vc_model_tag_data" not in data.keys():
+                data["vc_model_tag_data"] = asdict(ModelTagData())
 
     elif full_file_path:
-  
-        with open(full_file_path, "rb") as f:
-            data = dill.load(f)
+        if get_model_binary_file_extension() in full_file_path:
+            with open(full_file_path, "rb") as f:
+                data = dill.load(f)
 
-            version = ""   
-            model_name = ""
-            
-            if full_model_tag_name != "":
-                model_name, version = get_tag_str_model_name_and_version(full_model_tag_name)
+                version = ""   
+                model_name = ""
 
-            try:
-                obj = None
-                fname = str(file_name).lower()
+                if full_model_tag_name != "":
+                    model_name, version = get_tag_str_model_name_and_version(full_model_tag_name)
 
-                if isinstance(data, dict):
+                try:
                     from medcat.cdb import CDB
                     from medcat.vocab import Vocab
 
-                    if "vocab" in fname:
-                        obj = Vocab()
+                    obj = None
+                    
+                    fname = str(file_name).lower()
 
-                    if "cdb" in fname:
-                        obj = CDB(config=None)
-                        obj.__dict__ = data['cdb']
-                        obj.config = Config()
-                        obj.config.__dict__ =  data["config"]
-              
-                if obj is not None:
-                    if not hasattr(obj, "vc_model_tag_data"):
-                        obj.vc_model_tag_data = ""
-                        obj.vc_model_tag_data = ModelTagData(model_name=model_name, version=version)
+                    if isinstance(data, dict):
+                        if "vocab" in fname:
+                            obj = Vocab()
+                            obj.__dict__ = data
 
-                    if type(obj) is CDB and not hasattr(obj, "cdb_stats"):    
-                        obj.cdb_stats = CDBStats()
+                        if "cdb" in fname:
+                            obj = CDB(config=None)
+                            obj.__dict__ = data["cdb"]
+                            obj.config = Config()
+                            obj.config.__dict__ = data["config"]
+                    
+                    if obj is None:
+                        obj = data
+                    
+                    if obj is not None:
+                        if isinstance(obj, (Vocab, CDB)) and not hasattr(obj, "vc_model_tag_data"):
+                            obj.vc_model_tag_data = ModelTagData(model_name=model_name, version=version)
+
+                        if type(obj) is CDB and not hasattr(obj, "cdb_stats"):    
+                            obj.cdb_stats = CDBStats()
 
                     data = obj
-              
-            except Exception as exception:
-                logging.error("could not add vc_model_tag_data attribute to model data file")
-                logging.error(repr(exception))
-                return False
-                
+
+                except Exception as exception:
+                    logging.error("could not add vc_model_tag_data attribute to model data file")
+                    logging.error(repr(exception))
+                    return False
+                    
+        elif ignore_non_model_files:
+            pass
+        elif ".npy" in full_file_path:
+            data = numpy.load(full_file_path)
+        else:
+            with open(full_file_path, "r") as f:
+                data = f.read()
     return data
 
 def get_tag_str_model_name_and_version(model_full_tag_name, delimiter='-'):
@@ -121,8 +142,9 @@ def prompt_statement(prompt_text, default_answer="yes"):
     while True:
         print(prompt_text)
         print(" \t (Yes/No or Y/N), type exit/cancel/abort, or press CTRL+C to ABORT, all choices are case insensitive!")
-        choice = input().lower()
 
+        choice = input().lower()
+ 
         if choice in valid_answers.keys():
             return valid_answers[choice]
         else:
