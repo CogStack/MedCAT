@@ -22,6 +22,8 @@ from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import process_old_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
+from medcat.meta_cat import MetaCAT
+from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 
 
 class CAT(object):
@@ -110,7 +112,6 @@ class CAT(object):
         '''
         from zipfile import ZipFile
         import shutil
-        from medcat.meta_cat import MetaCAT
         import os
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
@@ -765,19 +766,67 @@ p
 
         return json.dumps(out)
 
-    def multiprocessing(self, in_data, nproc=8, batch_size_chars=1000000, only_cui=False, addl_info=[]):
+    def _separate_gpu_multiproc(self):
+        # Loop though the models and check are there GPU devices
+        gpu_components = []
+        for component in self.pipe.nlp.components:
+            if isinstance(component[1], MetaCAT):
+                if component[1].config.general['device'] == 'cuda':
+                    self.pipe.nlp.disable_pipe(component[0])
+                    gpu_components.append(component)
+
+        return gpu_components
+
+    def _run_gpu_components(self, docs, gpu_components, id2text):
+        self.log.debug("Running GPU components separately")
+
+        # First convert the docs into the fake spacy doc format
+        spacy_docs = json_to_fake_spacy(docs, id2text=id2text)
+        # Disable component locks also
+        for name, component in gpu_components:
+            component.config.general['disable_component_lock'] = True
+
+        for name, component in gpu_components:
+            spacy_docs = component.pipe(spacy_docs)
+
+        for spacy_doc in spacy_docs:
+            for ent in spacy_doc.ents:
+                docs[spacy_doc.id]['entities'][ent._.id]['meta_anns'].update(ent._.meta_anns)
+
+        return docs
+
+    def multiprocessing(self,
+            in_data,
+            nproc=8,
+            batch_size_chars=1000000,
+            only_cui=False,
+            addl_info=[],
+            separate_gpu_components=True):
         r''' Run multiprocessing NOT FOR TRAINING
 
-        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
-        nproc:  number of processors
-        batch_size_chars: size of a batch in number of characters
+        Args:
+            in_data (``):
+                Iterator or array with format: [(id, text), (id, text), ...]
+            nproc (`int`, defaults to 8):
+                Number of processors
+            batch_size_chars (`int`, defaults to 1000000):
+                Size of a batch in number of characters
+            separate_gpu_components (`bool`, defaults to True):
+                If set the meta_cat pipe will be broken up into GPU and CPU components and
+                they will be run sequentially. This only applies if GPU is set as device in
+                the underlying components.
 
-        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
+        Returns:
+            A dictionary: {id: doc_json, id2: doc_json2, ...}
         '''
         if self._meta_annotations:
             # Hack for torch using multithreading, which is not good here
             import torch
             torch.set_num_threads(1)
+
+        gpu_components = []
+        if separate_gpu_components:
+            gpu_components = self._separate_gpu_multiproc()
 
         # Create the input output for MP
         in_q = Queue(maxsize=4*nproc)
@@ -795,37 +844,50 @@ p
 
         data = []
         nchars = 0
+        id2text = {}
         for id, text in in_data:
-            data.append((id, str(text)))
-            nchars += len(str(text))
+            if gpu_components:
+                # We need this for the json_to_fake_spacy
+                id2text[id] = text
+            text = str(text)
+            data.append((id, text))
+            nchars += len(text)
             if nchars >= batch_size_chars:
                 in_q.put(data)
                 data = []
                 nchars = 0
         # Put the last batch if it exists
-        if len(data) > 0:
-            in_q.put(data)
+        if len(data) > 0: in_q.put(data)
 
-        for _ in range(nproc):  # tell workers we're done
-            in_q.put(None)
+        # Final data point for workers
+        for _ in range(nproc): in_q.put(None)
+        # Join processes
+        for p in procs: p.join()
 
-        for p in procs:
-            p.join()
-
-        # Close the queue as it can cause memory leaks
-        in_q.close()
-
-        out = []
+        docs = {}
         for key in out_dict.keys():
             if 'pid' in key:
-                data = out_dict[key]
-                out.extend(data)
+                # Covnerts a touple into a dict
+                docs.update({k:v for k,v in out_dict[key]})
 
-        # Sometimes necessary to free memory
+        # Cleanup - to prevent memory leaks, maybe
         out_dict.clear()
         del out_dict
+        in_q.close()
 
-        return out
+        # If we have separate GPU components now we pipe that
+        if separate_gpu_components:
+            try:
+                docs = self._run_gpu_components(docs, gpu_components, id2text=id2text)
+            except Exception as e:
+                self.log.warning(e, exc_info=True, stack_info=True)
+
+            # Add the Components back to the pipe
+            for name, component in gpu_components:
+                # No need to do anything else as it was already in the pipe
+                self.pipe.nlp.enable_pipe(name)
+
+        return docs
 
     def multiprocessing_pipe(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
