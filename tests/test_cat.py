@@ -37,24 +37,6 @@ class CATTests(unittest.TestCase):
     def test_callable_with_single_none_text(self):
         self.assertIsNone(self.undertest(None))
 
-    def test_callable_with_multi_texts(self):
-        texts = ["The dog is sitting outside the house.", "", None]
-        docs = self.undertest(texts)
-        self.assertEqual(3, len(docs))
-        self.assertEqual(texts[0], docs[0].text)
-        self.assertIsNone(docs[1])
-        self.assertIsNone(docs[2])
-
-    def test_callable_with_in_data(self):
-        in_data = [
-            (1, "The dog is sitting outside the house."),
-            (2, "The dog is sitting outside the house.")
-        ]
-        docs = self.undertest(in_data)
-        self.assertEqual(2, len(docs))
-        self.assertEqual(in_data[0][1], docs[0].text)
-        self.assertEqual(in_data[1][1], docs[1].text)
-
     @unittest.skip("WIP")
     def test_multiprocessing(self):
         in_data = [
