@@ -230,9 +230,9 @@ class Config(BaseConfig):
                 # All concepts below this will always be disambiguated
                 'disamb_length_limit': 3,
                 # Context vector sizes that will be calculated and used for linking
-                'context_vector_sizes': {'xxxlong': 60, 'xxlong': 45, 'xlong': 27, 'long': 18, 'medium': 9, 'short': 3},
+                'context_vector_sizes': {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3},
                 # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
-                'context_vector_weights': {'xxxlong': 0, 'xxlong': 0, 'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1},
+                'context_vector_weights': {'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1},
                 # If True it will filter before doing disamb. Useful for the trainer.
                 'filter_before_disamb': False,
                 # Concepts that have seen less training examples than this will not be used for
