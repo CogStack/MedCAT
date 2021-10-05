@@ -793,7 +793,7 @@ class CAT(object):
 
         return docs
 
-    def batch_generator(self, data, batch_size_chars, skip_ids=set()):
+    def _batch_generator(self, data, batch_size_chars, skip_ids=set()):
         docs = []
         char_count = 0
         for doc in data:
@@ -870,7 +870,7 @@ class CAT(object):
         annotated_ids_path = os.path.join(save_dir_path, 'annotated_ids.pickle') if save_dir_path is not None else None
         annotated_ids = pickle.load(open(annotated_ids_path, 'rb')) if annotated_ids_path is not None and os.path.exists(annotated_ids_path) else []
         docs = {}
-        for batch in self.batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
             self.log.info("Annotated until now: {} docs; Current BS: {} docs".format(len(annotated_ids), len(batch)))
             try:
                 _docs = self._multiprocessing_batch(data=batch,
@@ -952,7 +952,7 @@ class CAT(object):
             procs.append(p)
 
         id2text = {}
-        for batch in self.batch_generator(data, batch_size_chars):
+        for batch in self._batch_generator(data, batch_size_chars):
             if gpu_components:
                 # We need this for the json_to_fake_spacy
                 id2text.update({k:v for k,v in batch})
