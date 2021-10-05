@@ -810,12 +810,13 @@ class CAT(object):
             yield docs
 
 
-    def _save_docs_to_file(self, docs, annotated_ids, out_split_size, save_dir_path, annotated_ids_path, last_part=False):
-        # We add the last part because it can be small and not be enough to switch the counter
-        part = (len(annotated_ids) // out_split_size) + int(last_part)
-        path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part))
+    def _save_docs_to_file(self, docs, annotated_ids, out_split_size, save_dir_path, annotated_ids_path, part_counter=0):
+        path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
-        pickle.dump(annotated_ids, open(annotated_ids_path, 'wb'))
+        self.log.info("Saved part: {}, to: {}".format(part_counter, path))
+        part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
+        pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
+        return part_counter
 
 
     def multiprocessing(self,
@@ -862,13 +863,17 @@ class CAT(object):
             gpu_components = self._separate_gpu_multiproc()
 
         if save_dir_path is not None:
-            self.log.warning("Note that the numbering of saved parts can be strange, but they will contain all the data")
             os.makedirs(save_dir_path, exist_ok=True)
 
         internal_batch_size_chars = batch_size_chars // (5 * nproc)
 
         annotated_ids_path = os.path.join(save_dir_path, 'annotated_ids.pickle') if save_dir_path is not None else None
-        annotated_ids = pickle.load(open(annotated_ids_path, 'rb')) if annotated_ids_path is not None and os.path.exists(annotated_ids_path) else []
+        if annotated_ids_path is not None and os.path.exists(annotated_ids_path):
+            annotated_ids, part_counter = pickle.load(open(annotated_ids_path, 'rb'))
+        else:
+            annotated_ids = []
+            part_counter = 0
+
         docs = {}
         for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
             self.log.info("Annotated until now: {} docs; Current BS: {} docs".format(len(annotated_ids), len(batch)))
@@ -883,12 +888,12 @@ class CAT(object):
                 annotated_ids.extend(_docs.keys())
                 if out_split_size is not None and len(docs) > out_split_size:
                     # Save to file and reset the docs 
-                    self._save_docs_to_file(docs=docs,
+                    part_counter = self._save_docs_to_file(docs=docs,
                                            annotated_ids=annotated_ids,
                                            out_split_size=out_split_size,
                                            save_dir_path=save_dir_path,
                                            annotated_ids_path=annotated_ids_path,
-                                           last_part=False)
+                                           part_counter=part_counter)
 
                     docs = {}
             except Exception as e:
@@ -903,7 +908,7 @@ class CAT(object):
                                    out_split_size=out_split_size,
                                    save_dir_path=save_dir_path,
                                    annotated_ids_path=annotated_ids_path,
-                                   last_part=True)
+                                   part_counter=part_counter)
 
         # Enable the GPU Components again
         if separate_gpu_components:
