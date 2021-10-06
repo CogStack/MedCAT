@@ -1,4 +1,5 @@
 import os
+import gc
 import pickle
 import traceback
 import json
@@ -274,14 +275,17 @@ class CAT(object):
         filters = self.config.linking['filters']
 
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
+            p_filters = None # project_filters used if the cui filters are overwritten later
             if use_filters:
                 if type(project.get('cuis', None)) == str:
                     # Old filters
                     filters['cuis'] = process_old_project_filters(
                             cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
+                    p_filters = filters['cuis']
                 elif type(project.get('cuis', None)) == list:
                     # New filters
-                    filters['cuis'] = project.get('cuis')
+                    filters['cuis'] = set(project.get('cuis'))
+                    p_filters = filters['cuis']
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
@@ -289,9 +293,11 @@ class CAT(object):
 
                 # Apply document level filtering if
                 if use_cui_doc_limit:
-                    _cuis = set([ann['cui'] for ann in anns])
+                    _cuis = set([ann['cui'] for ann in anns if p_filters is None or ann['cui'] in p_filters])
                     if _cuis:
                         filters['cuis'] = _cuis
+                    else:
+                        filters['cuis'] = set(['empty'])
 
                 spacy_doc = self(doc['text'])
 
@@ -764,34 +770,33 @@ class CAT(object):
 
         return json.dumps(out)
 
-    def _separate_gpu_multiproc(self):
+    def _separate_nn_components(self):
         # Loop though the models and check are there GPU devices
-        gpu_components = []
+        nn_components = []
         for component in self.pipe.nlp.components:
             if isinstance(component[1], MetaCAT):
-                if component[1].config.general['device'] == 'cuda':
-                    self.pipe.nlp.disable_pipe(component[0])
-                    gpu_components.append(component)
+                self.pipe.nlp.disable_pipe(component[0])
+                nn_components.append(component)
 
-        return gpu_components
+        return nn_components
 
-    def _run_gpu_components(self, docs, gpu_components, id2text):
+    def _run_nn_components(self, docs, nn_components, id2text):
+        r''' This will add meta_anns in-place to the docs dict.
+        '''
         self.log.debug("Running GPU components separately")
 
         # First convert the docs into the fake spacy doc format
         spacy_docs = json_to_fake_spacy(docs, id2text=id2text)
         # Disable component locks also
-        for name, component in gpu_components:
+        for name, component in nn_components:
             component.config.general['disable_component_lock'] = True
 
-        for name, component in gpu_components:
+        for name, component in nn_components:
             spacy_docs = component.pipe(spacy_docs)
 
         for spacy_doc in spacy_docs:
             for ent in spacy_doc.ents:
                 docs[spacy_doc.id]['entities'][ent._.id]['meta_anns'].update(ent._.meta_anns)
-
-        return docs
 
     def _batch_generator(self, data, batch_size_chars, skip_ids=set()):
         docs = []
@@ -809,7 +814,6 @@ class CAT(object):
         if len(docs) > 0:
             yield docs
 
-
     def _save_docs_to_file(self, docs, annotated_ids, out_split_size, save_dir_path, annotated_ids_path, part_counter=0):
         path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
@@ -818,14 +822,13 @@ class CAT(object):
         pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
-
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
                         nproc: int = 2,
                         batch_size_chars: int = 5000 * 1000,
                         only_cui: bool = False,
                         addl_info: List[str] = [],
-                        separate_gpu_components: bool = True,
+                        separate_nn_components: bool = True,
                         out_split_size: int = None,
                         save_dir_path: str = None,) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size is used this will also continue annotating
@@ -837,11 +840,12 @@ class CAT(object):
             nproc (`int`, defaults to 8):
                 Number of processors
             batch_size_chars (`int`, defaults to 1000000):
-                Size of a batch in number of characters, this should be as large as your RAM allows.
-            separate_gpu_components (`bool`, defaults to True):
-                If set the meta_cat pipe will be broken up into GPU and CPU components and
-                they will be run sequentially. This only applies if GPU is set as device in
-                the underlying components.
+                Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200
+            separate_nn_components (`bool`, defaults to True):
+                If set the medcat pipe will be broken up into NN and not-NN components and
+                they will be run sequentially. This is useful as the NN components
+                have batching and like to process many docs at once, while the rest of the pipeline
+                runs the documents one by one.
             out_split_size (`int`, None):
                 If set once more than out_split_size documents are annotated
                 they will be saved to a file (save_dir_path) and the memory cleared.
@@ -858,9 +862,9 @@ class CAT(object):
             import torch
             torch.set_num_threads(1)
 
-        gpu_components = []
-        if separate_gpu_components:
-            gpu_components = self._separate_gpu_multiproc()
+        nn_components = []
+        if separate_nn_components:
+            nn_components = self._separate_nn_components()
 
         if save_dir_path is not None:
             os.makedirs(save_dir_path, exist_ok=True)
@@ -883,9 +887,10 @@ class CAT(object):
                                                     batch_size_chars=internal_batch_size_chars,
                                                     only_cui=only_cui,
                                                     addl_info=addl_info,
-                                                    gpu_components=gpu_components)
+                                                    nn_components=nn_components)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
+                del _docs
                 if out_split_size is not None and len(docs) > out_split_size:
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
@@ -894,7 +899,7 @@ class CAT(object):
                                            save_dir_path=save_dir_path,
                                            annotated_ids_path=annotated_ids_path,
                                            part_counter=part_counter)
-
+                    del docs
                     docs = {}
             except Exception as e:
                 self.log.warning("Failed an outer batch in the multiprocessing script")
@@ -911,8 +916,8 @@ class CAT(object):
                                    part_counter=part_counter)
 
         # Enable the GPU Components again
-        if separate_gpu_components:
-            for name, component in gpu_components:
+        if separate_nn_components:
+            for name, component in nn_components:
                 # No need to do anything else as it was already in the pipe
                 self.pipe.nlp.enable_pipe(name)
 
@@ -924,7 +929,7 @@ class CAT(object):
                                batch_size_chars: int = 1000000,
                                only_cui: bool = False,
                                addl_info: List[str] = [],
-                               gpu_components=[]) -> Dict:
+                               nn_components=[]) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -958,7 +963,7 @@ class CAT(object):
 
         id2text = {}
         for batch in self._batch_generator(data, batch_size_chars):
-            if gpu_components:
+            if nn_components:
                 # We need this for the json_to_fake_spacy
                 id2text.update({k:v for k,v in batch})
             in_q.put(batch)
@@ -980,9 +985,9 @@ class CAT(object):
         in_q.close()
 
         # If we have separate GPU components now we pipe that
-        if gpu_components:
+        if nn_components:
             try:
-                docs = self._run_gpu_components(docs, gpu_components, id2text=id2text)
+                self._run_nn_components(docs, nn_components, id2text=id2text)
             except Exception as e:
                 self.log.warning(e, exc_info=True, stack_info=True)
 
