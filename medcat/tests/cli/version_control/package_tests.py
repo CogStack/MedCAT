@@ -132,11 +132,10 @@ class PackageTests(unittest.TestCase):
                 archive.extract(file, self.unit_testing_model_path_origin)
         else:
             logging.info("File already exists:" + r_get_mc_status_f_path + ". No need to redownload.")
-   
+    
     @ordered
     def test_standardize_model_files(self):
         os.chdir(self.unit_testing_model_path_download_location)
-
         if os.path.exists(self.unit_testing_model_path_origin):
             if not os.path.exists(os.path.join(self.unit_testing_model_path_origin, "vocab.dat")) and \
                not os.path.exists(os.path.join(self.unit_testing_model_path_origin, "cdb.dat")) and \
@@ -145,13 +144,13 @@ class PackageTests(unittest.TestCase):
                 cat = CAT.load_model(model_full_tag_name="", vocab_input_file_name = "./vocab.dat", cdb_input_file_name = "./cdb.dat", trainer_data_file_name = "./MedCAT_Export.json", bypass_model_path=True)
                 os.chdir(self.unit_testing_model_path_origin)
                 cat.save_model(vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json")
-    
+   
     @ordered   
     def test_package_model_default(self):
         os.chdir(self.unit_testing_model_path_origin)
         with unittest.mock.patch('builtins.input', side_effect=["yes", "yes", "no", "yes"]):
             self.assertEqual(package(self.tmp_full_model_tag_name), True)
-
+    
     @ordered     
     def test_package_model_default_improvement(self):
         new_release_tmp_path = os.path.join(get_local_model_storage_path(), "_unit_test_new_release_tmp_")
@@ -168,13 +167,13 @@ class PackageTests(unittest.TestCase):
         cat.train = True
 
         for sentence in text:
-            doc_spacy = cat(sentence)
+            doc_spacy = cat(sentence, do_train=True)
 
         cat.train = False
 
         print("AFTER TRAINING: ")
 
-        #cat.cdb.print_stats()
+        cat.cdb.print_stats()
         cat.save_model()
 
         with unittest.mock.patch('builtins.input', side_effect=["yes", "yes", "yes", "yes"]):
@@ -203,54 +202,51 @@ class PackageTests(unittest.TestCase):
         cat.train = True
 
         for sentence in text:
-            doc_spacy = cat(sentence)
+            doc_spacy = cat(sentence, do_train=True)
 
         cat.save_model()
 
         with unittest.mock.patch('builtins.input', side_effect=["No", "Yes", self.unit_test_specialist_model_name, "y"]):
             self.assertEqual(package(), True)
-  
+    
     @ordered
     def test_x_package_model_specialist_improved(self):
         
         new_release_tmp_path = os.path.join(get_local_model_storage_path(), "_unit_test_new_release_tmp_")
-
+ 
         force_delete_path(new_release_tmp_path)
-
+ 
         if not os.path.exists(new_release_tmp_path):
             os.mkdir(new_release_tmp_path)
-
+ 
         os.chdir(new_release_tmp_path)
-
+ 
         cat = CAT.load_model(self.unit_test_specialist_model_tag_name)
-
-        print(cat.cdb.vc_model_tag_data)
-
+ 
         text = ["My patient has Tuberculosis",
                 "She was evaluated by an Tuberculosis , ulcer and gastroentritis + ToF."]
         cat.train = True
-  
+   
         for sentence in text:
-            doc_spacy = cat(sentence)
-  
+            doc_spacy = cat(sentence, do_train=True)
+   
         cat.train = False
-  
+   
         print("AFTER TRAINING:")
-  
-        #cat.cdb.print_stats()
+        cat.cdb.print_stats()
         cat.save_model()
-
+ 
         with unittest.mock.patch('builtins.input', side_effect=["Yes", "y", "y"]):
             self.assertEqual(package(), True)
-   
-   
-
+    
     @ordered
     def test_x_package_model_specialist_improved_print(self):
+        new_release_tmp_path = os.path.join(get_local_model_storage_path(), "_unit_test_new_release_tmp_")
+        os.chdir(new_release_tmp_path)
+        print(os.getcwd())
+        cat = CAT.load_model("unit_test_specialist_model-1.0")
+        print(cat.cdb.vc_model_tag_data)
         cat = CAT.load_model("unit_test_specialist_model-1.0")
         print(cat.cdb.vc_model_tag_data)
 
-    @ordered
-    def test_x_package_model_specialist_improveda_print_improved(self):
-        cat = CAT.load_model("unit_test_specialist_model-1.1")
-        print(cat.cdb.vc_model_tag_data)
+    

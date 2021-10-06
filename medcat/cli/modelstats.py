@@ -12,6 +12,10 @@ class CDBStats:
     ontology_version : float = 1.0
 
 @dataclass
+class VocabStats:
+    number_of_words : int = 0
+
+@dataclass
 class TrainerStats:
     authors : List[str] = field(default_factory=list)
     epoch : int = 0

@@ -277,3 +277,34 @@ def get_model_binary_file_extension():
 
 def get_permitted_push_file_list():
     return ["cdb.dat", "vocab.dat", "modelcard.md", "modelcard.json", "MedCAT_Export.json" , "embeddings.npy"]
+
+def get_permitted_versioned_files():
+    return ["cdb.dat", "vocab.dat", "MedCAT_Export.json"]
+
+def dict_diff(dict_1, dict_2):
+    diff_1, diff_2 = {}, {}
+
+    dict_1_key_diff = set(dict_1.keys()) - set(dict_2.keys())
+    dict_2_key_diff = set(dict_2.keys()) - set(dict_1.keys()) 
+
+    if len(dict_1_key_diff) > 0:
+        for k1 in dict_1_key_diff:
+            diff_2[k1] = []
+
+    if len(dict_2_key_diff) > 0:
+        for k2 in dict_2_key_diff:
+            diff_1[k2] = []
+    
+    for k1, v1 in dict_1.items():
+        for k2, v2 in dict_2.items():
+            diffv1 = set(v1) - set(v2)
+
+            if len(diffv1) > 0:
+                diff_1[k1]= diffv1
+            
+            diffv2 = set(v2) - set(v1)
+            if len(diffv2) > 0:
+                diff_2[k2] = diffv2
+            
+
+    return diff_1, diff_2

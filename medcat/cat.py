@@ -144,7 +144,7 @@ class CAT(object):
             self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
             return None
             
-    def save_model(self, vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json"):
+    def save_model(self, vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=False):
         
         self.vocab.save_model(output_file_name=vocab_output_file_name)
         self.cdb.save_model(output_file_name=cdb_output_file_name)

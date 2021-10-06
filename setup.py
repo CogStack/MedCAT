@@ -38,7 +38,8 @@ setuptools.setup(
         'wexpect~=4.0.0' if os.name == "nt" else "",
         'pexpect==4.8.0',
         'jsonpickle==2.0.0',
-        'pywin32>=301' if os.name == "nt" else ""
+        'pywin32>=301' if os.name == "nt" else "",
+        'pypiwin32>=223' if os.name == "nt" else ""
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

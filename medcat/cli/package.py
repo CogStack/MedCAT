@@ -10,13 +10,18 @@ import shutil
 import traceback
 import dill
 import pickle
+import itertools
+import pandas
 from git import Repo
+
 from .download import get_all_available_model_tags
 from .system_utils import *
 from .modeltagdata import ModelTagData
 from medcat.cli.config import *
 from dateutil import parser
 
+pandas.set_option('display.max_colwidth', 400)
+pandas.set_option('display.max_columns', 10)
 
 def verify_model_package(request_url, headers, full_model_tag_name):
 
@@ -38,7 +43,7 @@ def verify_model_package(request_url, headers, full_model_tag_name):
 
     return False
 
-def select_model_package_and_name(model_name, previous_model_tag_data=False, predicted_version="1.0"):
+def select_model_package_and_name(model_name, previous_model_tag_data=False, predicted_version="1.0", stat_comparison_data=None):
     """
         Allows the user to select the model's name according to previous model history.
         :return model_name, is_new_release: model name and bool if its a new release 
@@ -49,11 +54,38 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
 
     different_organisation_base = False
 
-    if previous_model_tag_data is not False :
+    if stat_comparison_data is not None:
+        print("Changes from previous versions:")
+        stats_dataframe = pandas.DataFrame.from_dict(stat_comparison_data["stat_differences"])
+        print(stats_dataframe)
+
+        is_actual_new_release = stat_comparison_data["is_actual_new_release"]
+        is_stat_improvement = stat_comparison_data["is_stat_improvement"]
+
+        if is_actual_new_release:
+            print("This model should be tagged as a new release as there are a different number of concepts detected in the new version compared to the previous, example:")
+            for k,v in stat_comparison_data["stat_differences"]["cdb.dat"]["current"].items():
+                if len(v) > 3:
+                    print(k, v[0:3], ".....")
+                else:
+                    print(k, v, ".....")
+           
+        if is_stat_improvement == "NONE":
+            print("No performance improvement detected... check the scores...")
+        elif is_stat_improvement:
+            print("This model should be tagged as an improvement as there are score improvements, example:")
+        elif not is_stat_improvement:
+            print("Poor performance detected... check the scores...")
+
+        for k,v in stat_comparison_data["stat_differences"]["MedCAT_Export.json"]["current"].items():
+            print(k, v, " over the last version.")
+
+    if previous_model_tag_data is not False:
+        print("\n")
         print("The model you want to package is based on the following model:" + "\033[1m" + previous_model_tag_data.model_name + "-" + previous_model_tag_data.version + "\033[0m" + ".")
         if model_name == "":
             model_name = previous_model_tag_data.model_name
-
+        
         if get_auth_environment_vars()["git_organisation_name"] != previous_model_tag_data.organisation_name:
             different_organisation_base = True
             model_prefix = get_auth_environment_vars()["git_organisation_name"] + "-" + model_name
@@ -70,7 +102,7 @@ def select_model_package_and_name(model_name, previous_model_tag_data=False, pre
             if not is_input_valid(model_name):
                 print("Invalid characters detected in the model name, the new model name will be: " +  "\033[1m" + sanitize_input(model_name) + "\033[0m")
                 if not prompt_statement("Proceed ? (answering NO will return you to the model name selection process)"):
-                    model_name, is_new_release = select_model_package_and_name(sanitize_input(model_name), previous_model_tag_data, predicted_version)
+                    model_name, is_new_release = select_model_package_and_name(sanitize_input(model_name), previous_model_tag_data, predicted_version, stat_comparison_data)
                 else:
                     model_name = sanitize_input(model_name)
                     model_prefix = model_name
@@ -138,7 +170,6 @@ def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_n
             logging.info("Updating model object : " + organisation_name + "-" + model_name + "-" + str(version) + ", " + file_name + " with tag data...")
 
             loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
- 
 
             if file_name.endswith(get_model_binary_file_extension()):
                 loaded_model_file.vc_model_tag_data = model_tag_data
@@ -153,15 +184,18 @@ def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_n
 
             logging.info("Saving of : " + file_name + " is complete...")
 
-
 def detect_model_name_from_files(model_folder_path="./"):
     model_data = {}
 
-    for file_name in get_permitted_push_file_list(): 
+    for file_name in get_permitted_versioned_files(): 
         if os.path.isfile(os.path.join(model_folder_path, file_name)):
             loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True, ignore_non_model_files=False)
+
             if loaded_model_file != False :
                 model_data[file_name] = {}
+
+                # used for stat comparison for certain files
+                model_data[file_name]["full_file_data"] = loaded_model_file
                 
                 if type(loaded_model_file) is not dict or hasattr(loaded_model_file, "vc_model_tag_data"):
                     model_data[file_name]["vc_model_tag_data"] = loaded_model_file.vc_model_tag_data
@@ -175,6 +209,66 @@ def detect_model_name_from_files(model_folder_path="./"):
                     model_data[file_name]["cdb_stats"] = asdict(loaded_model_file.cdb_stats)
 
     return False if len(model_data) == 0 else model_data
+
+def compare_model_stats(current_model_file_data, old_model_file_data):
+    
+    stat_differences = {}
+
+    for file_name in get_permitted_versioned_files():
+        stat_differences[file_name]  = {}
+        if file_name in current_model_file_data.keys() and file_name in old_model_file_data.keys():
+            current_data = current_model_file_data[file_name]["full_file_data"] 
+            old_data = old_model_file_data[file_name]["full_file_data"] 
+
+            if get_model_binary_file_extension() in file_name:
+                old_model_tag_name = current_data.vc_model_tag_data.model_name + "-" + old_data.vc_model_tag_data.version
+            else:
+                old_model_tag_name = current_data["vc_model_tag_data"]["model_name"] + "-" + old_data["vc_model_tag_data"]["version"]
+
+            stat_differences[file_name] = {"current" : {}, old_model_tag_name : {} }
+
+            if "cdb" in file_name:
+                current_data_vals = list(itertools.chain(*list(current_data.name2cuis.values())))
+                old_data_vals = list(itertools.chain(*list(old_data.name2cuis.values())))
+                
+                stat_differences[file_name]["current"].update({ "cui_names" : set(current_data.name2cuis.keys()) - set(old_data.name2cuis.keys()) })
+                stat_differences[file_name][old_model_tag_name].update({ "cui_names" : set(old_data.name2cuis.keys()) - set(current_data.name2cuis.keys()) })
+
+                stat_differences[file_name]["current"].update({ "cui_ids" : set(current_data_vals) - set(old_data_vals) })
+                stat_differences[file_name][old_model_tag_name].update({ "cui_ids" : set(old_data_vals) - set(current_data_vals) })
+                
+            elif "vocab" in file_name:
+                stat_differences[file_name]["current"].update({ "index2word" : set(current_data.index2word.items()) - set(old_data.index2word.items()) })
+                stat_differences[file_name][old_model_tag_name].update({ "index2word" : set(old_data.index2word.items()) - set(current_data.index2word.items()) })
+
+            elif "MedCAT_Export" in file_name:
+                for stat, value in current_data["trainer_stats"].items():
+                    if type(value) in [int, float]:
+                        stat_differences[file_name]["current"].update({ stat : (value - old_data["trainer_stats"][stat])})
+                        stat_differences[file_name][old_model_tag_name].update({ stat : (old_data["trainer_stats"][stat] - value) })
+    
+    stat_improvement = {}
+
+    for k,v in stat_differences["MedCAT_Export.json"]["current"].items():
+        if float(v) < 0.0:
+            stat_improvement = { k : False }
+        elif float(v) > 0.0:
+            stat_improvement = { k : True }
+        else:
+            stat_improvement = { k : "NONE"}
+
+    new_release = {}
+
+    for k,v in stat_differences["cdb.dat"]["current"].items():
+        if len(v) > 0:
+            new_release = { k : True }
+        else: new_release = { k : False }
+    
+    is_actual_new_release = len([v == False for v in list(new_release.values())]) > len([v == True for v in list(new_release.values())])
+    is_stat_improvement = "NONE" if len([v == "NONE" for v in list(stat_improvement.values())]) == len(stat_improvement.keys()) else len([v == False for v in list(stat_improvement.values())]) < len([v == True for v in list(stat_improvement.values())])
+    
+
+    return stat_differences, stat_improvement, new_release, is_actual_new_release, is_stat_improvement
 
 def upload_model(model_name, version):
 
@@ -193,7 +287,7 @@ def upload_model(model_name, version):
 
     # get information about the model files we currently want to package
     model_file_data = detect_model_name_from_files(current_folder)
-
+ 
     # get model file data that is most recent (higher version) from all the files
     previous_tag_model_data = False
 
@@ -202,10 +296,6 @@ def upload_model(model_name, version):
 
         # if a model has a parent model then we obviously need to take into account the version of the files that have a parent model
         parent_found = False
-        ################################## PROBLEM PICKING THE VERSION BETWEEN MODELS WITH DIFFERENT PARENTS ##################################
-        print("==================================================================================================")
-        print(model_file_data)
-        print("==================================================================================================")
         
         for file_name in model_file_data.keys():
             if "vc_model_tag_data" in model_file_data[file_name].keys():
@@ -230,21 +320,30 @@ def upload_model(model_name, version):
 
                     if len(biggest_version) > 0:
                         biggest_ver_timestamp = parser.parse(biggest_version[1])
-                        newest = max(current_timestamp, biggest_ver_timestamp)
-                        if newest == current_timestamp:
+                        if current_timestamp > biggest_ver_timestamp:
                             biggest_version = ()
                             biggest_version = (file_name, model_file_data[file_name]["vc_model_tag_data"].timestamp)
                     else:
                         biggest_version = (file_name, model_file_data[file_name]["vc_model_tag_data"].timestamp)
-                    
+               
         if len(biggest_version) > 0:
             previous_tag_model_data = model_file_data[biggest_version[0]]["vc_model_tag_data"]
+    
+    old_model_file_data = False
+    stat_comparison_data = None
+
+    if previous_tag_model_data:
+
+        old_model_file_data = detect_model_name_from_files(get_downloaded_local_model_folder(previous_tag_model_data.model_name + "-" + previous_tag_model_data.version))
+        
+        stat_differences, stat_improvement, new_release, is_actual_new_release, is_stat_improvement = compare_model_stats(model_file_data, old_model_file_data)
+        stat_comparison_data = { "stat_differences": stat_differences, "stat_improvement" : stat_improvement , "new_release" : new_release, "is_actual_new_release": is_actual_new_release, "is_stat_improvement" : is_stat_improvement}
 
     # this is the predicted version number, will change to 1.0 if its a new release
     version = generate_model_version(model_name, version, previous_tag_model_data) 
 
     # determine the final model name
-    model_name, is_new_release = select_model_package_and_name(model_name, previous_tag_model_data, predicted_version=version)
+    model_name, is_new_release = select_model_package_and_name(model_name, previous_tag_model_data, predicted_version=version, stat_comparison_data=stat_comparison_data)
 
     # version reset if it's a new release
     if is_new_release:
@@ -304,6 +403,9 @@ def upload_model(model_name, version):
                 parent_model_tag = previous_tag_model_data.model_name + "-" + previous_tag_model_data.version
             else:
                 parent_model_name = previous_tag_model_data.parent_model_name
+            
+                # all new releases have parent model
+                parent_model_tag = previous_tag_model_data.parent_model_tag
 
         release_name = tag_name     
 
