@@ -723,9 +723,9 @@ class CAT(object):
         out: Union[Dict, List[Union[Dict, None]]]
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         if isinstance(text, Iterable) and not isinstance(text, str):
-            # Do not like this too much, it should really be
+            # TODO: Do not like this too much, it should really be
             #working with one text file only, let the users make the necessary loops or whatever. As for
-            #multiprocessing should it not be in the 
+            #multiprocessing it should not be done in this function
             if n_process is None:
                 out = []
                 docs = self(self._generate_trimmed_texts(text))
@@ -803,7 +803,7 @@ class CAT(object):
         char_count = 0
         for doc in data:
             if doc[0] not in skip_ids:
-                char_count += len(doc[1])
+                char_count += len(str(doc[1]))
                 docs.append(doc)
                 if char_count < batch_size_chars:
                     continue
@@ -1123,6 +1123,7 @@ class CAT(object):
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
+            # TODO: REMOVE, this is just using memory
             out['text'] = doc.text
         return out
 
