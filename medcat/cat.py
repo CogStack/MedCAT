@@ -275,25 +275,26 @@ class CAT(object):
         filters = self.config.linking['filters']
 
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            p_filters = None # project_filters used if the cui filters are overwritten later
             if use_filters:
+                filters['cuis'] = set()
                 if type(project.get('cuis', None)) == str:
                     # Old filters
                     filters['cuis'] = process_old_project_filters(
                             cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
-                    p_filters = filters['cuis']
                 elif type(project.get('cuis', None)) == list:
                     # New filters
                     filters['cuis'] = set(project.get('cuis'))
-                    p_filters = filters['cuis']
+
+                # Used to subset project filters to the ones existing in the linking filter
+                filters['cuis'] = set([cui for cui in filters['cuis'] if check_filters(cui, _filters)])
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
                 anns = self._get_doc_annotations(doc)
 
-                # Apply document level filtering if
+                # Apply document level filtering, but only if the CUI is in the existing filter in linking
                 if use_cui_doc_limit:
-                    _cuis = set([ann['cui'] for ann in anns if p_filters is None or ann['cui'] in p_filters])
+                    _cuis = set([ann['cui'] for ann in anns if check_filters(ann['cui'], _filters)])
                     if _cuis:
                         filters['cuis'] = _cuis
                     else:
