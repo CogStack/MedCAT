@@ -313,7 +313,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if not use_filters or check_filters(cui, filters):
+                    if (not use_filters and not use_cui_doc_limit) or check_filters(cui, filters):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
