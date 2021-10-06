@@ -639,7 +639,8 @@ class CAT(object):
             train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
 
         if print_stats > 0:
-            self._print_stats(test_set, use_filters=use_filters, use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
+            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, use_filters=use_filters,
+                    use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
                     use_groups=use_groups)
 
         if reset_cui_count:
