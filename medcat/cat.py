@@ -1,3 +1,6 @@
+import os
+import gc
+import pickle
 import traceback
 import json
 import time
@@ -22,6 +25,8 @@ from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import process_old_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
+from medcat.meta_cat import MetaCAT
+from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 
 
 class CAT(object):
@@ -110,7 +115,6 @@ class CAT(object):
         '''
         from zipfile import ZipFile
         import shutil
-        from medcat.meta_cat import MetaCAT
         import os
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
@@ -185,7 +189,7 @@ class CAT(object):
         return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
 
 
-    def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple]], do_train: bool = False):
+    def __call__(self, text: str, do_train: bool = False):
         r'''
         Push the text through the pipeline.
 
@@ -204,16 +208,12 @@ class CAT(object):
         #self.train() function
         self.config.linking['train'] = do_train
 
-        if isinstance(text, str):
-            text = self._get_trimmed_text(text)
-            return self.pipe(text)
-        elif isinstance(text, types.GeneratorType):
-            return self.pipe(self._generate_trimmed_texts(text))
-        elif isinstance(text, Iterable):
-            return self.pipe(self._get_trimmed_texts(text))
-        else:
+        if text is None:
             self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
             return None
+        else:
+            text = self._get_trimmed_text(str(text))
+            return self.pipe(text)
 
     def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
                      use_groups=False):
@@ -275,14 +275,17 @@ class CAT(object):
         filters = self.config.linking['filters']
 
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
+            p_filters = None # project_filters used if the cui filters are overwritten later
             if use_filters:
                 if type(project.get('cuis', None)) == str:
                     # Old filters
                     filters['cuis'] = process_old_project_filters(
                             cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
+                    p_filters = filters['cuis']
                 elif type(project.get('cuis', None)) == list:
                     # New filters
-                    filters['cuis'] = project.get('cuis')
+                    filters['cuis'] = set(project.get('cuis'))
+                    p_filters = filters['cuis']
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
@@ -290,9 +293,11 @@ class CAT(object):
 
                 # Apply document level filtering if
                 if use_cui_doc_limit:
-                    _cuis = set([ann['cui'] for ann in anns])
+                    _cuis = set([ann['cui'] for ann in anns if p_filters is None or ann['cui'] in p_filters])
                     if _cuis:
                         filters['cuis'] = _cuis
+                    else:
+                        filters['cuis'] = set(['empty'])
 
                 spacy_doc = self(doc['text'])
 
@@ -712,18 +717,15 @@ class CAT(object):
                      n_process: Optional[int] = None,
                      batch_size: Optional[int] = None) -> Union[Dict, List[Union[Dict, None]]]:
         r''' Get entities
-p
         text:  text to be annotated
         return:  entities
         '''
         out: Union[Dict, List[Union[Dict, None]]]
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        if text is None:
-            out = self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info)
-        elif isinstance(text, str):
-            doc = self(text)
-            out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
-        else:
+        if isinstance(text, Iterable) and not isinstance(text, str):
+            # TODO: Do not like this too much, it should really be
+            #working with one text file only, let the users make the necessary loops or whatever. As for
+            #multiprocessing it should not be done in this function
             if n_process is None:
                 out = []
                 docs = self(self._generate_trimmed_texts(text))
@@ -751,6 +753,9 @@ p
                                 out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                 finally:
                     self.pipe.reset_error_handler()
+        else:
+            doc = self(text)
+            out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
 
         return out
 
@@ -765,20 +770,179 @@ p
 
         return json.dumps(out)
 
-    def multiprocessing(self, in_data, nproc=8, batch_size_chars=1000000, only_cui=False, addl_info=[]):
-        r''' Run multiprocessing NOT FOR TRAINING
+    def _separate_nn_components(self):
+        # Loop though the models and check are there GPU devices
+        nn_components = []
+        for component in self.pipe.nlp.components:
+            if isinstance(component[1], MetaCAT):
+                self.pipe.nlp.disable_pipe(component[0])
+                nn_components.append(component)
 
-        in_data:  an iterator or array with format: [(id, text), (id, text), ...]
-        nproc:  number of processors
-        batch_size_chars: size of a batch in number of characters
+        return nn_components
 
-        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...]
+    def _run_nn_components(self, docs, nn_components, id2text):
+        r''' This will add meta_anns in-place to the docs dict.
+        '''
+        self.log.debug("Running GPU components separately")
+
+        # First convert the docs into the fake spacy doc format
+        spacy_docs = json_to_fake_spacy(docs, id2text=id2text)
+        # Disable component locks also
+        for name, component in nn_components:
+            component.config.general['disable_component_lock'] = True
+
+        for name, component in nn_components:
+            spacy_docs = component.pipe(spacy_docs)
+
+        for spacy_doc in spacy_docs:
+            for ent in spacy_doc.ents:
+                docs[spacy_doc.id]['entities'][ent._.id]['meta_anns'].update(ent._.meta_anns)
+
+    def _batch_generator(self, data, batch_size_chars, skip_ids=set()):
+        docs = []
+        char_count = 0
+        for doc in data:
+            if doc[0] not in skip_ids:
+                char_count += len(str(doc[1]))
+                docs.append(doc)
+                if char_count < batch_size_chars:
+                    continue
+                yield docs
+                docs = []
+                char_count = 0
+
+        if len(docs) > 0:
+            yield docs
+
+    def _save_docs_to_file(self, docs, annotated_ids, out_split_size, save_dir_path, annotated_ids_path, part_counter=0):
+        path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
+        pickle.dump(docs, open(path, "wb"))
+        self.log.info("Saved part: {}, to: {}".format(part_counter, path))
+        part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
+        pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
+        return part_counter
+
+    def multiprocessing(self,
+                        data: Union[List[Tuple], Iterable[Tuple]],
+                        nproc: int = 2,
+                        batch_size_chars: int = 5000 * 1000,
+                        only_cui: bool = False,
+                        addl_info: List[str] = [],
+                        separate_nn_components: bool = True,
+                        out_split_size: int = None,
+                        save_dir_path: str = None,) -> Dict:
+        r''' Run multiprocessing for inference, if out_save_path and out_split_size is used this will also continue annotating
+        documents if something is saved in that directory.
+
+        Args:
+            data(``):
+                Iterator or array with format: [(id, text), (id, text), ...]
+            nproc (`int`, defaults to 8):
+                Number of processors
+            batch_size_chars (`int`, defaults to 1000000):
+                Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200
+            separate_nn_components (`bool`, defaults to True):
+                If set the medcat pipe will be broken up into NN and not-NN components and
+                they will be run sequentially. This is useful as the NN components
+                have batching and like to process many docs at once, while the rest of the pipeline
+                runs the documents one by one.
+            out_split_size (`int`, None):
+                If set once more than out_split_size documents are annotated
+                they will be saved to a file (save_dir_path) and the memory cleared.
+            save_dir_path(`str`, None):
+                Where to save the annotated documents if splitting.
+
+        Returns:
+            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size is used
+            the last batch will be returned while that and all previous batches will be
+            written to disk (out_save_dir).
         '''
         if self._meta_annotations:
-            # Hack for torch using multithreading, which is not good here
+            # Hack for torch using multithreading, which is not good here, need for CPU runs only
             import torch
             torch.set_num_threads(1)
 
+        nn_components = []
+        if separate_nn_components:
+            nn_components = self._separate_nn_components()
+
+        if save_dir_path is not None:
+            os.makedirs(save_dir_path, exist_ok=True)
+
+        internal_batch_size_chars = batch_size_chars // (5 * nproc)
+
+        annotated_ids_path = os.path.join(save_dir_path, 'annotated_ids.pickle') if save_dir_path is not None else None
+        if annotated_ids_path is not None and os.path.exists(annotated_ids_path):
+            annotated_ids, part_counter = pickle.load(open(annotated_ids_path, 'rb'))
+        else:
+            annotated_ids = []
+            part_counter = 0
+
+        docs = {}
+        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+            self.log.info("Annotated until now: {} docs; Current BS: {} docs".format(len(annotated_ids), len(batch)))
+            try:
+                _docs = self._multiprocessing_batch(data=batch,
+                                                    nproc=nproc,
+                                                    batch_size_chars=internal_batch_size_chars,
+                                                    only_cui=only_cui,
+                                                    addl_info=addl_info,
+                                                    nn_components=nn_components)
+                docs.update(_docs)
+                annotated_ids.extend(_docs.keys())
+                del _docs
+                if out_split_size is not None and len(docs) > out_split_size:
+                    # Save to file and reset the docs 
+                    part_counter = self._save_docs_to_file(docs=docs,
+                                           annotated_ids=annotated_ids,
+                                           out_split_size=out_split_size,
+                                           save_dir_path=save_dir_path,
+                                           annotated_ids_path=annotated_ids_path,
+                                           part_counter=part_counter)
+                    del docs
+                    docs = {}
+            except Exception as e:
+                self.log.warning("Failed an outer batch in the multiprocessing script")
+                self.log.warning(e, exc_info=True, stack_info=True)
+
+        # Save the last batch
+        if out_split_size is not None and len(docs) > 0:
+            # Save to file and reset the docs 
+            self._save_docs_to_file(docs=docs,
+                                   annotated_ids=annotated_ids,
+                                   out_split_size=out_split_size,
+                                   save_dir_path=save_dir_path,
+                                   annotated_ids_path=annotated_ids_path,
+                                   part_counter=part_counter)
+
+        # Enable the GPU Components again
+        if separate_nn_components:
+            for name, component in nn_components:
+                # No need to do anything else as it was already in the pipe
+                self.pipe.nlp.enable_pipe(name)
+
+        return docs
+
+    def _multiprocessing_batch(self,
+                               data: Union[List[Tuple], Iterable[Tuple]],
+                               nproc: int = 8,
+                               batch_size_chars: int = 1000000,
+                               only_cui: bool = False,
+                               addl_info: List[str] = [],
+                               nn_components=[]) -> Dict:
+        r''' Run multiprocessing on one batch
+
+        Args:
+            data(``):
+                Iterator or array with format: [(id, text), (id, text), ...]
+            nproc (`int`, defaults to 8):
+                Number of processors
+            batch_size_chars (`int`, defaults to 1000000):
+                Size of a batch in number of characters
+
+        Returns:
+            A dictionary: {id: doc_json, id2: doc_json2, ...}
+        '''
         # Create the input output for MP
         in_q = Queue(maxsize=4*nproc)
         manager = Manager()
@@ -788,44 +952,46 @@ p
         # Create processes
         procs = []
         for i in range(nproc):
-            p = Process(target=self._mp_cons, kwargs={'in_q': in_q, 'out_dict': out_dict, 'pid': i, 'only_cui': only_cui,
-                'addl_info': addl_info})
+            p = Process(target=self._mp_cons,
+                        kwargs={'in_q': in_q,
+                                'out_dict': out_dict,
+                                'pid': i,
+                                'only_cui': only_cui,
+                                'addl_info': addl_info})
             p.start()
             procs.append(p)
 
-        data = []
-        nchars = 0
-        for id, text in in_data:
-            data.append((id, str(text)))
-            nchars += len(str(text))
-            if nchars >= batch_size_chars:
-                in_q.put(data)
-                data = []
-                nchars = 0
-        # Put the last batch if it exists
-        if len(data) > 0:
-            in_q.put(data)
+        id2text = {}
+        for batch in self._batch_generator(data, batch_size_chars):
+            if nn_components:
+                # We need this for the json_to_fake_spacy
+                id2text.update({k:v for k,v in batch})
+            in_q.put(batch)
 
-        for _ in range(nproc):  # tell workers we're done
-            in_q.put(None)
+        # Final data point for workers
+        for _ in range(nproc): in_q.put(None)
+        # Join processes
+        for p in procs: p.join()
 
-        for p in procs:
-            p.join()
-
-        # Close the queue as it can cause memory leaks
-        in_q.close()
-
-        out = []
+        docs = {}
         for key in out_dict.keys():
             if 'pid' in key:
-                data = out_dict[key]
-                out.extend(data)
+                # Covnerts a touple into a dict
+                docs.update({k:v for k,v in out_dict[key]})
 
-        # Sometimes necessary to free memory
+        # Cleanup - to prevent memory leaks, maybe
         out_dict.clear()
         del out_dict
+        in_q.close()
 
-        return out
+        # If we have separate GPU components now we pipe that
+        if nn_components:
+            try:
+                self._run_nn_components(docs, nn_components, id2text=id2text)
+            except Exception as e:
+                self.log.warning(e, exc_info=True, stack_info=True)
+
+        return docs
 
     def multiprocessing_pipe(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
@@ -957,6 +1123,7 @@ p
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
+            # TODO: REMOVE, this is just using memory
             out['text'] = doc.text
         return out
 

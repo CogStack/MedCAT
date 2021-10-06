@@ -37,39 +37,17 @@ class CATTests(unittest.TestCase):
     def test_callable_with_single_none_text(self):
         self.assertIsNone(self.undertest(None))
 
-    def test_callable_with_multi_texts(self):
-        texts = ["The dog is sitting outside the house.", "", None]
-        docs = self.undertest(texts)
-        self.assertEqual(3, len(docs))
-        self.assertEqual(texts[0], docs[0].text)
-        self.assertIsNone(docs[1])
-        self.assertIsNone(docs[2])
-
-    def test_callable_with_in_data(self):
-        in_data = [
-            (1, "The dog is sitting outside the house."),
-            (2, "The dog is sitting outside the house.")
-        ]
-        docs = self.undertest(in_data)
-        self.assertEqual(2, len(docs))
-        self.assertEqual(in_data[0][1], docs[0].text)
-        self.assertEqual(in_data[1][1], docs[1].text)
-
-    @unittest.skip("WIP")
     def test_multiprocessing(self):
         in_data = [
-            (1, "The dog is sitting outside the house."),
+            (1, "The dog is sitting outside the house and second csv."),
             (2, ""),
-            (3, "The dog is sitting outside the house.")
+            (3, None)
         ]
-        out = list(self.undertest.multiprocessing(in_data, nproc=1))
+        out = self.undertest.multiprocessing(in_data, nproc=1)
         self.assertEqual(3, len(out))
-        self.assertEqual(1, out[0][0])
-        self.assertEqual("The dog is sitting outside the house.", out[0][1]["text"])
-        self.assertEqual(2, out[1][0])
-        self.assertEqual("", out[1][1]["text"])
-        self.assertEqual(3, out[2][0])
-        self.assertEqual("The dog is sitting outside the house.", out[2][1]["text"])
+        self.assertEqual(1, len(out[1]['entities']))
+        self.assertEqual(0, len(out[2]['entities']))
+        self.assertEqual(0, len(out[3]['entities']))
 
     def test_multiprocessing_pipe(self):
         in_data = [

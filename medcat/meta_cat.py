@@ -282,6 +282,7 @@ class MetaCAT(PipeRunner):
                 continue
             yield docs
             docs = []
+            char_count = 0
 
         # If there is anything left return that also
         if len(docs) > 0:
