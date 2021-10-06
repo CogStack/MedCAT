@@ -1,5 +1,4 @@
 import types
-
 import spacy
 import gc
 import logging
@@ -8,15 +7,14 @@ from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from spacy.util import raise_error
 from tqdm.autonotebook import tqdm
-
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.utils.loggers import add_handlers
 from medcat.config import Config
-
-
+from medcat.pipeline.pipe_runner import PipeRunner
+from medcat.preprocessing.taggers import tag_skip_and_punct
 from typing import List, Optional, Union, Iterable, Callable, Generator
 from multiprocessing import cpu_count
 
@@ -41,7 +39,7 @@ class Pipe(object):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
-        self.nlp.tokenizer = tokenizer(self.nlp)
+        self.nlp.tokenizer = tokenizer(self.nlp, config)
         self.config = config
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
@@ -71,7 +69,7 @@ class Pipe(object):
             Token.set_extension(field, default=False, force=True)
 
     def add_token_normalizer(self, config: Config, name: Optional[str] = None, spell_checker: Optional[BasicSpellChecker] = None) -> None:
-        token_normalizer = TokenNormalizer(spell_checker=spell_checker, config=config)
+        token_normalizer = TokenNormalizer(config=config, spell_checker=spell_checker)
         component_name = spacy.util.get_object_name(token_normalizer)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=token_normalizer)
@@ -120,15 +118,15 @@ class Pipe(object):
         Language.component(name=component_name, func=meta_cat)
         self.nlp.add_pipe(component_name, name=name, last=True)
 
-        # Only the meta_anns field is needed, it will be a dictionary 
-        #of {category_name: value, ...}
+        # meta_anns is a dictionary like {category_name: value, ...}
         Span.set_extension('meta_anns', default=None, force=True)
+        # Used for sharing pre-processed data/tokens
+        Doc.set_extension('share_tokens', default=None, force=True)
 
     def batch_multi_process(self,
                             texts: Iterable[str],
                             n_process: Optional[int] = None,
-                            batch_size: Optional[int] = None,
-                            total: Optional[int] = None) -> Generator[Doc, None, None]:
+                            batch_size: Optional[int] = None) -> Generator[Doc, None, None]:
         r''' Batch process a list of texts in parallel.
 
         Args:
@@ -156,7 +154,34 @@ class Pipe(object):
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
         batch_size = batch_size if batch_size is not None else 1000
 
-        return self.nlp.pipe(texts if total is None else tqdm(texts, total=total), n_process=n_process, batch_size=batch_size)
+        # If n_process < 0, multiprocessing will be either conducted inside pipeline components based on the con(when
+        # 'parallel' is set to True) or not happen at all (when 'parallel' is set to False). Otherwise, multiprocessing
+        # will be conducted at the pipeline level, i.e., texts will be processed sequentially by each pipeline component.
+        if n_process < 0:
+            inner_parallel = True
+            n_process = 1
+        else:
+            inner_parallel = False
+
+        component_cfg = {
+            tag_skip_and_punct.name: {
+                'parallel': inner_parallel
+            },
+            TokenNormalizer.name: {
+                'parallel': inner_parallel
+            },
+            NER.name: {
+                'parallel': inner_parallel
+            },
+            Linker.name: {
+                'parallel': inner_parallel
+            }
+        }
+
+        return self.nlp.pipe(texts,
+                             n_process=n_process,
+                             batch_size=batch_size,
+                             component_cfg=component_cfg)
 
     def set_error_handler(self, error_handler):
         self.nlp.set_error_handler(error_handler)
@@ -176,23 +201,7 @@ class Pipe(object):
 
     @staticmethod
     def _ensure_serializable(doc: Doc) -> Doc:
-        new_ents = []
-        for ent in doc._.ents:
-            serializable = {
-                "start": ent.start,
-                "end": ent.end,
-                "label": ent.label,
-                "cui": ent._.cui,
-                "detected_name": ent._.detected_name,
-                "context_similarity": ent._.context_similarity,
-                "id": ent._.id
-            }
-            if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
-                serializable['meta_anns'] = ent._.meta_anns
-            new_ents.append(serializable)
-        doc._.ents.clear()
-        doc._.ents = new_ents
-        return doc
+        return PipeRunner.serialize_entities(doc)
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
@@ -204,7 +213,7 @@ class Pipe(object):
                     doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
                     self.log.warning("Exception raised when processing text: {}".format(t[:50] + "..." if isinstance(t, str) else t))
-                    self.log.warning(e, stack_info=True)
+                    self.log.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
             return docs

@@ -13,7 +13,9 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.utils.normalizers import BasicSpellChecker, TokenNormalizer
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
+from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 from transformers import AutoTokenizer
+
 
 
 class PipeTests(unittest.TestCase):
@@ -38,7 +40,10 @@ class PipeTests(unittest.TestCase):
         cls.spell_checker = BasicSpellChecker(cdb_vocab=cls.cdb.vocab, config=cls.config, data_vocab=cls.vocab)
         cls.ner = NER(cls.cdb, cls.config)
         cls.linker = Linker(cls.cdb, cls.vocab, cls.config)
-        cls.meta_cat = MetaCAT(tokenizer=AutoTokenizer.from_pretrained("bert-base-uncased"))
+
+        _tokenizer = TokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
+        cls.meta_cat = MetaCAT(tokenizer=_tokenizer)
+
         cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
 
@@ -87,12 +92,30 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
         PipeTests.undertest.set_error_handler(_error_handler)
-        docs = list(self.undertest.batch_multi_process([PipeTests.text, None, PipeTests.text], n_process=2, batch_size=1))
+        docs = list(self.undertest.batch_multi_process([PipeTests.text, PipeTests.text, PipeTests.text], n_process=1, batch_size=1))
         PipeTests.undertest.reset_error_handler()
 
-        self.assertEqual(2, len(docs))
+        self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertEqual(PipeTests.text, docs[1].text)
+        self.assertEqual(PipeTests.text, docs[2].text)
+
+    def test_callable_with_generated_texts(self):
+        def _generate_texts(texts):
+            yield from texts
+
+        PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
+        PipeTests.undertest.add_token_normalizer(PipeTests.config, spell_checker=PipeTests.spell_checker)
+        PipeTests.undertest.add_ner(PipeTests.ner)
+        PipeTests.undertest.add_linker(PipeTests.linker)
+        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+
+        docs = list(self.undertest(_generate_texts([PipeTests.text, None, PipeTests.text])))
+
+        self.assertEqual(3, len(docs))
+        self.assertEqual(PipeTests.text, docs[0].text)
+        self.assertIsNone(docs[1])
+        self.assertEqual(PipeTests.text, docs[2].text)
 
     def test_callable_with_single_text(self):
         PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
@@ -113,23 +136,6 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
         docs = list(self.undertest([PipeTests.text, None, PipeTests.text]))
-
-        self.assertEqual(3, len(docs))
-        self.assertEqual(PipeTests.text, docs[0].text)
-        self.assertIsNone(docs[1])
-        self.assertEqual(PipeTests.text, docs[2].text)
-
-    def test_callable_with_generated_texts(self):
-        def _generate_texts(texts):
-            yield from texts
-
-        PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
-        PipeTests.undertest.add_token_normalizer(PipeTests.config, spell_checker=PipeTests.spell_checker)
-        PipeTests.undertest.add_ner(PipeTests.ner)
-        PipeTests.undertest.add_linker(PipeTests.linker)
-        PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
-
-        docs = list(self.undertest(_generate_texts([PipeTests.text, None, PipeTests.text])))
 
         self.assertEqual(3, len(docs))
         self.assertEqual(PipeTests.text, docs[0].text)

@@ -10,7 +10,7 @@ from functools import partial
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.ml_utils import get_lr_linking
-from medcat.config import Config, weighted_average
+from medcat.config import Config, weighted_average, workers
 
 from medcat.cli import ModelTagData, system_utils
 from medcat.cli.modelstats import CDBStats
@@ -399,10 +399,11 @@ class CDB(object):
             This is used to search the site-packages models folder for installed models..
         """
         data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name, bypass_model_path=bypass_model_path)
-        
-        if data is False:
+        if data is not False:
+            data._ensure_backward_compatibility(data.config)
+        else:
             logging.error("Could not load concept database from model: " + model_full_tag_name)
-
+        
         return data
 
     def save(self, path):
@@ -433,11 +434,8 @@ class CDB(object):
             data = dill.load(f)
             if config is None:
                 config = Config.from_dict(data['config'])
+                cls._ensure_backward_compatibility(config)
 
-                # Hacky way of supporting old CDBs
-                weighted_average_function = config.linking['weighted_average_function']
-                if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
-                    config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
 
@@ -570,13 +568,13 @@ class CDB(object):
         names_to_keep = set()
         snames_to_keep = set()
         for cui in cuis_to_keep:
-            names_to_keep.update(self.cui2names[cui])
-            snames_to_keep.update(self.cui2snames[cui])
+            names_to_keep.update(self.cui2names.get(cui, []))
+            snames_to_keep.update(self.cui2snames.get(cui, []))
 
         # Based on the names get also the indirect CUIs that have to be kept
         all_cuis_to_keep = set()
         for name in names_to_keep:
-            all_cuis_to_keep.update(self.name2cuis[name])
+            all_cuis_to_keep.update(self.name2cuis.get(name, []))
 
         new_name2cuis = {}
         new_name2cuis2status = {}
@@ -590,22 +588,24 @@ class CDB(object):
 
         # Subset cui2<whatever>
         for cui in all_cuis_to_keep:
-            new_cui2names[cui] = self.cui2names[cui]
-            new_cui2snames[cui] = self.cui2snames[cui]
-            if cui in self.cui2context_vectors:
-                new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
-                # We assume that it must have the cui2count_train if it has a vector
-                new_cui2count_train[cui] = self.cui2count_train[cui]
-            if cui in self.cui2tags:
-                new_cui2tags[cui] = self.cui2tags[cui]
-            new_cui2type_ids[cui] = self.cui2type_ids[cui]
-            if cui in self.cui2preferred_name:
-                new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
+            if cui in self.cui2names:
+                new_cui2names[cui] = self.cui2names[cui]
+                new_cui2snames[cui] = self.cui2snames[cui]
+                if cui in self.cui2context_vectors:
+                    new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
+                    # We assume that it must have the cui2count_train if it has a vector
+                    new_cui2count_train[cui] = self.cui2count_train[cui]
+                if cui in self.cui2tags:
+                    new_cui2tags[cui] = self.cui2tags[cui]
+                new_cui2type_ids[cui] = self.cui2type_ids[cui]
+                if cui in self.cui2preferred_name:
+                    new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
 
         # Subset name2<whatever>
         for name in names_to_keep:
-            new_name2cuis[name] = self.name2cuis[name]
-            new_name2cuis2status[name] = self.name2cuis2status[name]
+            if name in self.name2cuis:
+                new_name2cuis[name] = self.name2cuis[name]
+                new_name2cuis2status[name] = self.name2cuis2status[name]
 
         # Replace everything
         self.name2cuis = new_name2cuis
@@ -722,3 +722,19 @@ class CDB(object):
                          'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res
+
+    @staticmethod
+    def _ensure_backward_compatibility(config: Config):
+        # Hacky way of supporting old CDBs
+        weighted_average_function = config.linking['weighted_average_function']
+        if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
+            config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
+        if config.general.get('workers', None) is None:
+            config.general['workers'] = workers()
+        if config.general.get('diacritics', None) is None:
+            config.general['diacritics'] = False
+        if config.general.get('make_pretty_labels', None) is None:
+            config.general['make_pretty_labels'] = False
+        disabled_comps = config.general.get('spacy_disabled_components', [])
+        if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
+            config.general['spacy_disabled_components'].append('lemmatizer')

@@ -27,7 +27,7 @@ from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
 
 from medcat.cli.modelstats import TrainerStats
-from medcat.cli.system_utils import get_local_model_storage_path, load_model_from_file
+from medcat.cli.system_utils import load_model_from_file
 from dataclasses import asdict
 
 
@@ -68,7 +68,7 @@ class CAT(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
-    
+
     def __init__(self, cdb, config, vocab, meta_cats=[], trainer_data=None):
         self.cdb = cdb
         self.vocab = vocab
@@ -98,7 +98,7 @@ class CAT(object):
         # Add meta_annotaiton classes if they exist
         self._meta_annotations = False
         for meta_cat in meta_cats:
-            self.pipe.add_meta_cat(meta_cat, meta_cat.category_name)
+            self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
             self._meta_annotations = True
 
         # Set max document length
@@ -113,6 +113,88 @@ class CAT(object):
         ''' Returns the spacy pipeline with MedCAT
         '''
         return self.pipe.nlp
+
+
+    def create_model_pack(self, save_dir_path, model_pack_name='medcat_model_pack'):
+        r''' Will crete a .zip file containing all the models in the current running instance
+        of MedCAT. This is not the most efficient way, for sure, but good enough for now.
+        '''
+        from zipfile import ZipFile
+        import shutil
+        from medcat.meta_cat import MetaCAT
+        import os
+
+        self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
+        _save_dir_path = save_dir_path
+        save_dir_path = os.path.join(save_dir_path, model_pack_name)
+
+        os.makedirs(save_dir_path, exist_ok=True)
+
+        # Save the used spacy model
+        spacy_path = os.path.join(save_dir_path, 'spacy_model')
+        shutil.copytree(self.pipe.nlp._path, spacy_path)
+
+        # Change the name of the spacy model in the config
+        self.config.general['spacy_model'] = 'spacy_model'
+
+        # Save the CDB
+        cdb_path = os.path.join(save_dir_path, "cdb.dat")
+        self.cdb.save(cdb_path)
+
+        # Save the Vocab
+        vocab_path = os.path.join(save_dir_path, "vocab.dat")
+        self.vocab.save(vocab_path)
+
+        # Save all meta_cats
+        for comp in self.pipe.nlp.components:
+            if isinstance(comp[1], MetaCAT):
+                name = comp[0]
+                meta_path = os.path.join(save_dir_path, "meta_" + name)
+                comp[1].save(meta_path)
+
+        shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
+
+
+    @classmethod
+    def load_model_pack(cls, zip_path):
+        r''' Load everything
+        '''
+        import os
+        import shutil
+        from medcat.cdb import CDB
+        from medcat.vocab import Vocab
+        from medcat.meta_cat import MetaCAT
+
+        base_dir = os.path.dirname(zip_path)
+        filename = os.path.basename(zip_path)
+        foldername = filename.replace(".zip", '')
+
+        model_pack_path = os.path.join(base_dir, foldername)
+        if os.path.exists(model_pack_path):
+            print("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
+        else:
+            print("Unziping the model pack and loading models.")
+            shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
+
+        # Load the CDB
+        cdb_path = os.path.join(model_pack_path, "cdb.dat")
+        cdb = CDB.load(cdb_path)
+
+        # Modify the config to contain full path to spacy model
+        cdb.config.general['spacy_model'] = os.path.join(model_pack_path, cdb.config.general['spacy_model'])
+
+        # Load Vocab
+        vocab_path = os.path.join(model_pack_path, "vocab.dat")
+        vocab = Vocab.load(vocab_path)
+
+        # Find meta models in the model_pack
+        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_cats = []
+        for meta_path in meta_paths:
+            meta_cats.append(MetaCAT.load(meta_path))
+
+        return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+
 
     def __call__(self, text: Union[str, Iterable[str], Iterable[Tuple]], do_train: bool = False):
         r'''
@@ -714,11 +796,13 @@ p
         '''
         out: Union[Dict, List[Union[Dict, None]]]
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        if text is None or isinstance(text, str):
+        if text is None:
+            out = self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info)
+        elif isinstance(text, str):
             doc = self(text)
             out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
         else:
-            if n_process is None or n_process == 1:
+            if n_process is None:
                 out = []
                 docs = self(self._generate_trimmed_texts(text))
                 for doc in docs:
@@ -728,9 +812,10 @@ p
                 self.pipe.set_error_handler(self._pipe_error_handler)
                 try:
                     texts = self._get_trimmed_texts(text)
-                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size, len(texts))
+                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size)
 
-                    for doc in docs:
+                    for doc in tqdm(docs, total=len(texts)):
+                        doc = None if doc.text.strip() == '' else doc
                         out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
 
                     # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
@@ -739,9 +824,9 @@ p
                         self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
                         for i in range(len(texts)):
                             if i == len(out):
-                                out.append(None)
+                                out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                             elif out[i]['text'] != texts[i]:
-                                out.insert(i, None)
+                                out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                 finally:
                     self.pipe.reset_error_handler()
 
@@ -831,12 +916,16 @@ p
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors
+        nproc:  the number of processors (when set to 1, workers in Config is honoured during component-level multiprocessing)
         batch_size: the number of texts to buffer
 
         return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
         '''
         out: Union[List[Tuple], Dict]
+
+        if nproc == 0:
+            raise ValueError("nproc cannot be set to zero")
+
         if self._meta_annotations:
             # Hack for torch using multithreading, which is not good here
             import torch
@@ -844,18 +933,19 @@ p
 
         in_data = list(in_data) if isinstance(in_data, types.GeneratorType) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
-        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * n_process))
+        batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
         entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
+
         if return_dict:
             out = {}
             for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx]
+                out[in_data[idx][0]] = entities[idx] if 'text' in entities[idx] else None
         else:
             out = []
             for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx]))
+                out.append((in_data[idx][0], entities[idx] if 'text' in entities[idx] else None))
 
         return out
 
@@ -876,7 +966,7 @@ p
                         out.append((id, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
-                        self.log.warning(e, stack_info=True)
+                        self.log.warning(e, exc_info=True, stack_info=True)
 
             sleep(1)
 
@@ -949,7 +1039,7 @@ p
         return out
 
     def _get_trimmed_text(self, text: str) -> Optional[str]:
-        return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else None
+        return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else ""
 
     def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Generator[Optional[str], None, None]:
         for text in texts:
@@ -970,7 +1060,7 @@ p
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
         CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
-        CAT.log.warning(e, stack_info=True)
+        CAT.log.warning(e, exc_info=True, stack_info=True)
         if docs is not None:
             CAT.log.warning("Docs contained in the batch:")
             for doc in docs:
