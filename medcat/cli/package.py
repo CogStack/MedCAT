@@ -294,27 +294,9 @@ def upload_model(model_name, version):
     if model_file_data != False:
         biggest_version = ()
 
-        # if a model has a parent model then we obviously need to take into account the version of the files that have a parent model
-        parent_found = False
-        
         for file_name in model_file_data.keys():
             if "vc_model_tag_data" in model_file_data[file_name].keys():
                 if model_file_data[file_name]["vc_model_tag_data"].version != "":
-                    #current_version = int(''.join(map(str, str(model_file_data[file_name]["vc_model_tag_data"].version).split('.'))))
-                    
-                    current_model_parent = model_file_data[file_name]["vc_model_tag_data"].parent_model_name
-
-                    #if not parent_found:
-                    #    if len(biggest_ver.keys()) > 0:
-                    #        biggest_version_converted = int(''.join(map(str, str(biggest_ver[file_name]).split('.'))))
-                    #        if current_version > biggest_version_converted:
-                    #            biggest_ver[file_name] = int(model_file_data[file_name]["vc_model_tag_data"].version)
-                    #    else:
-                    #        biggest_ver[file_name] = int(model_file_data[file_name]["vc_model_tag_data"].version)
-
-                    if current_model_parent != "":
-                        parent_found = True
-                        #biggest_version[file_name] = int(model_file_data[file_name]["vc_model_tag_data"].version)
                     
                     current_timestamp = parser.parse(model_file_data[file_name]["vc_model_tag_data"].timestamp)
 
@@ -571,12 +553,6 @@ def upload_model(model_name, version):
             logging.warning("Deleting tag " + tag_name + " because the push operation has failed and changes were reverted.")
             subprocess.run(["git", "tag", "--delete", tag_name], cwd=new_model_package_folder)
             subprocess.run(["git", "push", "--delete", tag_name], cwd=new_model_package_folder)
-        
-        #if tag_already_exists:
-        # delete_tag_request = requests.delete(url=get_git_api_request_url() + "releases/tags/" + release_id, headers=headers)
-        # logging.warning(delete_tag_request.text)
-        # delete_release_request = requests.delete(url=get_git_api_request_url() + "releases/" + release_id, headers=headers)
-        # logging.warning(delete_release_request.text)
        
     finally:
         if bundle_file_path != "":
