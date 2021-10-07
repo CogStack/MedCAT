@@ -399,9 +399,8 @@ class CDB(object):
             This is used to search the site-packages models folder for installed models..
         """
         data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name, bypass_model_path=bypass_model_path)
-        if data is not False:
-            data._ensure_backward_compatibility(data.config)
-        else:
+        
+        if data is False:
             logging.error("Could not load concept database from model: " + model_full_tag_name)
         
         return data

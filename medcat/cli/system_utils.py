@@ -7,6 +7,7 @@ import sys
 import dill
 import pickle
 import logging
+import traceback
 import re
 
 import medcat
@@ -109,8 +110,9 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
                 except Exception as exception:
                     logging.error("could not add vc_model_tag_data attribute to model data file")
                     logging.error(repr(exception))
-                    return False
-                 
+                    logging.error(traceback.format_exc())
+                    return False         
+           
         elif ignore_non_model_files:
             pass
         elif ".npy" in full_file_path:
