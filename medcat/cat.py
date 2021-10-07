@@ -753,8 +753,9 @@ class CAT(object):
                                 out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                             elif out[i]['text'] != texts[i]:
                                 out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
-                            else:
-                                del out[i]['text']
+                    for o in out:
+                        if 'text' in o:
+                            del o['text']
                 finally:
                     self.pipe.reset_error_handler()
         else:
