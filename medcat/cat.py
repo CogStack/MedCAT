@@ -742,7 +742,7 @@ class CAT(object):
 
                     for doc in tqdm(docs, total=len(texts)):
                         doc = None if doc.text.strip() == '' else doc
-                        out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
+                        out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info, out_with_text=True))
 
                     # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
                     # which also assumes texts are different from each others.
@@ -1060,7 +1060,12 @@ class CAT(object):
 
             sleep(1)
 
-    def _doc_to_out(self, doc: Doc, cnf_annotation_output: Dict, only_cui: bool, addl_info: List[str]) -> Dict:
+    def _doc_to_out(self,
+                    doc: Doc,
+                    cnf_annotation_output: Dict,
+                    only_cui: bool,
+                    addl_info: List[str],
+                    out_with_text: bool = False) -> Dict:
         out: Dict = {'entities': {}, 'tokens': []}
         if doc is not None:
             out_ent = {}
@@ -1125,8 +1130,8 @@ class CAT(object):
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
-            # TODO: REMOVE, this is just using memory
-            out['text'] = doc.text
+            if out_with_text:
+                out['text'] = doc.text
         return out
 
     def _get_trimmed_text(self, text: str) -> Optional[str]:
