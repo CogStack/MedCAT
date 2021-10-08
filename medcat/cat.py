@@ -747,7 +747,7 @@ class CAT(object):
                     # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
                     # which also assumes texts are different from each others.
                     if len(out) < len(texts):
-                        self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
+                        self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
                         for i in range(len(texts)):
                             if i == len(out):
                                 out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
@@ -1004,17 +1004,18 @@ class CAT(object):
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
-                             return_dict: bool = False,
+                             return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors (when set to 1, workers in Config is honoured during component-level multiprocessing)
+        nproc:  the number of processors
         batch_size: the number of texts to buffer
+        return_dict: a flag for returning either a dict or a list of tuples
 
-        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
+        return:  a dict: {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
         '''
-        out: Union[List[Tuple], Dict]
+        out: Union[Dict, List[Tuple]]
 
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
@@ -1034,11 +1035,11 @@ class CAT(object):
         if return_dict:
             out = {}
             for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx] if 'text' in entities[idx] else None
+                out[in_data[idx][0]] = entities[idx]
         else:
             out = []
             for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx] if 'text' in entities[idx] else None))
+                out.append((in_data[idx][0], entities[idx]))
 
         return out
 

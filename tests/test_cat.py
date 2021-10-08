@@ -55,15 +55,15 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house."),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2)
+        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=False)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
         self.assertEqual('second csv', out[0][1]['entities'][0]['source_value'])
         self.assertEqual(2, out[1][0])
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[1][1])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[1][1])
         self.assertEqual(3, out[2][0])
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[2][1])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[2][1])
 
     def test_multiprocessing_pipe_with_malformed_texts(self):
         in_data = [
@@ -71,15 +71,15 @@ class CATTests(unittest.TestCase):
             (2, ""),
             (3, None),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=1, batch_size=1)
+        out = self.undertest.multiprocessing_pipe(in_data, nproc=1, batch_size=1, return_dict=False)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[0][1])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[0][1])
         self.assertEqual(2, out[1][0])
-        self.assertIsNone(out[1][1])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[1][1])
         self.assertEqual(3, out[2][0])
-        self.assertIsNone(out[2][1])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[2][1])
 
     def test_multiprocessing_pipe_return_dict(self):
         in_data = [
@@ -90,9 +90,9 @@ class CATTests(unittest.TestCase):
         out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=True)
         self.assertTrue(type(out) == dict)
         self.assertEqual(3, len(out))
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[1])
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[2])
-        self.assertEqual({'entities': {}, 'tokens': [], 'text': "The dog is sitting outside the house."}, out[3])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[1])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[2])
+        self.assertEqual({'entities': {}, 'tokens': []}, out[3])
 
     def test_train(self):
         self.undertest.cdb.print_stats()
@@ -160,16 +160,16 @@ class CATTests(unittest.TestCase):
         self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
-        self.assertEqual("The dog is sitting outside the house.", out[0]["text"])
+        self.assertFalse(hasattr(out[0], "text"))
         self.assertEqual({}, out[1]["entities"])
         self.assertEqual([], out[1]["tokens"])
-        self.assertEqual("The dog is sitting outside the house.", out[1]["text"])
+        self.assertFalse(hasattr(out[1], "text"))
         self.assertEqual({}, out[2]["entities"])
         self.assertEqual([], out[2]["tokens"])
-        self.assertEqual("The dog is sitting outside the house.", out[2]["text"])
+        self.assertFalse(hasattr(out[2], "text"))
         self.assertEqual({}, out[3]["entities"])
         self.assertEqual([], out[3]["tokens"])
-        self.assertFalse(hasattr(out[2], "text"))
+        self.assertFalse(hasattr(out[3], "text"))
         self.assertEqual({}, out[4]["entities"])
         self.assertEqual([], out[4]["tokens"])
         self.assertFalse(hasattr(out[4], "text"))
