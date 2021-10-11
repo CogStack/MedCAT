@@ -753,9 +753,9 @@ class CAT(object):
                                 out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
                             elif out[i]['text'] != texts[i]:
                                 out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
-                    for o in out:
-                        if 'text' in o:
-                            del o['text']
+                    if not(cnf_annotation_output.get('include_text', False)):
+                        for o in out:
+                            o.pop('text', None)
                 finally:
                     self.pipe.reset_error_handler()
         else:
@@ -1134,7 +1134,7 @@ class CAT(object):
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
-            if out_with_text:
+            if cnf_annotation_output.get('include_text', False) or out_with_text:
                 out['text'] = doc.text
         return out
 

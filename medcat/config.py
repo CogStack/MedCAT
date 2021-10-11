@@ -147,7 +147,8 @@ class Config(BaseConfig):
                 'doc_extended_info': False,
                 'context_left': -1,
                 'context_right': -1,
-                'lowercase_context': True
+                'lowercase_context': True,
+                'include_text': False,
                 }
 
         self.general = {
