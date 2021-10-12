@@ -26,6 +26,9 @@ class CATTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.undertest.destroy_pipe()
 
+    def tearDown(self) -> None:
+        self.cdb.config.annotation_output['include_text_in_output'] = False
+
     def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
         doc = self.undertest(text)
@@ -104,11 +107,32 @@ class CATTests(unittest.TestCase):
         out = self.undertest.get_entities(text)
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
+        self.assertFalse("text" in out)
+
+    def test_get_entities_including_text(self):
+        self.cdb.config.annotation_output['include_text_in_output'] = True
+        text = "The dog is sitting outside the house."
+        out = self.undertest.get_entities(text)
+        self.assertEqual({}, out["entities"])
+        self.assertEqual([], out["tokens"])
+        self.assertTrue(text in out["text"])
 
     def test_get_entities_multi_texts(self):
         in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
         out = self.undertest.get_entities_multi_texts(in_data, n_process=2)
         self.assertEqual(3, len(out))
+        self.assertFalse("text" in out[0])
+        self.assertFalse("text" in out[1])
+        self.assertFalse("text" in out[2])
+
+    def test_get_entities_multi_texts_including_text(self):
+        self.cdb.config.annotation_output['include_text_in_output'] = True
+        in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, None)]
+        out = self.undertest.get_entities_multi_texts(in_data, n_process=2)
+        self.assertEqual(3, len(out))
+        self.assertTrue("text" in out[0])
+        self.assertFalse("text" in out[1])
+        self.assertFalse("text" in out[2])
 
     def test_train_supervised(self):
         fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json"), nepochs=1)
@@ -152,28 +176,29 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out[2]["tokens"])
 
     def test_error_handling_multi_processes(self):
+        self.cdb.config.annotation_output['include_text_in_output'] = True
         out = self.undertest.get_entities_multi_texts([
-                                           (1, "The dog is sitting outside the house."),
-                                           (2, "The dog is sitting outside the house."),
-                                           (3, "The dog is sitting outside the house."),
+                                           (1, "The dog is sitting outside the house 1."),
+                                           (2, "The dog is sitting outside the house 2."),
+                                           (3, "The dog is sitting outside the house 3."),
                                            (4, None),
                                            (5, None)], n_process=2, batch_size=2)
         self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
-        self.assertFalse(hasattr(out[0], "text"))
+        self.assertTrue("The dog is sitting outside the house 1.", out[0]["text"])
         self.assertEqual({}, out[1]["entities"])
         self.assertEqual([], out[1]["tokens"])
-        self.assertFalse(hasattr(out[1], "text"))
+        self.assertTrue("The dog is sitting outside the house 2.", out[1]["text"])
         self.assertEqual({}, out[2]["entities"])
         self.assertEqual([], out[2]["tokens"])
-        self.assertFalse(hasattr(out[2], "text"))
+        self.assertTrue("The dog is sitting outside the house 3.", out[2]["text"])
         self.assertEqual({}, out[3]["entities"])
         self.assertEqual([], out[3]["tokens"])
-        self.assertFalse(hasattr(out[3], "text"))
+        self.assertFalse("text" in out[3])
         self.assertEqual({}, out[4]["entities"])
         self.assertEqual([], out[4]["tokens"])
-        self.assertFalse(hasattr(out[4], "text"))
+        self.assertFalse("text" in out[4])
 
 
 if __name__ == '__main__':
