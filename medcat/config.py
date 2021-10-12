@@ -148,7 +148,7 @@ class Config(BaseConfig):
                 'context_left': -1,
                 'context_right': -1,
                 'lowercase_context': True,
-                'include_text': False,
+                'include_text_in_output': False,
                 }
 
         self.general = {

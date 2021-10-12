@@ -1,5 +1,4 @@
 import os
-import gc
 import pickle
 import traceback
 import json
@@ -11,7 +10,7 @@ from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
-from typing import Union, List, Tuple, Optional, Any, Dict, Iterable, Generator
+from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from spacy.tokens import Span, Doc
 
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -716,9 +715,8 @@ class CAT(object):
                      text: str,
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed']) -> Dict:
-        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         doc = self(text)
-        out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
+        out = self._doc_to_out(doc, only_cui, addl_info)
         return out
 
     def get_entities_multi_texts(self,
@@ -732,13 +730,12 @@ class CAT(object):
         return:  entities
         '''
         out: List[Union[Dict, None]]
-        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
 
         if n_process is None:
             out = []
             docs = self(self._generate_trimmed_texts(texts))
             for doc in docs:
-                out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
+                out.append(self._doc_to_out(doc, only_cui, addl_info))
         else:
             out = []
             self.pipe.set_error_handler(self._pipe_error_handler)
@@ -748,7 +745,7 @@ class CAT(object):
 
                 for doc in tqdm(docs, total=len(texts)):
                     doc = None if doc.text.strip() == '' else doc
-                    out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info, out_with_text=True))
+                    out.append(self._doc_to_out(doc, only_cui, addl_info, out_with_text=True))
 
                 # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
                 # which also assumes texts are different from each others.
@@ -756,10 +753,12 @@ class CAT(object):
                     self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
                     for i in range(len(texts)):
                         if i == len(out):
-                            out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
+                            out.append(self._doc_to_out(None, only_cui, addl_info))
                         elif out[i]['text'] != texts[i]:
-                            out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
-                if not(cnf_annotation_output.get('include_text', False)):
+                            out.insert(i, self._doc_to_out(None, only_cui, addl_info))
+
+                cnf_annotation_output = getattr(self.config, 'annotation_output', {})
+                if not(cnf_annotation_output.get('include_text_in_output', False)):
                     for o in out:
                         o.pop('text', None)
             finally:
@@ -1069,11 +1068,11 @@ class CAT(object):
 
     def _doc_to_out(self,
                     doc: Doc,
-                    cnf_annotation_output: Dict,
                     only_cui: bool,
                     addl_info: List[str],
                     out_with_text: bool = False) -> Dict:
         out: Dict = {'entities': {}, 'tokens': []}
+        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         if doc is not None:
             out_ent = {}
             if self.config.general.get('show_nested_entities', False):
@@ -1137,7 +1136,8 @@ class CAT(object):
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
-            if cnf_annotation_output.get('include_text', False) or out_with_text:
+
+            if cnf_annotation_output.get('include_text_in_output', False) or out_with_text:
                 out['text'] = doc.text
         return out
 
