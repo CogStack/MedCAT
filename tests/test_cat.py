@@ -105,9 +105,9 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
 
-    def test_get_entities_from_in_data(self):
+    def test_get_entities_multi_texts(self):
         in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, "The dog is sitting outside the house.")]
-        out = self.undertest.get_entities(in_data, n_process=2)
+        out = self.undertest.get_entities_multi_texts(in_data, n_process=2)
         self.assertEqual(3, len(out))
 
     def test_train_supervised(self):
@@ -132,7 +132,7 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out["tokens"])
 
     def test_no_raise_on_single_process_with_none(self):
-        out = self.undertest.get_entities(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
+        out = self.undertest.get_entities_multi_texts(["The dog is sitting outside the house.", None, "The dog is sitting outside the house."], n_process=1, batch_size=2)
         self.assertEqual(3, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
@@ -142,7 +142,7 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out[2]["tokens"])
 
     def test_no_raise_on_single_process_with_empty_string(self):
-        out = self.undertest.get_entities(["The dog is sitting outside the house.", "", "The dog is sitting outside the house."], n_process=1, batch_size=2)
+        out = self.undertest.get_entities_multi_texts(["The dog is sitting outside the house.", "", "The dog is sitting outside the house."], n_process=1, batch_size=2)
         self.assertEqual(3, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
@@ -152,7 +152,8 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out[2]["tokens"])
 
     def test_error_handling_multi_processes(self):
-        out = self.undertest.get_entities([(1, "The dog is sitting outside the house."),
+        out = self.undertest.get_entities_multi_texts([
+                                           (1, "The dog is sitting outside the house."),
                                            (2, "The dog is sitting outside the house."),
                                            (3, "The dog is sitting outside the house."),
                                            (4, None),
