@@ -1,5 +1,4 @@
 import os
-import gc
 import pickle
 import traceback
 import json
@@ -11,7 +10,7 @@ from copy import deepcopy
 from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
-from typing import Union, List, Tuple, Optional, Any, Dict, Iterable, Generator
+from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from spacy.tokens import Span, Doc
 
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -713,51 +712,57 @@ class CAT(object):
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
-                     text: Union[str, Iterable[str], Iterable[Tuple]],
+                     text: str,
+                     only_cui: bool = False,
+                     addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed']) -> Dict:
+        doc = self(text)
+        out = self._doc_to_out(doc, only_cui, addl_info)
+        return out
+
+    def get_entities_multi_texts(self,
+                     texts: Union[Iterable[str], Iterable[Tuple]],
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
-                     batch_size: Optional[int] = None) -> Union[Dict, List[Union[Dict, None]]]:
+                     batch_size: Optional[int] = None) -> List[Union[Dict, None]]:
         r''' Get entities
         text:  text to be annotated
         return:  entities
         '''
-        out: Union[Dict, List[Union[Dict, None]]]
-        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-        if isinstance(text, Iterable) and not isinstance(text, str):
-            # TODO: Do not like this too much, it should really be
-            #working with one text file only, let the users make the necessary loops or whatever. As for
-            #multiprocessing it should not be done in this function
-            if n_process is None:
-                out = []
-                docs = self(self._generate_trimmed_texts(text))
-                for doc in docs:
-                    out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
-            else:
-                out = []
-                self.pipe.set_error_handler(self._pipe_error_handler)
-                try:
-                    texts = self._get_trimmed_texts(text)
-                    docs = self.pipe.batch_multi_process(texts, n_process, batch_size)
+        out: List[Union[Dict, None]]
 
-                    for doc in tqdm(docs, total=len(texts)):
-                        doc = None if doc.text.strip() == '' else doc
-                        out.append(self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info))
-
-                    # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
-                    # which also assumes texts are different from each others.
-                    if len(out) < len(texts):
-                        self.log.warning("Found at least one failed batch and set the corresponding outputs to None")
-                        for i in range(len(texts)):
-                            if i == len(out):
-                                out.append(self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
-                            elif out[i]['text'] != texts[i]:
-                                out.insert(i, self._doc_to_out(None, cnf_annotation_output, only_cui, addl_info))
-                finally:
-                    self.pipe.reset_error_handler()
+        if n_process is None:
+            out = []
+            docs = self(self._generate_trimmed_texts(texts))
+            for doc in docs:
+                out.append(self._doc_to_out(doc, only_cui, addl_info))
         else:
-            doc = self(text)
-            out = self._doc_to_out(doc, cnf_annotation_output, only_cui, addl_info)
+            out = []
+            self.pipe.set_error_handler(self._pipe_error_handler)
+            try:
+                texts = self._get_trimmed_texts(texts)
+                docs = self.pipe.batch_multi_process(texts, n_process, batch_size)
+
+                for doc in tqdm(docs, total=len(texts)):
+                    doc = None if doc.text.strip() == '' else doc
+                    out.append(self._doc_to_out(doc, only_cui, addl_info, out_with_text=True))
+
+                # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
+                # which also assumes texts are different from each others.
+                if len(out) < len(texts):
+                    self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
+                    for i in range(len(texts)):
+                        if i == len(out):
+                            out.append(self._doc_to_out(None, only_cui, addl_info))
+                        elif out[i]['text'] != texts[i]:
+                            out.insert(i, self._doc_to_out(None, only_cui, addl_info))
+
+                cnf_annotation_output = getattr(self.config, 'annotation_output', {})
+                if not(cnf_annotation_output.get('include_text_in_output', False)):
+                    for o in out:
+                        o.pop('text', None)
+            finally:
+                self.pipe.reset_error_handler()
 
         return out
 
@@ -1001,17 +1006,18 @@ class CAT(object):
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
-                             return_dict: bool = False,
+                             return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         r''' Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors (when set to 1, workers in Config is honoured during component-level multiprocessing)
+        nproc:  the number of processors
         batch_size: the number of texts to buffer
+        return_dict: a flag for returning either a dict or a list of tuples
 
-        return:  an list of tuples: [(id, doc_json), (id, doc_json), ...] or if return_dict is True, a dict: {id: doc_json, id: doc_json, ...}
+        return:  a dict: {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
         '''
-        out: Union[List[Tuple], Dict]
+        out: Union[Dict, List[Tuple]]
 
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
@@ -1025,17 +1031,17 @@ class CAT(object):
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
-        entities = self.get_entities(text=in_data, only_cui=only_cui, addl_info=addl_info,
+        entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
                                      n_process=n_process, batch_size=batch_size)
 
         if return_dict:
             out = {}
             for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx] if 'text' in entities[idx] else None
+                out[in_data[idx][0]] = entities[idx]
         else:
             out = []
             for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx] if 'text' in entities[idx] else None))
+                out.append((in_data[idx][0], entities[idx]))
 
         return out
 
@@ -1060,8 +1066,13 @@ class CAT(object):
 
             sleep(1)
 
-    def _doc_to_out(self, doc: Doc, cnf_annotation_output: Dict, only_cui: bool, addl_info: List[str]) -> Dict:
+    def _doc_to_out(self,
+                    doc: Doc,
+                    only_cui: bool,
+                    addl_info: List[str],
+                    out_with_text: bool = False) -> Dict:
         out: Dict = {'entities': {}, 'tokens': []}
+        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         if doc is not None:
             out_ent = {}
             if self.config.general.get('show_nested_entities', False):
@@ -1125,8 +1136,9 @@ class CAT(object):
                     out['entities'][out_ent['id']] = dict(out_ent)
                 else:
                     out['entities'][ent._.id] = cui
-            # TODO: REMOVE, this is just using memory
-            out['text'] = doc.text
+
+            if cnf_annotation_output.get('include_text_in_output', False) or out_with_text:
+                out['text'] = doc.text
         return out
 
     def _get_trimmed_text(self, text: str) -> Optional[str]:
