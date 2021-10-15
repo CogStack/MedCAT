@@ -1,4 +1,4 @@
-from itertools import permutations
+
 import logging
 import os
 import numpy
@@ -7,11 +7,16 @@ import logging
 import pandas
 import torch
 import torch.nn
+import pickle
+import dill
 import regex as re
+import torch.optim
 from torch.nn.modules.module import T
 from torch.nn.utils.rnn import pad_sequence
 from transformers import BertModel, BertConfig
 from transformers.configuration_utils import PretrainedConfig
+from itertools import permutations
+from pandas.core.series import Series
 
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 from medcat.vocab import Vocab
@@ -58,7 +63,6 @@ class RelData(object):
         doc_length = len(doc)
 
         j = 1
-
         for ent1 in doc.ents:
             j += 1
             for ent2 in doc.ents[j:]:
@@ -124,28 +128,34 @@ class RelData(object):
                 
         return pairs
 
+    def __len__(self):
+        return len(self.relations_dataframe)
 
 class RelationExtraction(object):
 
     name : str = "rel"
 
-    def __init__(self, docs, vocab: Vocab, config: PretrainedConfig = None, rel_data: RelData = None, spacy_model : str = None, tokenizer = None, embeddings=None, model="ltsm", threshold: float = 0.1):
+    def __init__(self, docs, vocab: Vocab, config: PretrainedConfig = None, rel_data: RelData = None, spacy_model : str = None, tokenizer = None, embeddings=None, model=None, threshold: float = 0.1):
     
        self.vocab = vocab
        self.config = config
        self.rel_data = rel_data
-       self.model = model
        self.cfg = {"labels": [], "threshold": threshold }
        self.tokenizer = tokenizer
        self.embeddings = embeddings
+       self.learning_rate = 0.1
 
        if self.config is None:
            self.config = BertConfig.from_pretrained("bert-base-uncased")  
-           
-       self.bert = BertModel.from_pretrained("bert-base-uncased", config=config, add_pooling_layer=False)  
+
+       if model is None:
+           self.model = BertModel.from_pretrained("bert-base-uncased", config=config, add_pooling_layer=False)  
 
        if self.tokenizer is None:
-           self.tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="emilyalsentzer/Bio_ClinicalBERT"))
+            if os.path.isfile("./BERT_tokenizer_relation_extraction.dat"):
+                self.load_tokenizer()
+            else:
+                self.tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="emilyalsentzer/Bio_ClinicalBERT"))
 
        if self.embeddings is None:
            embeddings = numpy.load(os.path.join("./", "embeddings.npy"), allow_pickle=False)
@@ -159,10 +169,26 @@ class RelationExtraction(object):
        self.alpha = 0.7
        self.mask_probability = 0.15
 
+    def train(self):
+        self.model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
+
+        optimizer = torch.optim.Adam([{"params":self.model.parameters(), "lr": self.learning_rate}])
+        
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2,4,6,8,12,15,18,20,22,24,26,30], gamma=0.8)
+        start_epoch, best_pred, amp_checkpoint = self.load_state(self.model, optimizer, scheduler, load_best=False)  
+
+    def load_bin_file(filename):
+        with open(os.path.join("./", filename), 'rb') as f:
+            data = pickle.load(f)
+        return data
+
     def save_tokenizer(self, file_name, tokenizer):
-        with open(os.path.join("./", file_name), "wb") as f:
-            import dill
-            dill.dump(tokenizer, f)
+        with open(os.path.join("", file_name), "wb") as f:
+            pickle.dump(tokenizer, f)
+    
+    def load_tokenizer(self, file_name="./BERT_tokenizer_relation_extraction.dat"):
+        with open(os.path.join("", file_name), "rb") as f:
+            self.tokenizer = pickle.load(f)
 
     def pretrain_dataset(self):
        self.rel_data.relations_dataframe = pandas.DataFrame(self.rel_data.get_all_instances(), columns=["relation", "ent1", "ent2"])
@@ -191,67 +217,69 @@ class RelationExtraction(object):
 
     def put_blanks(self, relations_dataset):
         
-        blank_e1 = numpy.random.uniform()
-        blank_e2 = numpy.random.uniform()
+        blank_ent1 = numpy.random.uniform()
+        blank_ent2 = numpy.random.uniform()
         
         sentence_token_span, ent1, ent2 = relations_dataset
         
-        if blank_e1 >= self.alpha:
+        if blank_ent1 >= self.alpha:
             relations_dataset = (sentence_token_span, "[BLANK]", ent2)
         
-        if blank_e2 >= self.alpha:
+        if blank_ent2 >= self.alpha:
             relations_dataset = (sentence_token_span, ent1, "[BLANK]")
             
         return relations_dataset
 
-    def tokenize(self, relations_dataset):
-        sentence_token_span, ent1_text, ent2_text = zip(*relations_dataset)
+    def tokenize(self, relations_dataset: Series):
 
-        tokens, span_1_pos, span_2_pos = zip(*sentence_token_span)
-        
-        print(span_1_pos)
-        print(span_2_pos)
+        (tokens, span_1_pos, span_2_pos), ent1_text, ent2_text = relations_dataset 
 
-        tokens = [[word.lower() for word in token_list] for token_list in tokens if tokens != "[BLANK]"]
+        tokens =  [token.lower() for token in tokens if tokens != '[BLANK]']
 
-        forbidden_idxs = [i for i in range(span_1_pos[0], span_1_pos[1])] + [i for i in range(span_2_pos[0], span_2_pos[1])]
-        pool_idxs = [i for i in range(len(tokens)) if i not in forbidden_idxs]
-        masked_idxs = numpy.random.choice(pool_idxs,\
-                                        size=round(self.mask_probability*len(pool_idxs)),\
-                                        replace=False)
+        forbidden_indices = [i for i in range(span_1_pos[0], span_1_pos[1])] + [i for i in range(span_2_pos[0], span_2_pos[1])]
 
-        masked_for_pred = [token.lower() for idx, token in enumerate(tokens) if (idx in masked_idxs)]
+        pool_indices = [ i for i in range(len(tokens)) if i not in forbidden_indices ]
 
-        tokens = [token if (idx not in masked_idxs) else self.tokenizer.mask_token \
-             for idx, token in enumerate(tokens)]
+        masked_indices = numpy.random.choice(pool_indices, \
+                                          size=round(self.mask_probability * len(pool_indices)), \
+                                          replace=False)
    
-        ### replace x spans with '[BLANK]' if e is '[BLANK]'
-        if (ent1_text == '[BLANK]') and (ent2_text != '[BLANK]'):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ['[ENT1]' ,'[BLANK]', '[/ENT1]'] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ['[ENT2]'] + tokens[span_2_pos[0]:span_2_pos[1]] + ['[/ENT2]'] + tokens[span_2_pos[1]:] + [self.sep_token]
-        
-        elif (ent1_text == '[BLANK]') and (ent2_text == '[BLANK]'):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ['[ENT1]' ,'[BLANK]', '[/ENT1]'] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ['[ENT2]', '[BLANK]', '[/ENT2]'] + tokens[span_2_pos[1]:] + [self.sep_token]
-        
-        elif (ent1_text != '[BLANK]') and (ent2_text == '[BLANK]'):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ['[ENT1]'] + tokens[span_1_pos[0]:span_1_pos[1]] + ['[/ENT1]'] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ['[ENT2]', '[BLANK]', '[/ENT2]'] + tokens[span_2_pos[1]:] + [self.sep_token]
-        
-        elif (ent1_text != '[BLANK]') and (ent2_text != '[BLANK]'):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ['[ENT1]'] + tokens[span_1_pos[0]:span_1_pos[1]] + ['[/ENT1]'] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ['[ENT2]'] + tokens[span_2_pos[0]:span_2_pos[1]] + ['[/ENT2]'] + tokens[span_2_pos[1]:] + [self.sep_token]
-   
-        ENT1_ENT2_start = ([i for i, e in enumerate(tokens) if e == '[ENT1]'][0],\
-                        [i for i, e in enumerate(tokens) if e == '[ENT2]'][0])
-        
-        tokens = self.tokenizer.convert_tokens_to_ids(tokens)
-        masked_for_pred = self.tokenizer.convert_tokens_to_ids(masked_for_pred)
+        masked_for_pred = [token for idx, token in enumerate(tokens) if (idx in masked_indices)]
 
-        return tokens, masked_for_pred, ENT1_ENT2_start
+        tokens = [token if (idx not in masked_indices) else self.tokenizer.hf_tokenizers.mask_token for idx, token in enumerate(tokens)]
+
+        if (ent1_text == "[BLANK]") and (ent2_text != "[BLANK]"):
+            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]" ,"[BLANK]", "[/ENT1]"] + \
+                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
+        
+        elif (ent1_text == "[BLANK]") and (ent2_text == "[BLANK]"):
+            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]" ,"[BLANK]", "[/ENT1]"] + \
+                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]", "[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
+        
+        elif (ent1_text != "[BLANK]") and (ent2_text == "[BLANK]"):
+            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
+                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]", "[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
+        
+        elif (ent1_text != "[BLANK]") and (ent2_text != "[BLANK]"):
+            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
+                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
+
+        ent1_ent2_start = ([i for i, e in enumerate(tokens) if e == "[ENT1]"] [0] , [i for i, e in enumerate(tokens) if e == "[ENT2]"] [0])
+
+        tagged_tokens = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
+        masked_for_pred = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(masked_for_pred)
+        
+
+        return tagged_tokens, masked_for_pred, ent1_ent2_start
 
     def __getitem__(self, index):
-        return None
+        relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index]
+        tokens, masked_for_pred, ent1_ent2_start = self.tokenize(self.put_blanks((relation, ent1_text, ent2_text)))
+        tokens = torch.tensor(tokens)
+        masked_for_pred = torch.tensor(masked_for_pred)
+        ent1_ent2_start = torch.tensor(ent1_ent2_start)
+      
+        return tokens, masked_for_pred, ent1_ent2_start, ent1_text, ent2_text
 
 class Pad_Sequence():
     """
