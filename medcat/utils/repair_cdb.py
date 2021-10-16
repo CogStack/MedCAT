@@ -61,7 +61,7 @@ class RepairCDB(object):
 
 
     def calculate_scores(self, count_limit=1000):
-        data = [['new_cui', 'base_cui', 'name', 'new_count', 'base_count', 'score']]
+        data = [['new_cui', 'base_cui', 'name', 'new_count', 'base_count', 'score', 'decision']]
         for name, cuis2 in self.cdb.name2cuis.items():
             cui2 = cuis2[0]
             count2 = self.cdb.cui2count_train.get(cui2, 0)
@@ -71,7 +71,7 @@ class RepairCDB(object):
                     count = self.base_cdb.cui2count_train.get(cui, 0)
                     if self.base_cdb.cui2context_vectors.get(cui, {}):
                         score = count2 / count
-                        data.append([cui2, cui, name, count2, count, score])
+                        data.append([cui2, cui, name, count2, count, score, ''])
 
         self.scores_df = pd.DataFrame(data[1:], columns=data[0])
 
@@ -83,7 +83,7 @@ class RepairCDB(object):
             self.final_cat = CAT(cdb=self.final_cdb, config=self.final_cdb.config, vocab=self.vocab)
 
         for ind, row in enumerate(scores_df.iterrows()):
-            row = row[1]
+            row_ind, row = row
             if ind < skip:
                 continue
             name = row['name']
@@ -107,4 +107,9 @@ class RepairCDB(object):
                 elif decision == 'f':
                     if base_cui in cui_filter:
                         print("Removing from filter: " + str(base_cui))
+                        print("\n\n")
                         cui_filter.remove(base_cui)
+                else:
+                    decision = 'k' # Means keep
+
+                self.scores_df.iat[row_ind, 6] = decision
