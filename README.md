@@ -54,6 +54,14 @@ cat.create_model_pack(<save path>)
 
 
 3. Quick start with separate models:
+First download scispacy models
+```
+pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
+```
+or
+```
+pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_lg-0.4.0.tar.gz
+```
 ```python
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
