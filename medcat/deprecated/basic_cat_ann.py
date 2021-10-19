@@ -1,8 +1,6 @@
 """ I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
 once the software is trained the main thing are the context vectors.
 """
-import numpy as np
-import operator
 
 
 class CatAnn(object):

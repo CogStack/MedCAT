@@ -1,8 +1,6 @@
 import torch
 from torch import nn
-import torch.nn.functional as F
-import torch.optim as optim
-from torch.nn import CrossEntropyLoss, MSELoss
+from torch.nn import CrossEntropyLoss
 
 from transformers import BertPreTrainedModel, BertModel
 from transformers.modeling_outputs import TokenClassifierOutput

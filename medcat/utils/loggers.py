@@ -1,6 +1,5 @@
 """Loggers
 """
-import sys
 import logging
 
 

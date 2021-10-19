@@ -7,7 +7,6 @@ import numpy as np
 from scipy.special import softmax
 from sklearn.metrics import classification_report, f1_score
 from torch import nn
-import torch.nn.functional as F
 import torch.optim as optim
 
 

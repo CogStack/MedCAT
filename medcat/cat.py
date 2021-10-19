@@ -2,7 +2,6 @@ import os
 import pickle
 import traceback
 import json
-import time
 import logging
 import math
 import types
@@ -113,7 +112,6 @@ class CAT(object):
         r"""Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
         """
-        from zipfile import ZipFile
         import shutil
         import os
 
@@ -320,7 +318,6 @@ class CAT(object):
                     [cui for cui in filters["cuis"] if check_filters(cui, _filters)]
                 )
 
-            start_time = time.time()
             for dind, doc in tqdm(
                 enumerate(project["documents"]),
                 desc="Stats document",
@@ -536,7 +533,7 @@ class CAT(object):
                 )
             print("*" * 110 + "\n")
 
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
 
         self.config.linking["filters"] = _filters
@@ -1285,7 +1282,6 @@ class CAT(object):
         return out
 
     def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
-        cnt = 0
         out = []
         while True:
             if not in_q.empty():

@@ -3,7 +3,6 @@ import json
 import copy
 from sklearn.metrics import cohen_kappa_score
 import torch
-import pickle
 
 
 def set_all_seeds(seed):
@@ -117,7 +116,6 @@ def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
 def get_same_anns(
     document, document2, require_double_inner=True, ann_stats=[], meta_names=[]
 ):
-    are_same = True
     new_document = copy.deepcopy(document)
     new_document["annotations"] = []
 
@@ -156,7 +154,6 @@ def get_same_anns(
 
                 if not are_anns_same(ann, ann2, meta_names):
                     ann_stats[0].append((1, 0))
-                    are_same = False
                 else:
                     ann_stats[0].append((1, 1))
                     new_document["annotations"].append(ann)
@@ -165,7 +162,6 @@ def get_same_anns(
                 new_document["annotations"].append(ann)
             else:
                 ann_stats[0].append((1, 0))
-                are_same = False
 
             # Append for NER+L stats
             ann_stats[1].append(pair)
@@ -184,7 +180,6 @@ def get_same_anns(
                 new_document["annotations"].append(ann2)
             else:
                 ann_stats[0].append((0, 1))
-                are_same = False
 
     return new_document
 
@@ -729,7 +724,6 @@ def validate_ner_data(
                             status = "unk"
 
                         if len(cui2status[cui][name]) > 1:
-                            ss = list(cui2status[cui][name].keys())
                             print("\n\nThis name was annotated with different status\n")
                             b = text[max(0, start - cntx_size) : start].replace(
                                 "\n", " "
@@ -862,7 +856,7 @@ def prepare_from_docs_hf(data_path, tkns_path, cntx_left, cntx_right, tokenizer,
                 tkns_center = tokens[start:end]
 
                 # Get the index of the center token
-                ind = 0 
+                ind = 0
                 for ind, pair in enumerate(doc_text['offset_mapping']):
                     if start >= pair[0] and start < pair[1]:
                         break
@@ -942,7 +936,6 @@ def prepare_from_json_hf(
         replace_center=replace_center,
     )
 
-    _max_seq_len = max_seq_len
     for name in p_data.keys():
         out[name] = {}
 
@@ -977,7 +970,6 @@ def prepare_from_json_chars(
             if len(text) > 0:
 
                 for ann in document["annotations"]:
-                    tui = ""
                     if cui_filter:
                         cui = ann["cui"]
 

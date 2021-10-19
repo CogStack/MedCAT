@@ -2,7 +2,6 @@ from medcat.config import Config
 from medcat.cat import CAT
 import pandas as pd
 from medcat.cdb_maker import CDBMaker
-from medcat.config import Config
 
 
 class RepairCDB(object):

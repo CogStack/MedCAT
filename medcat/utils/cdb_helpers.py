@@ -5,14 +5,6 @@ import json
 def prepare_umls_csv(
     mrconso_path, mrsty_path, sep="|", lng="ENG", output_path=None, **kwargs
 ):
-    conso_df = mrconso_path(
-        mrconso_path=mrconso_path,
-        column_names=column_names,
-        sep=sep,
-        lng=lng,
-        output_path=None,
-        **kwargs
-    )
 
     column_names = ["CUI", "TUI", "STN", "STY", "ATUI", "CVF", "unk"]
     sty_df = pd.read_csv(mrsty_path, names=column_names, sep=sep, dtype=str, **kwargs)

@@ -1,20 +1,3 @@
-from sklearn.model_selection import train_test_split
-import numpy as np
-from sklearn.metrics import (
-    classification_report,
-    f1_score,
-    confusion_matrix,
-    precision_score,
-    recall_score,
-)
-import torch
-from torch import nn
-import torch.nn.functional as F
-import torch.optim as optim
-import os
-import math
-
-
 def get_lr_linking(config, cui_count, params, similarity):
     if config.linking["optim"]["type"] == "standard":
         return config.linking["optim"]["lr"]
@@ -45,8 +28,8 @@ def load_hf_tokenizer(tokenizer_name):
         from transformers import AutoTokenizer
 
         hf_tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    except Exception as e:
-        log.exception("The Huggingface tokenizer could not be created")
+    except Exception:
+        log.exception("The Huggingface tokenizer could not be created") # noqa
 
     return hf_tokenizer
 
@@ -60,7 +43,7 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             rebuild = True
 
     if rebuild:
-        log.info("Rebuilding vocab")
+        log.info("Rebuilding vocab") # noqa
         try:
             from transformers import AutoModel
 
@@ -83,5 +66,5 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             # Crate the new unigram table
             vocab.reset_counts()
             vocab.make_unigram_table()
-        except Exception as e:
-            log.exception("The Huggingface model could not be loaded")
+        except Exception:
+            log.exception("The Huggingface model could not be loaded") # noqa

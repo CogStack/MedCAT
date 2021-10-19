@@ -8,7 +8,7 @@ import datasets
 
 _CITATION = """\
 @misc{kraljevic2020multidomain,
-      title={Multi-domain Clinical Natural Language Processing with MedCAT: the Medical Concept Annotation Toolkit}, 
+      title={Multi-domain Clinical Natural Language Processing with MedCAT: the Medical Concept Annotation Toolkit},
       author={Zeljko Kraljevic and Thomas Searle and Anthony Shek and Lukasz Roguski and Kawsar Noor and Daniel Bean and Aurelie Mascio and Leilei Zhu and Amos A Folarin and Angus Roberts and Rebecca Bendayan and Mark P Richardson and Robert Stewart and Anoop D Shah and Wai Keong Wong and Zina Ibrahim and James T Teo and Richard JB Dobson},
       year={2020},
       eprint={2010.01165},

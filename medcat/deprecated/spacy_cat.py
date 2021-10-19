@@ -1,6 +1,5 @@
 from spacy.tokens import Span
 import numpy as np
-import operator
 from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import load_hf_tokenizer, build_vocab_from_hf
@@ -29,10 +28,10 @@ class SpacyCat(object):
     """
 
     # Convert filters tu sets
-    if TUI_FILTER is not None:
-        TUI_FILTER = set(TUI_FILTER)
-    if CUI_FILTER is not None:
-        CUI_FILTER = set(CUI_FILTER)
+    if TUI_FILTER is not None: # noqa
+        TUI_FILTER = set(TUI_FILTER) # noqa
+    if CUI_FILTER is not None: # noqa
+        CUI_FILTER = set(CUI_FILTER) # noqa
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
@@ -190,7 +189,7 @@ class SpacyCat(object):
         if len(cntx_vecs) > 0:
             cntx = np.average(cntx_vecs, axis=0)
 
-        #### DEBUG ONLY ####
+        # DEBUG ONLY #
         if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 log.debug("SIMILARITY MED::::::::::::::::::::")
@@ -212,7 +211,7 @@ class SpacyCat(object):
                     )
                 )
                 log.debug(":::::::::::::::::::::::::::::::::::\n")
-        #### END OF DEBUG ####
+        # END OF DEBUG #
 
         if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
             sim = np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui]))
@@ -314,7 +313,7 @@ class SpacyCat(object):
                 anneal=True,
             )
 
-        #### DEBUG ONLY ####
+        # DEBUG ONLY #
         if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 if np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui])) < 0.01:

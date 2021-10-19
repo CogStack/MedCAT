@@ -2,12 +2,9 @@
 """
 
 import pandas
-import spacy
-from spacy.tokenizer import Tokenizer
 from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import spacy_tag_punct, clean_umls, clean_def
-from spacy.tokens import Token
 from medcat.utils.spacy_pipe import SpacyPipe
 
 # from pytorch_pretrained_bert import BertTokenizer
@@ -57,7 +54,6 @@ class CDBMaker(object):
                         print("Done: {}".format(ind))
                     # Save originals
                     pretty_name = _name
-                    original_name = _name
                     name = clean_umls(_name)
 
                     # Clean and preprocess the name

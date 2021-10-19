@@ -16,7 +16,7 @@ class CatAnn(object):
         name_case = True
 
         if len(tkns) == 1 and tkns[0].is_upper:
-            one_tkn_upper = True
+            one_tkn_upper = True # noqa
         for tkn in tkns:
             if not tkn.is_upper:
                 name_case = False

@@ -1,4 +1,3 @@
-import pandas as pd
 import regex
 import logging
 

@@ -74,10 +74,10 @@ class WordpieceTokenizer(object):
           A list of wordpiece tokens.
         """
 
-        text = convert_to_unicode(text)
+        text = convert_to_unicode(text) # noqa
 
         output_tokens = []
-        for token in whitespace_tokenize(text):
+        for token in whitespace_tokenize(text): # noqa
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
                 output_tokens.append(self.unk_token)

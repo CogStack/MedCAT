@@ -58,9 +58,6 @@ class Linker(PipeRunner):
         cnf_l = self.config.linking
         linked_entities = []
 
-        doc_tkns = [tkn for tkn in doc if not tkn._.to_skip]
-        doc_tkn_ids = [tkn.idx for tkn in doc_tkns]
-
         if cnf_l["train"]:
             # Run training
             for entity in doc._.ents:

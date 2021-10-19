@@ -1,9 +1,6 @@
 from medcat.vocab import Vocab
-import numpy as np
-import pandas
 from pathlib import Path
 from medcat.preprocessing.tokenizers import spacy_split_all
-from functools import partial
 from gensim.models import Word2Vec
 from medcat.preprocessing.iterators import SimpleIter
 import logging

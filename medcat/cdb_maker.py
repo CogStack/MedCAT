@@ -1,9 +1,7 @@
 import pandas
-import spacy
 import numpy as np
 import datetime
 import logging
-from functools import partial
 import re
 
 from medcat.pipe import Pipe

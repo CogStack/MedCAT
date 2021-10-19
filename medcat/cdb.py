@@ -4,10 +4,10 @@
 import dill
 import logging
 import numpy as np
-from typing import Dict, List, Set
+from typing import Dict, Set
 from functools import partial
 
-from medcat.utils.matutils import unitvec, sigmoid
+from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
 

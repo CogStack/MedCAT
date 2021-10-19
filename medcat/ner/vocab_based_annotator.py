@@ -1,8 +1,6 @@
 """ I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
 once the software is trained the main thing are the context vectors.
 """
-import numpy as np
-import operator
 from spacy.tokens import Span
 import logging
 
@@ -50,7 +48,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label="concept"):
             entity._.detected_name = name
             entity._.link_candidates = cdb.name2cuis[name]
             entity._.id = len(doc._.ents)
-            entity._.confidence = -1  #  This does not calculate confidence
+            entity._.confidence = -1  # This does not calculate confidence
             # Append the entity to the document
             doc._.ents.append(entity)
 
@@ -98,7 +96,7 @@ class (object):
         elif len(name) < config.length_limit:
             # Disambiguate
             return 'disambiguate'
-        elif self.cdb.name2status[name] == 'A': # Check the cdb 
+        elif self.cdb.name2status[name] == 'A': # Check the cdb
             if len(self.cdb.name2cui[name]) == 1:
                 # Links to only one CUI
                 return 'annotate'

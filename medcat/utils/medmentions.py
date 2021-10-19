@@ -59,7 +59,6 @@ def original2json(data_path, out_path):
             if "|t|" in row[0:13]:
                 # It is title
                 parts = row.split("|t|")
-                doc_id = parts[0]
                 title = parts[1].strip()
             elif "|a|" in row[0:13]:
                 # Text row

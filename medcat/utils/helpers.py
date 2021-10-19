@@ -1,4 +1,3 @@
-import numpy as np
 from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
 import html
@@ -218,7 +217,7 @@ def umls_to_icd10cm(cdb, csv_path):
                             cdb.cui2info[cui]["icd10"].append(icd10)
                     else:
                         cdb.cui2info[cui]["icd10"] = [icd10]
-        except:
+        except Exception:
             print(row["CUI"])
 
 
@@ -281,7 +280,7 @@ def umls_to_icd10(cdb, csv_path):
                         cdb.cui2info[cui]["icd10"].append(icd10)
                 else:
                     cdb.cui2info[cui]["icd10"] = [icd10]
-        except:
+        except Exception:
             print(row["CUI"])
 
 
@@ -394,7 +393,7 @@ def add_names_icd10(cdb, csv_path, cat):
             cui = str(row["cui"])
             name = row["name"]
             cat.add_name(cui, name, is_pref_name=False, only_new=True)
-        except Exception as e:
+        except Exception:
             print(row["cui"])
 
         if index % 1000 == 0:
@@ -444,7 +443,7 @@ def dep_check_scispacy():
 
     try:
         _ = spacy.load("en_core_sci_md")
-    except:
+    except Exception:
         print("Installing the missing models for scispacy\n")
         pkg = "https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz"
         subprocess.check_call([sys.executable, "-m", "pip", "install", pkg])
