@@ -124,7 +124,10 @@ class CAT(object):
 
         # Save the used spacy model
         spacy_path = os.path.join(save_dir_path, 'spacy_model')
-        shutil.copytree(self.pipe.nlp._path, spacy_path)
+        if str(self.pipe.nlp._path) != spacy_path:
+            # First remove if something is there
+            shutil.rmtree(spacy_path, ignore_errors=True)
+            shutil.copytree(self.pipe.nlp._path, spacy_path)
 
         # Change the name of the spacy model in the config
         self.config.general['spacy_model'] = 'spacy_model'
