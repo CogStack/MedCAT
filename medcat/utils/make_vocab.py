@@ -10,8 +10,9 @@ import logging
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
+
 class MakeVocab(object):
-    r'''
+    r"""
     Create a new vocab from a text file. To make a vocab and train word embeddings do:
     Args:
         cdb (medcat.cdb.CDB):
@@ -27,8 +28,9 @@ class MakeVocab(object):
     >>>maker.make(data_iterator, out_folder="./output/")
     >>>maker.add_vectors(in_path="./output/data.txt")
     >>>
-    '''
+    """
     log = logging.getLogger(__name__)
+
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
         self.config = config
@@ -40,9 +42,11 @@ class MakeVocab(object):
 
         # Build the required spacy pipeline
         self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=tag_skip_and_punct,
-                            name='skip_and_punct',
-                            additional_fields=['is_punct'])
+        self.nlp.add_tagger(
+            tagger=tag_skip_and_punct,
+            name="skip_and_punct",
+            additional_fields=["is_punct"],
+        )
 
         # Get the tokenizer
         if word_tokenizer is not None:
@@ -53,13 +57,11 @@ class MakeVocab(object):
         # Used for saving if the real path is not set
         self.vocab_path = "./tmp_vocab.dat"
 
-
     def _tok(self, text):
         return [text]
 
-
     def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=False):
-        r'''
+        r"""
         Make a vocab - without vectors initially. This will create two files in the out_folder:
         - vocab.dat -> The vocabulary without vectors
         - data.txt -> The tokenized dataset prepared for training of word2vec or similar embeddings.
@@ -74,12 +76,12 @@ class MakeVocab(object):
             normalize_tokens (bool, defaults to True):
                 If set tokens will be lematized - tends to work better in some cases where the difference
                 between e.g. plural/singular should be ignored. But in general not so important if the dataset is big enough.
-        '''
+        """
         # Save the preprocessed data, used for emb training
         out_path = Path(out_folder) / "data.txt"
         vocab_path = Path(out_folder) / "vocab.dat"
         self.vocab_path = vocab_path
-        out = open(out_path, 'w', encoding='utf-8')
+        out = open(out_path, "w", encoding="utf-8")
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
@@ -119,10 +121,20 @@ class MakeVocab(object):
         # Save the vocab also
         self.vocab.save(path=self.vocab_path)
 
-
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
-                    unigram_table_size=100000000):
-        r'''
+    def add_vectors(
+        self,
+        in_path=None,
+        w2v=None,
+        overwrite=False,
+        data_iter=None,
+        workers=14,
+        niter=2,
+        min_count=10,
+        window=10,
+        vsize=300,
+        unigram_table_size=100000000,
+    ):
+        r"""
         Add vectors to an existing vocabulary and save changes to the vocab_path.
 
         Args:
@@ -138,13 +150,20 @@ class MakeVocab(object):
 
         Returns:
             A trained word2vec model.
-        '''
+        """
         if w2v is None:
             if data_iter is None:
                 data = SimpleIter(in_path)
             else:
                 data = data_iter
-            w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
+            w2v = Word2Vec(
+                data,
+                window=window,
+                min_count=min_count,
+                workers=workers,
+                size=vsize,
+                iter=niter,
+            )
 
         for word in w2v.wv.vocab.keys():
             if word in self.vocab:

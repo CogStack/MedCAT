@@ -26,11 +26,12 @@ Takes as input a pickled dict of annotated documents from MedCAT. The format sho
 Where entities is the output from medcat.get_entities(<...>)['entities']
 """
 
-class MedCATAnnotationsConfig(datasets.BuilderConfig):
-    """ BuilderConfig for MedCATAnnotations.
 
-        Args:
-          **kwargs: keyword arguments forwarded to super.
+class MedCATAnnotationsConfig(datasets.BuilderConfig):
+    """BuilderConfig for MedCATAnnotations.
+
+    Args:
+      **kwargs: keyword arguments forwarded to super.
     """
 
     def __init__(self, **kwargs):
@@ -47,7 +48,6 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
             description="Pickled output from MedCAT",
         ),
     ]
-
 
     def _info(self):
         return datasets.DatasetInfo(
@@ -81,15 +81,15 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
     def _generate_examples(self, filepath):
         """This function returns the examples in the raw (text) form."""
         logging.info("generating examples from = %s", filepath)
-        with open(filepath, 'rb') as f:
+        with open(filepath, "rb") as f:
             docs = pickle.load(f)
             for doc_id in docs:
                 doc = docs[doc_id]
-                for id, entity in doc['entities'].items():
-                    yield "{}|{}".format(doc_id, entity['id']), {
-                            'id': int(id),
-                            'document_id': str(doc_id),
-                            'context_left': "".join(entity['context_left']),
-                            'context_right': "".join(entity['context_right']),
-                            'context_center': "".join(entity['context_center']),
-                            }
+                for id, entity in doc["entities"].items():
+                    yield "{}|{}".format(doc_id, entity["id"]), {
+                        "id": int(id),
+                        "document_id": str(doc_id),
+                        "context_left": "".join(entity["context_left"]),
+                        "context_right": "".join(entity["context_right"]),
+                        "context_center": "".join(entity["context_center"]),
+                    }

@@ -17,7 +17,7 @@ def set_all_seeds(seed):
 
 
 def create_batch_piped_data(data, start_ind, end_ind, device, pad_id):
-    r''' Creates a batch given data and start/end that denote batch size, will also add
+    r"""Creates a batch given data and start/end that denote batch size, will also add
     padding and move to the right device.
 
     Args:
@@ -39,14 +39,19 @@ def create_batch_piped_data(data, start_ind, end_ind, device, pad_id):
         cpos ():
             Center positions for the data
 
-    '''
+    """
     max_seq_len = max([len(x[0]) for x in data])
-    x = [x[0][0:max_seq_len] + [pad_id]*max(0, max_seq_len - len(x[0])) for x in data[start_ind:end_ind]]
+    x = [
+        x[0][0:max_seq_len] + [pad_id] * max(0, max_seq_len - len(x[0]))
+        for x in data[start_ind:end_ind]
+    ]
     cpos = [x[1] for x in data[start_ind:end_ind]]
     y = None
     if len(data[0]) == 3:
         # Means we have the y column
-        y = torch.tensor([x[2] for x in data[start_ind:end_ind]], dtype=torch.long).to(device)
+        y = torch.tensor([x[2] for x in data[start_ind:end_ind]], dtype=torch.long).to(
+            device
+        )
 
     x = torch.tensor(x, dtype=torch.long).to(device)
     cpos = torch.tensor(cpos, dtype=torch.long).to(device)
@@ -55,7 +60,7 @@ def create_batch_piped_data(data, start_ind, end_ind, device, pad_id):
 
 
 def predict(model, data, config):
-    r''' Predict on data used in the meta_cat.pipe
+    r"""Predict on data used in the meta_cat.pipe
 
     Args:
         data (List[List[List[int], int]]):
@@ -68,12 +73,12 @@ def predict(model, data, config):
             For each row of input data a prediction
         confidence (List[float]):
             For each prediction a confidence value
-    '''
+    """
 
-    pad_id = config.model['padding_idx']
-    batch_size = config.general['batch_size_eval']
-    device = config.general['device']
-    ignore_cpos = config.model['ignore_cpos']
+    pad_id = config.model["padding_idx"]
+    batch_size = config.general["batch_size_eval"]
+    device = config.general["device"]
+    ignore_cpos = config.model["ignore_cpos"]
 
     model.eval()
     model.to(device)
@@ -83,7 +88,9 @@ def predict(model, data, config):
 
     with torch.no_grad():
         for i in range(num_batches):
-            x, cpos, _ = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
+            x, cpos, _ = create_batch_piped_data(
+                data, i * batch_size, (i + 1) * batch_size, device=device, pad_id=pad_id
+            )
             logits = model(x, cpos, ignore_cpos=ignore_cpos)
             all_logits.append(logits.detach().cpu().numpy())
 
@@ -100,13 +107,13 @@ def predict(model, data, config):
 
 
 def split_list_train_test(data, test_size, shuffle=True):
-    r''' Shuffle and randomply split data
+    r"""Shuffle and randomply split data
 
     Args:
         data
         test_size
         shuffle
-    '''
+    """
     if shuffle:
         random.shuffle(data)
 
@@ -117,8 +124,8 @@ def split_list_train_test(data, test_size, shuffle=True):
     return train_data, test_data
 
 
-def print_report(epoch, running_loss, all_logits, y, name='Train'):
-    r''' Prints some basic stats during training
+def print_report(epoch, running_loss, all_logits, y, name="Train"):
+    r"""Prints some basic stats during training
 
     Args:
         epoch
@@ -126,39 +133,47 @@ def print_report(epoch, running_loss, all_logits, y, name='Train'):
         all_logits
         y
         name
-    '''
+    """
     if all_logits:
-        print(f'Epoch: {epoch} ' + "*"*50 + f"  {name}")
-        print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
+        print(f"Epoch: {epoch} " + "*" * 50 + f"  {name}")
+        print(
+            classification_report(
+                y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)
+            )
+        )
 
 
 def train_model(model, data, config, save_dir_path=None):
-    r''' Trains a LSTM model (for now) with autocheckpoints
+    r"""Trains a LSTM model (for now) with autocheckpoints
 
     Args:
         data
         config
         save_dir_path
-    '''
+    """
     # Get train/test from data
-    train_data, test_data = split_list_train_test(data, test_size=config.train['test_size'], shuffle=config.train['shuffle_data'])
-    device = torch.device(config.general['device']) # Create a torch device
+    train_data, test_data = split_list_train_test(
+        data, test_size=config.train["test_size"], shuffle=config.train["shuffle_data"]
+    )
+    device = torch.device(config.general["device"])  # Create a torch device
 
-    class_weights = config.train['class_weights']
+    class_weights = config.train["class_weights"]
     if class_weights is not None:
         class_weights = torch.FloatTensor(class_weights).to(device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+        criterion = nn.CrossEntropyLoss(
+            weight=class_weights
+        )  # Set the criterion to Cross Entropy Loss
     else:
-        criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+        criterion = nn.CrossEntropyLoss()  # Set the criterion to Cross Entropy Loss
     parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.Adam(parameters, lr=config.train['lr'])
-    model.to(device) # Move the model to device
+    optimizer = optim.Adam(parameters, lr=config.train["lr"])
+    model.to(device)  # Move the model to device
 
-    batch_size = config.train['batch_size']
-    batch_size_eval = config.general['batch_size_eval']
-    pad_id = config.model['padding_idx']
-    nepochs = config.train['nepochs']
-    ignore_cpos = config.model['ignore_cpos']
+    batch_size = config.train["batch_size"]
+    batch_size_eval = config.general["batch_size_eval"]
+    pad_id = config.model["padding_idx"]
+    nepochs = config.train["nepochs"]
+    ignore_cpos = config.model["ignore_cpos"]
     num_batches = math.ceil(len(train_data) / batch_size)
     num_batches_test = math.ceil(len(test_data) / batch_size_eval)
 
@@ -166,13 +181,19 @@ def train_model(model, data, config, save_dir_path=None):
     y_test = [x[2] for x in test_data]
     y_train = [x[2] for x in train_data]
 
-    winner_report= {'f1': 0, 'report': '', 'epoch': 0}
+    winner_report = {"f1": 0, "report": "", "epoch": 0}
     for epoch in range(nepochs):
         running_loss = []
         all_logits = []
         model.train()
         for i in range(num_batches):
-            x, cpos, y = create_batch_piped_data(train_data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
+            x, cpos, y = create_batch_piped_data(
+                train_data,
+                i * batch_size,
+                (i + 1) * batch_size,
+                device=device,
+                pad_id=pad_id,
+            )
             logits = model(x, center_positions=cpos, ignore_cpos=ignore_cpos)
             loss = criterion(logits, y)
             loss.backward()
@@ -190,53 +211,73 @@ def train_model(model, data, config, save_dir_path=None):
 
         with torch.no_grad():
             for i in range(num_batches_test):
-                x, cpos, y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
+                x, cpos, y = create_batch_piped_data(
+                    test_data,
+                    i * batch_size_eval,
+                    (i + 1) * batch_size_eval,
+                    device=device,
+                    pad_id=pad_id,
+                )
                 logits = model(x, cpos, ignore_cpos=ignore_cpos)
 
-                 # Track loss and logits
+                # Track loss and logits
                 running_loss_test.append(loss.item())
                 all_logits_test.append(logits.detach().cpu().numpy())
 
-        print_report(epoch, running_loss, all_logits, y=y_train, name='Train')
-        print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
+        print_report(epoch, running_loss, all_logits, y=y_train, name="Train")
+        print_report(epoch, running_loss_test, all_logits_test, y=y_test, name="Test")
 
-        score_average = config.train['score_average']
-        f1 = f1_score(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), average=score_average)
-        if f1 > winner_report['f1']:
-            report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
-            winner_report['f1'] = f1
-            winner_report['report'] = report
-            winner_report['epoch'] = epoch
+        score_average = config.train["score_average"]
+        f1 = f1_score(
+            y_test,
+            np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),
+            average=score_average,
+        )
+        if f1 > winner_report["f1"]:
+            report = classification_report(
+                y_test,
+                np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),
+                output_dict=True,
+            )
+            winner_report["f1"] = f1
+            winner_report["report"] = report
+            winner_report["epoch"] = epoch
 
             # Save if needed
-            if config.train['auto_save_model']:
-                path = os.path.join(save_dir_path, 'model.dat')
+            if config.train["auto_save_model"]:
+                path = os.path.join(save_dir_path, "model.dat")
                 torch.save(model.state_dict(), path)
-                print("\n##### Model saved to {} at epoch: {} and f1: {} #####\n".format(path, epoch, f1))
+                print(
+                    "\n##### Model saved to {} at epoch: {} and f1: {} #####\n".format(
+                        path, epoch, f1
+                    )
+                )
 
     return winner_report
 
 
 def eval_model(model, data, config, tokenizer):
-    r''' Evaluate a trained model on the provided data
+    r"""Evaluate a trained model on the provided data
 
     Args:
         model
         data
         config
 
-    '''
-    device = torch.device(config.general['device']) # Create a torch device
-    batch_size_eval = config.general['batch_size_eval']
-    pad_id = config.model['padding_idx']
-    ignore_cpos = config.model['ignore_cpos']
-    class_weights = config.train['class_weights']
+    """
+    device = torch.device(config.general["device"])  # Create a torch device
+    batch_size_eval = config.general["batch_size_eval"]
+    pad_id = config.model["padding_idx"]
+    ignore_cpos = config.model["ignore_cpos"]
+    class_weights = config.train["class_weights"]
 
     if class_weights is not None:
         class_weights = torch.FloatTensor(class_weights).to(device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+        criterion = nn.CrossEntropyLoss(
+            weight=class_weights
+        )  # Set the criterion to Cross Entropy Loss
     else:
-        criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+        criterion = nn.CrossEntropyLoss()  # Set the criterion to Cross Entropy Loss
 
     y_eval = [x[2] for x in data]
     num_batches = math.ceil(len(data) / batch_size_eval)
@@ -247,35 +288,46 @@ def eval_model(model, data, config, tokenizer):
 
     with torch.no_grad():
         for i in range(num_batches):
-            x, cpos, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
+            x, cpos, y = create_batch_piped_data(
+                data,
+                i * batch_size_eval,
+                (i + 1) * batch_size_eval,
+                device=device,
+                pad_id=pad_id,
+            )
             logits = model(x, cpos, ignore_cpos=ignore_cpos)
             loss = criterion(logits, y)
 
-             # Track loss and logits
+            # Track loss and logits
             running_loss.append(loss.item())
             all_logits.append(logits.detach().cpu().numpy())
 
-    print_report(0, running_loss, all_logits, y=y_eval, name='Eval')
+    print_report(0, running_loss, all_logits, y=y_eval, name="Eval")
 
-    score_average = config.train['score_average']
+    score_average = config.train["score_average"]
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     f1 = f1_score(y_eval, predictions, average=score_average)
 
-    examples = {'FP': {}, 'FN': {}, 'TP': {}}
-    id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
+    examples = {"FP": {}, "FN": {}, "TP": {}}
+    id2category_value = {v: k for k, v in config.general["category_value2id"].items()}
     for i, p in enumerate(predictions):
         y = id2category_value[y_eval[i]]
         p = id2category_value[p]
         c = data[i][1]
         tkns = data[i][0]
-        text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<"+ tokenizer.hf_tokenizers.decode(tkns[c:c+1]).strip() + ">> " + \
-                tokenizer.hf_tokenizers.decode(tkns[c+1:])
+        text = (
+            tokenizer.hf_tokenizers.decode(tkns[0:c])
+            + " <<"
+            + tokenizer.hf_tokenizers.decode(tkns[c : c + 1]).strip()
+            + ">> "
+            + tokenizer.hf_tokenizers.decode(tkns[c + 1 :])
+        )
         info = "Predicted: {}, True: {}".format(p, y)
         if p != y:
             # We made a mistake
-            examples['FN'][y] = examples['FN'].get(y, []) + [(info, text)]
-            examples['FP'][p] = examples['FP'].get(p, []) + [(info, text)]
+            examples["FN"][y] = examples["FN"].get(y, []) + [(info, text)]
+            examples["FP"][p] = examples["FP"].get(p, []) + [(info, text)]
         else:
-            examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
+            examples["TP"][y] = examples["TP"].get(y, []) + [(info, text)]
 
-    return {'f1': f1, 'examples': examples}
+    return {"f1": f1, "examples": examples}
