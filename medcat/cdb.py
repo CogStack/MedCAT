@@ -49,6 +49,7 @@ class CDB(object):
             Stores all the words tha appear in this CDB and the count for each one.
     """
     log = logging.getLogger(__name__)
+
     def __init__(self, config):
         self.config = config
         self.name2cuis = {}
@@ -102,7 +103,7 @@ class CDB(object):
 
 
     def update_cui2average_confidence(self, cui, new_sim):
-        self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim)  / \
+        self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim) / \
                                             (self.cui2count_train.get(cui, 0) + 1)
 
 
@@ -140,7 +141,6 @@ class CDB(object):
                             self.name2cuis2status[name][_cui] = 'N'
                         elif self.name2cuis2status[name][_cui] == 'P':
                             self.name2cuis2status[name][_cui] = 'PD'
-
 
     def add_names(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
         r''' Adds a name to an existing concept.
@@ -192,7 +192,7 @@ class CDB(object):
         '''
         # Add CUI to the required dictionaries
         if cui not in self.cui2names:
-            # Create placeholders 
+            # Create placeholders
             self.cui2names[cui] = set()
             self.cui2snames[cui] = set()
 
@@ -226,7 +226,7 @@ class CDB(object):
                     # If CUI is not already linked do it
                     self.name2cuis[name].append(cui)
 
-                    # At the same time it means the cui is also missing from name2cuis2status, but the 
+                    # At the same time it means the cui is also missing from name2cuis2status, but the
                     #name is there
                     self.name2cuis2status[name][cui] = name_status
                 elif name_status == 'P':
@@ -236,7 +236,7 @@ class CDB(object):
                 # Means we never saw this name
                 self.name2cuis[name] = [cui]
 
-               # Add name2cuis2status
+                # Add name2cuis2status
                 self.name2cuis2status[name] = {cui: name_status}
 
 
@@ -258,13 +258,17 @@ class CDB(object):
         if full_build:
             # Use original_names as the base check because they must be added
             if cui not in self.addl_info['cui2original_names']:
-                if ontologies: self.addl_info['cui2ontologies'][cui] = ontologies
-                if description: self.addl_info['cui2description'][cui] = description
-                self.addl_info['cui2original_names'][cui] = set([v['raw_name'] for k,v in names.items()])
+                if ontologies:
+                    self.addl_info['cui2ontologies'][cui] = ontologies
+                if description:
+                    self.addl_info['cui2description'][cui] = description
+                self.addl_info['cui2original_names'][cui] = set([v['raw_name'] for k, v in names.items()])
             else:
                 # Update existing ones
-                if ontologies: self.addl_info['cui2ontologies'][cui].update(ontologies)
-                if description: self.addl_info['cui2description'][cui] = description
+                if ontologies:
+                    self.addl_info['cui2ontologies'][cui].update(ontologies)
+                if description:
+                    self.addl_info['cui2description'][cui] = description
                 self.addl_info['cui2original_names'][cui].update([v['raw_name'] for k,v in names.items()])
 
             for type_id in type_ids:
@@ -332,7 +336,7 @@ class CDB(object):
                     self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
 
                 # DEBUG
-                self.log.debug("Updated vector embedding.\n" + \
+                self.log.debug("Updated vector embedding.\n" +
                         "CUI: {}, Context Type: {}, Similarity: {:.2f}, Is Negative: {}, LR: {:.5f}, b: {:.3f}".format(cui, context_type,
                             similarity, negative, lr, b))
                 cv = self.cui2context_vectors[cui][context_type]
@@ -345,7 +349,7 @@ class CDB(object):
                     self.cui2context_vectors[cui][context_type] = vector
 
                 # DEBUG
-                self.log.debug("Added new context type with vectors.\n" + \
+                self.log.debug("Added new context type with vectors.\n" +
                         "CUI: {}, Context Type: {}, Is Negative: {}".format(cui, context_type, negative))
 
         if not negative:

@@ -1,5 +1,6 @@
 import re
 
+
 def clean_primary_name(cdb):
     """ BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION
     """
@@ -56,6 +57,7 @@ def clean_common_words(cdb, words):
 
             # Remove the word now
             del cdb.name2cui[word]
+
 
 def fix_snomed_names(cdb, cat):
     r = re.compile("\([^\(\)]+\)$")

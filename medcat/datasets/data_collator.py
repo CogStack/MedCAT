@@ -3,6 +3,7 @@ import torch
 
 InputDataClass = NewType("InputDataClass", Any)
 
+
 class CollateAndPadNER(object):
     def __init__(self, pad_id):
         self.pad_id = pad_id

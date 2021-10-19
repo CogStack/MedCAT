@@ -6,6 +6,7 @@ import logging
 
 log = logging.getLogger(__name__)
 
+
 def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
     r''' Given a name it will check should it be annotated based on config rules. If yes
     the annotation will be added to the doc._.ents array.
@@ -56,6 +57,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             return entity
 
     return None
+
 
 """
 def check_disambiguation_status(name, cuis, config):

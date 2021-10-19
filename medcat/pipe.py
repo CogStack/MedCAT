@@ -35,6 +35,7 @@ class Pipe(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
+
     def __init__(self, tokenizer: Tokenizer, config: Config):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:

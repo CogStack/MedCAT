@@ -26,6 +26,7 @@ Takes as input a pickled dict of annotated documents from MedCAT. The format sho
 Where entities is the output from medcat.get_entities(<...>)['entities']
 """
 
+
 class MedCATAnnotationsConfig(datasets.BuilderConfig):
     """ BuilderConfig for MedCATAnnotations.
 
@@ -47,7 +48,6 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
             description="Pickled output from MedCAT",
         ),
     ]
-
 
     def _info(self):
         return datasets.DatasetInfo(

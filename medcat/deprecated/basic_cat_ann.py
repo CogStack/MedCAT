@@ -2,12 +2,12 @@
 once the software is trained the main thing are the context vectors.
 """
 
+
 class CatAnn(object):
     def __init__(self, cdb, spacy_cat):
         self.cdb = cdb
         self._cat = spacy_cat
         self.pref_names = set(cdb.cui2pref_name.values())
-
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
         one_tkn_upper = False

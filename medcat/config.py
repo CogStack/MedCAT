@@ -129,8 +129,8 @@ class Config(BaseConfig):
 
         # CDB Maker
         self.cdb_maker = {
-               # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
-                #by the character below.
+                # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
+                # by the character below.
                 'multi_separator': '|',
                 # Name versions to be generated.
                 'name_versions': ['LOWER', 'CLEAN'],

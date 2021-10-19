@@ -8,6 +8,7 @@ def get_lr_linking(config, cui_count, params, similarity):
     else:
         raise Exception("Optimizer not implemented")
 
+
 def get_batch(ind, batch_size, x, y, cpos, device):
     # Get the start/end index for this batch
     start = ind * batch_size

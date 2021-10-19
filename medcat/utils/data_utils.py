@@ -4,9 +4,11 @@ import copy
 from sklearn.metrics import cohen_kappa_score
 import torch
 
+
 def set_all_seeds(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
+
 
 def count_annotations_project(project):
     cnt = 0
@@ -181,7 +183,6 @@ def get_same_anns(
     return new_document
 
 
-
 def print_consolid_stats(ann_stats=[], meta_names=[]):
     if ann_stats:
         _ann_stats = np.array(ann_stats[0])
@@ -281,7 +282,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
 
                             if d:
                                 new_ann = {}
-                                new_ann['id'] = 0 #ignore
+                                new_ann['id'] = 0   # ignore
                                 new_ann['user'] = 'auto'
                                 new_ann['validated'] = True
                                 new_ann['last_modified'] = ''
@@ -370,6 +371,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
 
     json.dump(data, open(data_path, 'w'))
 
+
 def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=False, meta_anns_to_match=[]):
     """ Consolidated a dataset that was multi-annotated (same documents two times).
 
@@ -456,6 +458,7 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
     print("** Overall stats")
     print_consolid_stats(ann_stats, meta_names=meta_anns_to_match)
     return d_stats_proj
+
 
 def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if_already_done=False):
     """ Please just ignore this function, I'm afraid to even look at it
@@ -660,7 +663,6 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
         self.data = data
         self.category_map = category_map
 
-
     def __getitem__(self, idx):
         item = {}
         for key, value in self.data.items():
@@ -670,9 +672,10 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
                 item[key] = torch.tensor(self.category_map[value[idx]])
         return item
 
-
     def __len__(self):
         return len(self.data['input_ids'])
+
+
 """
 def add_ids_and_cpos_to_docs(data_path, cntx_left, cntx_right, tokenizer, max_seq_len, cui_filter=None, replace_center=None, batch_size=100000):
     data = pickle.load(open(data_path, 'rb'))
@@ -778,6 +781,8 @@ def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter
 
     return out
 """
+
+
 def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None, max_seq_len=None):
     out = {}
     data = json.load(open(data_path))
@@ -992,5 +997,5 @@ def get_false_positives(doc, spacy_doc):
     for ent in spacy_doc._.ents:
         if (ent.start_char, ent._.cui) not in truth:
             fps.append(ent)
-    
+
     return fps

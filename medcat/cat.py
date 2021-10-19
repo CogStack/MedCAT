@@ -978,9 +978,11 @@ class CAT(object):
             in_q.put(batch)
 
         # Final data point for workers
-        for _ in range(nproc): in_q.put(None)
+        for _ in range(nproc):
+            in_q.put(None)
         # Join processes
-        for p in procs: p.join()
+        for p in procs:
+            p.join()
 
         docs = {}
         for key in out_dict.keys():

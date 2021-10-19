@@ -5,6 +5,7 @@ from torch.nn import CrossEntropyLoss
 from transformers import BertPreTrainedModel, BertModel
 from transformers.modeling_outputs import TokenClassifierOutput
 
+
 class LSTM(nn.Module):
     def __init__(self, embeddings, config):
         super(LSTM, self).__init__()
@@ -30,7 +31,6 @@ class LSTM(nn.Module):
         self.fc1 = nn.Linear(config.model['hidden_size'], config.model['nclasses'])
 
         self.d1 = nn.Dropout(config.model['dropout'])
-
 
     def forward(self, input_ids, center_positions, attention_mask=None, ignore_cpos=False):
         x = input_ids

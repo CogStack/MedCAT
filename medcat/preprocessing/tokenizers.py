@@ -6,6 +6,7 @@ from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 import re
 import os
 
+
 def spacy_extended(nlp):
     infix_re_list = ('\\.\\.+',
     '''(?<=[A-Za-z]{1})[\-_;\,\/~]+(?=[A-Za-z]{1})|(?<=[0-9]{1})[\-_;\,\/]+(?=[A-Za-z]{1})|(?<=[A-Za-z]{1})[\-_;\,\/]+(?=[0-9]{1})|\d{2,4}[\-\s_\*]\d{1,2}[\-\s_\*]\d{1,2}|\d{1,2}:\d{1,2}:\d{1,2}|\d{1,2}:\d{2}'''
@@ -143,7 +144,6 @@ class TokenizerWrapperBPE(object):
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
 
-
     def __call__(self, text):
         res = self.hf_tokenizers.encode(text)
 
@@ -151,7 +151,6 @@ class TokenizerWrapperBPE(object):
                 'input_ids': res.ids,
                 'tokens': res.tokens,
                 }
-
 
     def save(self, dir_path, name='bbpe'):
         self.hf_tokenizers.save_model(dir_path, prefix=name)
@@ -175,7 +174,6 @@ class TokenizerWrapperBERT(object):
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
 
-
     def __call__(self, text):
         res = self.hf_tokenizers.encode_plus(text,
                 return_offsets_mapping=True, add_special_tokens=False)
@@ -184,7 +182,6 @@ class TokenizerWrapperBERT(object):
                 'input_ids': res['input_ids'],
                 'tokens':  self.hf_tokenizers.convert_ids_to_tokens(res['input_ids']),
                 }
-
 
     def save(self, dir_path, name='bert'):
         path = os.path.join(dir_path, name)

@@ -16,7 +16,6 @@ else:
     from medcat.basic_cat_ann import CatAnn
 
 
-
 class SpacyCat(object):
     """ A Spacy pipe module, can be easily added into a spacey pipline
 
@@ -285,8 +284,7 @@ class SpacyCat(object):
             negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2, ignore_punct_and_num=True, stopwords=STOP_WORDS) # TODO stopwords
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
-            self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
-                                      inc_cui_count=False, lr=lr, anneal=True)
+            self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED', inc_cui_count=False, lr=lr, anneal=True)
 
         # DEBUG ONLY #
         if self.DEBUG:

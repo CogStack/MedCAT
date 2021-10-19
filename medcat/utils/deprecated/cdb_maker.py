@@ -13,6 +13,7 @@ from functools import partial
 SEPARATOR = ""
 CONCEPT_LENGTH_LIMIT = 6
 
+
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB.
 
@@ -30,7 +31,6 @@ class CDBMaker(object):
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=False))
-
 
     def prepare_csvs(self, csv_paths, sep=','):
         r''' Compile one or multipe CSVs into a CDB.

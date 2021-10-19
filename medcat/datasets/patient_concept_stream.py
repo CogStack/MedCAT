@@ -22,6 +22,7 @@ Takes as input a pickled dict of pt2stream. The format should be:
     {'patient_id': (concept_cui, concept_count_for_patient, timestamp_of_first_occurrence_for_patient), ...}
 """
 
+
 class PatientConceptStreamConfig(datasets.BuilderConfig):
     """ BuilderConfig for PatientConceptStream.
 

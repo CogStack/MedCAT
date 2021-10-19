@@ -4,6 +4,7 @@ from medcat.utils.matutils import unitvec
 from medcat.utils.filters import check_filters
 import spacy
 
+
 class ContextModel(object):
     r''' Used to learn embeddings for concepts and calculate similarities in new documents.
 
@@ -13,6 +14,7 @@ class ContextModel(object):
         config
     '''
     log = logging.getLogger(__name__)
+
     def __init__(self, cdb, vocab, config):
         self.cdb = cdb
         self.vocab = vocab
@@ -39,7 +41,6 @@ class ContextModel(object):
                 and not tkn.is_stop and not tkn.is_digit and not tkn.is_punct]
 
         return tokens_left, tokens_center, tokens_right
-
 
     def get_context_vectors(self, entity, doc):
         r''' Given an entity and the document it will return the context representation for the
@@ -88,7 +89,6 @@ class ContextModel(object):
 
         return sim
 
-
     def _similarity(self, cui, vectors):
         r''' Calculate similarity once we have vectors and a cui.
 
@@ -130,7 +130,7 @@ class ContextModel(object):
             # DEBUG
             self.log.debug("CUIs after: {}".format(cuis))
 
-        if cuis: #Maybe none are left after filtering
+        if cuis:    # Maybe none are left after filtering
             # Calculate similarity for each cui
             similarities = [self._similarity(cui, vectors) for cui in cuis]
             # DEBUG
@@ -160,7 +160,6 @@ class ContextModel(object):
             return cuis[mx], similarities[mx]
         else:
             return None, 0
-
 
     def train(self, cui, entity, doc, negative=False, names=[]):
         r''' Update the context representation for this CUI, given it's correct location (entity)
@@ -213,7 +212,6 @@ class ContextModel(object):
                 self.log.debug("Devalued via names.\n\tBase cui: {} \n\tTo be devalued: {}\n".format(cui, _cuis))
         else:
             self.log.warning("The provided entity for cui <{}> was empty, nothing to train".format(cui))
-
 
     def train_using_negative_sampling(self, cui):
         vectors = {}

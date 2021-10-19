@@ -3,6 +3,7 @@ pretty much everything that is not a word.
 """
 import re
 
+
 def prepare_name(raw_name, nlp, names, config):
     r''' Generates different forms of a name. Will edit the provided `names` dictionary
     and add information generated from the `name`.
@@ -163,7 +164,6 @@ def clean_name(text, stopwords=None, umls=False):
     return text
 
 
-
 def clean_umls(text, stopwords=None):
     # Remove [] if < 4 letters inside
     text = BR_U4.sub(" ", text)
@@ -191,6 +191,7 @@ def clean_umls(text, stopwords=None):
 
     return text
 
+
 def clean_def(text):
     # Remove things inside of () or [] 
     text = re.sub("\([^\)]*\)", " ", text)
@@ -200,6 +201,7 @@ def clean_def(text):
     text = re.sub("[ ]+", " ", text).strip()
 
     return text
+
 
 def clean_snt(text):
     # Remove things inside of () or [] 
@@ -212,6 +214,7 @@ def clean_snt(text):
     text = re.sub("[ ]+", " ", text).strip()
 
     return text
+
 
 def clean_snomed_name(text):
     # Remove () from end of string

@@ -13,6 +13,7 @@ from medcat.utils.loggers import add_handlers
 
 PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
 
+
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
     updates an exisitng one.
@@ -164,7 +165,7 @@ class CDBMaker(object):
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
-                    self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontologies: {}\n Name status: {}\n".format(cui, names, ontologies, name_status) + \
+                    self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontologies: {}\n Name status: {}\n".format(cui, names, ontologies, name_status) +
                                    " Type IDs: {}\n Description: {}\n Is full build: {}".format(
                                    type_ids, description, full_build))
 

@@ -7,6 +7,7 @@ import logging
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
+
 class MakeVocab(object):
     r'''
     Create a new vocab from a text file. To make a vocab and train word embeddings do:
@@ -26,6 +27,7 @@ class MakeVocab(object):
     >>>
     '''
     log = logging.getLogger(__name__)
+
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
         self.config = config
@@ -50,10 +52,8 @@ class MakeVocab(object):
         # Used for saving if the real path is not set
         self.vocab_path = "./tmp_vocab.dat"
 
-
     def _tok(self, text):
         return [text]
-
 
     def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=False):
         r'''
@@ -115,7 +115,6 @@ class MakeVocab(object):
 
         # Save the vocab also
         self.vocab.save(path=self.vocab_path)
-
 
     def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
                     unigram_table_size=100000000):

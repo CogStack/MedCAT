@@ -17,6 +17,7 @@ def check_filters(cui, filters):
     else:
         return False
 
+
 def process_old_project_filters(cuis, type_ids, cdb):
     cui_filter = set()
     if cuis is not None and cuis:
@@ -35,4 +36,3 @@ def process_old_project_filters(cuis, type_ids, cdb):
             raise Exception("Impossible to create filters, disable them.")
 
     return cui_filter
-

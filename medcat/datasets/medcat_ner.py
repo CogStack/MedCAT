@@ -20,6 +20,7 @@ _CITATION = """\
 _DESCRIPTION = """\
 Takes as input a json export from medcattrainer."""
 
+
 class MedCATAnnotationsConfig(datasets.BuilderConfig):
     """ BuilderConfig for MedCATNER.
 
