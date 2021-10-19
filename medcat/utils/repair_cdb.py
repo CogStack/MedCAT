@@ -3,7 +3,6 @@ from medcat.cat import CAT
 import pandas as pd
 from medcat.cdb_maker import CDBMaker
 
-
 class RepairCDB(object):
     def __init__(self, base_cdb, final_cdb, vocab):
         self.base_cdb = base_cdb
@@ -11,10 +10,11 @@ class RepairCDB(object):
         self.final_cdb = final_cdb
         self.final_cat = None
 
+
     def prepare(self, cuis):
         self.base_cdb.filter_by_cui(cuis)
 
-        csv = [["cui", "name"]]
+        csv = [['cui', 'name']]
         names = set()
         cui = 0
         for base_cui in self.base_cdb.cui2names:
@@ -31,7 +31,7 @@ class RepairCDB(object):
         config = Config()
         cdb_maker = CDBMaker(config=config)
 
-        cdb = cdb_maker.prepare_csvs(["/tmp/data.csv"])
+        cdb = cdb_maker.prepare_csvs(['/tmp/data.csv'])
 
         # Rempove ambigous
         for name in cdb.name2cuis:
@@ -46,9 +46,8 @@ class RepairCDB(object):
         self.cdb = cdb
         self.base_cdb.reset_cui_count(n=10)
         self.cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab)
-        self.base_cat = CAT(
-            cdb=self.base_cdb, config=self.base_cdb.config, vocab=self.vocab
-        )
+        self.base_cat = CAT(cdb=self.base_cdb, config=self.base_cdb.config, vocab=self.vocab)
+
 
     def train(self, data_iterator, n_docs=100000):
         docs = []
@@ -59,18 +58,9 @@ class RepairCDB(object):
         self.cat.train(data_iterator=docs)
         self.base_cat.train(data_iterator=docs)
 
+
     def calculate_scores(self, count_limit=1000):
-        data = [
-            [
-                "new_cui",
-                "base_cui",
-                "name",
-                "new_count",
-                "base_count",
-                "score",
-                "decision",
-            ]
-        ]
+        data = [['new_cui', 'base_cui', 'name', 'new_count', 'base_count', 'score', 'decision']]
         for name, cuis2 in self.cdb.name2cuis.items():
             cui2 = cuis2[0]
             count2 = self.cdb.cui2count_train.get(cui2, 0)
@@ -80,56 +70,45 @@ class RepairCDB(object):
                     count = self.base_cdb.cui2count_train.get(cui, 0)
                     if self.base_cdb.cui2context_vectors.get(cui, {}):
                         score = count2 / count
-                        data.append([cui2, cui, name, count2, count, score, ""])
+                        data.append([cui2, cui, name, count2, count, score, ''])
 
         self.scores_df = pd.DataFrame(data[1:], columns=data[0])
 
-    def unlink_names(self, sort="score", skip=0, cui_filter=None):
+
+    def unlink_names(self, sort='score', skip=0, cui_filter=None):
         scores_df = self.scores_df.sort_values(sort, ascending=False)
-        self.final_cdb.config.general["full_unlink"] = False
+        self.final_cdb.config.general['full_unlink'] = False
         if self.final_cat is None:
-            self.final_cat = CAT(
-                cdb=self.final_cdb, config=self.final_cdb.config, vocab=self.vocab
-            )
+            self.final_cat = CAT(cdb=self.final_cdb, config=self.final_cdb.config, vocab=self.vocab)
 
         for ind, row in enumerate(scores_df.iterrows()):
             row_ind, row = row
             if ind < skip:
                 continue
-            name = row["name"]
-            base_cui = row["base_cui"]
-            new_cui = row["new_cui"]
-            base_count = row["base_count"]
-            new_count = row["new_count"]
-            cui = row["base_cui"]
+            name = row['name']
+            base_cui = row['base_cui']
+            new_cui = row['new_cui']
+            base_count = row['base_count']
+            new_count = row['new_count']
+            cui = row['base_cui']
             if base_cui in cui_filter:
-                print(
-                    "{:3} -- {:20} -> {:20}, base_count: {}, new_count: {}, cui: {}".format(
-                        ind,
-                        str(name)[:20],
-                        str(self.final_cdb.get_name(base_cui))[:30],
-                        base_count,
-                        new_count,
-                        cui,
-                    )
-                )
+                print("{:3} -- {:20} -> {:20}, base_count: {}, new_count: {}, cui: {}".format(
+                    ind, str(name)[:20], str(self.final_cdb.get_name(base_cui))[:30], base_count, new_count, cui))
 
                 decision = input("Decision (l/...): ")
 
-                if decision == "l":
+                if decision == 'l':
                     names = self.cdb.cui2names[new_cui]
                     print("Unlinking: " + str(names))
                     print("\n\n")
                     for name in names:
-                        self.final_cat.unlink_concept_name(
-                            base_cui, name, preprocessed_name=True
-                        )
-                elif decision == "f":
+                        self.final_cat.unlink_concept_name(base_cui, name, preprocessed_name=True)
+                elif decision == 'f':
                     if base_cui in cui_filter:
                         print("Removing from filter: " + str(base_cui))
                         print("\n\n")
                         cui_filter.remove(base_cui)
                 else:
-                    decision = "k"  # Means keep
+                    decision = 'k' # Means keep
 
                 self.scores_df.iat[row_ind, 6] = decision

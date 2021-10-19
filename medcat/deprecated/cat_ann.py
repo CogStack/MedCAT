@@ -5,11 +5,11 @@ once the software is trained the main thing are the context vectors.
 import numpy as np
 import operator
 
-
 class CatAnn(object):
     def __init__(self, cdb, spacy_cat):
         self.cdb = cdb
         self._cat = spacy_cat
+
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
         one_tkn_upper = False
@@ -22,7 +22,7 @@ class CatAnn(object):
                 name_case = False
 
         # Don't allow concatenation of tokens if len(name) < 5
-        if not (len(name) < 5 and len(tkns) > 1):
+        if not(len(name) < 5 and len(tkns) > 1):
             # Name must have > 3, if not disambiguation is a must
             if len(name) > 3:
                 if len(self.cdb.name2cui[name]) == 1:
@@ -38,23 +38,15 @@ class CatAnn(object):
                         if not name_case or self.cdb.name_isupper[name] == name_case:
                             if not name_case or (len(name) > 4):
                                 # Means name is not upper, disambiguation is needed
-                                n_words, words_cnt = self._n_words_appearing(
-                                    name, doc, doc_words
-                                )
+                                n_words, words_cnt = self._n_words_appearing(name, doc, doc_words)
                                 d = self.cdb.cui2words[cui]
-                                perc = 0
+                                perc =  0
                                 cnt = 0
                                 if name in d:
                                     perc = d[name] / sum(d.values())
                                     cnt = d[name]
-                                if (
-                                    (n_words > len(tkns) * 2 and words_cnt > 5)
-                                    or (perc > 0.6 or cnt > 5)
-                                    or pref_name
-                                ):
-                                    self._cat._add_ann(
-                                        cui, doc, tkns, acc=0.4, name=name
-                                    )
+                                if (n_words > len(tkns)*2 and words_cnt > 5) or (perc > 0.6 or cnt > 5) or pref_name:
+                                    self._cat._add_ann(cui, doc, tkns, acc=0.4, name=name)
                                 else:
                                     to_disamb.append((list(tkns), name))
                             else:
@@ -72,15 +64,11 @@ class CatAnn(object):
                     scores = self._scores_words(name, doc, doc_words, tkns)
                     acc = self.softmax(scores.values())
                     if len(name) < 6:
-                        if self.cdb.name_isupper[name] == name_case or (
-                            not name_case and len(name) > 3
-                        ):
+                        if self.cdb.name_isupper[name] == name_case or (not name_case and len(name) > 3):
                             # Means match is upper in both cases, tag if acc > 0.5
                             if acc > 0.5:
                                 cui = max(scores.items(), key=operator.itemgetter(1))[0]
-                                self._cat._add_ann(
-                                    cui, doc, tkns, acc=acc / 2, name=name
-                                )
+                                self._cat._add_ann(cui, doc, tkns, acc=acc/2, name=name)
                             else:
                                 to_disamb.append((list(tkns), name))
                         else:
@@ -89,11 +77,12 @@ class CatAnn(object):
                         # We can be almost sure that everything is fine, threshold of 0.1
                         if acc > 0.2:
                             cui = max(scores.items(), key=operator.itemgetter(1))[0]
-                            self._cat._add_ann(cui, doc, tkns, acc=acc / 1.5, name=name)
+                            self._cat._add_ann(cui, doc, tkns, acc=acc/1.5, name=name)
                         else:
                             to_disamb.append((list(tkns), name))
             else:
                 to_disamb.append((list(tkns), name))
+
 
     def softmax(self, x):
         """Compute softmax values for each sets of scores in x."""
@@ -108,6 +97,7 @@ class CatAnn(object):
             return 0
         e_x = np.exp(x / np.max(x))
         return max(e_x / e_x.sum())
+
 
     def _scores_words(self, name, doc, doc_words, tkns):
         scores = {}
@@ -152,6 +142,7 @@ class CatAnn(object):
                 """
             scores[cui] = score
         return scores
+
 
     def _n_words_appearing(self, name, doc, doc_words):
         cui = list(self.cdb.name2cui[name])[0]

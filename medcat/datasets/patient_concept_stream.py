@@ -22,12 +22,11 @@ Takes as input a pickled dict of pt2stream. The format should be:
     {'patient_id': (concept_cui, concept_count_for_patient, timestamp_of_first_occurrence_for_patient), ...}
 """
 
-
 class PatientConceptStreamConfig(datasets.BuilderConfig):
-    """BuilderConfig for PatientConceptStream.
+    """ BuilderConfig for PatientConceptStream.
 
-    Args:
-        **kwargs: keyword arguments forwarded to super.
+        Args:
+            **kwargs: keyword arguments forwarded to super.
     """
 
     def __init__(self, **kwargs):
@@ -48,13 +47,14 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
         ),
     ]
 
+
     def _info(self):
         return datasets.DatasetInfo(
             description=_DESCRIPTION,
             features=datasets.Features(
                 {
                     "patient_id": datasets.Value("string"),
-                    "stream": [datasets.Value("string")],
+                    "stream": [datasets.Value('string')],
                 }
             ),
             # No default supervised_keys (as we have to pass both question
@@ -77,7 +77,7 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
     def _generate_examples(self, filepath):
         """This function returns the examples in the raw (text) form."""
         logging.info("generating examples from = %s", filepath)
-        with open(filepath, "rb") as f:
+        with open(filepath, 'rb') as f:
             pt2stream = pickle.load(f)
             for pt, stream in pt2stream.items():
                 out_stream = []
@@ -90,4 +90,5 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
 
                     out_stream.append(data[0])
 
-                yield pt, {"patient_id": str(pt), "stream": out_stream}
+                yield pt, {'patient_id': str(pt),
+                           'stream': out_stream}

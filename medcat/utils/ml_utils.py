@@ -1,18 +1,17 @@
 def get_lr_linking(config, cui_count, params, similarity):
-    if config.linking["optim"]["type"] == "standard":
-        return config.linking["optim"]["lr"]
-    elif config.linking["optim"]["type"] == "linear":
-        lr = config.linking["optim"]["base_lr"]
-        cui_count += 1  # Just in case incrase by 1
-        return max(lr / cui_count, config.linking["optim"]["min_lr"])
+    if config.linking['optim']['type'] == 'standard':
+        return config.linking['optim']['lr']
+    elif config.linking['optim']['type'] == 'linear':
+        lr = config.linking['optim']['base_lr']
+        cui_count += 1 # Just in case incrase by 1
+        return max(lr / cui_count, config.linking['optim']['min_lr'])
     else:
         raise Exception("Optimizer not implemented")
-
 
 def get_batch(ind, batch_size, x, y, cpos, device):
     # Get the start/end index for this batch
     start = ind * batch_size
-    end = (ind + 1) * batch_size
+    end = (ind+1) * batch_size
 
     # Get the batch
     x_batch = x[start:end]
@@ -26,7 +25,6 @@ def get_batch(ind, batch_size, x, y, cpos, device):
 def load_hf_tokenizer(tokenizer_name):
     try:
         from transformers import AutoTokenizer
-
         hf_tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     except Exception:
         log.exception("The Huggingface tokenizer could not be created") # noqa
@@ -46,9 +44,8 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
         log.info("Rebuilding vocab") # noqa
         try:
             from transformers import AutoModel
-
             model = AutoModel.from_pretrained(model_name)
-            if "xlnet" in model_name.lower():
+            if 'xlnet' in model_name.lower():
                 embs = model.get_input_embeddings().weight.cpu().detach().numpy()
             else:
                 embs = model.embeddings.word_embeddings.weight.cpu().detach().numpy()
@@ -56,7 +53,7 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             # Reset all vecs in current vocab
             vocab.vec_index2word = {}
             for ind in vocab.index2word.keys():
-                vocab.vocab[vocab.index2word[ind]]["vec"] = None
+                vocab.vocab[vocab.index2word[ind]]['vec'] = None
 
             for i in range(hf_tokenizer.vocab_size):
                 tkn = hf_tokenizer.ids_to_tokens[i]

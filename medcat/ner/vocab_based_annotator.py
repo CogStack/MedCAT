@@ -6,9 +6,8 @@ import logging
 
 log = logging.getLogger(__name__)
 
-
-def maybe_annotate_name(name, tkns, doc, cdb, config, label="concept"):
-    r"""Given a name it will check should it be annotated based on config rules. If yes
+def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
+    r''' Given a name it will check should it be annotated based on config rules. If yes
     the annotation will be added to the doc._.ents array.
 
     Args:
@@ -24,27 +23,25 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label="concept"):
             Global config for medcat.
         label (`str`):
             Label for this name (usually `concept` if we are using a vocab based approach).
-    """
+    '''
 
     log.debug("Maybe annotating name: {}".format(name))
 
     # Check uppercase to distinguish uppercase and lowercase words that have a different meaning.
-    if config.ner.get("check_upper_case_names"):
+    if config.ner.get('check_upper_case_names'):
         # Check whether name is completely uppercase in CDB.
         if cdb.name_isupper.get(name, False):
             # Check whether tokens are also in uppercase. If tokens are not in uppercase, there is a mismatch.
             if not all([x.is_upper for x in tkns]):
                 return None
 
-    if len(name) >= config.ner["min_name_len"]:
+    if len(name) >= config.ner['min_name_len']:
         # Check the upper case limit, last part checks is it one token and uppercase
-        if len(name) >= config.ner["upper_case_limit_len"] or (
-            len(tkns) == 1 and tkns[0].is_upper
-        ):
+        if len(name) >= config.ner['upper_case_limit_len'] or (len(tkns) == 1 and tkns[0].is_upper):
             # Everything is fine, mark name
             entity = Span(doc, tkns[0].i, tkns[-1].i + 1, label=label)
             # Only set this property when using a vocab approach and where this name
-            # fits a name in the cdb. All standard name entity recognition models will not set this.
+            #fits a name in the cdb. All standard name entity recognition models will not set this.
             entity._.detected_name = name
             entity._.link_candidates = cdb.name2cuis[name]
             entity._.id = len(doc._.ents)
@@ -53,15 +50,12 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label="concept"):
             doc._.ents.append(entity)
 
             # Not necessary, but why not
-            log.debug(
-                "NER detected an entity."
-                + "\n\tDetected name: {}".format(entity._.detected_name)
-                + "\n\tLink candidates: {}\n".format(entity._.link_candidates)
-            )
+            log.debug("NER detected an entity." +
+                      "\n\tDetected name: {}".format(entity._.detected_name) +
+                      "\n\tLink candidates: {}\n".format(entity._.link_candidates))
             return entity
 
     return None
-
 
 """
 def check_disambiguation_status(name, cuis, config):

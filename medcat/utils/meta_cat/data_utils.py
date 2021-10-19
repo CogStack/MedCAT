@@ -1,14 +1,7 @@
-def prepare_from_json(
-    data,
-    cntx_left,
-    cntx_right,
-    tokenizer,
-    cui_filter=None,
-    replace_center=None,
-    prerequisites={},
-    lowercase=True,
-):
-    """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
+def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
+                      cui_filter=None, replace_center=None, prerequisites={},
+                      lowercase=True):
+    """ Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
     working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
@@ -36,84 +29,67 @@ def prepare_from_json(
     """
     out_data = {}
 
-    for project in data["projects"]:
-        for document in project["documents"]:
-            text = str(document["text"])
+    for project in data['projects']:
+        for document in project['documents']:
+            text = str(document['text'])
             if lowercase:
                 text = text.lower()
 
             if len(text) > 0:
                 doc_text = tokenizer(text)
 
-                for ann in document.get(
-                    "annotations", document.get("entities", {}).values()
-                ):  # A hack to suport entities and annotations
-                    cui = ann["cui"]
+                for ann in document.get('annotations', document.get('entities', {}).values()): # A hack to suport entities and annotations
+                    cui = ann['cui']
                     skip = False
-                    if "meta_anns" in ann and prerequisites:
+                    if 'meta_anns' in ann and prerequisites:
                         # It is possible to require certain meta_anns to exist and have a specific value
                         for meta_ann in prerequisites:
-                            if (
-                                meta_ann not in ann["meta_anns"]
-                                or ann["meta_anns"][meta_ann]["value"]
-                                != prerequisites[meta_ann]
-                            ):
+                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisites[meta_ann]:
                                 # Skip this annotation as the prerequisite is not met
                                 skip = True
                                 break
 
-                    if not skip and (
-                        cui_filter is None or not cui_filter or cui in cui_filter
-                    ):
-                        if ann.get("validated", True) and (
-                            not ann.get("deleted", False)
-                            and not ann.get("killed", False)
-                            and not ann.get("irrelevant", False)
-                        ):
-                            start = ann["start"]
-                            end = ann["end"]
+                    if not skip and (cui_filter is None or not cui_filter or cui in cui_filter):
+                        if ann.get('validated', True) and (not ann.get('deleted', False) and not ann.get('killed', False)
+                                                           and not ann.get('irrelevant', False)):
+                            start = ann['start']
+                            end = ann['end']
 
                             # Get the index of the center token
                             ind = 0
-                            for ind, pair in enumerate(doc_text["offset_mapping"]):
+                            for ind, pair in enumerate(doc_text['offset_mapping']):
                                 if start >= pair[0] and start < pair[1]:
                                     break
 
                             _start = max(0, ind - cntx_left)
-                            _end = min(len(doc_text["input_ids"]), ind + 1 + cntx_right)
-                            tkns = doc_text["input_ids"][_start:_end]
-                            cpos = cntx_left + min(0, ind - cntx_left)
+                            _end = min(len(doc_text['input_ids']), ind + 1 + cntx_right)
+                            tkns = doc_text['input_ids'][_start:_end]
+                            cpos = cntx_left + min(0, ind-cntx_left)
 
                             if replace_center is not None:
                                 if lowercase:
                                     replace_center = replace_center.lower()
-                                for p_ind, pair in enumerate(
-                                    doc_text["offset_mapping"]
-                                ):
+                                for p_ind, pair in enumerate(doc_text['offset_mapping']):
                                     if start >= pair[0] and start < pair[1]:
                                         s_ind = p_ind
                                     if end > pair[0] and end <= pair[1]:
                                         e_ind = p_ind
 
                                 ln = e_ind - s_ind
-                                tkns = (
-                                    tkns[:cpos]
-                                    + tokenizer(replace_center)["input_ids"]
-                                    + tkns[cpos + ln + 1 :]
-                                )
+                                tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
 
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
                             meta_anns = []
-                            if "meta_anns" in ann:
-                                meta_anns = ann["meta_anns"]
+                            if 'meta_anns' in ann:
+                                meta_anns = ann['meta_anns']
 
                                 if type(meta_anns) == dict:
                                     meta_anns = meta_anns.values()
 
                             # If the annotation is validated
                             for meta_ann in meta_anns:
-                                name = meta_ann["name"]
-                                value = meta_ann["value"]
+                                name = meta_ann['name']
+                                value = meta_ann['value']
 
                                 sample = [tkns, cpos, value]
 
@@ -125,7 +101,7 @@ def prepare_from_json(
 
 
 def encode_category_values(data, existing_category_value2id={}):
-    r"""Converts the category values in the data outputed by `prepare_from_json`
+    r''' Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
 
     Args:
@@ -139,7 +115,7 @@ def encode_category_values(data, existing_category_value2id={}):
             New data with integeres inplace of strings for categry values.
         category_value2id (`dict`):
             Map rom category value to ID for all categories in the data.
-    """
+    '''
     data = list(data)
     category_value2id = existing_category_value2id
     category_values = set([x[2] for x in data])
@@ -155,7 +131,7 @@ def encode_category_values(data, existing_category_value2id={}):
 
 
 def json_to_fake_spacy(data, id2text):
-    r"""Creates a generator of fake spacy documents, used for running
+    r''' Creates a generator of fake spacy documents, used for running
     meta_cat pipe separately from main cat pipeline.
 
     Args:
@@ -167,7 +143,7 @@ def json_to_fake_spacy(data, id2text):
     Returns:
         generator:
             Generator of spacy like documents that can be feed into meta_cat.pipe
-    """
+    '''
 
     class Empty(object):
         def __init__(self):
@@ -192,9 +168,9 @@ def json_to_fake_spacy(data, id2text):
             self.id = id
 
     for id in data.keys():
-        ents = data[id]["entities"].values()
+        ents = data[id]['entities'].values()
 
         doc = Doc(text=id2text[id], id=id)
-        doc.ents.extend([Span(ent["start"], ent["end"], ent["id"]) for ent in ents])
+        doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
 
         yield doc

@@ -20,12 +20,11 @@ _CITATION = """\
 _DESCRIPTION = """\
 Takes as input a json export from medcattrainer."""
 
-
 class MedCATAnnotationsConfig(datasets.BuilderConfig):
-    """BuilderConfig for MedCATNER.
+    """ BuilderConfig for MedCATNER.
 
-    Args:
-      **kwargs: keyword arguments forwarded to super.
+        Args:
+          **kwargs: keyword arguments forwarded to super.
     """
 
     def __init__(self, **kwargs):
@@ -43,6 +42,7 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
         ),
     ]
 
+
     def _info(self):
         return datasets.DatasetInfo(
             description=_DESCRIPTION,
@@ -53,6 +53,7 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
                     "ent_starts": datasets.Sequence(datasets.Value("int32")),
                     "ent_ends": datasets.Sequence(datasets.Value("int32")),
                     "ent_cuis": datasets.Sequence(datasets.Value("string")),
+
                 }
             ),
             # No default supervised_keys (as we have to pass both question
@@ -74,27 +75,23 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
 
     def _generate_examples(self, filepath):
         logging.info("generating examples from = %s", filepath)
-        with open(filepath, "r") as f:
-            projects = json.load(f)["projects"]
+        with open(filepath, 'r') as f:
+            projects = json.load(f)['projects']
             for project in projects:
-                for ind, doc in enumerate(project["documents"]):
+                for ind, doc in enumerate(project['documents']):
                     starts = []
                     ends = []
                     cuis = []
-                    for entity in doc["annotations"]:
-                        if (
-                            entity.get("correct", True)
-                            or entity.get("manually_created", False)
-                            or entity.get("alternative", False)
-                        ):
-                            starts.append(entity["start"])
-                            ends.append(entity["end"])
-                            cuis.append(entity["cui"])
-                    doc_id = doc.get("id", ind)
+                    for entity in doc['annotations']:
+                        if entity.get('correct', True) or entity.get('manually_created', False) or entity.get('alternative', False):
+                            starts.append(entity['start'])
+                            ends.append(entity['end'])
+                            cuis.append(entity['cui'])
+                    doc_id = doc.get('id', ind)
                     yield "{}".format(doc_id), {
-                        "id": int(doc_id),
-                        "text": str(doc["text"]),
-                        "ent_starts": starts,
-                        "ent_ends": ends,
-                        "ent_cuis": cuis,
-                    }
+                            'id': int(doc_id),
+                            'text': str(doc['text']),
+                            'ent_starts': starts,
+                            'ent_ends': ends,
+                            'ent_cuis': cuis,
+                            }

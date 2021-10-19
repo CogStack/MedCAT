@@ -1,10 +1,10 @@
 import re
 
-
 def clean_primary_name(cdb):
-    """BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION"""
-    # This will remove ambiguity for primary names
-    # as we assume that they are unique
+    """ BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION
+    """
+    # This will remove ambiguity for primary names 
+    #as we assume that they are unique
     for cui in cdb.cui2pref_name.keys():
         name = cdb.cui2pref_name[cui]
         # Link only this cui to the pref_name, if name > 4 chars
@@ -35,7 +35,8 @@ def clean_primary_name(cdb):
 
 
 def clean_common_words(cdb, words):
-    """BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION"""
+    """ BE CAREFUL - I WOULD RECOMMEND NOT USING THIS FUNCTION
+    """
     # This will mark common words as not unique
     for word in words:
         # Remove word from CUIs
@@ -55,7 +56,6 @@ def clean_common_words(cdb, words):
 
             # Remove the word now
             del cdb.name2cui[word]
-
 
 def fix_snomed_names(cdb, cat):
     r = re.compile("\([^\(\)]+\)$")
