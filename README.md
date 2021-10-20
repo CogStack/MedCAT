@@ -101,7 +101,7 @@ A basic trained model is made public. It contains ~ 35K concepts available in `M
 
 - Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
 
-- CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1_5.dat) - Built from MedMentions
+- CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1_2.dat) - Built from MedMentions
 
 - MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical)
 
