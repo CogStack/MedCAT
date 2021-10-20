@@ -162,7 +162,7 @@ class Config(BaseConfig):
                                               'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                               'merge_entities', 'merge_subtokens'],
                 # What model will be used for tokenization
-                'spacy_model': 'en_core_sci_md',
+                'spacy_model': 'en_core_web_md',
                 # Separator that will be used to merge tokens of a name. Once a CDB is built this should
                 #always stay the same.
                 'separator': '~',
