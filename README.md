@@ -34,7 +34,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - For macOS/linux: `pip install --upgrade medcat`
 - For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
-2. Quickstart (v1.5+):
+2. Quickstart (MedCAT v1.2+):
 ```python
 from medcat.cat import CAT
 
@@ -55,12 +55,10 @@ cat.create_model_pack(<save path>)
 
 
 3. Quick start with separate models:
-First download scispacy models
+New Models (MedCAT v1.2+) need the spacy `en_core_web_md` while older ones use the scispacy models, install the one you need or all if not sure. If using model packs you do not need to download these models: 
 ```
+python -m spacy download en_core_web_md
 pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
-```
-or
-```
 pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_lg-0.4.0.tar.gz
 ```
 ```python
