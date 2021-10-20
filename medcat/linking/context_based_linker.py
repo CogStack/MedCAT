@@ -1,9 +1,14 @@
-from medcat.utils.filters import check_filters
-from medcat.linking.vector_context_model import ContextModel
 import random
 import logging
 
-class Linker(object):
+from spacy.tokens import Span
+
+from medcat.utils.filters import check_filters
+from medcat.linking.vector_context_model import ContextModel
+from medcat.pipeline.pipe_runner import PipeRunner
+
+
+class Linker(PipeRunner):
     r''' Link to a biomedical database.
 
     Args:
@@ -12,6 +17,10 @@ class Linker(object):
         config
     '''
     log = logging.getLogger(__name__)
+
+    # Custom pipeline component name
+    name = 'cat_linker'
+
     def __init__(self, cdb, vocab, config):
         self.cdb = cdb
         self.vocab = vocab
@@ -19,7 +28,7 @@ class Linker(object):
         self.context_model = ContextModel(self.cdb, self.vocab, self.config)
         # Counter for how often did a pair (name,cui) appear and was used during training
         self.train_counter = {}
-
+        super().__init__(self.config.general['workers'])
 
     def _train(self, cui, entity, doc, add_negative=True):
         name = "{} - {}".format(entity._.detected_name, cui)
@@ -35,7 +44,6 @@ class Linker(object):
             if add_negative and self.config.linking['negative_probability'] >= random.random():
                 self.context_model.train_using_negative_sampling(cui)
             self.train_counter[name] = self.train_counter.get(name, 0) + 1
-
 
     def __call__(self, doc):
         r'''
@@ -114,7 +122,32 @@ class Linker(object):
 
         doc._.ents = linked_entities
         self._create_main_ann(doc)
+
+        if self.config.general['make_pretty_labels'] is not None:
+            self._make_pretty_labels(doc, self.config.general['make_pretty_labels'])
+
         return doc
+
+
+    def _make_pretty_labels(self, doc, style=None):
+        ents = list(doc.ents)
+
+        n_ents = []
+        for ent in ents:
+            if style == 'short':
+                label = ent._.cui
+            elif style == 'long':
+                label = "{} | {} | {:.2f}".format(ent._.cui, self.cdb.get_name(ent._.cui), ent._.context_similarity)
+            else:
+                label = 'concept'
+
+            n_ent = Span(doc, ent.start, ent.end, label)
+            for attr in ent._.__dict__['_extensions'].keys():
+                setattr(n_ent._, attr, getattr(ent._, attr))
+            n_ents.append(n_ent)
+
+        doc.ents = n_ents
+
 
 
     def _create_main_ann(self, doc, tuis=None):

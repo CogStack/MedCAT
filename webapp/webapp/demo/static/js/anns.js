@@ -5,19 +5,14 @@ let info = new Vue({
   el: '#train-annotations',
   delimiters: ['[[', ']]'],
   data: {
-    selected_concept: doc_json['entities'][0],
+    selected_concept: doc_json['annotations'] == undefined ? { "msg": "No documents yet" } : doc_json['annotations'][0],
     show: false,
     elementVisible: false,
     msg: ''
   },
   methods: {
     show_info: function(id) {
-      for(i = 0; i <= doc_json['entities'].length; i++){
-        if(doc_json['entities'][i].id == id){
-          this.selected_concept = doc_json['entities'][i];
-          break;
-        }
-      }
+      this.selected_concept = doc_json['annotations'][id]
     },
     concept_feedback: function(neg) {
       if(neg){
