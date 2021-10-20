@@ -120,6 +120,9 @@ class MetaCAT(PipeRunner):
             device = torch.device(g_config['device'])
             self.model.load_state_dict(torch.load(path, map_location=device))
 
+            # Save everything now
+            self.save(save_dir_path=save_dir_path)
+
         return report
 
     def eval(self, json_path):
