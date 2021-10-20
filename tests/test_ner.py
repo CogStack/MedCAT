@@ -61,7 +61,7 @@ class A_NERTests(unittest.TestCase):
         cls.cdb.add_names(cui='S-229005', names=prepare_name('CDB', cls.pipe, {}, cls.config))
 
         print("Add test text")
-        cls.text = "CDB - I was running and then Movar    Virus attacked and CDb"
+        cls.text = "CDB - I was running and then Movar    Viruses attacked and CDb"
         cls.text_post_pipe = cls.pipe(cls.text)
 
     @classmethod
@@ -69,7 +69,7 @@ class A_NERTests(unittest.TestCase):
         cls.pipe.destroy()
 
     def test_aa_cdb_names_output(self):
-        target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
+        target_result = {'S-229004': {'movar~viruse', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         self.assertEqual(self.cdb.cui2names, target_result)
 
     def test_ab_entities_length(self):
@@ -92,6 +92,8 @@ class A_NERTests(unittest.TestCase):
     def test_af_min_name_entities_length(self):
         self.config.ner['min_name_len'] = 4
         self.text_post_pipe = self.pipe(self.text)
+        print(self.text)
+        print(self.text_post_pipe._.ents)
         self.assertEqual(len(self.text_post_pipe._.ents), 2, "Should equal 2")
 
 
