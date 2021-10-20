@@ -27,7 +27,7 @@ setuptools.setup(
         'scipy<=1.7.1,>=1.5.4',
         'transformers~=4.11.3',
         'torch~=1.8.1',
-        'tqdm<4.50.0,>=4.27',
+        'tqdm<4.62.3,>=4.27',
         'sklearn~=0.0',
         'elasticsearch~=7.10',
         'dill~=0.3.4',
