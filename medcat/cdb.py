@@ -83,7 +83,6 @@ class CDB(object):
         self.vocab = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
 
-
     def get_name(self, cui):
         r''' Returns preferred name if it exists, otherwise it will return
         the logest name assigend to the concept.
@@ -101,11 +100,9 @@ class CDB(object):
 
         return name
 
-
     def update_cui2average_confidence(self, cui, new_sim):
         self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim) / \
                                             (self.cui2count_train.get(cui, 0) + 1)
-
 
     def remove_names(self, cui: str, names: Dict):
         r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
@@ -164,7 +161,6 @@ class CDB(object):
             name_status = 'A'
 
         self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
-
 
     def add_concept(self, cui: str, names: Dict, ontologies: set, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
@@ -278,7 +274,6 @@ class CDB(object):
                 else:
                     self.addl_info['type_id2cuis'][type_id] = {cui}
 
-
     def add_addl_info(self, name, data, reset_existing=False):
         r''' Add data to the addl_info dictionary. This is done in a function to
         not directly access the addl_info dictionary.
@@ -295,7 +290,6 @@ class CDB(object):
             self.addl_info[name] = {}
 
         self.addl_info[name].update(data)
-
 
     def update_context_vector(self, cui, vectors, negative=False, lr=None, cui_count=0):
         r''' Add the vector representation of a context for this CUI.
@@ -337,11 +331,11 @@ class CDB(object):
 
                 # DEBUG
                 self.log.debug("Updated vector embedding.\n" +
-                        "CUI: {}, Context Type: {}, Similarity: {:.2f}, Is Negative: {}, LR: {:.5f}, b: {:.3f}".format(cui, context_type,
+                        "CUI: %s, Context Type: %s, Similarity: %.2f, Is Negative: %s, LR: %.5f, b: %.3f", (cui, context_type,
                             similarity, negative, lr, b))
                 cv = self.cui2context_vectors[cui][context_type]
                 similarity_after = np.dot(unitvec(cv), unitvec(vector))
-                self.log.debug("Similarity before vs after: {:.5f} vs {:.5f}".format(similarity, similarity_after))
+                self.log.debug("Similarity before vs after: %.5f vs %.5f", (similarity, similarity_after))
             else:
                 if negative:
                     self.cui2context_vectors[cui][context_type] = -1 * vector
@@ -350,15 +344,14 @@ class CDB(object):
 
                 # DEBUG
                 self.log.debug("Added new context type with vectors.\n" +
-                        "CUI: {}, Context Type: {}, Is Negative: {}".format(cui, context_type, negative))
+                        "CUI: %s, Context Type: %s, Is Negative: %s", (cui, context_type, negative))
 
         if not negative:
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-
     def save(self, path):
-        r''' Saves model to file (in fact it saves vairables of this class). 
+        r''' Saves model to file (in fact it saves vairables of this class).
 
         Args:
             path (`str`):
@@ -370,7 +363,6 @@ class CDB(object):
             to_save['config'] = self.config.__dict__
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
-
 
     @classmethod
     def load(cls, path, config=None):
@@ -397,7 +389,6 @@ class CDB(object):
 
         return cdb
 
-
     def import_old_cdb_vectors(self, cdb):
         # Import context vectors
         for cui in self.cui2names: # Loop through all CUIs in the current CDB
@@ -410,7 +401,6 @@ class CDB(object):
                     self.cui2context_vectors[cui]['short'] = cdb.cui2context_vec_short[cui]
 
                 self.cui2count_train[cui] = cdb.cui_count[cui]
-
 
     def import_old_cdb(self, cdb, import_vectors=True):
         r''' Import all data except for cuis and names from an old CDB.
@@ -447,7 +437,6 @@ class CDB(object):
         # Import cui 2 ontologies
         self.addl_info['cui2ontologies'] = cdb.cui2ontos
 
-
     def import_training(self, cdb, overwrite=True):
         r''' This will import vector embeddings from another CDB. No new concepts will be added.
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
@@ -466,14 +455,13 @@ class CDB(object):
         for cui in cdb.cui2context_vectors:
             if cui in self.cui2names:
                 for context_type, vector in cdb.cui2context_vectors[cui].items():
-                    if overwrite or context_type not in self.cdb.cui2context_vectors[cui]:
+                    if overwrite or context_type not in cdb.cui2context_vectors[cui]:
                         self.cui2context_vectors[cui][context_type] = vector
                     else:
                         self.cui2context_vectors[cui][context_type] = (vector + self.cui2context_vectors[cui][context_type]) / 2
 
                 # Increase the vector count
                 self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
-
 
     def reset_cui_count(self, n=10):
         r''' Reset the CUI count for all concepts that received training, used when starting new unsupervised training
@@ -489,7 +477,6 @@ class CDB(object):
         for cui in self.cui2count_train.keys():
             self.cui2count_train[cui] = n
 
-
     def reset_training(self):
         r''' Will remove all training efforts - in other words all embeddings that are learnt
         for concepts in the current CDB. Please note that this does not remove synonyms (names) that were
@@ -498,7 +485,6 @@ class CDB(object):
         self.cui2count_train = {}
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
-
 
     def filter_by_cui(self, cuis_to_keep):
         ''' Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
@@ -570,7 +556,6 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
 
-
     def print_stats(self):
         r'''Print basic statistics for the CDB.
         '''
@@ -581,12 +566,10 @@ class CDB(object):
         self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
             [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
 
-
     def reset_concept_similarity(self):
         r''' Reset concept similarity matrix.
         '''
         self.addl_info['similarity'] = {}
-
 
     def most_similar(self, cui, context_type, type_id_filter=[], min_cnt=0, topn=50, force_build=False):
         r''' Given a concept it will calculate what other concepts in this CDB have the most similar
@@ -653,7 +636,7 @@ class CDB(object):
         cnt_inds = np.arange(0, len(sim_data['sim_vectors_counts']))
         if min_cnt > 0:
             cnt_inds = np.where(sim_data['sim_vectors_counts'] >= min_cnt)[0]
-        # Intersect cnt and type_id 
+        # Intersect cnt and type_id
         inds = np.intersect1d(type_id_inds, cnt_inds)
 
         mtrx = sim_data['sim_vectors'][inds]
