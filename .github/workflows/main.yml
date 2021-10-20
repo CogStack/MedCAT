@@ -2,7 +2,7 @@ name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ CAT-77 ]
   pull_request:
     branches: [ master ]
 
@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Lint
         run: |
-          flake8 medcat --exit-zero
+          flake8 medcat
       - name: Test
         run: |
           python -m unittest discover
