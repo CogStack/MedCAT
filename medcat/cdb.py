@@ -462,7 +462,7 @@ class CDB(object):
         for cui in cdb.cui2context_vectors:
             if cui in self.cui2names:
                 for context_type, vector in cdb.cui2context_vectors[cui].items():
-                    if overwrite or context_type not in self.cdb.cui2context_vectors[cui]:
+                    if overwrite or context_type not in self.cui2context_vectors[cui]:
                         self.cui2context_vectors[cui][context_type] = vector
                     else:
                         self.cui2context_vectors[cui][context_type] = (vector + self.cui2context_vectors[cui][context_type]) / 2
