@@ -21,7 +21,7 @@ class A_NERTests(unittest.TestCase):
         print("Set up CDB")
         cls.config = Config()
         cls.config.general['log_level'] = logging.INFO
-        cls.config.general["spacy_model"] = "en_core_sci_sm"
+        cls.config.general["spacy_model"] = "en_core_web_md"
         cls.cdb = CDB(config=cls.config)
 
         print("Set up Vocab")

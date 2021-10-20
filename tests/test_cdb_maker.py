@@ -29,7 +29,7 @@ class A_CDBMakerLoadTests(unittest.TestCase):
         print("Load test database csvs for load tests")
         config = Config()
         config.general['log_level'] = logging.DEBUG
-        config.general["spacy_model"] = "en_core_sci_sm"
+        config.general["spacy_model"] = "en_core_web_md"
         cls.maker = CDBMaker(config)
         csvs = [
             os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
