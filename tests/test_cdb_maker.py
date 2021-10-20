@@ -119,7 +119,7 @@ class B_CDBMakerEditTests(unittest.TestCase):
         print("Load test database csvs for edit tests")
         cls.config = Config()
         cls.config.general['log_level'] = logging.DEBUG
-        cls.config.general["spacy_model"] = "en_core_sci_sm"
+        cls.config.general["spacy_model"] = "en_core_web_md"
         cls.maker = CDBMaker(cls.config)
         csvs = [
             os.path.join(os.path.dirname(os.path.realpath(__file__)), '..', 'examples', 'cdb.csv'),
