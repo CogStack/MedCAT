@@ -84,4 +84,3 @@ class TokenizerNER(object):
                 examples['id'].append(old_ids[_ind])
 
         return examples
-

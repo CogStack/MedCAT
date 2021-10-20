@@ -38,6 +38,8 @@ nohup.out
 tmp.py
 .DS_Store
 *.lock
+*.egg*
 
 # models files
 *.dat
+!examples/*.dat

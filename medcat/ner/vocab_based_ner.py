@@ -1,13 +1,20 @@
-from medcat.ner.vocab_based_annotator import maybe_annotate_name
 import logging
+from medcat.ner.vocab_based_annotator import maybe_annotate_name
+from medcat.pipeline.pipe_runner import PipeRunner
 
-class NER(object):
+
+class NER(PipeRunner):
     r'''
     '''
     log = logging.getLogger(__name__)
+
+    # Custom pipeline component name
+    name = 'cat_ner'
+
     def __init__(self, cdb, config):
         self.config = config
         self.cdb = cdb
+        super().__init__(self.config.general['workers'])
 
     def __call__(self, doc):
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
@@ -20,7 +27,6 @@ class NER(object):
             doc (`spacy.tokens.Doc`):
                 Spacy document with detected entities.
         '''
-
         # Just take the tokens we need
         _doc = [tkn for tkn in doc if not tkn._.to_skip]
         for i in range(len(_doc)):

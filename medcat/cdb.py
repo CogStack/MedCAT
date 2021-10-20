@@ -5,10 +5,11 @@ import dill
 import logging
 import numpy as np
 from typing import Dict, List, Set
+from functools import partial
 
 from medcat.utils.matutils import unitvec, sigmoid
 from medcat.utils.ml_utils import get_lr_linking
-from medcat.config import Config
+from medcat.config import Config, weighted_average, workers
 
 
 class CDB(object):
@@ -59,6 +60,7 @@ class CDB(object):
         self.cui2snames = {}
         self.cui2context_vectors = {}
         self.cui2count_train = {}
+        self.cui2info = {}
         self.cui2tags = {} # Used to add custom tags to CUIs
         self.cui2type_ids = {}
         self.cui2preferred_name = {}
@@ -164,14 +166,14 @@ class CDB(object):
         self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
 
-    def add_concept(self, cui: str, names: Dict, ontologies: set(), name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
+    def add_concept(self, cui: str, names: Dict, ontologies: set, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
 
         Args:
             cui (`str`):
-                Concept ID or unique identifer in this database, all concepts that have
+                Concept ID or unique identifier in this database, all concepts that have
                 the same CUI will be merged internally.
             names (`Dict[str, Dict]`):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
@@ -379,6 +381,8 @@ class CDB(object):
             data = dill.load(f)
             if config is None:
                 config = Config.from_dict(data['config'])
+                cls._ensure_backward_compatibility(config)
+
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
 
@@ -458,7 +462,7 @@ class CDB(object):
         for cui in cdb.cui2context_vectors:
             if cui in self.cui2names:
                 for context_type, vector in cdb.cui2context_vectors[cui].items():
-                    if overwrite or context_type not in self.cdb.cui2context_vectors[cui]:
+                    if overwrite or context_type not in self.cui2context_vectors[cui]:
                         self.cui2context_vectors[cui][context_type] = vector
                     else:
                         self.cui2context_vectors[cui][context_type] = (vector + self.cui2context_vectors[cui][context_type]) / 2
@@ -511,13 +515,13 @@ class CDB(object):
         names_to_keep = set()
         snames_to_keep = set()
         for cui in cuis_to_keep:
-            names_to_keep.update(self.cui2names[cui])
-            snames_to_keep.update(self.cui2snames[cui])
+            names_to_keep.update(self.cui2names.get(cui, []))
+            snames_to_keep.update(self.cui2snames.get(cui, []))
 
         # Based on the names get also the indirect CUIs that have to be kept
         all_cuis_to_keep = set()
         for name in names_to_keep:
-            all_cuis_to_keep.update(self.name2cuis[name])
+            all_cuis_to_keep.update(self.name2cuis.get(name, []))
 
         new_name2cuis = {}
         new_name2cuis2status = {}
@@ -531,22 +535,24 @@ class CDB(object):
 
         # Subset cui2<whatever>
         for cui in all_cuis_to_keep:
-            new_cui2names[cui] = self.cui2names[cui]
-            new_cui2snames[cui] = self.cui2snames[cui]
-            if cui in self.cui2context_vectors:
-                new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
-                # We assume that it must have the cui2count_train if it has a vector
-                new_cui2count_train[cui] = self.cui2count_train[cui]
-            if cui in self.cui2tags:
-                new_cui2tags[cui] = self.cui2tags[cui]
-            new_cui2type_ids[cui] = self.cui2type_ids[cui]
-            if cui in self.cui2preferred_name:
-                new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
+            if cui in self.cui2names:
+                new_cui2names[cui] = self.cui2names[cui]
+                new_cui2snames[cui] = self.cui2snames[cui]
+                if cui in self.cui2context_vectors:
+                    new_cui2context_vectors[cui] = self.cui2context_vectors[cui]
+                    # We assume that it must have the cui2count_train if it has a vector
+                    new_cui2count_train[cui] = self.cui2count_train[cui]
+                if cui in self.cui2tags:
+                    new_cui2tags[cui] = self.cui2tags[cui]
+                new_cui2type_ids[cui] = self.cui2type_ids[cui]
+                if cui in self.cui2preferred_name:
+                    new_cui2preferred_name[cui] = self.cui2preferred_name[cui]
 
         # Subset name2<whatever>
         for name in names_to_keep:
-            new_name2cuis[name] = self.name2cuis[name]
-            new_name2cuis2status[name] = self.name2cuis2status[name]
+            if name in self.name2cuis:
+                new_name2cuis[name] = self.name2cuis[name]
+                new_name2cuis2status[name] = self.name2cuis2status[name]
 
         # Replace everything
         self.name2cuis = new_name2cuis
@@ -663,3 +669,15 @@ class CDB(object):
                          'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res
+
+    @staticmethod
+    def _ensure_backward_compatibility(config: Config):
+        # Hacky way of supporting old CDBs
+        weighted_average_function = config.linking['weighted_average_function']
+        if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
+            config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
+        if config.general.get('workers', None) is None:
+            config.general['workers'] = workers()
+        disabled_comps = config.general.get('spacy_disabled_components', [])
+        if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
+            config.general['spacy_disabled_components'].append('lemmatizer')

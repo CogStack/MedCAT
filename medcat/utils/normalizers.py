@@ -1,9 +1,7 @@
-#import hunspell
 import re
-from collections import Counter
-from spacy.tokens import Span
 import spacy
-import os
+from medcat.pipeline.pipe_runner import PipeRunner
+
 
 CONTAINS_NUMBER = re.compile('[0-9]+')
 
@@ -63,6 +61,10 @@ class BasicSpellChecker(object):
     def edits1(self, word):
         "All edits that are one edit away from `word`."
         letters    = 'abcdefghijklmnopqrstuvwxyz'
+
+        if self.config.general['diacritics']:
+            letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+
         splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
         deletes    = [L + R[1:]               for L, R in splits if R]
         transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
@@ -82,7 +84,7 @@ class BasicSpellChecker(object):
         pass
 
 
-class TokenNormalizer(object):
+class TokenNormalizer(PipeRunner):
     r''' Will normalize all tokens in a spacy document.
 
     Args:
@@ -90,10 +92,14 @@ class TokenNormalizer(object):
         spell_checker
     '''
 
+    # Custom pipeline component name
+    name = 'token_normalizer'
+
     def __init__(self, config, spell_checker=None):
         self.config = config
         self.spell_checker = spell_checker
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
+        super().__init__(self.config.general['workers'])
 
     def __call__(self, doc):
         for token in doc:
