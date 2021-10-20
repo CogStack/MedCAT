@@ -21,7 +21,7 @@ setuptools.setup(
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline'],
     install_requires=[
         'numpy<1.21.0,>=1.19.0',
-        'pandas~=1.3.4',
+        'pandas<=1.3.4,>=1.1.5',
         'gensim~=4.1.2',
         'spacy<3.1.4,>=3.0.1',
         'scipy~=1.7.1',
