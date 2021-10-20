@@ -29,7 +29,7 @@ class CDBMaker(object):
     log = logging.getLogger(__package__)
     log = add_handlers(log)
 
-    def __init__(self, config, cdb=None, name_max_words=20):
+    def __init__(self, config, cdb=None):
         self.config = config
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
@@ -150,7 +150,7 @@ class CDBMaker(object):
                     # We can have multiple versions of a name
                     names = {} # {'name': {'tokens': [<str>], 'snames': [<str>]}}
 
-                    raw_names = [raw_name.strip() for raw_name in row[col2ind['name']].split(self.cnf_cm['multi_separator']) if 
+                    raw_names = [raw_name.strip() for raw_name in row[col2ind['name']].split(self.cnf_cm['multi_separator']) if
                                  len(raw_name.strip()) > 0]
                     for raw_name in raw_names:
                         raw_name = raw_name.strip()
@@ -165,9 +165,8 @@ class CDBMaker(object):
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
-                    self.log.debug("\n\n**** Added\n CUI: {}\n Names: {}\n Ontologies: {}\n Name status: {}\n".format(cui, names, ontologies, name_status) +
-                                   " Type IDs: {}\n Description: {}\n Is full build: {}".format(
-                                   type_ids, description, full_build))
+                    self.log.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
+                                   (cui, names, ontologies, name_status, type_ids, description, full_build))
 
         return self.cdb
 
