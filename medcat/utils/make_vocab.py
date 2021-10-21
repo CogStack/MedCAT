@@ -120,7 +120,7 @@ class MakeVocab(object):
         self.vocab.save(path=self.vocab_path)
 
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, epochs=2, min_count=10, window=10, vector_size=300,
                     unigram_table_size=100000000):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path.
@@ -144,9 +144,9 @@ class MakeVocab(object):
                 data = SimpleIter(in_path)
             else:
                 data = data_iter
-            w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
+            w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, vector_size=vector_size, epochs=epochs)
 
-        for word in w2v.wv.vocab.keys():
+        for word in w2v.wv.key_to_index.keys():
             if word in self.vocab:
                 if overwrite:
                     self.vocab.add_vec(word, w2v.wv.get_vector(word))
