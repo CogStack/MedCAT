@@ -76,7 +76,7 @@ class RepairCDB(object):
         self.scores_df = pd.DataFrame(data[1:], columns=data[0])
 
 
-    def unlink_names(self, sort='score', skip=0, cui_filter=None):
+    def unlink_names(self, sort='score', skip=0, cui_filter=None, apply_existing_decisions=0):
         scores_df = self.scores_df.sort_values(sort, ascending=False)
         self.final_cdb.config.general['full_unlink'] = False
         if self.final_cat is None:
@@ -96,7 +96,10 @@ class RepairCDB(object):
                 print("{:3} -- {:20} -> {:20}, base_count: {}, new_count: {}, cui: {}".format(
                     ind, str(name)[:20], str(self.final_cdb.get_name(base_cui))[:30], base_count, new_count, cui))
 
-                decision = input("Decision (l/...): ")
+                if apply_existing_decisions and apply_existing_decisions > ind:
+                    decision = row['decision']
+                else:
+                    decision = input("Decision (l/...): ")
 
                 if decision == 'l':
                     names = self.cdb.cui2names[new_cui]
