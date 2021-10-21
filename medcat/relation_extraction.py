@@ -210,7 +210,7 @@ class RelationExtraction(object):
             lm_accuracy_per_batch = []
             
             for i, data in enumerate(self, 0):
-                tokens, masked_for_pred, e1_e2_start, _, blank_labels = data #  _, _, _, _, _ = data
+                tokens, masked_for_pred, e1_e2_start, _, blank_labels, _, _, _, _, _ = data
                 masked_for_pred = masked_for_pred[(masked_for_pred != pad_id)]
 
                 if masked_for_pred.shape[0] == 0:
@@ -219,12 +219,8 @@ class RelationExtraction(object):
 
                 attention_mask = (tokens != pad_id).float()
 
-                print("================================================")
-                print(tokens.shape)
-
-                #token_type_ids = torch.zeros((tokens.shape[0], tokens.shape[1])).long()
-                token_type_ids = torch.zeros((tokens.shape[0], 1)).long()
-
+                token_type_ids = torch.zeros((tokens.shape[0], tokens.shape[1])).long()
+                
                 #if cuda:
                 #    x = x.cuda(); masked_for_pred = masked_for_pred.cuda()
                 #    attention_mask = attention_mask.cuda()
@@ -234,12 +230,10 @@ class RelationExtraction(object):
                           e1_e2_start=e1_e2_start, pooled_output=None)
 
                 token_mask_matches = (tokens == mask_id).to(dtype=torch.bool, device=self.device)
-            
+
+                #lm_logits = lm_logits[token_mask_matches]
                 #print(token_mask_matches)
-                #print(lm_logits)
-                #print(lm_logits[0])
-                #print(lm_logits[0][token_mask_matches])
-                #print(    torch.stack(lm_logits))
+
            
                 #lm_logits[0] = lm_logits[0][token_mask_matches]
                 
@@ -249,8 +243,9 @@ class RelationExtraction(object):
                 else:
                     verbose = False
 
-              
-                blank_labels = torch.zeros((blanks_logits.size()))
+                #blank_labels = torch.zeros((blanks_logits.size()))
+
+                print("BLANK LABELS: ", blank_labels)
           
                 loss = criterion(lm_logits, blanks_logits, masked_for_pred, blank_labels, verbose=verbose)
                 loss = loss/gradient_acc_steps
@@ -368,13 +363,47 @@ class RelationExtraction(object):
         return len(self.rel_data.relations_dataframe)
 
     def __getitem__(self, index):
-        relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index]
-        tokens, masked_for_pred, ent1_ent2_start = self.tokenize(self.put_blanks((relation, ent1_text, ent2_text)))
-        tokens = torch.tensor(tokens)
-        masked_for_pred = torch.tensor(masked_for_pred)
-        ent1_ent2_start = torch.tensor(ent1_ent2_start)
+        relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index] # positive sample
+
+        pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent1_text) & (self.rel_data.relations_dataframe["ent2"] == ent2_text))].index
         
-        return tokens, masked_for_pred, ent1_ent2_start, ent1_text, ent2_text
+        pool = pool.append(self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent2_text) & (self.rel_data.relations_dataframe["ent2"] == ent1_text))].index)
+        pos_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
+
+        # if numpy.random.uniform() > 0.5:   
+        # pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ENT1"] != ent1_text) | (self.rel_data.relations_dataframe["ENT2"] != ent2_text))].index
+        neg_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
+        
+        Q = 1/len(pool)
+
+        batch = []
+        ## process positive sample
+        pos_df = self.rel_data.relations_dataframe.loc[pos_idxs]
+        for idx, row in pos_df.iterrows():
+            relation, ent1_text, ent2_text = row[0], row[1], row[2]
+            relation_tokens, masked_for_pred, e1_e2_start = self.tokenize(self.put_blanks((relation, ent1_text, ent2_text)))
+            relation_tokens = torch.LongTensor(relation_tokens)
+
+            masked_for_pred = torch.LongTensor(masked_for_pred)
+            e1_e2_start = torch.tensor(e1_e2_start)
+            batch.append((relation_tokens, masked_for_pred, e1_e2_start, torch.FloatTensor([1.0]),\
+                            torch.LongTensor([1])))
+        
+        ## process negative samples
+        negs_df = self.rel_data.relations_dataframe.loc[neg_idxs]
+        for idx, row in negs_df.iterrows():
+            relation, ent1_text, ent2_text = row[0], row[1], row[2]
+            relation_tokens, masked_for_pred, e1_e2_start = self.tokenize(self.put_blanks((relation, ent1_text, ent2_text)))
+            relation_tokens = torch.LongTensor(relation_tokens)
+            masked_for_pred = torch.LongTensor(masked_for_pred)
+            e1_e2_start = torch.tensor(e1_e2_start)
+    
+            batch.append((relation_tokens, masked_for_pred, e1_e2_start, torch.FloatTensor([Q]), torch.LongTensor([0])))
+
+        batch = self.padding_seq(batch)
+
+        return batch
+
 
 class Two_Headed_Loss(nn.Module):
     '''
@@ -394,7 +423,7 @@ class Two_Headed_Loss(nn.Module):
     
     def p_(self, f1_vec, f2_vec):
         if self.normalize:
-            factor = 1/(torch.norm(f1_vec)*torch.norm(f2_vec))
+            factor = 1 / (torch.norm(f1_vec)*torch.norm(f2_vec))
         else:
             factor = 1.0
         
@@ -411,7 +440,7 @@ class Two_Headed_Loss(nn.Module):
         '''
         lm_logits: (batch_size, sequence_length, hidden_size)
         lm_labels: (batch_size, sequence_length, label_idxs)
-        blank_logits: (batch_size, embeddings)
+        blank_logits: (batch_size, enumerate)
         blank_labels: (batch_size, 0 or 1)
         '''
         pos_idxs = [i for i, l in enumerate(blank_labels.squeeze().tolist()) if l == 1]
@@ -430,29 +459,33 @@ class Two_Headed_Loss(nn.Module):
                 pos_logits = pos_logits.cuda()
         
         # negatives
-        neg_logits = torch.zeros((len(pos_logits), 1))
-        #for pos_idx in pos_idxs:
-        #    for neg_idx in neg_idxs:
-        #        neg_logits.append(self.p_(blank_logits[pos_idx, :], blank_logits[neg_idx, :]))
-        #neg_logits = torch.stack(neg_logits, dim=0)
+        neg_logits = []
+        for pos_idx in pos_idxs:
+            for neg_idx in neg_idxs:
+                neg_logits.append(self.p_(blank_logits[pos_idx, :], blank_logits[neg_idx, :]))
+        neg_logits = torch.stack(neg_logits, dim=0)
         neg_labels = [0.0 for _ in range(neg_logits.shape[0])]
-        #
-        #blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
-        #
-        #if blank_logits.is_cuda:
-        #    blank_labels_ = blank_labels_.cuda()
+        
+        blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
+        
+        if blank_logits.is_cuda:
+            blank_labels_ = blank_labels_.cuda()
+
         blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
 
-        print(lm_logits)
-        print([lm_labels])
-        lm_loss = self.LM_criterion(lm_logits, lm_labels)
+        lm_labels = torch.stack((torch.zeros(lm_logits[0].shape[2]),
+                                torch.cat((lm_labels, torch.zeros(lm_logits[0].shape[2] - lm_labels.shape[0]))
+                                ))
+                                )
+
+        lm_loss = self.LM_criterion(lm_logits[0].type(torch.LongTensor), lm_labels)
 
         blank_loss = self.BCE_criterion(torch.cat([pos_logits, neg_logits], dim=0), \
                                         blank_labels_)
 
         if verbose:
             print("LM loss, blank_loss for last batch: %.5f, %.5f" % (lm_loss, blank_loss))
-            
+           
         total_loss = lm_loss + blank_loss
         return total_loss
 
@@ -511,16 +544,6 @@ class Two_Headed_Loss(nn.Module):
             print("\nMasked labels tokens: \n")
             print(tokenizer.decode(masked_for_pred.cpu().numpy() if masked_for_pred.is_cuda else \
                                 masked_for_pred.numpy()))
-        
-        '''
-        # blanks
-        blanks_diff = ((blanks_logits - blank_labels)**2).detach().cpu().numpy().sum() if blank_labels.is_cuda else\
-                        ((blanks_logits - blank_labels)**2).detach().numpy().sum()
-        blanks_mse = blanks_diff/len(blank_labels)
-        
-        if print_:
-            print("Blanks MSE: ", blanks_mse)
-        '''
         blanks_mse = 0
         return lm_accuracy, blanks_mse
 

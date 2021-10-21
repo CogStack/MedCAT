@@ -281,11 +281,11 @@ class BertEmbeddings(nn.Module):
 
     def forward(self, input_ids=None, token_type_ids=None, position_ids=None, inputs_embeds=None):
         if input_ids is not None:
-            input_shape = torch.Size((input_ids.size()[0], 1))
+            input_shape = input_ids.size()
         else:
             input_shape = inputs_embeds.size()[:-1]
 
-        seq_length = 1 #input_shape[1]
+        seq_length = input_shape[1]
         device = input_ids.device if input_ids is not None else inputs_embeds.device
         if position_ids is None:
             position_ids = torch.arange(seq_length, dtype=torch.long, device=device)

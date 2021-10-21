@@ -172,14 +172,10 @@ class BertModel_RelationExtracation(BertPreTrainedModel):
         
         print("Model config: ", self.config)
         if self.task is None:
-            ### blanks head ###
-            #self.blanks_linear = nn.Linear(1536, 1)
-            #self.sigmoid = nn.Sigmoid()
             self.activation = nn.Tanh()
             ### LM head ###
             self.cls = BertPreTrainingHeads(config)
-            #self.lm_linear = nn.Linear(768, self.config.vocab_size)
-            #self.lm_bias = nn.Parameter(torch.zeros(config.vocab_size))
+
         elif self.task == 'classification':
             self.n_classes_ = n_classes_
             if self.model_size == 'bert-base-uncased':
@@ -301,9 +297,7 @@ class BertModel_RelationExtracation(BertPreTrainedModel):
         buffer = []
 
         for i in range(blankv1v2.shape[0]): # iterate batch & collect
-
-            v1v2 = blankv1v2[i] # blankv1v2[i, i, :, :]
-
+            v1v2 = blankv1v2[i, i, :, :] # blankv1v2[i] 
             v1v2 = torch.cat((v1v2[0], v1v2[1]))
             buffer.append(v1v2)
         del blankv1v2
