@@ -114,7 +114,7 @@ class SpacyHFTok(object):
         self.nlp = spacy.load('en_core_sci_md', disable=['ner', 'parser'])
         self.emb_map = {}
         self.embs = []
-        for key in w2v.wv.vocab.keys():
+        for key in w2v.wv.key_to_index.keys():
             self.emb_map[key] = len(self.embs)
             self.embs.append(w2v[key])
 
