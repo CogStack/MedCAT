@@ -319,7 +319,7 @@ class CDB(object):
 
                 # Get the learning rate if None
                 if lr is None:
-                    lr = get_lr_linking(self.config, self.cui2count_train[cui] + cui_count, self._optim_params, similarity)
+                    lr = get_lr_linking(self.config, self.cui2count_train[cui] + cui_count)
 
                 if negative:
                     # Add negative context

@@ -12,7 +12,7 @@ def add_handlers(log):
     if len(log.handlers) == 0: # If we do not have any handlers add them
         # create a file handler
         fh = logging.FileHandler('medcat.log')
-        # create console handler 
+        # create console handler
         ch = logging.StreamHandler()
 
         # add the handlers to the logger

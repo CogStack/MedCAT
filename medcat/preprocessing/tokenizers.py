@@ -1,10 +1,10 @@
+import re
+import os
 import spacy
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
-import re
-import os
 
 
 def spacy_extended(nlp):
@@ -71,9 +71,12 @@ class WordpieceTokenizer(object):
           A list of wordpiece tokens.
         """
 
+        # Why is convert_to_unicode undefined?
         text = convert_to_unicode(text) # noqa
 
         output_tokens = []
+
+        # Why is whitespace_tokenize undefined?
         for token in whitespace_tokenize(text): # noqa
             chars = list(token)
             if len(chars) > self.max_input_chars_per_word:
@@ -108,8 +111,6 @@ class WordpieceTokenizer(object):
 
 
 class SpacyHFTok(object):
-    import spacy
-    import numpy as np
 
     def __init__(self, w2v):
         self.nlp = spacy.load('en_core_sci_md', disable=['ner', 'parser'])

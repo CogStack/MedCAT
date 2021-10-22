@@ -29,9 +29,7 @@ class PatientConceptStreamConfig(datasets.BuilderConfig):
         Args:
             **kwargs: keyword arguments forwarded to super.
     """
-
-    def __init__(self, **kwargs):
-        super(PatientConceptStreamConfig, self).__init__(**kwargs)
+    pass
 
 
 class PatientConceptStream(datasets.GeneratorBasedBuilder):
@@ -64,7 +62,7 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-    def _split_generators(self, dl_manager):
+    def _split_generators(self):
         """Returns SplitGenerators."""
         return [
             datasets.SplitGenerator(

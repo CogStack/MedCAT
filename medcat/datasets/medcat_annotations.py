@@ -33,9 +33,7 @@ class MedCATAnnotationsConfig(datasets.BuilderConfig):
         Args:
           **kwargs: keyword arguments forwarded to super.
     """
-
-    def __init__(self, **kwargs):
-        super(MedCATAnnotationsConfig, self).__init__(**kwargs)
+    pass
 
 
 class MedCATAnnotations(datasets.GeneratorBasedBuilder):
@@ -67,7 +65,7 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-    def _split_generators(self, dl_manager):
+    def _split_generators(self):
         """Returns SplitGenerators."""
         return [
             datasets.SplitGenerator(
@@ -85,9 +83,9 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
             docs = pickle.load(f)
             for doc_id in docs:
                 doc = docs[doc_id]
-                for id, entity in doc['entities'].items():
+                for entity_id, entity in doc['entities'].items():
                     yield "{}|{}".format(doc_id, entity['id']), {
-                            'id': int(id),
+                            'id': int(entity_id),
                             'document_id': str(doc_id),
                             'context_left': "".join(entity['context_left']),
                             'context_right': "".join(entity['context_right']),

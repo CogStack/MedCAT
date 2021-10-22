@@ -1,5 +1,5 @@
-import pandas as pd
 import json
+import pandas as pd
 
 # Why is prepare_umls_csv defined twice here?
 # def prepare_umls_csv(mrconso_path, mrsty_path, sep='|', lng='ENG', output_path=None, **kwargs):
@@ -170,8 +170,8 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
 
     # Add stripped FQNs if necessary, they will be appended at the end of the dataframe
     if strip_fqn:
-        fqn_stripped = snomed_cdb_df[[True if name_status == 'P' and name.endswith(")") else False
-                                      for name,name_status in snomed_cdb_df[['name', 'name_status']].values]]
+        fqn_stripped = snomed_cdb_df[[name_status == 'P' and name.endswith(")")
+                                      for name, name_status in snomed_cdb_df[['name', 'name_status']].values]]
         fqn_stripped['name'] = [name[0:name.rfind("(")].strip() for name in fqn_stripped['name'].values]
         snomed_cdb_df = pd.concat([snomed_cdb_df, fqn_stripped])
 

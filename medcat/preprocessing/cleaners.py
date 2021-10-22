@@ -168,7 +168,7 @@ def clean_umls(text, stopwords=None):
     # Remove [] if < 4 letters inside
     text = BR_U4.sub(" ", text)
 
-    # Remove things inside of () or [] if spaces are around it and if the length of the 
+    # Remove things inside of () or [] if spaces are around it and if the length of the
     #remaining text is > 15 characters. Stupid approach but works
     #tmp = CB.sub(" ", text)
     #tmp = BR.sub(" ", tmp)
@@ -193,7 +193,7 @@ def clean_umls(text, stopwords=None):
 
 
 def clean_def(text):
-    # Remove things inside of () or [] 
+    # Remove things inside of () or []
     text = re.sub("\([^\)]*\)", " ", text)
     text = re.sub("\[[^\]]*\]", " ", text)
 
@@ -204,7 +204,7 @@ def clean_def(text):
 
 
 def clean_snt(text):
-    # Remove things inside of () or [] 
+    # Remove things inside of () or []
     text = re.sub("\[\*[^\]]*\*\]", " ", text)
 
     # Remove multi _-

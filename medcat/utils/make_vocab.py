@@ -1,10 +1,10 @@
-from medcat.vocab import Vocab
-from pathlib import Path
-from medcat.preprocessing.tokenizers import spacy_split_all
-from gensim.models import Word2Vec
-from medcat.preprocessing.iterators import SimpleIter
 import logging
+from pathlib import Path
+from gensim.models import Word2Vec
+from medcat.vocab import Vocab
 from medcat.pipe import Pipe
+from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.preprocessing.iterators import SimpleIter
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
 
@@ -80,7 +80,7 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                self.log.info("Vocab builder at: " + str(ind))
+                self.log.info("Vocab builder at: %s", str(ind))
                 print(ind)
 
             doc = self.nlp.nlp.tokenizer(doc)

@@ -1,6 +1,6 @@
+import os
 from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
-import os
 
 
 class TokenizerWrapperBPE(object):

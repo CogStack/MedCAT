@@ -1,4 +1,4 @@
-def get_lr_linking(config, cui_count, params, similarity):
+def get_lr_linking(config, cui_count):
     if config.linking['optim']['type'] == 'standard':
         return config.linking['optim']['lr']
     elif config.linking['optim']['type'] == 'linear':
@@ -28,6 +28,7 @@ def load_hf_tokenizer(tokenizer_name):
         from transformers import AutoTokenizer
         hf_tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
     except Exception:
+        # Where is log defined?
         log.exception("The Huggingface tokenizer could not be created") # noqa
 
     return hf_tokenizer
@@ -42,6 +43,7 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             rebuild = True
 
     if rebuild:
+        # Where is log defined?
         log.info("Rebuilding vocab") # noqa
         try:
             from transformers import AutoModel
@@ -65,4 +67,5 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             vocab.reset_counts()
             vocab.make_unigram_table()
         except Exception:
+            # Where is log defined?
             log.exception("The Huggingface model could not be loaded") # noqa

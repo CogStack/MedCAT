@@ -44,10 +44,10 @@ class BasicSpellChecker(object):
         "Generate possible spelling corrections for word."
         if self.config.general['spell_check_deep']:
             # This will check a two letter edit distance
-            return (self.known([word]) or self.known(self.edits1(word)) or self.known(self.edits2(word)) or [word])
+            return self.known([word]) or self.known(self.edits1(word)) or self.known(self.edits2(word)) or [word]
         else:
             # Will check only one letter edit distance
-            return (self.known([word]) or self.known(self.edits1(word))  or [word])
+            return self.known([word]) or self.known(self.edits1(word)) or [word]
 
     def known(self, words):
         "The subset of `words` that appear in the dictionary of WORDS."

@@ -26,7 +26,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             Label for this name (usually `concept` if we are using a vocab based approach).
     '''
 
-    log.debug("Maybe annotating name: {}".format(name))
+    log.debug("Maybe annotating name: %s", name)
 
     # Check uppercase to distinguish uppercase and lowercase words that have a different meaning.
     if config.ner.get('check_upper_case_names'):
@@ -52,8 +52,8 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
 
             # Not necessary, but why not
             log.debug("NER detected an entity." +
-                      "\n\tDetected name: {}".format(entity._.detected_name) +
-                      "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+                      "\n\tDetected name: %s" +
+                      "\n\tLink candidates: %s\n", (entity._.detected_name, entity._.link_candidates))
             return entity
 
     return None

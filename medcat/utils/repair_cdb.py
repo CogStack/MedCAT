@@ -1,6 +1,6 @@
+import pandas as pd
 from medcat.config import Config
 from medcat.cat import CAT
-import pandas as pd
 from medcat.cdb_maker import CDBMaker
 
 
@@ -10,6 +10,9 @@ class RepairCDB(object):
         self.vocab = vocab
         self.final_cdb = final_cdb
         self.final_cat = None
+        self.cdb = None
+        self.cat = None
+        self.base_cat = None
 
     def prepare(self, cuis):
         self.base_cdb.filter_by_cui(cuis)
