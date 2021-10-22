@@ -60,7 +60,7 @@ class ContextModel(object):
             values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
                            for step, tkn in enumerate(tokens_left) if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
-            if self.config.linking.get('context_ignore_center_tokens', False):
+            if not self.config.linking['context_ignore_center_tokens']:
                 # Add center
                 values.extend([self.vocab.vec(tkn.lower_) for tkn in tokens_center if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
