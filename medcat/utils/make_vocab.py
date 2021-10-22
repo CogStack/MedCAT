@@ -116,12 +116,7 @@ class MakeVocab(object):
         # Save the vocab also
         self.vocab.save(path=self.vocab_path)
 
-<<<<<<< HEAD
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
-=======
-
     def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, epochs=2, min_count=10, window=10, vector_size=300,
->>>>>>> f6384f6af1246d823a2e96be23a603fd9ca11d5b
                     unigram_table_size=100000000):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path.
