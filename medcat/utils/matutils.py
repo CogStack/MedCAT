@@ -6,3 +6,13 @@ def unitvec(arr):
 
 def sigmoid(x):
     return 1 / (1 + np.exp(-x))
+
+def intersect_nonempty_set(base, target):
+    if isinstance(target, set) and target:
+        result = base.intersection(target)
+    else:
+        result = base
+
+    return result
+
+
