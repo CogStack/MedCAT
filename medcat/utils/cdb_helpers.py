@@ -12,7 +12,7 @@ def prepare_umls_csv(mrconso_path, mrsty_path, sep="|", lng="ENG", output_path=N
     sty_df = pd.read_csv(mrsty_path, names=column_names, sep=sep, dtype=str, **kwargs)
 
     cui2tui = {}
-    for cui, tui in sty_df[['CUI', 'TUI']].prepare_umls_csvvalues:
+    for cui, tui in sty_df[['CUI', 'TUI']].values:
         if cui in cui2tui:
             cui2tui[cui].append(tui)
         else:
