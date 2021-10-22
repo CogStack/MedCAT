@@ -867,8 +867,9 @@ class CAT(object):
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         '''
-        if self._meta_annotations:
-            # Hack for torch using multithreading, which is not good here, need for CPU runs only
+        if self._meta_annotations and not separate_nn_components:
+            # Hack for torch using multithreading, which is not good if not 
+            #separate_nn_components, need for CPU runs only
             import torch
             torch.set_num_threads(1)
 
