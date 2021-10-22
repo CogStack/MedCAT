@@ -13,6 +13,7 @@ from time import sleep
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from spacy.tokens import Span, Doc
 
+from medcat.utils.matutils import intersect_nonempty_set
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -21,7 +22,7 @@ from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
-from medcat.utils.filters import process_old_project_filters, check_filters
+from medcat.utils.filters import get_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
 from medcat.meta_cat import MetaCAT
@@ -217,8 +218,8 @@ class CAT(object):
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)
 
-    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
-                     use_groups=False):
+    def _print_stats(self, data, epoch=0, use_project_filters=False, use_overlaps=False, use_cui_doc_limit=False,
+                     use_groups=False, extra_cui_filter=None):
         r''' TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
@@ -227,7 +228,7 @@ class CAT(object):
                 The json object that we get from MedCATtrainer on export.
             epoch (int):
                 Used during training, so we know what epoch is it.
-            use_filters (boolean):
+            use_project_filters (boolean):
                 Each project in medcattrainer can have filters, do we want to respect those filters
                 when calculating metrics.
             use_overlaps (boolean):
@@ -271,34 +272,32 @@ class CAT(object):
 
         fp_docs = set()
         fn_docs = set()
-        # Backup for filters
-        _filters = deepcopy(self.config.linking['filters'])
-        # Shortcut for filters
+        # Reset and shortcut for filters
         filters = self.config.linking['filters']
-
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            if use_filters:
-                filters['cuis'] = set()
-                if type(project.get('cuis', None)) == str:
-                    # Old filters
-                    filters['cuis'] = process_old_project_filters(
-                            cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
-                elif type(project.get('cuis', None)) == list:
-                    # New filters
-                    filters['cuis'] = set(project.get('cuis'))
+            filters['cuis'] = set()
 
-                # Used to subset project filters to the ones existing in the linking filter
-                filters['cuis'] = set([cui for cui in filters['cuis'] if check_filters(cui, _filters)])
+            # Add extrafilter if set
+            if isinstance(extra_cui_filter, set):
+                filters['cuis'] = extra_cui_filter
+
+            if use_project_filters:
+                project_filter = get_project_filters(cuis=project.get('cuis', None),
+                                                      type_ids=project.get('tuis', None),
+                                                      cdb=self.cdb)
+                # Intersect project filter with existing if it has something
+                if project_filter:
+                    filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
 
             start_time = time.time()
             for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
                 anns = self._get_doc_annotations(doc)
 
-                # Apply document level filtering, but only if the CUI is in the existing filter in linking
+                # Apply document level filtering, in this case project_filter is ignored while the extra_cui_filter is respected still
                 if use_cui_doc_limit:
-                    _cuis = set([ann['cui'] for ann in anns if check_filters(ann['cui'], _filters)])
+                    _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        filters['cuis'] = _cuis
+                        filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
                         filters['cuis'] = set(['empty'])
 
@@ -315,7 +314,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if (not use_filters and not use_cui_doc_limit) or check_filters(cui, filters):
+                    if check_filters(cui, filters):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
@@ -430,8 +429,6 @@ class CAT(object):
         except Exception as e:
             traceback.print_exc()
 
-        self.config.linking['filters'] = _filters
-
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
     def train(self, data_iterator, fine_tune=True, progress_print=1000):
@@ -467,7 +464,7 @@ class CAT(object):
 
         self.config.linking['train'] = False
 
-    def add_cui_to_group(self, cui, group_name, reset_all_groups=False):
+    def add_cui_to_group(self, cui, group_name):
         r'''
         Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
 
@@ -476,16 +473,10 @@ class CAT(object):
                 The concept to be added
             group_name (str):
                 The group to whcih the concept will be added
-            reset_all_groups (boolean):
-                If True it will reset all existing groups and remove them.
 
         Examples:
             >>> cat.add_cui_to_group("S-17", 'pain')
         '''
-
-        # Reset if needed
-        if reset_all_groups:
-            self.cdb.addl_info['cui2group'] = {}
 
         # Add group_name
         self.cdb.addl_info['cui2group'][cui] = group_name
@@ -570,7 +561,7 @@ class CAT(object):
     def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
                          print_stats=0, use_filters=False, terminate_last=False, use_overlaps=False,
                          use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
-                         never_terminate=False, train_from_false_positives=False):
+                         never_terminate=False, train_from_false_positives=False, extra_cui_filter=None):
         r''' TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
@@ -628,22 +619,26 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
+        # Backup filters
+        _filters = deepcopy(self.config.linking['filters'])
+        filters = self.config.linking['filters']
+
         fp = fn = tp = p = r = f1 = cui_counts = examples = {}
         with open(data_path) as f:
             data = json.load(f)
         cui_counts = {}
 
         if test_size == 0:
-            self.log.info("Running without a test set, or train=test")
+            self.log.info("Running without a test set, or train==test")
             test_set = data
             train_set = data
         else:
             train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
 
         if print_stats > 0:
-            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, use_filters=use_filters,
+            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, use_project_filters=use_filters,
                     use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
-                    use_groups=use_groups)
+                    use_groups=use_groups, extra_cui_filter=extra_cui_filter)
 
         if reset_cui_count:
             # Get all CUIs
@@ -665,10 +660,22 @@ class CAT(object):
                     for ann in doc_annotations:
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
-
         for epoch in tqdm(range(nepochs), desc='Epoch', leave=False):
             # Print acc before training
             for project in tqdm(train_set['projects'], desc='Project', leave=False, total=len(train_set['projects'])):
+                # Set filters in case we are using the train_from_fp
+                filters['cuis'] = set()
+                if isinstance(extra_cui_filter, set):
+                    filters['cuis'] = extra_cui_filter
+
+                if use_filters:
+                    project_filter = get_project_filters(cuis=project.get('cuis', None),
+                            type_ids=project.get('tuis', None),
+                            cdb=self.cdb)
+
+                    if project_filter:
+                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+
                 for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
@@ -708,10 +715,13 @@ class CAT(object):
 
             if print_stats > 0 and (epoch + 1) % print_stats == 0:
                 fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, epoch=epoch+1,
-                                                         use_filters=use_filters,
+                                                         use_project_filters=use_filters,
                                                          use_cui_doc_limit=use_cui_doc_limit,
                                                          use_overlaps=use_overlaps,
-                                                         use_groups=use_groups)
+                                                         use_groups=use_groups,
+                                                         extra_cui_filter=extra_cui_filter)
+        # Set the filters again
+        self.config.linking['filters'] = _filters
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
