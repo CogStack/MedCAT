@@ -1121,8 +1121,8 @@ class CAT(object):
                 if not only_cui:
                     out_ent['pretty_name'] = self.cdb.get_name(cui)
                     out_ent['cui'] = cui
-                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
-                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                    out_ent['type_ids'] = list(self.cdb.cui2type_ids.get(cui, ''))
+                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['type_ids']]
                     out_ent['source_value'] = ent.text
                     out_ent['detected_name'] = str(ent._.detected_name)
                     out_ent['acc'] = float(ent._.context_similarity)
