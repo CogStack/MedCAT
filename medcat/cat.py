@@ -239,6 +239,8 @@ class CAT(object):
                 process the set of CUIs changed.
             use_groups (boolean):
                 If True concepts that have groups will be combined and stats will be reported on groups.
+            extra_cui_filter(boolean):
+                This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
 
         Returns:
             fps (dict):
@@ -600,6 +602,8 @@ class CAT(object):
                 If True no termination will be applied
             train_from_false_positives (boolean):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
+            extra_cui_filter(boolean):
+                This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
 
         Returns:
             fp (dict):
