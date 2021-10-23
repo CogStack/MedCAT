@@ -13,6 +13,10 @@ def intersect_nonempty_set(base, target):
     else:
         result = base
 
+    # If result is empty set to empty
+    if not result:
+        result = {'empty'}
+
     return result
 
 

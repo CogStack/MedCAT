@@ -299,7 +299,7 @@ class CAT(object):
                     if _cuis:
                         filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
-                        filters['cuis'] = set(['empty'])
+                        filters['cuis'] = {'empty'}
 
                 spacy_doc = self(doc['text'])
 
