@@ -1,16 +1,16 @@
 import os
+import shutil
 import pickle
 import traceback
 import json
-import time
 import logging
 import math
 import types
 from copy import deepcopy
-from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
+from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc
 
 from medcat.utils.matutils import intersect_nonempty_set
@@ -113,9 +113,6 @@ class CAT(object):
         r''' Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
         '''
-        from zipfile import ZipFile
-        import shutil
-        import os
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
@@ -155,8 +152,6 @@ class CAT(object):
     def load_model_pack(cls, zip_path):
         r''' Load everything
         '''
-        import os
-        import shutil
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
         from medcat.meta_cat import MetaCAT
@@ -212,7 +207,7 @@ class CAT(object):
         self.config.linking['train'] = do_train
 
         if text is None:
-            self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
+            self.log.error("The input text should be either a string or a sequence of strings but got %s", type(text))
             return None
         else:
             text = self._get_trimmed_text(str(text))
@@ -291,8 +286,12 @@ class CAT(object):
                 if project_filter:
                     filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
 
-            start_time = time.time()
-            for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
+            for dind, doc in tqdm(
+                enumerate(project["documents"]),
+                desc="Stats document",
+                total=len(project["documents"]),
+                leave=False,
+            ):
                 anns = self._get_doc_annotations(doc)
 
                 # Apply document level filtering, in this case project_filter is ignored while the extra_cui_filter is respected still
@@ -427,8 +426,7 @@ class CAT(object):
                 print("{:70} - {:20} - {:10}".format(str(one[0])[0:69], str(one[1])[0:19], one[2]))
             print("*"*110 + "\n")
 
-
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
@@ -458,10 +456,10 @@ class CAT(object):
                 try:
                     _ = self(line, do_train=True)
                 except Exception as e:
-                    self.log.warning("LINE: '{}...' \t WAS SKIPPED".format(line[0:100]))
-                    self.log.warning("BECAUSE OF: " + str(e))
+                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
+                    self.log.warning("BECAUSE OF: %s", str(e))
                 if cnt % progress_print == 0:
-                    self.log.info("DONE: " + str(cnt))
+                    self.log.info("DONE: %s", str(cnt))
                 cnt += 1
 
         self.config.linking['train'] = False
@@ -507,12 +505,12 @@ class CAT(object):
 
         # If full unlink find all CUIs
         if self.config.general.get('full_unlink', False):
-            for name in names:
-                cuis.extend(self.cdb.name2cuis.get(name, []))
+            for n in names:
+                cuis.extend(self.cdb.name2cuis.get(n, []))
 
         # Remove name from all CUIs
-        for cui in cuis:
-            self.cdb.remove_names(cui=cui, names=names)
+        for c in cuis:
+            self.cdb.remove_names(cui=c, names=names)
 
     def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
                               description='', full_build=True, negative=False, devalue_others=False, do_add_concept=True):
@@ -551,8 +549,8 @@ class CAT(object):
             if not negative and devalue_others:
                 # Find all cuis
                 cuis = set()
-                for name in names:
-                    cuis.update(self.cdb.name2cuis.get(name, []))
+                for n in names:
+                    cuis.update(self.cdb.name2cuis.get(n, []))
                 # Remove the cui for which we just added positive training
                 if cui in cuis:
                     cuis.remove(cui)
@@ -680,7 +678,7 @@ class CAT(object):
                     if project_filter:
                         filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
 
-                for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
+                for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
@@ -768,10 +766,10 @@ class CAT(object):
                 # which also assumes texts are different from each others.
                 if len(out) < len(texts):
                     self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
-                    for i in range(len(texts)):
+                    for i, text in enumerate(texts):
                         if i == len(out):
                             out.append(self._doc_to_out(None, only_cui, addl_info))
-                        elif out[i]['text'] != texts[i]:
+                        elif out[i]['text'] != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))
 
                 cnf_annotation_output = getattr(self.config, 'annotation_output', {})
@@ -838,10 +836,10 @@ class CAT(object):
         if len(docs) > 0:
             yield docs
 
-    def _save_docs_to_file(self, docs, annotated_ids, out_split_size, save_dir_path, annotated_ids_path, part_counter=0):
+    def _save_docs_to_file(self, docs, annotated_ids, save_dir_path, annotated_ids_path, part_counter=0):
         path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
-        self.log.info("Saved part: {}, to: {}".format(part_counter, path))
+        self.log.info("Saved part: %s, to: %s", (part_counter, path))
         part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
         pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
@@ -905,7 +903,7 @@ class CAT(object):
 
         docs = {}
         for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
-            self.log.info("Annotated until now: {} docs; Current BS: {} docs".format(len(annotated_ids), len(batch)))
+            self.log.info("Annotated until now: %s docs; Current BS: %s docs", (len(annotated_ids), len(batch)))
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
@@ -920,7 +918,6 @@ class CAT(object):
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
                                            annotated_ids=annotated_ids,
-                                           out_split_size=out_split_size,
                                            save_dir_path=save_dir_path,
                                            annotated_ids_path=annotated_ids_path,
                                            part_counter=part_counter)
@@ -935,14 +932,13 @@ class CAT(object):
             # Save to file and reset the docs 
             self._save_docs_to_file(docs=docs,
                                    annotated_ids=annotated_ids,
-                                   out_split_size=out_split_size,
                                    save_dir_path=save_dir_path,
                                    annotated_ids_path=annotated_ids_path,
                                    part_counter=part_counter)
 
         # Enable the GPU Components again
         if separate_nn_components:
-            for name, component in nn_components:
+            for name, _ in nn_components:
                 # No need to do anything else as it was already in the pipe
                 self.pipe.nlp.enable_pipe(name)
 
@@ -994,9 +990,11 @@ class CAT(object):
             in_q.put(batch)
 
         # Final data point for workers
-        for _ in range(nproc): in_q.put(None)
+        for _ in range(nproc):
+            in_q.put(None)
         # Join processes
-        for p in procs: p.join()
+        for p in procs:
+            p.join()
 
         docs = {}
         for key in out_dict.keys():
@@ -1054,17 +1052,16 @@ class CAT(object):
 
         if return_dict:
             out = {}
-            for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx]
+            for idx, data in enumerate(in_data):
+                out[data[0]] = entities[idx]
         else:
             out = []
-            for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx]))
+            for idx, data in enumerate(in_data):
+                out.append((data[0], entities[idx]))
 
         return out
 
     def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
-        cnt = 0
         out = []
         while True:
             if not in_q.empty():
@@ -1073,11 +1070,11 @@ class CAT(object):
                     out_dict['pid: {}'.format(pid)] = out
                     break
 
-                for id, text in data:
+                for i_text, text in data:
                     try:
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
-                        out.append((id, doc))
+                        out.append((i_text, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
                         self.log.warning(e, exc_info=True, stack_info=True)
@@ -1120,7 +1117,7 @@ class CAT(object):
             context_right = cnf_annotation_output.get('context_right', -1)
             doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
 
-            for ind, ent in enumerate(_ents):
+            for _, ent in enumerate(_ents):
                 cui = str(ent._.cui)
                 if not only_cui:
                     out_ent['pretty_name'] = self.cdb.get_name(cui)
@@ -1180,22 +1177,21 @@ class CAT(object):
 
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
-        CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
+        CAT.log.warning("Exception raised when applying component %s to a batch of docs.", proc_name)
         CAT.log.warning(e, exc_info=True, stack_info=True)
         if docs is not None:
             CAT.log.warning("Docs contained in the batch:")
             for doc in docs:
                 if hasattr(doc, "text"):
-                    CAT.log.warning("{}...".format(doc.text[:50]))
+                    CAT.log.warning("%s...", doc.text[:50])
 
     @staticmethod
     def _get_doc_annotations(doc):
         if type(doc['annotations']) == list:
             return doc['annotations']
-        elif type(doc['annotations']) == dict:
+        if type(doc['annotations']) == dict:
             return doc['annotations'].values()
-        else:
-            return None
+        return None
 
     def destroy_pipe(self):
         self.pipe.destroy()

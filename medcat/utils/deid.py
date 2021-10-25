@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 def deid_document(text, tokenizer, model, cdb, verbose=False):
     label2name = {v:k for k,v in tokenizer.label_map.items()}
 

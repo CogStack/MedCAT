@@ -4,6 +4,7 @@ import elasticsearch.helpers
 
 from typing import Dict
 
+
 class CogStackConn(object):
     def __init__(self, host, port=9200, username: str=None, password: str=None, scheme: str='https',
                  timeout: int=360, max_retries: int=10, retry_on_timeout: bool=True, **kwargs):
@@ -27,7 +28,6 @@ class CogStackConn(object):
         # TODO: Implement auth check, for now I assume all is fine
         return username, password
 
-
     def get_docs_generator(self, query: Dict, index: str, es_gen_size: int=800, request_timeout: int=840000, **kwargs):
         docs_generator = elasticsearch.helpers.scan(self.elastic,
             query=query,
@@ -37,7 +37,6 @@ class CogStackConn(object):
             **kwargs)
 
         return docs_generator
-
 
     def bulk_to_cogstack(self):
         # TODO: look the code made for Nazli/Dan

@@ -1,0 +1,17 @@
+[flake8]
+extend-ignore =
+    E124,   ; closing bracket does not match visual indentation
+    E127,   ; continuation line over-indented for visual indent
+    E128,   ; continuation line under-indented for visual indent
+    E221,   ; multiple spaces before operator
+    E225,   ; missing whitespace around operator
+    E231,   ; missing whitespace after ',' and ':'
+    E252,   ; missing whitespace around parameter equal
+    E261,   ; at least two spaces before inline comment
+    E265,   ; block comment should start with '# '
+    E272,   ; multiple spaces before keyword
+    E303,   ; too many blank lines
+    E501,   ; line too long
+    W291,   ; trailing whitespace
+    W605,   ; invalid escape sequence
+

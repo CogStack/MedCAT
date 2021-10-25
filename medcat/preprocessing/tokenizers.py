@@ -1,10 +1,11 @@
+import re
+import os
 import spacy
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
-import re
-import os
+
 
 def spacy_extended(nlp):
     infix_re_list = ('\\.\\.+',
@@ -49,66 +50,67 @@ def spacy_split_all(nlp, config):
 
 
 class WordpieceTokenizer(object):
-  """Runs WordPiece tokenziation."""
+    """Runs WordPiece tokenziation."""
 
-  def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=200):
-    self.vocab = vocab
-    self.unk_token = unk_token
-    self.max_input_chars_per_word = max_input_chars_per_word
+    def __init__(self, vocab, unk_token="[UNK]", max_input_chars_per_word=200):
+        self.vocab = vocab
+        self.unk_token = unk_token
+        self.max_input_chars_per_word = max_input_chars_per_word
 
-  def tokenize(self, text):
-    """Tokenizes a piece of text into its word pieces.
-    This uses a greedy longest-match-first algorithm to perform tokenization
-    using the given vocabulary.
-    For example:
-      input = "unaffable"
-      output = ["un", "##aff", "##able"]
-    Args:
-      text: A single token or whitespace separated tokens. This should have
-        already been passed through `BasicTokenizer.
-    Returns:
-      A list of wordpiece tokens.
-    """
+    def tokenize(self, text):
+        """Tokenizes a piece of text into its word pieces.
+        This uses a greedy longest-match-first algorithm to perform tokenization
+        using the given vocabulary.
+        For example:
+          input = "unaffable"
+          output = ["un", "##aff", "##able"]
+        Args:
+          text: A single token or whitespace separated tokens. This should have
+            already been passed through `BasicTokenizer.
+        Returns:
+          A list of wordpiece tokens.
+        """
 
-    text = convert_to_unicode(text)
+        # Why is convert_to_unicode undefined?
+        text = convert_to_unicode(text) # noqa
 
-    output_tokens = []
-    for token in whitespace_tokenize(text):
-      chars = list(token)
-      if len(chars) > self.max_input_chars_per_word:
-        output_tokens.append(self.unk_token)
-        continue
+        output_tokens = []
 
-      is_bad = False
-      start = 0
-      sub_tokens = []
-      while start < len(chars):
-        end = len(chars)
-        cur_substr = None
-        while start < end:
-          substr = "".join(chars[start:end])
-          if start > 0:
-            substr = "##" + substr
-          if substr in self.vocab:
-            cur_substr = substr
-            break
-          end -= 1
-        if cur_substr is None:
-          is_bad = True
-          break
-        sub_tokens.append(cur_substr)
-        start = end
+        # Why is whitespace_tokenize undefined?
+        for token in whitespace_tokenize(text): # noqa
+            chars = list(token)
+            if len(chars) > self.max_input_chars_per_word:
+                output_tokens.append(self.unk_token)
+                continue
 
-      if is_bad:
-        output_tokens.append(self.unk_token)
-      else:
-        output_tokens.extend(sub_tokens)
-    return output_tokens
+            is_bad = False
+            start = 0
+            sub_tokens = []
+            while start < len(chars):
+                end = len(chars)
+                cur_substr = None
+                while start < end:
+                    substr = "".join(chars[start:end])
+                    if start > 0:
+                        substr = "##" + substr
+                    if substr in self.vocab:
+                        cur_substr = substr
+                        break
+                    end -= 1
+                if cur_substr is None:
+                    is_bad = True
+                    break
+                sub_tokens.append(cur_substr)
+                start = end
+
+            if is_bad:
+                output_tokens.append(self.unk_token)
+            else:
+                output_tokens.extend(sub_tokens)
+        return output_tokens
 
 
 class SpacyHFTok(object):
-    import spacy
-    import numpy as np
 
     def __init__(self, w2v):
         self.nlp = spacy.load('en_core_sci_md', disable=['ner', 'parser'])
@@ -143,7 +145,6 @@ class TokenizerWrapperBPE(object):
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
 
-
     def __call__(self, text):
         res = self.hf_tokenizers.encode(text)
 
@@ -151,7 +152,6 @@ class TokenizerWrapperBPE(object):
                 'input_ids': res.ids,
                 'tokens': res.tokens,
                 }
-
 
     def save(self, dir_path, name='bbpe'):
         self.hf_tokenizers.save_model(dir_path, prefix=name)
@@ -175,7 +175,6 @@ class TokenizerWrapperBERT(object):
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
 
-
     def __call__(self, text):
         res = self.hf_tokenizers.encode_plus(text,
                 return_offsets_mapping=True, add_special_tokens=False)
@@ -184,7 +183,6 @@ class TokenizerWrapperBERT(object):
                 'input_ids': res['input_ids'],
                 'tokens':  self.hf_tokenizers.convert_ids_to_tokens(res['input_ids']),
                 }
-
 
     def save(self, dir_path, name='bert'):
         path = os.path.join(dir_path, name)

@@ -1,7 +1,7 @@
 """Loggers
 """
-import sys
 import logging
+
 
 def add_handlers(log):
     """ The most basic logger type, log is just:
@@ -12,7 +12,7 @@ def add_handlers(log):
     if len(log.handlers) == 0: # If we do not have any handlers add them
         # create a file handler
         fh = logging.FileHandler('medcat.log')
-        # create console handler 
+        # create console handler
         ch = logging.StreamHandler()
 
         # add the handlers to the logger
