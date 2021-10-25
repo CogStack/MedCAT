@@ -1,12 +1,11 @@
 """ I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
 once the software is trained the main thing are the context vectors.
 """
-import numpy as np
-import operator
 from spacy.tokens import Span
 import logging
 
 log = logging.getLogger(__name__)
+
 
 def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
     r''' Given a name it will check should it be annotated based on config rules. If yes
@@ -27,7 +26,7 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             Label for this name (usually `concept` if we are using a vocab based approach).
     '''
 
-    log.debug("Maybe annotating name: {}".format(name))
+    log.debug("Maybe annotating name: %s", name)
 
     # Check uppercase to distinguish uppercase and lowercase words that have a different meaning.
     if config.ner.get('check_upper_case_names'):
@@ -47,17 +46,18 @@ def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
             entity._.detected_name = name
             entity._.link_candidates = cdb.name2cuis[name]
             entity._.id = len(doc._.ents)
-            entity._.confidence = -1 #  This does not calculate confidence
+            entity._.confidence = -1  # This does not calculate confidence
             # Append the entity to the document
             doc._.ents.append(entity)
 
             # Not necessary, but why not
             log.debug("NER detected an entity." +
-                      "\n\tDetected name: {}".format(entity._.detected_name) +
-                      "\n\tLink candidates: {}\n".format(entity._.link_candidates))
+                      "\n\tDetected name: %s" +
+                      "\n\tLink candidates: %s\n", (entity._.detected_name, entity._.link_candidates))
             return entity
 
     return None
+
 
 """
 def check_disambiguation_status(name, cuis, config):
@@ -92,7 +92,7 @@ class (object):
         elif len(name) < config.length_limit:
             # Disambiguate
             return 'disambiguate'
-        elif self.cdb.name2status[name] == 'A': # Check the cdb 
+        elif self.cdb.name2status[name] == 'A': # Check the cdb
             if len(self.cdb.name2cui[name]) == 1:
                 # Links to only one CUI
                 return 'annotate'

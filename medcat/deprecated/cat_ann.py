@@ -5,18 +5,18 @@ once the software is trained the main thing are the context vectors.
 import numpy as np
 import operator
 
+
 class CatAnn(object):
     def __init__(self, cdb, spacy_cat):
         self.cdb = cdb
         self._cat = spacy_cat
-
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
         one_tkn_upper = False
         name_case = True
 
         if len(tkns) == 1 and tkns[0].is_upper:
-            one_tkn_upper = True
+            one_tkn_upper = True # noqa
         for tkn in tkns:
             if not tkn.is_upper:
                 name_case = False
@@ -40,7 +40,7 @@ class CatAnn(object):
                                 # Means name is not upper, disambiguation is needed
                                 n_words, words_cnt = self._n_words_appearing(name, doc, doc_words)
                                 d = self.cdb.cui2words[cui]
-                                perc =  0
+                                perc = 0
                                 cnt = 0
                                 if name in d:
                                     perc = d[name] / sum(d.values())

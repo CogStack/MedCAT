@@ -20,15 +20,14 @@ _CITATION = """\
 _DESCRIPTION = """\
 Takes as input a json export from medcattrainer."""
 
+
 class MedCATAnnotationsConfig(datasets.BuilderConfig):
     """ BuilderConfig for MedCATNER.
 
         Args:
           **kwargs: keyword arguments forwarded to super.
     """
-
-    def __init__(self, **kwargs):
-        super(MedCATAnnotationsConfig, self).__init__(**kwargs)
+    pass
 
 
 class MedCATNER(datasets.GeneratorBasedBuilder):
@@ -62,7 +61,7 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-    def _split_generators(self, dl_manager):
+    def _split_generators(self):
         """Returns SplitGenerators."""
         return [
             datasets.SplitGenerator(

@@ -1,8 +1,8 @@
 import os
 import json
-import pandas as pd
-import hashlib
 import re
+import hashlib
+import pandas as pd
 
 
 def parse_file(filename, first_row_header=True, columns=None):
@@ -155,7 +155,7 @@ class Snomed:
             del int_relat
 
             relationship = dict([(key, []) for key in active_relat["destinationId"].unique()])
-            for index, v in active_relat.iterrows():
+            for _, v in active_relat.iterrows():
                 if v['typeId'] == str(relationshipcode):
                     _ = v['destinationId']
                     relationship[_].append(v['sourceId'])

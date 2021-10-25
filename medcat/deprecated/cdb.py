@@ -2,10 +2,14 @@
 """
 import pickle
 import numpy as np
+from medcat.utils.loggers import basic_logger
 from scipy.sparse import dok_matrix
-from medcat.utils.matutils import unitvec, sigmoid
+from medcat.utils.matutils import unitvec
 import os
 import pandas as pd
+
+log = basic_logger("cdb")
+
 
 class CDB(object):
     """ Holds all the CDB data required for annotation

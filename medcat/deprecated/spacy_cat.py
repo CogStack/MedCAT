@@ -1,6 +1,5 @@
 from spacy.tokens import Span
 import numpy as np
-import operator
 from medcat.utils.loggers import basic_logger
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import load_hf_tokenizer, build_vocab_from_hf
@@ -17,7 +16,6 @@ else:
     from medcat.basic_cat_ann import CatAnn
 
 
-
 class SpacyCat(object):
     """ A Spacy pipe module, can be easily added into a spacey pipline
 
@@ -28,10 +26,10 @@ class SpacyCat(object):
             it will not be performed
     """
     # Convert filters tu sets
-    if TUI_FILTER is not None:
-        TUI_FILTER = set(TUI_FILTER)
-    if CUI_FILTER is not None:
-        CUI_FILTER = set(CUI_FILTER)
+    if TUI_FILTER is not None: # noqa
+        TUI_FILTER = set(TUI_FILTER) # noqa
+    if CUI_FILTER is not None: # noqa
+        CUI_FILTER = set(CUI_FILTER) # noqa
 
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
@@ -189,7 +187,7 @@ class SpacyCat(object):
         if len(cntx_vecs) > 0:
             cntx = np.average(cntx_vecs, axis=0)
 
-        #### DEBUG ONLY ####
+        # DEBUG ONLY #
         if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 log.debug("SIMILARITY MED::::::::::::::::::::")
@@ -208,7 +206,7 @@ class SpacyCat(object):
                 log.debug(np.dot(unitvec(cntx_short),
                           unitvec(self.cdb.cui2context_vec_short[cui])))
                 log.debug(":::::::::::::::::::::::::::::::::::\n")
-        #### END OF DEBUG ####
+        # END OF DEBUG #
 
         if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
             sim = np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui]))
@@ -286,10 +284,9 @@ class SpacyCat(object):
             negs = self.vocab.get_negative_samples(n=self.CNTX_SPAN * 2, ignore_punct_and_num=True, stopwords=STOP_WORDS) # TODO stopwords
             neg_cntx_vecs = [self.vocab.vec(self.vocab.index2word[x]) for x in negs]
             neg_cntx = np.average(neg_cntx_vecs, axis=0)
-            self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED',
-                                      inc_cui_count=False, lr=lr, anneal=True)
+            self.cdb.add_context_vec(cui, neg_cntx, negative=True, cntx_type='MED', inc_cui_count=False, lr=lr, anneal=True)
 
-        #### DEBUG ONLY ####
+        # DEBUG ONLY #
         if self.DEBUG:
             if cui in self.cdb.cui2context_vec and len(cntx_vecs) > 0:
                 if np.dot(unitvec(cntx), unitvec(self.cdb.cui2context_vec[cui])) < 0.01:

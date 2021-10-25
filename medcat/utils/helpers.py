@@ -1,7 +1,6 @@
-import numpy as np
+import html
 from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
-import html
 from medcat.utils.other import TPL_ENT, TPL_ENTS
 
 
@@ -13,7 +12,6 @@ def to_json_simple(docs, cdb):
 
     for doc in docs:
         d.append({'text': doc.text, 'entities': [(e.start_char, e.end_char, cdb.tui2name[cdb.cui2tui[e.label_]]) for e in doc._.ents]})
-
 
 
 def to_json_sumithra(docs, cdb):
@@ -100,7 +98,7 @@ def prepare_name(cat, name, version='CLEAN'):
         tokens = [t.lower_ for t in sc_name]
 
 
-    # Join everything and return name 
+    # Join everything and return name
     name = "".join(tokens)
     return name, tokens
 
@@ -163,7 +161,7 @@ def umls_to_icd10cm(cdb, csv_path):
     import pandas as pd
     df = pd.read_csv(csv_path)
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         try:
             cuis = str(row['CUI']).split("|")
             chapter = row['Class ID'].split('/')[-1]
@@ -181,9 +179,10 @@ def umls_to_icd10cm(cdb, csv_path):
                         if not isin:
                             cdb.cui2info[cui]['icd10'].append(icd10)
                     else:
-                        cdb.cui2info[cui]['icd10'] = [icd10]
-        except:
-            print(row['CUI'])
+                        cdb.cui2info[cui]["icd10"] = [icd10]
+        except Exception:
+            print(row["CUI"])
+
 
 def umls_to_icd10_over_snomed(cdb, pickle_path):
     import pickle
@@ -222,7 +221,7 @@ def umls_to_icd10(cdb, csv_path):
     import pandas as pd
     df = pd.read_csv(csv_path)
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         try:
             cui = str(row['cui'])
             chapter = row['chapter']
@@ -240,13 +239,13 @@ def umls_to_icd10(cdb, csv_path):
                     if not isin:
                         cdb.cui2info[cui]['icd10'].append(icd10)
                 else:
-                    cdb.cui2info[cui]['icd10'] = [icd10]
-        except:
-            print(row['CUI'])
+                    cdb.cui2info[cui]["icd10"] = [icd10]
+        except Exception:
+            print(row["CUI"])
 
 
 def umls_to_snomed(cdb, pickle_path):
-    """ Map UMLS CDB to SNOMED concepts 
+    """ Map UMLS CDB to SNOMED concepts
     """
     import pickle
 
@@ -295,7 +294,7 @@ def snomed_to_icd10(cdb, csv_path):
     import pandas as pd
     df = pd.read_csv(csv_path)
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         icd = str(row['icd10'])
         name = str(row['name'])
 
@@ -320,7 +319,7 @@ def snomed_to_desc(cdb, csv_path):
     import pandas as pd
     df = pd.read_csv(csv_path)
 
-    for index, row in df.iterrows():
+    for _, row in df.iterrows():
         desc = row['desc']
 
         if "S-" in str(row['cui']):
@@ -348,7 +347,7 @@ def filter_only_icd10(doc, cat):
     cat.spacy_cat._create_main_ann(doc)
 
 
-def add_names_icd10(cdb, csv_path, cat):
+def add_names_icd10(csv_path, cat):
     import pandas as pd
     df = pd.read_csv(csv_path)
 
@@ -357,8 +356,8 @@ def add_names_icd10(cdb, csv_path, cat):
             cui = str(row['cui'])
             name = row['name']
             cat.add_name(cui, name, is_pref_name=False, only_new=True)
-        except Exception as e:
-            print(row['cui'])
+        except Exception:
+            print(row["cui"])
 
         if index % 1000 == 0:
             print(index)
@@ -405,7 +404,7 @@ def dep_check_scispacy():
     import sys
     try:
         _ = spacy.load("en_core_sci_md")
-    except:
+    except Exception:
         print("Installing the missing models for scispacy\n")
         pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz'
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
@@ -414,7 +413,6 @@ def dep_check_scispacy():
 def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, lr=1, groups=None, **kwargs):
     from medcat.cat import CAT
     from medcat.utils.vocab import Vocab
-    from medcat.cdb import CDB
     import json
 
     use_groups = False
@@ -429,11 +427,12 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, l
     fps = {}
     cui_counts = {}
     examples = {}
-    for i in range(cv):
+    for _ in range(cv):
         cdb = CDB()
         cdb.load_dict(cdb_path)
         vocab = Vocab()
         vocab.load_dict(path=vocab_path)
+        # This does not conform to the latest API which requires config
         cat = CAT(cdb, vocab=vocab)
         cat.train = False
         cat.spacy_cat.MIN_ACC = 0.30
@@ -449,6 +448,7 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, l
                 for val in v:
                     cat.add_cui_to_group(val, k)
 
+        # cat.train_supervised does not accept lr
         fp, fn, tp, p, r, f1, cui_counts, examples = cat.train_supervised(data_path=data_path,
                              lr=1, test_size=test_size, use_groups=use_groups, nepochs=nepochs, **kwargs)
 
