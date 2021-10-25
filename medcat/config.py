@@ -129,8 +129,8 @@ class Config(BaseConfig):
 
         # CDB Maker
         self.cdb_maker = {
-               # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
-                #by the character below.
+                # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
+                # by the character below.
                 'multi_separator': '|',
                 # Name versions to be generated.
                 'name_versions': ['LOWER', 'CLEAN'],
@@ -154,7 +154,7 @@ class Config(BaseConfig):
         self.general = {
                 # What was used to build the CDB, e.g. SNOMED_202009
                 'cdb_source_name': '',
-                # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance 
+                # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
                 'log_level': logging.INFO,
                 'log_format': '%(levelname)s:%(name)s: %(message)s',
                 'log_path': './medcat.log',
@@ -258,9 +258,9 @@ class Config(BaseConfig):
                 'negative_ignore_punct_and_num': True,
                 # If >0 concepts for which a detection is its primary name will be preferred by that amount (0 to 1)
                 'prefer_primary_name': 0.35,
-                # If >0 concepts that are more frequent will be prefered by a multiply of this amount 
+                # If >0 concepts that are more frequent will be prefered by a multiply of this amount
                 'prefer_frequent_concepts': 0.35,
-                # Subsample during unsupervised training if a concept has received more than 
+                # Subsample during unsupervised training if a concept has received more than
                 'subsample_after': 30000,
                 # When adding a positive example, should it also be treated as Negative for concepts
                 #which link to the postive one via names (ambigous names).

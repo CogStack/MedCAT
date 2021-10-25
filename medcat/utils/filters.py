@@ -10,12 +10,10 @@ def check_filters(cui, filters):
             True if in filters else False
     '''
     if cui in filters.get('cuis', {}) or not filters.get('cuis', {}):
-        if cui not in filters.get('cuis_exclude', {}):
-            return True
-        else:
-            return False
+        return cui not in filters.get('cuis_exclude', {})
     else:
         return False
+
 
 def get_project_filters(cuis, type_ids, cdb):
     cui_filter = set()
@@ -38,4 +36,3 @@ def get_project_filters(cuis, type_ids, cdb):
         cui_filter = set(cuis)
 
     return cui_filter
-

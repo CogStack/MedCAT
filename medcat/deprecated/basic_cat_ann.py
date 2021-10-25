@@ -1,15 +1,13 @@
 """ I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
 once the software is trained the main thing are the context vectors.
 """
-import numpy as np
-import operator
+
 
 class CatAnn(object):
     def __init__(self, cdb, spacy_cat):
         self.cdb = cdb
         self._cat = spacy_cat
         self.pref_names = set(cdb.cui2pref_name.values())
-
 
     def add_ann(self, name, tkns, doc, to_disamb, doc_words):
         one_tkn_upper = False

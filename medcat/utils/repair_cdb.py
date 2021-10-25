@@ -1,8 +1,8 @@
+import pandas as pd
 from medcat.config import Config
 from medcat.cat import CAT
-import pandas as pd
 from medcat.cdb_maker import CDBMaker
-from medcat.config import Config
+
 
 class RepairCDB(object):
     def __init__(self, base_cdb, final_cdb, vocab):
@@ -10,7 +10,9 @@ class RepairCDB(object):
         self.vocab = vocab
         self.final_cdb = final_cdb
         self.final_cat = None
-
+        self.cdb = None
+        self.cat = None
+        self.base_cat = None
 
     def prepare(self, cuis):
         self.base_cdb.filter_by_cui(cuis)
@@ -49,7 +51,6 @@ class RepairCDB(object):
         self.cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab)
         self.base_cat = CAT(cdb=self.base_cdb, config=self.base_cdb.config, vocab=self.vocab)
 
-
     def train(self, data_iterator, n_docs=100000):
         docs = []
         for doc in data_iterator:
@@ -58,7 +59,6 @@ class RepairCDB(object):
                 break
         self.cat.train(data_iterator=docs)
         self.base_cat.train(data_iterator=docs)
-
 
     def calculate_scores(self, count_limit=1000):
         data = [['new_cui', 'base_cui', 'name', 'new_count', 'base_count', 'score', 'decision']]

@@ -2,12 +2,9 @@
 """
 
 import pandas
-import spacy
-from spacy.tokenizer import Tokenizer
 from medcat.cdb import CDB
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import spacy_tag_punct, clean_umls, clean_def
-from spacy.tokens import Token
 from medcat.utils.spacy_pipe import SpacyPipe
 #from pytorch_pretrained_bert import BertTokenizer
 import numpy as np
@@ -15,6 +12,7 @@ from functools import partial
 
 SEPARATOR = ""
 CONCEPT_LENGTH_LIMIT = 6
+
 
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB.
@@ -33,7 +31,6 @@ class CDBMaker(object):
         # Build the required spacy pipeline
         self.nlp = SpacyPipe(spacy_split_all)
         self.nlp.add_punct_tagger(tagger=partial(spacy_tag_punct, skip_stopwords=False))
-
 
     def prepare_csvs(self, csv_paths, sep=','):
         r''' Compile one or multipe CSVs into a CDB.
@@ -55,7 +52,6 @@ class CDBMaker(object):
                         print("Done: {}".format(ind))
                     # Save originals
                     pretty_name = _name
-                    original_name = _name
                     name = clean_umls(_name)
 
                     # Clean and preprocess the name
