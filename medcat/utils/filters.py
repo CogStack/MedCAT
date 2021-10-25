@@ -14,6 +14,7 @@ def check_filters(cui, filters):
     else:
         return False
 
+
 def get_project_filters(cuis, type_ids, cdb):
     cui_filter = set()
     if isinstance(cuis, str):
