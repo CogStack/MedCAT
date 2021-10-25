@@ -49,8 +49,8 @@ class NER(PipeRunner):
             if name: # There has to be at least something appended to the name to go forward
                 for j in range(i+1, len(_doc)):
                     if _doc[j].i - _doc[j-1].i - 1 > self.config.ner['max_skip_tokens']:
-                         # Do not allow to skip more than limit
-                         break
+                        # Do not allow to skip more than limit
+                        break
                     tkn = _doc[j]
                     tkns.append(tkn)
                     name_versions = [tkn._.norm, tkn.lower_]

@@ -11,7 +11,7 @@ class CDBTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         config = Config()
-        config.general["spacy_model"] = "en_core_sci_sm"
+        config.general["spacy_model"] = "en_core_web_md"
         cls.cdb_maker = CDBMaker(config)
 
     def setUp(self) -> None:

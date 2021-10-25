@@ -1,18 +1,19 @@
 import os
+import shutil
 import pickle
 import traceback
 import json
-import time
 import logging
 import math
 import types
 from copy import deepcopy
-from tqdm.autonotebook import tqdm
 from multiprocessing import Process, Manager, Queue, cpu_count
 from time import sleep
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
+from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc
 
+from medcat.utils.matutils import intersect_nonempty_set
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -21,7 +22,7 @@ from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
-from medcat.utils.filters import process_old_project_filters, check_filters
+from medcat.utils.filters import get_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
 from medcat.meta_cat import MetaCAT
@@ -112,9 +113,6 @@ class CAT(object):
         r''' Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
         '''
-        from zipfile import ZipFile
-        import shutil
-        import os
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
@@ -154,8 +152,6 @@ class CAT(object):
     def load_model_pack(cls, zip_path):
         r''' Load everything
         '''
-        import os
-        import shutil
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
         from medcat.meta_cat import MetaCAT
@@ -211,14 +207,14 @@ class CAT(object):
         self.config.linking['train'] = do_train
 
         if text is None:
-            self.log.error("The input text should be either a string or a sequence of strings but got {}".format(type(text)))
+            self.log.error("The input text should be either a string or a sequence of strings but got %s", type(text))
             return None
         else:
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)
 
-    def _print_stats(self, data, epoch=0, use_filters=False, use_overlaps=False, use_cui_doc_limit=False,
-                     use_groups=False):
+    def _print_stats(self, data, epoch=0, use_project_filters=False, use_overlaps=False, use_cui_doc_limit=False,
+                     use_groups=False, extra_cui_filter=None):
         r''' TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
@@ -227,7 +223,7 @@ class CAT(object):
                 The json object that we get from MedCATtrainer on export.
             epoch (int):
                 Used during training, so we know what epoch is it.
-            use_filters (boolean):
+            use_project_filters (boolean):
                 Each project in medcattrainer can have filters, do we want to respect those filters
                 when calculating metrics.
             use_overlaps (boolean):
@@ -238,6 +234,8 @@ class CAT(object):
                 process the set of CUIs changed.
             use_groups (boolean):
                 If True concepts that have groups will be combined and stats will be reported on groups.
+            extra_cui_filter(boolean):
+                This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
 
         Returns:
             fps (dict):
@@ -271,36 +269,38 @@ class CAT(object):
 
         fp_docs = set()
         fn_docs = set()
-        # Backup for filters
-        _filters = deepcopy(self.config.linking['filters'])
-        # Shortcut for filters
+        # Reset and shortcut for filters
         filters = self.config.linking['filters']
-
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            if use_filters:
-                filters['cuis'] = set()
-                if type(project.get('cuis', None)) == str:
-                    # Old filters
-                    filters['cuis'] = process_old_project_filters(
-                            cuis=project.get('cuis', None), type_ids=project.get('tuis', None), cdb=self.cdb)
-                elif type(project.get('cuis', None)) == list:
-                    # New filters
-                    filters['cuis'] = set(project.get('cuis'))
+            filters['cuis'] = set()
 
-                # Used to subset project filters to the ones existing in the linking filter
-                filters['cuis'] = set([cui for cui in filters['cuis'] if check_filters(cui, _filters)])
+            # Add extrafilter if set
+            if isinstance(extra_cui_filter, set):
+                filters['cuis'] = extra_cui_filter
 
-            start_time = time.time()
-            for dind, doc in tqdm(enumerate(project['documents']), desc='Stats document', total=len(project['documents']), leave=False):
+            if use_project_filters:
+                project_filter = get_project_filters(cuis=project.get('cuis', None),
+                                                      type_ids=project.get('tuis', None),
+                                                      cdb=self.cdb)
+                # Intersect project filter with existing if it has something
+                if project_filter:
+                    filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+
+            for dind, doc in tqdm(
+                enumerate(project["documents"]),
+                desc="Stats document",
+                total=len(project["documents"]),
+                leave=False,
+            ):
                 anns = self._get_doc_annotations(doc)
 
-                # Apply document level filtering, but only if the CUI is in the existing filter in linking
+                # Apply document level filtering, in this case project_filter is ignored while the extra_cui_filter is respected still
                 if use_cui_doc_limit:
-                    _cuis = set([ann['cui'] for ann in anns if check_filters(ann['cui'], _filters)])
+                    _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        filters['cuis'] = _cuis
+                        filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
-                        filters['cuis'] = set(['empty'])
+                        filters['cuis'] = {'empty'}
 
                 spacy_doc = self(doc['text'])
 
@@ -315,7 +315,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if (not use_filters and not use_cui_doc_limit) or check_filters(cui, filters):
+                    if check_filters(cui, filters):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
@@ -426,11 +426,8 @@ class CAT(object):
                 print("{:70} - {:20} - {:10}".format(str(one[0])[0:69], str(one[1])[0:19], one[2]))
             print("*"*110 + "\n")
 
-
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
-
-        self.config.linking['filters'] = _filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
@@ -459,15 +456,15 @@ class CAT(object):
                 try:
                     _ = self(line, do_train=True)
                 except Exception as e:
-                    self.log.warning("LINE: '{}...' \t WAS SKIPPED".format(line[0:100]))
-                    self.log.warning("BECAUSE OF: " + str(e))
+                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
+                    self.log.warning("BECAUSE OF: %s", str(e))
                 if cnt % progress_print == 0:
-                    self.log.info("DONE: " + str(cnt))
+                    self.log.info("DONE: %s", str(cnt))
                 cnt += 1
 
         self.config.linking['train'] = False
 
-    def add_cui_to_group(self, cui, group_name, reset_all_groups=False):
+    def add_cui_to_group(self, cui, group_name):
         r'''
         Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
 
@@ -476,16 +473,10 @@ class CAT(object):
                 The concept to be added
             group_name (str):
                 The group to whcih the concept will be added
-            reset_all_groups (boolean):
-                If True it will reset all existing groups and remove them.
 
         Examples:
             >>> cat.add_cui_to_group("S-17", 'pain')
         '''
-
-        # Reset if needed
-        if reset_all_groups:
-            self.cdb.addl_info['cui2group'] = {}
 
         # Add group_name
         self.cdb.addl_info['cui2group'][cui] = group_name
@@ -514,12 +505,12 @@ class CAT(object):
 
         # If full unlink find all CUIs
         if self.config.general.get('full_unlink', False):
-            for name in names:
-                cuis.extend(self.cdb.name2cuis.get(name, []))
+            for n in names:
+                cuis.extend(self.cdb.name2cuis.get(n, []))
 
         # Remove name from all CUIs
-        for cui in cuis:
-            self.cdb.remove_names(cui=cui, names=names)
+        for c in cuis:
+            self.cdb.remove_names(cui=c, names=names)
 
     def add_and_train_concept(self, cui, name, spacy_doc=None, spacy_entity=None, ontologies=set(), name_status='A', type_ids=set(),
                               description='', full_build=True, negative=False, devalue_others=False, do_add_concept=True):
@@ -558,8 +549,8 @@ class CAT(object):
             if not negative and devalue_others:
                 # Find all cuis
                 cuis = set()
-                for name in names:
-                    cuis.update(self.cdb.name2cuis.get(name, []))
+                for n in names:
+                    cuis.update(self.cdb.name2cuis.get(n, []))
                 # Remove the cui for which we just added positive training
                 if cui in cuis:
                     cuis.remove(cui)
@@ -570,7 +561,7 @@ class CAT(object):
     def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
                          print_stats=0, use_filters=False, terminate_last=False, use_overlaps=False,
                          use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
-                         never_terminate=False, train_from_false_positives=False):
+                         never_terminate=False, train_from_false_positives=False, extra_cui_filter=None):
         r''' TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
@@ -609,6 +600,8 @@ class CAT(object):
                 If True no termination will be applied
             train_from_false_positives (boolean):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
+            extra_cui_filter(boolean):
+                This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
 
         Returns:
             fp (dict):
@@ -628,22 +621,26 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
+        # Backup filters
+        _filters = deepcopy(self.config.linking['filters'])
+        filters = self.config.linking['filters']
+
         fp = fn = tp = p = r = f1 = cui_counts = examples = {}
         with open(data_path) as f:
             data = json.load(f)
         cui_counts = {}
 
         if test_size == 0:
-            self.log.info("Running without a test set, or train=test")
+            self.log.info("Running without a test set, or train==test")
             test_set = data
             train_set = data
         else:
             train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
 
         if print_stats > 0:
-            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, use_filters=use_filters,
+            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, use_project_filters=use_filters,
                     use_cui_doc_limit=use_cui_doc_limit, use_overlaps=use_overlaps,
-                    use_groups=use_groups)
+                    use_groups=use_groups, extra_cui_filter=extra_cui_filter)
 
         if reset_cui_count:
             # Get all CUIs
@@ -665,11 +662,23 @@ class CAT(object):
                     for ann in doc_annotations:
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
-
         for epoch in tqdm(range(nepochs), desc='Epoch', leave=False):
             # Print acc before training
             for project in tqdm(train_set['projects'], desc='Project', leave=False, total=len(train_set['projects'])):
-                for i_doc, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
+                # Set filters in case we are using the train_from_fp
+                filters['cuis'] = set()
+                if isinstance(extra_cui_filter, set):
+                    filters['cuis'] = extra_cui_filter
+
+                if use_filters:
+                    project_filter = get_project_filters(cuis=project.get('cuis', None),
+                            type_ids=project.get('tuis', None),
+                            cdb=self.cdb)
+
+                    if project_filter:
+                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+
+                for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
                     spacy_doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
@@ -708,10 +717,13 @@ class CAT(object):
 
             if print_stats > 0 and (epoch + 1) % print_stats == 0:
                 fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set, epoch=epoch+1,
-                                                         use_filters=use_filters,
+                                                         use_project_filters=use_filters,
                                                          use_cui_doc_limit=use_cui_doc_limit,
                                                          use_overlaps=use_overlaps,
-                                                         use_groups=use_groups)
+                                                         use_groups=use_groups,
+                                                         extra_cui_filter=extra_cui_filter)
+        # Set the filters again
+        self.config.linking['filters'] = _filters
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
@@ -754,10 +766,10 @@ class CAT(object):
                 # which also assumes texts are different from each others.
                 if len(out) < len(texts):
                     self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
-                    for i in range(len(texts)):
+                    for i, text in enumerate(texts):
                         if i == len(out):
                             out.append(self._doc_to_out(None, only_cui, addl_info))
-                        elif out[i]['text'] != texts[i]:
+                        elif out[i]['text'] != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))
 
                 cnf_annotation_output = getattr(self.config, 'annotation_output', {})
@@ -824,10 +836,10 @@ class CAT(object):
         if len(docs) > 0:
             yield docs
 
-    def _save_docs_to_file(self, docs, annotated_ids, out_split_size, save_dir_path, annotated_ids_path, part_counter=0):
+    def _save_docs_to_file(self, docs, annotated_ids, save_dir_path, annotated_ids_path, part_counter=0):
         path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
-        self.log.info("Saved part: {}, to: {}".format(part_counter, path))
+        self.log.info("Saved part: %s, to: %s", (part_counter, path))
         part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
         pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
@@ -867,8 +879,9 @@ class CAT(object):
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         '''
-        if self._meta_annotations:
-            # Hack for torch using multithreading, which is not good here, need for CPU runs only
+        if self._meta_annotations and not separate_nn_components:
+            # Hack for torch using multithreading, which is not good if not 
+            #separate_nn_components, need for CPU runs only
             import torch
             torch.set_num_threads(1)
 
@@ -890,7 +903,7 @@ class CAT(object):
 
         docs = {}
         for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
-            self.log.info("Annotated until now: {} docs; Current BS: {} docs".format(len(annotated_ids), len(batch)))
+            self.log.info("Annotated until now: %s docs; Current BS: %s docs", (len(annotated_ids), len(batch)))
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
@@ -905,7 +918,6 @@ class CAT(object):
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
                                            annotated_ids=annotated_ids,
-                                           out_split_size=out_split_size,
                                            save_dir_path=save_dir_path,
                                            annotated_ids_path=annotated_ids_path,
                                            part_counter=part_counter)
@@ -920,14 +932,13 @@ class CAT(object):
             # Save to file and reset the docs 
             self._save_docs_to_file(docs=docs,
                                    annotated_ids=annotated_ids,
-                                   out_split_size=out_split_size,
                                    save_dir_path=save_dir_path,
                                    annotated_ids_path=annotated_ids_path,
                                    part_counter=part_counter)
 
         # Enable the GPU Components again
         if separate_nn_components:
-            for name, component in nn_components:
+            for name, _ in nn_components:
                 # No need to do anything else as it was already in the pipe
                 self.pipe.nlp.enable_pipe(name)
 
@@ -979,9 +990,11 @@ class CAT(object):
             in_q.put(batch)
 
         # Final data point for workers
-        for _ in range(nproc): in_q.put(None)
+        for _ in range(nproc):
+            in_q.put(None)
         # Join processes
-        for p in procs: p.join()
+        for p in procs:
+            p.join()
 
         docs = {}
         for key in out_dict.keys():
@@ -1039,17 +1052,16 @@ class CAT(object):
 
         if return_dict:
             out = {}
-            for idx in range(len(in_data)):
-                out[in_data[idx][0]] = entities[idx]
+            for idx, data in enumerate(in_data):
+                out[data[0]] = entities[idx]
         else:
             out = []
-            for idx in range(len(in_data)):
-                out.append((in_data[idx][0], entities[idx]))
+            for idx, data in enumerate(in_data):
+                out.append((data[0], entities[idx]))
 
         return out
 
     def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
-        cnt = 0
         out = []
         while True:
             if not in_q.empty():
@@ -1058,11 +1070,11 @@ class CAT(object):
                     out_dict['pid: {}'.format(pid)] = out
                     break
 
-                for id, text in data:
+                for i_text, text in data:
                     try:
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
-                        out.append((id, doc))
+                        out.append((i_text, doc))
                     except Exception as e:
                         self.log.warning("Exception in _mp_cons")
                         self.log.warning(e, exc_info=True, stack_info=True)
@@ -1105,13 +1117,13 @@ class CAT(object):
             context_right = cnf_annotation_output.get('context_right', -1)
             doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
 
-            for ind, ent in enumerate(_ents):
+            for _, ent in enumerate(_ents):
                 cui = str(ent._.cui)
                 if not only_cui:
                     out_ent['pretty_name'] = self.cdb.get_name(cui)
                     out_ent['cui'] = cui
-                    out_ent['tuis'] = list(self.cdb.cui2type_ids.get(cui, ''))
-                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['tuis']]
+                    out_ent['type_ids'] = list(self.cdb.cui2type_ids.get(cui, ''))
+                    out_ent['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in out_ent['type_ids']]
                     out_ent['source_value'] = ent.text
                     out_ent['detected_name'] = str(ent._.detected_name)
                     out_ent['acc'] = float(ent._.context_similarity)
@@ -1165,22 +1177,21 @@ class CAT(object):
 
     @staticmethod
     def _pipe_error_handler(proc_name, proc, docs, e):
-        CAT.log.warning("Exception raised when applying component {} to a batch of docs.".format(proc_name))
+        CAT.log.warning("Exception raised when applying component %s to a batch of docs.", proc_name)
         CAT.log.warning(e, exc_info=True, stack_info=True)
         if docs is not None:
             CAT.log.warning("Docs contained in the batch:")
             for doc in docs:
                 if hasattr(doc, "text"):
-                    CAT.log.warning("{}...".format(doc.text[:50]))
+                    CAT.log.warning("%s...", doc.text[:50])
 
     @staticmethod
     def _get_doc_annotations(doc):
         if type(doc['annotations']) == list:
             return doc['annotations']
-        elif type(doc['annotations']) == dict:
+        if type(doc['annotations']) == dict:
             return doc['annotations'].values()
-        else:
-            return None
+        return None
 
     def destroy_pipe(self):
         self.pipe.destroy()

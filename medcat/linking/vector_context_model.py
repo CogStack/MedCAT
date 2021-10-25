@@ -4,6 +4,7 @@ from medcat.utils.matutils import unitvec
 from medcat.utils.filters import check_filters
 import spacy
 
+
 class ContextModel(object):
     r''' Used to learn embeddings for concepts and calculate similarities in new documents.
 
@@ -13,6 +14,7 @@ class ContextModel(object):
         config
     '''
     log = logging.getLogger(__name__)
+
     def __init__(self, cdb, vocab, config):
         self.cdb = cdb
         self.vocab = vocab
@@ -40,7 +42,6 @@ class ContextModel(object):
 
         return tokens_left, tokens_center, tokens_right
 
-
     def get_context_vectors(self, entity, doc):
         r''' Given an entity and the document it will return the context representation for the
         given entity.
@@ -60,7 +61,7 @@ class ContextModel(object):
             values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
                            for step, tkn in enumerate(tokens_left) if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
-            if self.config.linking.get('context_ignore_center_tokens', False):
+            if not self.config.linking['context_ignore_center_tokens']:
                 # Add center
                 values.extend([self.vocab.vec(tkn.lower_) for tkn in tokens_center if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
@@ -87,7 +88,6 @@ class ContextModel(object):
         sim = self._similarity(cui, vectors)
 
         return sim
-
 
     def _similarity(self, cui, vectors):
         r''' Calculate similarity once we have vectors and a cui.
@@ -124,17 +124,17 @@ class ContextModel(object):
         if self.config.linking['filter_before_disamb']:
             # DEBUG
             self.log.debug("Is trainer, subsetting CUIs")
-            self.log.debug("CUIs before: {}".format(cuis))
+            self.log.debug("CUIs before: %s", cuis)
 
             cuis = [cui for cui in cuis if check_filters(cui, filters)]
             # DEBUG
-            self.log.debug("CUIs after: {}".format(cuis))
+            self.log.debug("CUIs after: %s", cuis)
 
-        if cuis: #Maybe none are left after filtering
+        if cuis:    # Maybe none are left after filtering
             # Calculate similarity for each cui
             similarities = [self._similarity(cui, vectors) for cui in cuis]
             # DEBUG
-            self.log.debug("Similarities: {}".format([(sim, cui) for sim,cui in zip(cuis, similarities)]))
+            self.log.debug("Similarities: %s", [(sim, cui) for sim, cui in zip(cuis, similarities)])
 
             # Prefer primary
             if self.config.linking.get('prefer_primary_name', 0) > 0:
@@ -145,7 +145,7 @@ class ContextModel(object):
                             old_sim = similarities[i]
                             similarities[i] = min(0.99, similarities[i] + similarities[i] * self.config.linking.get('prefer_primary_name', 0))
                             # DEBUG
-                            self.log.debug("CUI: {}, Name: {}, Old sim: {:.3f}, New sim: {:.3f}".format(cui, name, old_sim, similarities[i]))
+                            self.log.debug("CUI: %s, Name: %s, Old sim: %.3f, New sim: %.3f", (cui, name, old_sim, similarities[i]))
 
             if self.config.linking.get('prefer_frequent_concepts', 0) > 0:
                 self.log.debug("Preferring frequent concepts")
@@ -161,7 +161,6 @@ class ContextModel(object):
         else:
             return None, 0
 
-
     def train(self, cui, entity, doc, negative=False, names=[]):
         r''' Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
@@ -175,7 +174,7 @@ class ContextModel(object):
             vectors = self.get_context_vectors(entity, doc)
             self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
             # Debug
-            self.log.debug("Updating CUI: {} with negative={}".format(cui, negative))
+            self.log.debug("Updating CUI: %s with negative=%s", (cui, negative))
 
             if not negative:
                 # Update the name count, if possible
@@ -194,11 +193,11 @@ class ContextModel(object):
                         # Set this name to always be disambiguated, even though it is primary
                         self.cdb.name2cuis2status.get(name, {})[cui] = 'PD'
                         # Debug
-                        self.log.debug("Updating status for CUI: {}, name: {} to <PD>".format(cui, name))
+                        self.log.debug("Updating status for CUI: %s, name: %s to <PD>", (cui, name))
                     elif self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'A':
                         # Set this name to always be disambiguated instead of A
                         self.cdb.name2cuis2status.get(name, {})[cui] = 'N'
-                        self.log.debug("Updating status for CUI: {}, name: {} to <N>".format(cui, name))
+                        self.log.debug("Updating status for CUI: %s, name: %s to <N>", (cui, name))
             if not negative and self.config.linking.get('devalue_linked_concepts', False):
                 #Find what other concepts can be disambiguated against this one
                 _cuis = set()
@@ -210,10 +209,9 @@ class ContextModel(object):
                 for _cui in _cuis:
                     self.cdb.update_context_vector(cui=_cui, vectors=vectors, negative=True)
 
-                self.log.debug("Devalued via names.\n\tBase cui: {} \n\tTo be devalued: {}\n".format(cui, _cuis))
+                self.log.debug("Devalued via names.\n\tBase cui: %s \n\tTo be devalued: %s\n", (cui, _cuis))
         else:
-            self.log.warning("The provided entity for cui <{}> was empty, nothing to train".format(cui))
-
+            self.log.warning("The provided entity for cui <%s> was empty, nothing to train", cui)
 
     def train_using_negative_sampling(self, cui):
         vectors = {}
@@ -227,7 +225,7 @@ class ContextModel(object):
             if len(values) > 0:
                 vectors[context_type] = np.average(values, axis=0)
             # Debug
-            self.log.debug("Updating CUI: {}, with {} negative words".format(cui, len(inds)))
+            self.log.debug("Updating CUI: %s, with %s negative words", (cui, len(inds)))
 
         # Do the update for all context types
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=True)

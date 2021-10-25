@@ -51,10 +51,7 @@ class Linker(PipeRunner):
         cnf_l = self.config.linking
         linked_entities = []
 
-        doc_tkns = [tkn for tkn in doc if not tkn._.to_skip]
-        doc_tkn_ids = [tkn.idx for tkn in doc_tkns]
-
-        if cnf_l['train']:
+        if cnf_l["train"]:
             # Run training
             for entity in doc._.ents:
                 # Check does it have a detected name
@@ -82,7 +79,7 @@ class Linker(PipeRunner):
                                     linked_entities.append(entity)
         else:
             for entity in doc._.ents:
-                self.log.debug("Linker started with entity: {}".format(entity))
+                self.log.debug("Linker started with entity: %s", entity)
                 # Check does it have a detected name
                 if entity._.link_candidates is not None:
                     if entity._.detected_name is not None:
@@ -126,7 +123,15 @@ class Linker(PipeRunner):
         if self.config.general['make_pretty_labels'] is not None:
             self._make_pretty_labels(doc, self.config.general['make_pretty_labels'])
 
+        if self.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
+            self._map_ents_to_groups(doc)
+
         return doc
+
+
+    def _map_ents_to_groups(self, doc):
+        for ent in doc.ents:
+            ent._.cui = self.cdb.addl_info['cui2group'].get(ent._.cui, ent._.cui)
 
 
     def _make_pretty_labels(self, doc, style=None):
