@@ -100,14 +100,14 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
     return out_data
 
 
-def encode_category_values(data, existing_category_value2id={}):
+def encode_category_values(data, existing_category_value2id=None):
     r''' Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
 
     Args:
         data (`dict`):
             Output of `prepare_from_json`
-        existing_category_value2id(`dict`, optional, defaults to `{}`):
+        existing_category_value2id(`dict`, optional):
             Map from category_value to id (old/existing)
 
     Returns:
@@ -117,7 +117,11 @@ def encode_category_values(data, existing_category_value2id={}):
             Map rom category value to ID for all categories in the data.
     '''
     data = list(data)
-    category_value2id = existing_category_value2id
+    if existing_category_value2id is not None:
+        category_value2id = existing_category_value2id
+    else:
+        category_value2id = {}
+
     category_values = set([x[2] for x in data])
     for c in category_values:
         if c not in category_value2id:

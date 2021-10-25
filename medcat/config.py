@@ -187,6 +187,8 @@ class Config(BaseConfig):
                 #should not be used when annotating millions of documents. If `None` it will be the string "concept", if `short` it will be CUI,
                 #if `long` it will be CUI | Name | Confidence
                 'make_pretty_labels': None,
+                # If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group
+                'map_cui_to_group': False,
                 }
 
         self.preprocessing = {
