@@ -121,7 +121,7 @@ class CAT(object):
         os.makedirs(save_dir_path, exist_ok=True)
 
         # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, self.config.general['spacy_model'])
+        spacy_path = os.path.join(save_dir_path, os.path.basename(self.config.general['spacy_model']))
         if str(self.pipe.nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
