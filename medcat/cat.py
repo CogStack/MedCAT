@@ -121,14 +121,11 @@ class CAT(object):
         os.makedirs(save_dir_path, exist_ok=True)
 
         # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, 'spacy_model')
+        spacy_path = os.path.join(save_dir_path, self.config.general['spacy_model'])
         if str(self.pipe.nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
             shutil.copytree(self.pipe.nlp._path, spacy_path)
-
-        # Change the name of the spacy model in the config
-        self.config.general['spacy_model'] = 'spacy_model'
 
         # Save the CDB
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
