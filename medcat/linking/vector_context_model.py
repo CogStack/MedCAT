@@ -145,7 +145,7 @@ class ContextModel(object):
                             old_sim = similarities[i]
                             similarities[i] = min(0.99, similarities[i] + similarities[i] * self.config.linking.get('prefer_primary_name', 0))
                             # DEBUG
-                            self.log.debug("CUI: %s, Name: %s, Old sim: %.3f, New sim: %.3f", (cui, name, old_sim, similarities[i]))
+                            self.log.debug("CUI: %s, Name: %s, Old sim: %.3f, New sim: %.3f", cui, name, old_sim, similarities[i])
 
             if self.config.linking.get('prefer_frequent_concepts', 0) > 0:
                 self.log.debug("Preferring frequent concepts")
@@ -174,7 +174,7 @@ class ContextModel(object):
             vectors = self.get_context_vectors(entity, doc)
             self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
             # Debug
-            self.log.debug("Updating CUI: %s with negative=%s", (cui, negative))
+            self.log.debug("Updating CUI: %s with negative=%s", cui, negative)
 
             if not negative:
                 # Update the name count, if possible
@@ -193,11 +193,11 @@ class ContextModel(object):
                         # Set this name to always be disambiguated, even though it is primary
                         self.cdb.name2cuis2status.get(name, {})[cui] = 'PD'
                         # Debug
-                        self.log.debug("Updating status for CUI: %s, name: %s to <PD>", (cui, name))
+                        self.log.debug("Updating status for CUI: %s, name: %s to <PD>", cui, name)
                     elif self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'A':
                         # Set this name to always be disambiguated instead of A
                         self.cdb.name2cuis2status.get(name, {})[cui] = 'N'
-                        self.log.debug("Updating status for CUI: %s, name: %s to <N>", (cui, name))
+                        self.log.debug("Updating status for CUI: %s, name: %s to <N>", cui, name)
             if not negative and self.config.linking.get('devalue_linked_concepts', False):
                 #Find what other concepts can be disambiguated against this one
                 _cuis = set()
@@ -209,7 +209,7 @@ class ContextModel(object):
                 for _cui in _cuis:
                     self.cdb.update_context_vector(cui=_cui, vectors=vectors, negative=True)
 
-                self.log.debug("Devalued via names.\n\tBase cui: %s \n\tTo be devalued: %s\n", (cui, _cuis))
+                self.log.debug("Devalued via names.\n\tBase cui: %s \n\tTo be devalued: %s\n", cui, _cuis)
         else:
             self.log.warning("The provided entity for cui <%s> was empty, nothing to train", cui)
 
@@ -225,7 +225,7 @@ class ContextModel(object):
             if len(values) > 0:
                 vectors[context_type] = np.average(values, axis=0)
             # Debug
-            self.log.debug("Updating CUI: %s, with %s negative words", (cui, len(inds)))
+            self.log.debug("Updating CUI: %s, with %s negative words", cui, len(inds))
 
         # Do the update for all context types
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=True)

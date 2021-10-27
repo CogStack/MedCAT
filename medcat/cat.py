@@ -835,7 +835,7 @@ class CAT(object):
     def _save_docs_to_file(self, docs, annotated_ids, save_dir_path, annotated_ids_path, part_counter=0):
         path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
-        self.log.info("Saved part: %s, to: %s", (part_counter, path))
+        self.log.info("Saved part: %s, to: %s", part_counter, path)
         part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
         pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
@@ -902,7 +902,7 @@ class CAT(object):
 
         docs = {}
         for i_batch, batch in enumerate(self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids))):
-            self.log.info("Annotated until now: %s docs; Current BS: %s docs", (len(annotated_ids), len(batch)))
+            self.log.info("Annotated until now: %s docs; Current BS: %s docs", len(annotated_ids), len(batch))
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
