@@ -1083,8 +1083,8 @@ class CAT(object):
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
                     except Exception as e:
-                        self.log.warning("Failed one document in _mp_cons, running will continue normally. " + \
-                                         "Document length in chars: {}, and ID: ".format(len(str(text), i_text)))
+                        self.log.warning("Failed one document in _mp_cons, running will continue normally. " +
+                                         "Document length in chars: %s, and ID: %s", len(str(text)), i_text)
                         self.log.warning(e, exc_info=True, stack_info=False)
 
             sleep(1)
