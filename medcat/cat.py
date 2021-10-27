@@ -1070,6 +1070,7 @@ class CAT(object):
 
     def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
         out = []
+        first_fail = True
         while True:
             if not in_q.empty():
                 data = in_q.get()
@@ -1083,9 +1084,13 @@ class CAT(object):
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
                     except Exception as e:
-                        self.log.warning("Failed one document in _mp_cons, running will continue normally. " +
-                                         "Document length in chars: %s, and ID: %s", len(str(text)), i_text)
-                        self.log.warning(e, exc_info=True, stack_info=False)
+                        self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
+                                         "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
+                        self.log.warning(str(e))
+                        if first_fail:
+                            # If it is the first time we fail wait a bit
+                            sleep(180)
+                            first_fail = False
 
             sleep(1)
 
