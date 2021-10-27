@@ -6,9 +6,10 @@ import json
 import logging
 import math
 import types
+import time
+from time import sleep
 from copy import deepcopy
 from multiprocessing import Process, Manager, Queue, cpu_count
-from time import sleep
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc
@@ -901,8 +902,13 @@ class CAT(object):
             part_counter = 0
 
         docs = {}
-        for i_batch, batch in enumerate(self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids))):
-            self.log.info("Annotated until now: %s docs; Current BS: %s docs", len(annotated_ids), len(batch))
+        _start_time = time.time()
+        _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
+        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+            self.log.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
+                          len(annotated_ids),
+                          len(batch),
+                          (time.time() - _start_time)/60)
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
@@ -912,8 +918,9 @@ class CAT(object):
                                                     nn_components=nn_components)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
+                _batch_counter += 1
                 del _docs
-                if out_split_size_chars is not None and (i_batch * batch_size_chars) > out_split_size_chars:
+                if out_split_size_chars is not None and (_batch_counter * batch_size_chars) > out_split_size_chars:
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
                                            annotated_ids=annotated_ids,
@@ -922,6 +929,7 @@ class CAT(object):
                                            part_counter=part_counter)
                     del docs
                     docs = {}
+                    _batch_counter = 0
             except Exception as e:
                 self.log.warning("Failed an outer batch in the multiprocessing script")
                 self.log.warning(e, exc_info=True, stack_info=True)
@@ -1075,8 +1083,9 @@ class CAT(object):
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
                     except Exception as e:
-                        self.log.warning("Exception in _mp_cons")
-                        self.log.warning(e, exc_info=True, stack_info=True)
+                        self.log.warning("Failed one document in _mp_cons, running will continue normally. " + \
+                                         "Document length in chars: {}, and ID: ".format(len(str(text), i_text)))
+                        self.log.warning(e, exc_info=True, stack_info=False)
 
             sleep(1)
 
