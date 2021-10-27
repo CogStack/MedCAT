@@ -93,11 +93,10 @@ class CAT(object):
         self.linker = Linker(self.cdb, vocab, self.config)
         self.pipe.add_linker(self.linker)
 
+        self._meta_cats = meta_cats
         # Add meta_annotaiton classes if they exist
-        self._meta_annotations = False
         for meta_cat in meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
-            self._meta_annotations = True
 
         # Set max document length
         self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
@@ -848,9 +847,9 @@ class CAT(object):
                         only_cui: bool = False,
                         addl_info: List[str] = [],
                         separate_nn_components: bool = True,
-                        out_split_size: int = None,
+                        out_split_size_chars: int = None,
                         save_dir_path: str = None,) -> Dict:
-        r''' Run multiprocessing for inference, if out_save_path and out_split_size is used this will also continue annotating
+        r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
         Args:
@@ -865,21 +864,21 @@ class CAT(object):
                 they will be run sequentially. This is useful as the NN components
                 have batching and like to process many docs at once, while the rest of the pipeline
                 runs the documents one by one.
-            out_split_size (`int`, None):
-                If set once more than out_split_size documents are annotated
+            out_split_size_chars (`int`, None):
+                If set once more than out_split_size_chars are annotated
                 they will be saved to a file (save_dir_path) and the memory cleared.
             save_dir_path(`str`, None):
                 Where to save the annotated documents if splitting.
 
         Returns:
-            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size is used
+            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         '''
         # Set max document length
         self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
 
-        if self._meta_annotations and not separate_nn_components:
+        if self._meta_cats and not separate_nn_components:
             # Hack for torch using multithreading, which is not good if not 
             #separate_nn_components, need for CPU runs only
             import torch
@@ -902,7 +901,7 @@ class CAT(object):
             part_counter = 0
 
         docs = {}
-        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+        for i_batch, batch in enumerate(self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids))):
             self.log.info("Annotated until now: %s docs; Current BS: %s docs", (len(annotated_ids), len(batch)))
             try:
                 _docs = self._multiprocessing_batch(data=batch,
@@ -914,7 +913,7 @@ class CAT(object):
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
                 del _docs
-                if out_split_size is not None and len(docs) > out_split_size:
+                if out_split_size_chars is not None and (i_batch * batch_size_chars) > out_split_size_chars:
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
                                            annotated_ids=annotated_ids,
@@ -928,7 +927,7 @@ class CAT(object):
                 self.log.warning(e, exc_info=True, stack_info=True)
 
         # Save the last batch
-        if out_split_size is not None and len(docs) > 0:
+        if out_split_size_chars is not None and len(docs) > 0:
             # Save to file and reset the docs 
             self._save_docs_to_file(docs=docs,
                                    annotated_ids=annotated_ids,
@@ -1038,7 +1037,7 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        if self._meta_annotations:
+        if self._meta_cats:
             # Hack for torch using multithreading, which is not good here
             import torch
             torch.set_num_threads(1)
