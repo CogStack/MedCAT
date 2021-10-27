@@ -5,6 +5,7 @@ import spacy
 import logging
 import pandas
 import torch
+
 import torch.nn
 import pickle
 import dill
@@ -13,7 +14,7 @@ from torch.nn.utils.clip_grad import clip_grad_norm_
 import torch.optim
 import torch
 import torch.nn as nn
-from datetime import datetime
+from datetime import date, datetime
 from itertools import combinations
 from torch.nn.modules.module import T
 from torch.nn.utils.rnn import pad_sequence
@@ -172,7 +173,7 @@ class RelationExtraction(object):
            embeddings = numpy.load(os.path.join("./", "embeddings.npy"), allow_pickle=False)
            self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
 
-       self.spacy_nlp = spacy.load("en_core_sci_lg") if spacy_model is None else spacy.load(spacy_model)
+       self.spacy_nlp = spacy.load("en_core_sci_md") if spacy_model is None else spacy.load(spacy_model)
 
        self.rel_data = RelData(docs)
 
@@ -230,13 +231,6 @@ class RelationExtraction(object):
                           e1_e2_start=e1_e2_start, pooled_output=None)
 
                 token_mask_matches = (tokens == mask_id).to(dtype=torch.bool, device=self.device)
-
-                #lm_logits = lm_logits[token_mask_matches]
-                #print(token_mask_matches)
-
-           
-                #lm_logits[0] = lm_logits[0][token_mask_matches]
-                
                 
                 if (i % update_size) == (update_size - 1):
                     verbose = True
@@ -245,11 +239,13 @@ class RelationExtraction(object):
 
                 #blank_labels = torch.zeros((blanks_logits.size()))
 
-                print("BLANK LABELS: ", blank_labels)
-          
-                loss = criterion(lm_logits, blanks_logits, masked_for_pred, blank_labels, verbose=verbose)
+                input_matched_lm_logits = lm_logits[0][token_mask_matches]
+
+
+                loss = criterion(input_matched_lm_logits, blanks_logits, masked_for_pred, blank_labels, verbose=verbose)
                 loss = loss/gradient_acc_steps
                 
+              
                 loss.backward()
                 
                 if (i % gradient_acc_steps) == 0:
@@ -257,24 +253,28 @@ class RelationExtraction(object):
                     optimizer.zero_grad()
                 
                 total_loss += loss.item()
-                total_acc += Two_Headed_Loss.evaluate_(lm_logits, blanks_logits, masked_for_pred, blank_labels, \
-                                    self.tokenizer.hf_tokenizers, print_=False)[0]
+          
+                total_acc += Two_Headed_Loss.evaluate_results(input_matched_lm_logits, blanks_logits, 
+                                    masked_for_pred, blank_labels, \
+                                    self.tokenizer.hf_tokenizers, print_=verbose)
                 
                 if (i % update_size) == (update_size - 1):
-                    losses_per_batch.append(gradient_acc_steps*total_loss/update_size)
+                    losses_per_batch.append(gradient_acc_steps * total_loss/ update_size)
                     lm_accuracy_per_batch.append(total_acc/update_size)
                     print('[Epoch: %d, %5d/ %d points] total loss, lm accuracy per batch: %.3f, %.3f' %
                         (epoch + 1, (i + 1), train_len, losses_per_batch[-1], lm_accuracy_per_batch[-1]))
                     total_loss = 0.0; total_acc = 0.0
                     logging.info("Last batch samples (pos, neg): %d, %d" % ((blank_labels.squeeze() == 1).sum().item(),\
                                                                         (blank_labels.squeeze() == 0).sum().item()))
-        
+
+            print("")
+
             scheduler.step()
             losses_per_epoch.append(sum(losses_per_batch)/len(losses_per_batch))
             accuracy_per_epoch.append(sum(lm_accuracy_per_batch)/len(lm_accuracy_per_batch))
             end_time = datetime.now().time()
             
-            print("Epoch finished, took %.2f seconds." % (end_time - start_time))
+            print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
             print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
             print("Accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
 
@@ -354,27 +354,50 @@ class RelationExtraction(object):
 
         ent1_ent2_start = ([i for i, e in enumerate(tokens) if e == "[ENT1]"] [0] , [i for i, e in enumerate(tokens) if e == "[ENT2]"] [0])
 
-        tagged_tokens = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
+        token_ids = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
         masked_for_pred = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(masked_for_pred)
 
-        return tagged_tokens, masked_for_pred, ent1_ent2_start
+        print(tokens)
+        
+        return token_ids, masked_for_pred, ent1_ent2_start
 
     def __len__(self):
         return len(self.rel_data.relations_dataframe)
 
     def __getitem__(self, index):
-        relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index] # positive sample
+        relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index]
+
+        print("relation : ", str(relation), " | ent1_text: " + ent1_text, "| ent2_text" + ent2_text)
+        print("\n")
 
         pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent1_text) & (self.rel_data.relations_dataframe["ent2"] == ent2_text))].index
         
-        pool = pool.append(self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent2_text) & (self.rel_data.relations_dataframe["ent2"] == ent1_text))].index)
+        pool.append(self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent2_text) & (self.rel_data.relations_dataframe["ent2"] == ent1_text))].index)
+        
         pos_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
 
-        # if numpy.random.uniform() > 0.5:   
-        # pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ENT1"] != ent1_text) | (self.rel_data.relations_dataframe["ENT2"] != ent2_text))].index
+        neg_idxs = []
+
+        if numpy.random.uniform() > 0.5:   
+            pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] != ent1_text) | \
+                                                     (self.rel_data.relations_dataframe["ent2"] != ent2_text))].index
+        else:
+            if numpy.random.uniform() > 0.5: # share e1 but not e2
+                pool = self.rel_data.relations_dataframe[(( self.rel_data.relations_dataframe['ent1'] == ent1_text) & \
+                     (self.rel_data.relations_dataframe['ent2'] != ent2_text))].index
+            else: # share e2 but not e1
+                pool = self.rel_data.relations_dataframe[(( self.rel_data.relations_dataframe['ent1'] != ent1_text) & \
+                     (self.rel_data.relations_dataframe['ent2'] == ent2_text))].index
+
+            if len(pool) == 0:
+                    pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] != ent1_text) | \
+                        (self.rel_data.relations_dataframe["ent2"] != ent2_text))].index
+                                                     
         neg_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
-        
         Q = 1/len(pool)
+
+        print(" Pos Idx: " + str(pos_idxs))
+        print(" Neg Idx: " + str(neg_idxs))
 
         batch = []
         ## process positive sample
@@ -412,7 +435,7 @@ class Two_Headed_Loss(nn.Module):
     def __init__(self, lm_ignore_idx, use_logits=False, normalize=False):
         super(Two_Headed_Loss, self).__init__()
         self.lm_ignore_idx = lm_ignore_idx
-        self.LM_criterion = nn.CrossEntropyLoss(ignore_index=self.lm_ignore_idx)
+        self.LM_criterion = nn.CrossEntropyLoss(ignore_index=lm_ignore_idx)
         self.use_logits = use_logits
         self.normalize = normalize
         
@@ -455,8 +478,8 @@ class Two_Headed_Loss(nn.Module):
             pos_labels = [1.0 for _ in range(pos_logits.shape[0])]
         else:
             pos_logits, pos_labels = torch.FloatTensor([]), []
-            if blank_logits.is_cuda:
-                pos_logits = pos_logits.cuda()
+            # if blank_logits.is_cuda:
+            #     pos_logits = pos_logits.cuda()
         
         # negatives
         neg_logits = []
@@ -473,12 +496,8 @@ class Two_Headed_Loss(nn.Module):
 
         blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
 
-        lm_labels = torch.stack((torch.zeros(lm_logits[0].shape[2]),
-                                torch.cat((lm_labels, torch.zeros(lm_logits[0].shape[2] - lm_labels.shape[0]))
-                                ))
-                                )
+        lm_loss = self.LM_criterion(lm_logits, target=lm_labels.long())
 
-        lm_loss = self.LM_criterion(lm_logits[0].type(torch.LongTensor), lm_labels)
 
         blank_loss = self.BCE_criterion(torch.cat([pos_logits, neg_logits], dim=0), \
                                         blank_labels_)
@@ -516,7 +535,7 @@ class Two_Headed_Loss(nn.Module):
         return start_epoch, best_pred, amp_checkpoint
 
     @classmethod
-    def load_results(model_name="BERT"):
+    def load_results(cls, model_name="BERT"):
         """ Loads saved results if exists """
         losses_path = "./data/test_losses_per_epoch_%s.pkl" % model_name
         accuracy_path = "./data/test_accuracy_per_epoch_%s.pkl" % model_name
@@ -529,12 +548,12 @@ class Two_Headed_Loss(nn.Module):
         return losses_per_epoch, accuracy_per_epoch
     
     @classmethod
-    def evaluate_(lm_logits, blanks_logits, masked_for_pred, blank_labels, tokenizer, print_=True):
+    def evaluate_results(cls, lm_logits, blanks_logits, masked_for_pred, blank_labels, tokenizer, print_=False):
         '''
         evaluate must be called after loss.backward()
         '''
-        # lm_logits
-        lm_logits_pred_ids = torch.softmax(lm_logits, dim=-1).max(1)[1]
+     
+        lm_logits_pred_ids = torch.softmax(input=lm_logits, dim=-1).max(1)[1]
         lm_accuracy = ((lm_logits_pred_ids == masked_for_pred).sum().float()/len(masked_for_pred)).item()
         
         if print_:
@@ -544,8 +563,8 @@ class Two_Headed_Loss(nn.Module):
             print("\nMasked labels tokens: \n")
             print(tokenizer.decode(masked_for_pred.cpu().numpy() if masked_for_pred.is_cuda else \
                                 masked_for_pred.numpy()))
-        blanks_mse = 0
-        return lm_accuracy, blanks_mse
+  
+        return lm_accuracy
 
 class Pad_Sequence():
     """
