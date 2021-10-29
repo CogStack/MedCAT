@@ -1085,8 +1085,8 @@ class CAT(object):
         out = []
         first_fail = True
 
-        # Every process has a 50% chance to wait before starting for a max of 120s
-        if random.random() > 0.5:
+        # Every process has a 50% chance to wait before starting for a max of 120s, only if we are using min_free_memory
+        if min_free_memory > 0 and random.random() > 0.5:
             sleep(int(random.random() * 120))
 
         while True:
