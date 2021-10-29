@@ -14,6 +14,14 @@ class TokenizerNER(object):
         self.label_map = {'O': 0, 'X': 1}
         self.id2type = id2type
 
+
+    def calculate_label_map(self, dataset):
+        for cuis in dataset['ent_cuis']:
+            for cui in cuis:
+                if cui not in self.label_map:
+                    self.label_map[cui] = len(self.label_map)
+
+
     def encode(self, examples, ignore_subwords=False):
         r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
         appropriate form for NER with BERT. It will split long text segments into max_len sequences.
