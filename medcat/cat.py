@@ -1099,7 +1099,7 @@ class CAT(object):
 
                 for i_text, text in data:
                     try:
-                        if char_counter_max > 0:
+                        if char_counter_max > 0 and isinstance(text, str):
                             while True:
                                 with lock:
                                     # If we already have max chars in memory, then wait
@@ -1111,11 +1111,11 @@ class CAT(object):
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
 
-                        if char_counter_max > 0:
+                        if char_counter_max > 0 and isinstance(text, str):
                             with lock:
                                 char_counter.value -= len(text)
                     except Exception as e:
-                        if char_counter_max > 0:
+                        if char_counter_max > 0 and isinstance(text, str):
                             with lock:
                                 char_counter.value -= len(text)
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
