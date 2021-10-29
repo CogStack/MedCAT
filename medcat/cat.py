@@ -8,6 +8,7 @@ import math
 import types
 import time
 import psutil
+import random
 from time import sleep
 from copy import deepcopy
 from multiprocessing import Process, Manager, Queue, cpu_count
@@ -963,7 +964,7 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components=[],
-                               use_char_limit=True) -> Dict:
+                               min_free_memory=0) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -1083,6 +1084,11 @@ class CAT(object):
     def _mp_cons(self, in_q, out_dict, min_free_memory, pid=0, only_cui=False, addl_info=[]):
         out = []
         first_fail = True
+
+        # Every process has a 50% chance to wait before starting for a max of 120s
+        if random.random() > 0.5:
+            sleep(int(random.random() * 120))
+
         while True:
             if not in_q.empty():
                 data = in_q.get()
@@ -1095,7 +1101,7 @@ class CAT(object):
                         if min_free_memory > 0:
                             for i in range(100): # So we do not wait forever
                                 # If we already have max chars in memory, then wait
-                                if (psutil.virtual_memory().avaliable / psutil.virtual_memory().total) > min_free_memory:
+                                if (psutil.virtual_memory().available / psutil.virtual_memory().total) > min_free_memory:
                                     break
                                 sleep(10)
                         # Annotate document
