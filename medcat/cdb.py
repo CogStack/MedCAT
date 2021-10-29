@@ -335,7 +335,7 @@ class CDB(object):
                             similarity, negative, lr, b)
                 cv = self.cui2context_vectors[cui][context_type]
                 similarity_after = np.dot(unitvec(cv), unitvec(vector))
-                self.log.debug("Similarity before vs after: %.5f vs %.5f", (similarity, similarity_after))
+                self.log.debug("Similarity before vs after: %.5f vs %.5f", similarity, similarity_after)
             else:
                 if negative:
                     self.cui2context_vectors[cui][context_type] = -1 * vector
