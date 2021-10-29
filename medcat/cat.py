@@ -7,6 +7,7 @@ import logging
 import math
 import types
 import time
+import psutil
 from time import sleep
 from copy import deepcopy
 from multiprocessing import Process, Manager, Queue, cpu_count
@@ -849,7 +850,8 @@ class CAT(object):
                         addl_info: List[str] = [],
                         separate_nn_components: bool = True,
                         out_split_size_chars: int = None,
-                        save_dir_path: str = None,) -> Dict:
+                        save_dir_path: str = None,
+                        use_char_limit=True) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -870,6 +872,9 @@ class CAT(object):
                 they will be saved to a file (save_dir_path) and the memory cleared.
             save_dir_path(`str`, None):
                 Where to save the annotated documents if splitting.
+            use_char_limit(`bool`, defaults to True):
+                If set this method will calculate the maximum number of characters your PC can handle at once,
+                based on that concurrent processes will not be allowed to process more at once than what is max.
 
         Returns:
             A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
@@ -957,7 +962,8 @@ class CAT(object):
                                batch_size_chars: int = 1000000,
                                only_cui: bool = False,
                                addl_info: List[str] = [],
-                               nn_components=[]) -> Dict:
+                               nn_components=[],
+                               use_char_limit=True) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -977,6 +983,16 @@ class CAT(object):
         out_dict = manager.dict()
         out_dict['processed'] = []
 
+        char_counter = manager.Value('i', 0)
+        lock = manager.Lock()
+
+        # 1mb of RAM can take 400 characters, here we calculate how many characters can fit
+        #into 40% of the total RAM memory
+        if use_char_limit:
+            char_counter_max = (int(psutil.virtual_memory().total / (10**6)) * 400) * 0.4
+        else:
+            char_counter_max = -1
+
         # Create processes
         procs = []
         for i in range(nproc):
@@ -985,7 +1001,10 @@ class CAT(object):
                                 'out_dict': out_dict,
                                 'pid': i,
                                 'only_cui': only_cui,
-                                'addl_info': addl_info})
+                                'addl_info': addl_info,
+                                'lock': lock,
+                                'char_counter': char_counter,
+                                'char_counter_max': char_counter_max})
             p.start()
             procs.append(p)
 
@@ -1068,7 +1087,7 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
+    def _mp_cons(self, in_q, out_dict, lock, char_counter, char_counter_max, pid=0, only_cui=False, addl_info=[]):
         out = []
         first_fail = True
         while True:
@@ -1080,10 +1099,25 @@ class CAT(object):
 
                 for i_text, text in data:
                     try:
+                        if char_counter_max > 0:
+                            while True:
+                                with lock:
+                                    # If we already have max chars in memory, then wait
+                                    if char_counter.value < char_counter_max:
+                                        char_counter.value += len(text)
+                                        break
+                                sleep(10)
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
+
+                        if char_counter_max > 0:
+                            with lock:
+                                char_counter.value -= len(text)
                     except Exception as e:
+                        if char_counter_max > 0:
+                            with lock:
+                                char_counter.value -= len(text)
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         self.log.warning(str(e))
