@@ -986,10 +986,12 @@ class CAT(object):
         char_counter = manager.Value('i', 0)
         lock = manager.Lock()
 
+        # SpaCy is garbage with respect to memory consumption (and some other things).
         # 1mb of RAM can take 400 characters, here we calculate how many characters can fit
-        #into 40% of the total RAM memory
+        #into 60% of the available RAM memory. Why 60%, cannot be really justified, but looked
+        #like a good approximation during the test runs.
         if use_char_limit:
-            char_counter_max = (int(psutil.virtual_memory().total / (10**6)) * 400) * 0.4
+            char_counter_max = (int(psutil.virtual_memory().available / (10**6)) * 400) * 0.6
         else:
             char_counter_max = -1
 
