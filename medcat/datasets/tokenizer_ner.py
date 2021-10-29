@@ -53,8 +53,6 @@ class TokenizerNER(object):
                 input_ids.append(tokens['input_ids'][ind])
 
                 if entities and (offset[0] >= entities[0][0] and offset[1] <= entities[0][1]):
-                    if entities[0][2] not in self.label_map:
-                        self.label_map[entities[0][2]] = len(self.label_map)
                     # Means this token is part of entity at position 0
                     tkn_part_of_entity = True
                     if not ignore_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
