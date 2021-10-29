@@ -61,7 +61,7 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-    def _split_generators(self):
+    def _split_generators(self, dl_manger):
         """Returns SplitGenerators."""
         return [
             datasets.SplitGenerator(
