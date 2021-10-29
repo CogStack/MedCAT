@@ -851,7 +851,7 @@ class CAT(object):
                         separate_nn_components: bool = True,
                         out_split_size_chars: int = None,
                         save_dir_path: str = None,
-                        use_char_limit=True) -> Dict:
+                        min_free_memory=0) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -872,9 +872,9 @@ class CAT(object):
                 they will be saved to a file (save_dir_path) and the memory cleared.
             save_dir_path(`str`, None):
                 Where to save the annotated documents if splitting.
-            use_char_limit(`bool`, defaults to True):
-                If set this method will calculate the maximum number of characters your PC can handle at once,
-                based on that concurrent processes will not be allowed to process more at once than what is max.
+            min_free_memory(`float`, defaults to 0):
+                If set a process will not start unless there is at least this much RAM memory left,
+                should be a range between [0, 1] meaning how much of the memory has to be free.
 
         Returns:
             A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
@@ -917,7 +917,7 @@ class CAT(object):
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
-                                                    batch_size_chars=internal_batch_size_chars,
+                                                    min_free_memory=min_free_memory,
                                                     only_cui=only_cui,
                                                     addl_info=addl_info,
                                                     nn_components=nn_components)
@@ -983,19 +983,12 @@ class CAT(object):
         out_dict = manager.dict()
         out_dict['processed'] = []
 
-        char_counter = manager.Value('i', 0)
-        lock = manager.Lock()
-
         # SpaCy is garbage with respect to memory consumption (and some other things).
         # 1mb of RAM can take 400 characters, here we calculate how many characters can fit
         #into 60% of the available RAM memory. Why 60%, cannot be really justified, but looked
         #like a good approximation during the test runs.
-        if use_char_limit:
-            char_counter_max = (int(psutil.virtual_memory().available / (10**6)) * 400) * 0.6
-        else:
-            char_counter_max = -1
-
         # Create processes
+
         procs = []
         for i in range(nproc):
             p = Process(target=self._mp_cons,
@@ -1004,9 +997,7 @@ class CAT(object):
                                 'pid': i,
                                 'only_cui': only_cui,
                                 'addl_info': addl_info,
-                                'lock': lock,
-                                'char_counter': char_counter,
-                                'char_counter_max': char_counter_max})
+                                'min_free_memory': min_free_memory})
             p.start()
             procs.append(p)
 
@@ -1089,7 +1080,7 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q, out_dict, lock, char_counter, char_counter_max, pid=0, only_cui=False, addl_info=[]):
+    def _mp_cons(self, in_q, out_dict, min_free_memory, pid=0, only_cui=False, addl_info=[]):
         out = []
         first_fail = True
         while True:
@@ -1101,25 +1092,17 @@ class CAT(object):
 
                 for i_text, text in data:
                     try:
-                        if char_counter_max > 0 and isinstance(text, str):
-                            while True:
-                                with lock:
-                                    # If we already have max chars in memory, then wait
-                                    if char_counter.value < char_counter_max:
-                                        char_counter.value += len(text)
-                                        break
+                        if min_free_memory > 0:
+                            for i in range(100): # So we do not wait forever
+                                # If we already have max chars in memory, then wait
+                                if (psutil.virtual_memory().avaliable / psutil.virtual_memory().total) > min_free_memory:
+                                    break
                                 sleep(10)
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
 
-                        if char_counter_max > 0 and isinstance(text, str):
-                            with lock:
-                                char_counter.value -= len(text)
                     except Exception as e:
-                        if char_counter_max > 0 and isinstance(text, str):
-                            with lock:
-                                char_counter.value -= len(text)
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         self.log.warning(str(e))
