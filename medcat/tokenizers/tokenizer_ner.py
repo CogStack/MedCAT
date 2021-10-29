@@ -1,3 +1,5 @@
+import dill
+
 class TokenizerNER(object):
     r'''
 
@@ -90,3 +92,19 @@ class TokenizerNER(object):
                 examples['id'].append(old_ids[_ind])
 
         return examples
+
+
+    def save(self, path):
+        with open(path, 'wb') as f:
+            dill.dump(self.__dict__, f)
+
+
+    @classmethod
+    def load(cls, path):
+        tokenizer = cls()
+        with open(path, 'rb') as f:
+            d = dill.load(f)
+            for k in tokenizer.__dict__:
+                if k in d:
+                    tokenizer.__dict__[k] = d[k]
+        return tokenizer
