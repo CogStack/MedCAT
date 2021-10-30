@@ -964,7 +964,7 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components=[],
-                               min_free_memory=0) -> Dict:
+                               min_free_memory=0.1) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -1100,7 +1100,6 @@ class CAT(object):
                     try:
                         if min_free_memory > 0:
                             for i in range(100): # So we do not wait forever
-                                # If we already have max chars in memory, then wait
                                 if (psutil.virtual_memory().available / psutil.virtual_memory().total) > min_free_memory:
                                     break
                                 sleep(10)
