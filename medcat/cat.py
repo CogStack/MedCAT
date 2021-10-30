@@ -870,7 +870,8 @@ class CAT(object):
                 runs the documents one by one.
             out_split_size_chars (`int`, None):
                 If set once more than out_split_size_chars are annotated
-                they will be saved to a file (save_dir_path) and the memory cleared.
+                they will be saved to a file (save_dir_path) and the memory cleared. Recommended
+                value is 20*batch_size_chars.
             save_dir_path(`str`, None):
                 Where to save the annotated documents if splitting.
             min_free_memory(`float`, defaults to 0):
@@ -1101,6 +1102,7 @@ class CAT(object):
                 for i_text, text in data:
                     try:
                         if min_free_memory > 0 and wait_time < max_wait_time:
+                            # Why is this needed, bacause fucking spacy
                             while True:
                                 if wait_time > max_wait_time or \
                                    (psutil.virtual_memory().available / psutil.virtual_memory().total) > min_free_memory:
