@@ -918,10 +918,10 @@ class CAT(object):
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
-                                                    min_free_memory=min_free_memory,
                                                     only_cui=only_cui,
                                                     addl_info=addl_info,
-                                                    nn_components=nn_components)
+                                                    nn_components=nn_components,
+                                                    min_free_memory=min_free_memory)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
                 _batch_counter += 1
@@ -964,7 +964,7 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components=[],
-                               min_free_memory=0.1) -> Dict:
+                               min_free_memory=0) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -1085,10 +1085,12 @@ class CAT(object):
         out = []
         first_fail = True
 
-        # Every process has a 50% chance to wait before starting for a max of 120s, only if we are using min_free_memory
-        if min_free_memory > 0 and random.random() > 0.5:
-            sleep(int(random.random() * 120))
+        # Every process has a 60% chance to wait before starting for a max of 180s, only if we are using min_free_memory
+        if min_free_memory > 0 and random.random() > 0.4:
+            sleep(int(random.random() * 180))
 
+        max_wait_time = 120 # 20min, overall one process during one run cannot wait more than this
+        wait_time = 0
         while True:
             if not in_q.empty():
                 data = in_q.get()
@@ -1098,10 +1100,12 @@ class CAT(object):
 
                 for i_text, text in data:
                     try:
-                        if min_free_memory > 0:
-                            for i in range(100): # So we do not wait forever
-                                if (psutil.virtual_memory().available / psutil.virtual_memory().total) > min_free_memory:
+                        if min_free_memory > 0 and wait_time < max_wait_time:
+                            while True:
+                                if wait_time > max_wait_time or \
+                                   (psutil.virtual_memory().available / psutil.virtual_memory().total) > min_free_memory:
                                     break
+                                wait_time += 1
                                 sleep(10)
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
