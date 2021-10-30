@@ -980,17 +980,12 @@ class CAT(object):
             A dictionary: {id: doc_json, id2: doc_json2, ...}
         '''
         # Create the input output for MP
-        in_q = Queue(maxsize=4*nproc)
+        in_q = Queue(maxsize=5*nproc)
         manager = Manager()
         out_dict = manager.dict()
         out_dict['processed'] = []
 
-        # SpaCy is garbage with respect to memory consumption (and some other things).
-        # 1mb of RAM can take 400 characters, here we calculate how many characters can fit
-        #into 60% of the available RAM memory. Why 60%, cannot be really justified, but looked
-        #like a good approximation during the test runs.
         # Create processes
-
         procs = []
         for i in range(nproc):
             p = Process(target=self._mp_cons,
@@ -1086,14 +1081,15 @@ class CAT(object):
         out = []
         first_fail = True
 
-        # Every process has a 60% chance to wait before starting for a max of 180s, only if we are using min_free_memory
-        if min_free_memory > 0 and random.random() > 0.4:
-            sleep(int(random.random() * 180))
-
-        max_wait_time = 120 # 20min, overall one process during one run cannot wait more than this
+        max_wait_time = 30 # 5min, overall one process during one run cannot wait more than this
         wait_time = 0
         while True:
             if not in_q.empty():
+                if pid != 0 and (psutil.virtual_memory().available / psutil.virtual_memory().total) < min_free_memory:
+                    out_dict['pid: {}'.format(pid)] = out
+                    # Kill a process if there is not enough memory left
+                    break
+
                 data = in_q.get()
                 if data is None:
                     out_dict['pid: {}'.format(pid)] = out
