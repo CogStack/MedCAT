@@ -852,7 +852,7 @@ class CAT(object):
                         separate_nn_components: bool = True,
                         out_split_size_chars: int = None,
                         save_dir_path: str = None,
-                        min_free_memory=0) -> Dict:
+                        min_free_memory=0.1) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -874,9 +874,10 @@ class CAT(object):
                 value is 20*batch_size_chars.
             save_dir_path(`str`, None):
                 Where to save the annotated documents if splitting.
-            min_free_memory(`float`, defaults to 0):
+            min_free_memory(`float`, defaults to 0.1):
                 If set a process will not start unless there is at least this much RAM memory left,
-                should be a range between [0, 1] meaning how much of the memory has to be free.
+                should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
+                very large datasets because spacy is not the best with memory management and multiprocessing.
 
         Returns:
             A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
