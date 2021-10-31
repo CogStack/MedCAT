@@ -981,48 +981,48 @@ class CAT(object):
             A dictionary: {id: doc_json, id2: doc_json2, ...}
         '''
         # Create the input output for MP
-        in_q = Queue(maxsize=5*nproc)
-        manager = Manager()
-        out_dict = manager.dict()
-        out_dict['processed'] = []
+        in_q = Queue(maxsize=10*nproc)
+        with Manager() as manager:
+            out_dict = manager.dict()
+            out_dict['processed'] = []
 
-        # Create processes
-        procs = []
-        for i in range(nproc):
-            p = Process(target=self._mp_cons,
-                        kwargs={'in_q': in_q,
-                                'out_dict': out_dict,
-                                'pid': i,
-                                'only_cui': only_cui,
-                                'addl_info': addl_info,
-                                'min_free_memory': min_free_memory})
-            p.start()
-            procs.append(p)
+            # Create processes
+            procs = []
+            for i in range(nproc):
+                p = Process(target=self._mp_cons,
+                            kwargs={'in_q': in_q,
+                                    'out_dict': out_dict,
+                                    'pid': i,
+                                    'only_cui': only_cui,
+                                    'addl_info': addl_info,
+                                    'min_free_memory': min_free_memory})
+                p.start()
+                procs.append(p)
 
-        id2text = {}
-        for batch in self._batch_generator(data, batch_size_chars):
-            if nn_components:
-                # We need this for the json_to_fake_spacy
-                id2text.update({k:v for k,v in batch})
-            in_q.put(batch)
+            id2text = {}
+            for batch in self._batch_generator(data, batch_size_chars):
+                if nn_components:
+                    # We need this for the json_to_fake_spacy
+                    id2text.update({k:v for k,v in batch})
+                in_q.put(batch)
 
-        # Final data point for workers
-        for _ in range(nproc):
-            in_q.put(None)
-        # Join processes
-        for p in procs:
-            p.join()
+            # Final data point for workers
+            for _ in range(nproc):
+                in_q.put(None)
+            # Join processes
+            for p in procs:
+                p.join()
 
-        docs = {}
-        for key in out_dict.keys():
-            if 'pid' in key:
-                # Covnerts a touple into a dict
-                docs.update({k:v for k,v in out_dict[key]})
+            docs = {}
+            for key in out_dict.keys():
+                if 'pid' in key:
+                    # Covnerts a touple into a dict
+                    docs.update({k:v for k,v in out_dict[key]})
 
-        # Cleanup - to prevent memory leaks, maybe
-        out_dict.clear()
-        del out_dict
-        in_q.close()
+            # Cleanup - to prevent memory leaks, maybe
+            out_dict.clear()
+            del out_dict
+            in_q.close()
 
         # If we have separate GPU components now we pipe that
         if nn_components:
