@@ -983,19 +983,20 @@ class CAT(object):
         # Create the input output for MP
         in_q = Queue(maxsize=10*nproc)
         with Manager() as manager:
-            out_dict = manager.dict()
-            out_dict['processed'] = []
+            out_list = manager.list()
+            lock = manager.Lock()
 
             # Create processes
             procs = []
             for i in range(nproc):
                 p = Process(target=self._mp_cons,
                             kwargs={'in_q': in_q,
-                                    'out_dict': out_dict,
+                                    'out_list': out_list,
                                     'pid': i,
                                     'only_cui': only_cui,
                                     'addl_info': addl_info,
-                                    'min_free_memory': min_free_memory})
+                                    'min_free_memory': min_free_memory,
+                                    'lock': lock})
                 p.start()
                 procs.append(p)
 
@@ -1014,14 +1015,11 @@ class CAT(object):
                 p.join()
 
             docs = {}
-            for key in out_dict.keys():
-                if 'pid' in key:
-                    # Covnerts a touple into a dict
-                    docs.update({k:v for k,v in out_dict[key]})
+            # Covnerts a touple into a dict
+            docs.update({k:v for k,v in out_list})
 
             # Cleanup - to prevent memory leaks, maybe
-            out_dict.clear()
-            del out_dict
+            del out_list
             in_q.close()
 
         # If we have separate GPU components now we pipe that
@@ -1078,34 +1076,25 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q, out_dict, min_free_memory, pid=0, only_cui=False, addl_info=[]):
+    def _mp_cons(self, in_q, out_list, min_free_memory, lock, pid=0, only_cui=False, addl_info=[]):
         out = []
-        first_fail = True
 
-        max_wait_time = 30 # 5min, overall one process during one run cannot wait more than this
-        wait_time = 0
         while True:
             if not in_q.empty():
-                if pid != 0 and (psutil.virtual_memory().available / psutil.virtual_memory().total) < min_free_memory:
-                    out_dict['pid: {}'.format(pid)] = out
+                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                    with lock:
+                        out_list.extend(out)
                     # Kill a process if there is not enough memory left
                     break
 
                 data = in_q.get()
                 if data is None:
-                    out_dict['pid: {}'.format(pid)] = out
+                    with lock:
+                        out_list.extend(out)
                     break
 
                 for i_text, text in data:
                     try:
-                        if min_free_memory > 0 and wait_time < max_wait_time:
-                            # Why is this needed, bacause fucking spacy
-                            while True:
-                                if wait_time > max_wait_time or \
-                                   (psutil.virtual_memory().available / psutil.virtual_memory().total) > min_free_memory:
-                                    break
-                                wait_time += 1
-                                sleep(10)
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
@@ -1114,12 +1103,7 @@ class CAT(object):
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         self.log.warning(str(e))
-                        if first_fail:
-                            # If it is the first time we fail wait a bit
-                            sleep(180)
-                            first_fail = False
 
-            sleep(1)
 
     def _doc_to_out(self,
                     doc: Doc,
