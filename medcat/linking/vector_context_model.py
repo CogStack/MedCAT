@@ -109,8 +109,8 @@ class ContextModel(object):
                     similarity += weight * s
 
                     # DEBUG
-                    self.log.debug("Similarity for CUI: {}, Count: {}, Context Type: {:10}, Weight: {:.2f}, Similarity: {:.3f}, S*W: {:.3f}".format(
-                        cui, self.cdb.cui2count_train[cui], context_type, weight, s, s*weight))
+                    self.log.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
+                                   cui, self.cdb.cui2count_train[cui], context_type, weight, s, s*weight)
             return similarity
         else:
             return -1
