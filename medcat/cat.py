@@ -1015,8 +1015,6 @@ class CAT(object):
             # Join processes
             for p in procs:
                 p.join()
-                print("Joined")
-                print(p)
 
             docs = {}
             # Covnerts a touple into a dict
@@ -1081,9 +1079,7 @@ class CAT(object):
 
         while True:
             if not in_q.empty():
-                #if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
-                if pid == 0:
-                    print("Killed")
+                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
                     with lock:
                         out_list.extend(out)
                     # Stop a process if there is not enough memory left
