@@ -1,9 +1,10 @@
+
 from dataclasses import dataclass, field
 from os import times
 from typing import List
+from datetime import datetime, timezone
 
-import datetime
-from datetime import timezone
+from medcat.cli.global_settings import DEFEAULT_DATETIME_FORMAT
 
 @dataclass
 class ModelTagData:
@@ -17,4 +18,4 @@ class ModelTagData:
     storage_location: str = ""
     medcat_version: str = ""
     authors : List[str] = field(default_factory=list)
-    timestamp : str = datetime.datetime.now(tz=timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+    timestamp : str = field(default_factory=lambda: datetime.now(tz=timezone.utc).strftime(DEFEAULT_DATETIME_FORMAT))

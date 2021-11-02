@@ -30,7 +30,7 @@ from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 
 from medcat.cli.modelstats import TrainerStats
-from medcat.cli.system_utils import load_model_from_file
+from medcat.cli.system_utils import load_file_from_model_storage
 from dataclasses import asdict
 
 
@@ -223,14 +223,13 @@ class CAT(object):
         else:
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)
-
             
-    def save_model(self, vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=False):
+    def save(self, path="./", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=False):
+        self.vocab.save(os.path.join(path, vocab_output_file_name))
+        self.cdb.save(os.path.join(path, cdb_output_file_name))
         
-        self.vocab.save_model(output_file_name=vocab_output_file_name)
-        self.cdb.save_model(output_file_name=cdb_output_file_name)
-        
-        if self.trainer_data != None:
+        if self.trainer_data is not None and not skip_stat_generation:
+            
             fps, fns, tps, cui_precision, cui_recall, cui_f1, cui_counts, examples = self._print_stats(self.trainer_data)
 
             tp = sum([v for i,v in tps.items()])
@@ -247,9 +246,7 @@ class CAT(object):
             meta_project_data = {}
                 
             for project in self.trainer_data["projects"]:
-
                 meta_tasks = []
-
                 if len(project["documents"]) > 0:
                     for doc in project["documents"]:
                         if "annotations" in doc.keys():
@@ -257,7 +254,6 @@ class CAT(object):
                             for annotation in annotations:
                                 if "meta_anns" in annotation.keys():
                                     meta_anns = annotation["meta_anns"]
-                                    
                                     for meta_ann in meta_anns:
                                         meta_tasks.append(meta_ann["name"])
 
@@ -267,29 +263,36 @@ class CAT(object):
 
             self.trainer_data["trainer_stats"] = asdict(self.trainer_stats)
 
-            with open(trainer_data_file_name, "w+") as f:
+        if self.trainer_data is not None:
+            with open(os.path.join(path, trainer_data_file_name), "w+") as f:
                 json.dump(self.trainer_data, fp=f)
 
     @classmethod
-    def load_model(self, model_full_tag_name, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", bypass_model_path=False):
+    def load(cls, path="", full_model_tag_name=None, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", bypass_model_path=False):
         """ Loads variables of this object
-            This is used to search the site-packages models folder for installed models..
+            This is used to search the /.cache/medcat/models folder for installed models..
         """
 
         from medcat.vocab import Vocab
         from medcat.cdb import CDB
 
-        vocab = Vocab.load_model(model_full_tag_name=model_full_tag_name, input_file_name=vocab_input_file_name, bypass_model_path=bypass_model_path)
-        cdb = CDB.load_model(model_full_tag_name=model_full_tag_name, input_file_name=cdb_input_file_name, bypass_model_path=bypass_model_path)
-        
-        medcat_export = load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=trainer_data_file_name, bypass_model_path=bypass_model_path)
+        if full_model_tag_name is None:
+            vocab = Vocab.load(path=os.path.join(path, vocab_input_file_name))
+            cdb = CDB.load(path=os.path.join(path, cdb_input_file_name))
+            medcat_export = load_file_from_model_storage(file_name=trainer_data_file_name, bypass_model_path=bypass_model_path)
+        else:
+            vocab = Vocab.load(full_model_tag_name=full_model_tag_name)
+            cdb = CDB.load(full_model_tag_name=full_model_tag_name)
+            medcat_export = load_file_from_model_storage(full_model_tag_name=full_model_tag_name, file_name=trainer_data_file_name, bypass_model_path=bypass_model_path)
 
         if not medcat_export:
             medcat_export = None
-
+        else:
+            if "trainer_stats" not in medcat_export.keys():
+                medcat_export["trainer_stats"] = asdict(TrainerStats())
+    
         if cdb is False or vocab is False:
-            logging.error("Exiting...")
-            sys.exit()
+            logging.error("No CDB or VOCAB detected.... make sure the model paths are valid")
 
         return CAT(cdb, config=cdb.config, vocab=vocab, trainer_data=medcat_export)
 
@@ -345,7 +348,7 @@ class CAT(object):
         cui_counts = {}
         examples = {'fp': {}, 'fn': {}, 'tp': {}}
 
-        # if there is any trainer data loaded via the load_model_from_file way
+        # if there is any trainer data loaded via the `load_file_from_model_storage` way
         if self.trainer_data != None:
             data = self.trainer_data
             

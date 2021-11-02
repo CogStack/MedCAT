@@ -1,4 +1,3 @@
-from dataclasses import asdict
 import fire
 import requests
 import sys
@@ -12,13 +11,17 @@ import dill
 import pickle
 import itertools
 import pandas
-from git import Repo
+import datetime 
 
+from git import Repo
+from dataclasses import asdict
+
+from medcat.cli.global_settings import DEFEAULT_DATETIME_FORMAT
+
+from .config import *
 from .download import get_all_available_model_tags
 from .system_utils import *
 from .modeltagdata import ModelTagData
-from medcat.cli.config import *
-from dateutil import parser
 
 pandas.set_option('display.max_colwidth', 400)
 pandas.set_option('display.max_columns', 10)
@@ -169,13 +172,16 @@ def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_n
         if os.path.isfile(file_path) and file_name in changed_files:
             logging.info("Updating model object : " + organisation_name + "-" + model_name + "-" + str(version) + ", " + file_name + " with tag data...")
 
-            loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
+            loaded_model_file = load_file_from_model_storage(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
 
             if file_name.endswith(get_model_binary_file_extension()):
                 loaded_model_file.vc_model_tag_data = model_tag_data
 
-                with open(file_path, 'wb') as f:
-                    dill.dump(loaded_model_file, f)
+                if any(m in file_path for m in ["vocab.dat", "cdb.dat"]):
+                    loaded_model_file.save(path=file_path)
+                else:
+                    with open(file_path, 'wb') as f:
+                        dill.dump(loaded_model_file, f)
 
             if file_name == "MedCAT_Export.json":
                 with open(file_path, "w+", encoding="utf8") as f:
@@ -189,7 +195,7 @@ def detect_model_name_from_files(model_folder_path="./"):
 
     for file_name in get_permitted_versioned_files(): 
         if os.path.isfile(os.path.join(model_folder_path, file_name)):
-            loaded_model_file = load_model_from_file(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True, ignore_non_model_files=False)
+            loaded_model_file = load_file_from_model_storage(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True, ignore_non_model_files=False)
 
             if loaded_model_file != False :
                 model_data[file_name] = {}
@@ -293,15 +299,15 @@ def upload_model(model_name, version):
 
     if model_file_data != False:
         biggest_version = ()
-
+       
         for file_name in model_file_data.keys():
+            print("file_name : " + file_name, " | tag_data : ", model_file_data[file_name]["vc_model_tag_data"])
+            
             if "vc_model_tag_data" in model_file_data[file_name].keys():
                 if model_file_data[file_name]["vc_model_tag_data"].version != "":
-                    
-                    current_timestamp = parser.parse(model_file_data[file_name]["vc_model_tag_data"].timestamp)
-
+                    current_timestamp = datetime.datetime.strptime(model_file_data[file_name]["vc_model_tag_data"].timestamp, DEFEAULT_DATETIME_FORMAT)
                     if len(biggest_version) > 0:
-                        biggest_ver_timestamp = parser.parse(biggest_version[1])
+                        biggest_ver_timestamp = datetime.datetime.strptime(biggest_version[1], DEFEAULT_DATETIME_FORMAT)
                         if current_timestamp > biggest_ver_timestamp:
                             biggest_version = ()
                             biggest_version = (file_name, model_file_data[file_name]["vc_model_tag_data"].timestamp)
@@ -315,7 +321,6 @@ def upload_model(model_name, version):
     stat_comparison_data = None
 
     if previous_tag_model_data:
-
         old_model_file_data = detect_model_name_from_files(get_downloaded_local_model_folder(previous_tag_model_data.model_name + "-" + previous_tag_model_data.version))
         
         stat_differences, stat_improvement, new_release, is_actual_new_release, is_stat_improvement = compare_model_stats(model_file_data, old_model_file_data)
@@ -631,12 +636,14 @@ def generate_model_card_info(git_repo_url, model_name, parent_model_name, model_
             meta_project_data = data["trainer_stats"]["meta_project_data"]
 
             proj_count = 0
-            for meta_project_name, meta_project_tasks in meta_project_data.items():
-                proj_count += 1
-                meta_projects_data_md += meta_project_name + " | " + str(meta_project_tasks) + " | -  \n"
-                
-                if proj_count != len(meta_project_data.keys()):
-                    meta_projects_data_md += "|"
+
+            if len(meta_project_data) > 0:
+                for meta_project_name, meta_project_tasks in meta_project_data.items():
+                    proj_count += 1
+                    meta_projects_data_md += meta_project_name + " | " + str(meta_project_tasks) + " | -  \n"
+                    
+                    if proj_count != len(meta_project_data.keys()):
+                        meta_projects_data_md += "|"
 
             model_card = model_card.replace("<meta_model_name>", meta_projects_data_md)
 

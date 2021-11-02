@@ -359,59 +359,25 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save_model(self, organisation_name="", model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", authors=[], output_save_path=".",  output_file_name="cdb.dat"):
-        """
-            This method should NOT be used outside of version control purposes. Use the save() method instead.
-        
-            Saves variables of this object
-            Files saved are in the model's folder
-        """
-        if organisation_name.strip() != "":
-            self.vc_model_tag_data.organisation_name = organisation_name
-        if model_name.strip() != "":
-            self.vc_model_tag_data.model_name = model_name
-        if parent_model_name.strip() != "":
-            self.vc_model_tag_data.parent_model_name = parent_model_name
-        if model_version_number.strip() != "":
-            self.vc_model_tag_data.version = model_version_number
-        if commit_hash.strip() != "":
-            self.vc_model_tag_data.commit_hash = commit_hash
-        if git_repo_url.strip() != "":
-            self.vc_model_tag_data.git_repo = git_repo_url
-        if len(authors) > 0:
-            self.vc_model_tag_data.authors = authors
+    def save(self, path, vc_model_tag_data: ModelTagData = None):
+        r''' Saves model to file (in fact it saves vairables of this class). 
 
-        if not hasattr(self, "cdb_stats"):
-            self.cdb_stats = CDBStats()
-    
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+            vc_model_tag_data (`ModelTagData`):
+                Files saved are in the model folder match by it's   
+        '''
+
+        if vc_model_tag_data:
+            self.vc_model_tag_data = vc_model_tag_data
+        
         self.cdb_stats.number_of_concepts = len(self.cui2names)
         self.cdb_stats.number_of_names = len(self.name2cuis)
         self.cdb_stats.number_of_concepts_received_training = len(self.cui2context_vectors)
         self.cdb_stats.number_of_seen_training_examples = sum(self.cui2count_train.values())
         self.cdb_stats.average_training_example_per_concept = np.average(list(self.cui2count_train.values()))
 
-        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
-            dill.dump(self, f)
-         
-    @classmethod     
-    def load_model(self, model_full_tag_name, input_file_name="cdb.dat", bypass_model_path=False):
-        """ Loads variables of this object
-            This is used to search the site-packages models folder for installed models..
-        """
-        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name, bypass_model_path=bypass_model_path)
-        
-        if data is False:
-            logging.error("Could not load concept database from model: " + model_full_tag_name)
-        
-        return data
-
-    def save(self, path):
-        r''' Saves model to file (in fact it saves vairables of this class). 
-
-        Args:
-            path (`str`):
-                Path to a file where the model will be saved
-        '''
         with open(path, 'wb') as f:
             # No idea how to this correctly
             to_save = {}
@@ -419,15 +385,21 @@ class CDB(object):
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
 
-
     @classmethod
-    def load(cls, path, config=None):
+    def load(cls, path="", config=None, full_model_tag_name=None):
         r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
             path (`str`):
-                Path to a `cdb.dat` from which to load data.
+                Path to a `cdb.dat` from which to load data. Used for manually loading the cdb.dat file from a given path.
+            full_model_tag_name(`str`):
+                Model version tag that this file belongs to, e.g "~/.cache/medcat/models/model_version-1.0".
+                Will attempt to load the "cdb.dat" from there.
         '''
+
+        if full_model_tag_name is not None:
+            path = os.path.join(system_utils.get_downloaded_local_model_folder(full_model_tag_name), "cdb.dat")
+
         with open(path, 'rb') as f:
             # Again no idea
             data = dill.load(f)
@@ -442,6 +414,17 @@ class CDB(object):
             for k in cdb.__dict__:
                 if k in data['cdb']:
                     cdb.__dict__[k] = data['cdb'][k]
+
+            try: 
+                # if the version control/stat attributes are not present then create them
+                if not hasattr(cdb, "vc_model_tag_data"):
+                    cdb.vc_model_tag_data = ModelTagData()
+
+                if not hasattr(cdb, "cdb_stats"):    
+                    cdb.cdb_stats = CDBStats()
+
+            except Exception as exception:
+                    logging.error(repr(exception))
 
         return cdb
 

@@ -1,7 +1,5 @@
-import dill
 import numpy as np
 import pickle
-import logging
 import os
 from medcat.cli import ModelTagData, system_utils
 
@@ -260,51 +258,32 @@ class Vocab(object):
 
         return False
 
-    def save_model(self, organisation_name="", model_name="", parent_model_name="", model_version_number="", commit_hash="", git_repo_url="", parent_model_tag="", authors=[], output_save_path=".",  output_file_name="vocab.dat"):
-        """
-            This method should NOT be used outside of version control purposes. Use the save() method instead.
-       
-            Saves variables of this object
-            Files saved are in the model's folder
-        """
-
-        if organisation_name.strip() != "":
-            self.vc_model_tag_data.organisation_name = organisation_name
-        if model_name.strip() != "":
-            self.vc_model_tag_data.model_name = model_name
-        if parent_model_name.strip() != "":
-            self.vc_model_tag_data.parent_model_name = parent_model_name
-        if model_version_number.strip() != "":
-            self.vc_model_tag_data.version = model_version_number
-        if commit_hash.strip() != "":
-            self.vc_model_tag_data.commit_hash = commit_hash
-        if git_repo_url.strip() != "":
-            self.vc_model_tag_data.git_repo = git_repo_url
-        if len(authors) > 0:
-            self.vc_model_tag_data.authors = authors
-    
-        with open(os.path.join(output_save_path, output_file_name), 'wb') as f:
-            dill.dump(self, f)
-         
-    @classmethod     
-    def load_model(self, model_full_tag_name, input_file_name="vocab.dat", bypass_model_path=False):
-        """ Loads variables of this object
-            This is used to search the site-packages models folder for installed models..
-        """
-        data = system_utils.load_model_from_file(full_model_tag_name=model_full_tag_name, file_name=input_file_name, bypass_model_path=bypass_model_path)
+    def save(self, path, vc_model_tag_data: ModelTagData = None):
+        r''' 
         
-        if data is False:
-            logging.error("Could not load vocabulary from model: " + model_full_tag_name)
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+            vc_model_tag_data (`ModelTagData`):
+                Files saved are in the model folder match by the model release tag name.
+        '''
+        if vc_model_tag_data:
+                self.vc_model_tag_data = vc_model_tag_data
 
-        return data
-
-    def save(self, path):
         with open(path, 'wb') as f:
-            dill.dump(self.__dict__, f)
+            pickle.dump(self.__dict__, f)
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path="", full_model_tag_name=None):
+        
+        if full_model_tag_name is not None:
+            path = os.path.join(system_utils.get_downloaded_local_model_folder(full_model_tag_name), "vocab.dat")
+
         with open(path, 'rb') as f:
             vocab = cls()
-            vocab.__dict__ = dill.load(f)
+            vocab.__dict__ = pickle.load(f)
+
+            if not hasattr(vocab, "vc_model_tag_data"):
+                vocab.vc_model_tag_data = ModelTagData()
+                
         return vocab

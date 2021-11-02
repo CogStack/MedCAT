@@ -10,22 +10,21 @@ import logging
 import traceback
 import re
 
-import medcat
 import json
 import numpy
 
 from dataclasses import asdict
 
 from medcat.cli.modeltagdata import ModelTagData
-from medcat.config import Config
-from medcat.cli.modelstats import CDBStats, TrainerStats
+from medcat.cli.modelstats import TrainerStats
 
 if os.name == "nt":
     import win32api, win32con
 
-def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False, ignore_non_model_files=False):
+
+def load_file_from_model_storage(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False, ignore_non_model_files=False):
     """
-        Looks into the models directory in your /site-packages/medcat-{version}/model_name/ installation.
+        Looks into the models directory in your ~/.cache/medcat/model_name/ folder.
 
         :param full_model_tag_name: self-explanatory
         :param file_name: the model file name that we want to load e.g: "vocab.dat", "cdb.dat", "MedCAT_export.json" etc
@@ -52,9 +51,9 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
 
     if bypass_model_path is True:
         full_file_path = os.path.join(model_folder, file_name)
-    
+
     data = False
-    
+        
     if type(full_file_path) is str and "MedCAT_Export.json" in full_file_path:
         with open(full_file_path, "r", encoding="utf8") as f:
             data = json.load(f)
@@ -67,67 +66,36 @@ def load_model_from_file(full_model_tag_name="", file_name="", model_folder=".",
 
     elif full_file_path:
         if get_model_binary_file_extension() in full_file_path:
-            with open(full_file_path, "rb") as f:
-                data = dill.load(f)
+            from medcat.cdb import CDB
+            from medcat.vocab import Vocab
+                
+            try:
+                if "cdb" in full_file_path.lower():
+                    data = CDB.load(full_file_path)
+                elif "vocab" in full_file_path.lower():
+                    data = Vocab.load(full_file_path)
 
-                version = ""   
-                model_name = ""
-
-                if full_model_tag_name != "":
-                    model_name, version = get_tag_str_model_name_and_version(full_model_tag_name)
-
-                try:
-                    from medcat.cdb import CDB
-                    from medcat.vocab import Vocab
-
-                    obj = None
-                    
-                    fname = str(file_name).lower()
-
-                    if isinstance(data, dict):
-                        if "vocab" in fname:
-                            obj = Vocab()
-                            obj.__dict__ = data
-
-                        if "cdb" in fname:
-                            obj = CDB(config=None)
-                            obj.__dict__ = data["cdb"]
-                            obj.config = Config()
-                            obj.config.__dict__ = data["config"]
-                    
-                    if obj is None:
-                        obj = data
-                    
-                    if obj is not None:
-                        if isinstance(obj, (Vocab, CDB)) and not hasattr(obj, "vc_model_tag_data"):
-                            obj.vc_model_tag_data = ModelTagData(model_name=model_name, version=version)
-
-                        if type(obj) is CDB and not hasattr(obj, "cdb_stats"):    
-                            obj.cdb_stats = CDBStats()
-
-                    data = obj
-
-                except Exception as exception:
+            except Exception as exception:
                     logging.error("could not add vc_model_tag_data attribute to model data file")
                     logging.error(repr(exception))
                     logging.error(traceback.format_exc())
                     return False         
-           
+                    
         elif ignore_non_model_files:
             pass
         elif ".npy" in full_file_path:
             data = numpy.load(full_file_path)
         else:
-            with open(full_file_path, "r") as f:
-                data = f.read()
+            with open(full_file_path, "rb") as f:
+                data = dill.load(f)
     return data
 
-def get_tag_str_model_name_and_version(model_full_tag_name, delimiter='-'):
+def get_tag_str_model_name_and_version(full_model_tag_name: str, delimiter: str = '-'):
     """
-        Splits the tag name to get the model name without the prefix (if present)
+        Splits the tag name to get the model name without the prefix (if prx`esent)
         :returns: model_name, version_number
     """
-    split_name_and_version = model_full_tag_name.split(delimiter)
+    split_name_and_version = full_model_tag_name.split(delimiter)
     if len(split_name_and_version) >= 3:
         model_name = split_name_and_version[1]
     else:
@@ -154,7 +122,7 @@ def prompt_statement(prompt_text, default_answer="yes"):
             if choice in exit_answer:
                 sys.exit()
 
-def create_model_folder(full_model_tag_name):
+def create_model_folder(full_model_tag_name: str):
     try:
         model_dir_path = os.path.join(get_local_model_storage_path(), full_model_tag_name)
         if not os.path.isdir(model_dir_path):
@@ -167,34 +135,46 @@ def create_model_folder(full_model_tag_name):
     finally:
         return False
 
-def get_downloaded_local_model_folder(full_model_tag_name):
-    """
-        Check if folder for model exists and it is a GIT repository.
-        Returns empty if either of conditions fail.
-    """
+def get_downloaded_local_model_folder(full_model_tag_name: str):
+    r'''
+        Checks if folder for a specified model tag that has been downloaded exists 
+        and it is a GIT repository (path checked is within the default local storage path).
+        Returns False if either of conditions fail otherwise returns 
+        the full path to the folder if conditions are true.
+
+        Args:
+            full_model_tag_name(`str`):
+                Model name, e.g: sample_model_tag-1.0 
+    '''
     try:
         full_model_path = os.path.join(get_local_model_storage_path(), full_model_tag_name)
+        
         if os.path.exists(full_model_path) and os.path.isdir(full_model_path):
             if is_dir_git_repository(full_model_path):
                 return full_model_path
+        else:
+            return False
+
     except Exception as exception:
         logging.error("Could not find model folder " + full_model_tag_name + ".")
         logging.error(repr(exception))
         return False
 
-def get_local_model_storage_path(storage_path=os.path.dirname(medcat.__file__), models_dir="models"):
+def get_local_model_storage_path(storage_path=os.path.join(os.path.expanduser("~"), ".cache", "medcat"), models_dir="models"):
     
     medcat_model_installation_dir_path = os.path.join(storage_path, models_dir)
 
-    if not os.path.exists(medcat_model_installation_dir_path):
-        try:
+    try:
+        if not os.path.exists(storage_path):
+            os.mkdir(storage_path)
+        if not os.path.exists(medcat_model_installation_dir_path):
             os.mkdir(medcat_model_installation_dir_path)
-            return medcat_model_installation_dir_path
-        except OSError as os_exception:
-            logging.error("Could not create MedCAT model storage folder: " + medcat_model_installation_dir_path)
-            logging.error(repr(os_exception))
 
-    elif os.access(medcat_model_installation_dir_path, os.R_OK | os.X_OK | os.W_OK):
+    except OSError as os_exception:
+        logging.error("Could not create MedCAT model storage folder: " + medcat_model_installation_dir_path)
+        logging.error(repr(os_exception))
+
+    if os.access(medcat_model_installation_dir_path, os.R_OK | os.X_OK | os.W_OK):
         return medcat_model_installation_dir_path
 
     return ""
@@ -203,6 +183,7 @@ def copy_model_files_to_folder(source_folder, dest_folder):
 
     root, subdirs, files = next(os.walk(source_folder))
 
+    print("files : ", files)
     for file_name in files:
         if file_name in get_permitted_push_file_list():
             logging.info("Copying file : " + file_name + " to " + dest_folder)
@@ -221,9 +202,9 @@ def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="orig
     try:
         subprocess.run(["git", "init"], cwd=repo_folder_path)
         subprocess.run(["git", "remote", "add", remote_name, git_repo_url], cwd=repo_folder_path)
-       
+        subprocess.run(["git", "fetch", "--tags", "--force"], cwd=repo_folder_path)
+        
         if checkout_full_tag_name != "":
-             subprocess.run(["git", "fetch", "--tags", "--force"], cwd=repo_folder_path)
              subprocess.run(["git", "checkout", "tags/" + checkout_full_tag_name, "-b" , branch], cwd=repo_folder_path)
 
         subprocess.run(["git", "pull", remote_name, branch], cwd=repo_folder_path)

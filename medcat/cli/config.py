@@ -1,4 +1,3 @@
-from medcat.cli.system_utils import is_input_valid, prompt_statement, sanitize_input
 import sys
 import fire
 import os
@@ -6,6 +5,9 @@ import json
 import logging
 import medcat
 import subprocess
+
+from medcat.cli.system_utils import is_input_valid, prompt_statement, sanitize_input
+
 
 env_var_field_mapping = {
                          "username": "MEDCAT_GIT_USERNAME",

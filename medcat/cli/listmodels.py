@@ -1,6 +1,7 @@
 import fire
-from medcat.cli.download import get_all_available_model_tags
-from medcat.cli.config import get_auth_environment_vars
+
+from .download import get_all_available_model_tags
+from .config import get_auth_environment_vars
 
 def listmodels():
     print("Checking " + get_auth_environment_vars()["git_repo_url"] + " for releases...")
