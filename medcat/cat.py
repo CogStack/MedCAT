@@ -1083,7 +1083,7 @@ class CAT(object):
                 if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
                     with lock:
                         out_list.extend(out)
-                    # Kill a process if there is not enough memory left
+                    # Stop a process if there is not enough memory left
                     break
 
                 data = in_q.get()
@@ -1097,7 +1097,6 @@ class CAT(object):
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
-
                     except Exception as e:
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
