@@ -10,7 +10,7 @@ import time
 import psutil
 from time import sleep
 from copy import deepcopy
-from multiprocessing import Process, Manager, cpu_count
+from multiprocess import Process, Manager, cpu_count
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc
@@ -1015,6 +1015,8 @@ class CAT(object):
             # Join processes
             for p in procs:
                 p.join()
+                print("Joined")
+                print(p)
 
             docs = {}
             # Covnerts a touple into a dict
@@ -1079,7 +1081,9 @@ class CAT(object):
 
         while True:
             if not in_q.empty():
-                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                #if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                if pid == 0:
+                    print("Killed")
                     with lock:
                         out_list.extend(out)
                     # Stop a process if there is not enough memory left
