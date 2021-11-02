@@ -1,5 +1,6 @@
 import dill
 
+
 class TokenizerNER(object):
     r'''
 
