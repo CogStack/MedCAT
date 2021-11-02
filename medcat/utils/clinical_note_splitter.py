@@ -20,7 +20,7 @@ def normalize_date(date, id_, start, end):
         # all good
         date = date.strip()
     else:
-        logging.warning("Unsupported date format: %s for id: %s with start: %s, end: %s", (date, id_, start, end))
+        logging.warning("Unsupported date format: %s for id: %s with start: %s, end: %s", date, id_, start, end)
         return None
 
     return date
@@ -52,7 +52,7 @@ def split_one_note(id_, text):
             note_text = text[start:end]
             if 'entered on -' in note_text.lower():
                 if len(regex.findall(r'entered on -', note_text)) > 1:
-                    logging.warning("Possible problems for span with start: %s and end: %s for note with id: %s", (start, end, id_))
+                    logging.warning("Possible problems for span with start: %s and end: %s for note with id: %s", start, end, id_)
                 split_note.append({'start': start, 'end': end, 'text': note_text, 'date': normalize_date(previous_date, id_, start, end)})
                 start = end
                 previous_date = date.captures()[0]
@@ -60,7 +60,7 @@ def split_one_note(id_, text):
     if previous_date is not None and 'entered on -' in text[start:].lower():
         split_note.append({'start': start, 'end': len(text), 'text': text[start:], 'date': normalize_date(previous_date, id_, start, len(text))})
     else:
-        logging.warning("No date/entered-on detected for id: %s wth start: %s, end: %s and text:\n%s...", (id_, start, end, text[0:300]))
+        logging.warning("No date/entered-on detected for id: %s wth start: %s, end: %s and text:\n%s...", id_, start, end, text[0:300])
 
     return split_note
 
