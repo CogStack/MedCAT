@@ -49,7 +49,6 @@ class CATTests(unittest.TestCase):
         ]
         out = self.undertest.multiprocessing(in_data, nproc=1)
 
-        import pdb; pdb.set_trace()
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))
         self.assertEqual(0, len(out[2]['entities']))
