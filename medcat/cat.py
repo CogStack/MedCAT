@@ -987,6 +987,18 @@ class CAT(object):
             lock = manager.Lock()
             in_q = manager.Queue(maxsize=10*nproc)
 
+            id2text = {}
+            for batch in self._batch_generator(data, batch_size_chars):
+                if nn_components:
+                    # We need this for the json_to_fake_spacy
+                    id2text.update({k:v for k,v in batch})
+                in_q.put(batch)
+
+            # Final data point for workers
+            for _ in range(nproc):
+                in_q.put(None)
+            sleep(2)
+
             # Create processes
             procs = []
             for i in range(nproc):
@@ -1001,16 +1013,6 @@ class CAT(object):
                 p.start()
                 procs.append(p)
 
-            id2text = {}
-            for batch in self._batch_generator(data, batch_size_chars):
-                if nn_components:
-                    # We need this for the json_to_fake_spacy
-                    id2text.update({k:v for k,v in batch})
-                in_q.put(batch)
-
-            # Final data point for workers
-            for _ in range(nproc):
-                in_q.put(None)
             # Join processes
             for p in procs:
                 p.join()
@@ -1074,17 +1076,11 @@ class CAT(object):
         return out
 
     def _mp_cons(self, in_q, out_list, min_free_memory, lock, pid=0, only_cui=False, addl_info=[]):
-        import gc
-        import random
         out = []
-        to_kill = random.random() > 0.8
 
         while True:
             if not in_q.empty():
-                #if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
-                if (to_kill and len(out) > 100):
-                    print("killing ", pid, len(out))
-                    gc.collect()
+                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
                     with lock:
                         out_list.extend(out)
                     # Kill a process if there is not enough memory left
@@ -1106,6 +1102,7 @@ class CAT(object):
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         self.log.warning(str(e))
+        sleep(2)
 
 
     def _doc_to_out(self,
