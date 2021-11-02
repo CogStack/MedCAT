@@ -921,6 +921,7 @@ class CAT(object):
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
                                                     only_cui=only_cui,
+                                                    batch_size_chars=internal_batch_size_chars,
                                                     addl_info=addl_info,
                                                     nn_components=nn_components,
                                                     min_free_memory=min_free_memory)
@@ -981,10 +982,10 @@ class CAT(object):
             A dictionary: {id: doc_json, id2: doc_json2, ...}
         '''
         # Create the input output for MP
-        in_q = Queue(maxsize=10*nproc)
         with Manager() as manager:
             out_list = manager.list()
             lock = manager.Lock()
+            in_q = manager.Queue(maxsize=10*nproc)
 
             # Create processes
             procs = []
@@ -1001,7 +1002,9 @@ class CAT(object):
                 procs.append(p)
 
             id2text = {}
+            cnt = 0
             for batch in self._batch_generator(data, batch_size_chars):
+                cnt += 1
                 if nn_components:
                     # We need this for the json_to_fake_spacy
                     id2text.update({k:v for k,v in batch})
@@ -1017,10 +1020,6 @@ class CAT(object):
             docs = {}
             # Covnerts a touple into a dict
             docs.update({k:v for k,v in out_list})
-
-            # Cleanup - to prevent memory leaks, maybe
-            del out_list
-            in_q.close()
 
         # If we have separate GPU components now we pipe that
         if nn_components:
@@ -1082,6 +1081,8 @@ class CAT(object):
         while True:
             if not in_q.empty():
                 if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                    print("Killing a process")
+                    print(len(out))
                     with lock:
                         out_list.extend(out)
                     # Kill a process if there is not enough memory left
