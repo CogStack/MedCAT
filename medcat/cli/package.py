@@ -301,7 +301,7 @@ def upload_model(model_name, version):
         biggest_version = ()
        
         for file_name in model_file_data.keys():
-            print("file_name : " + file_name, " | tag_data : ", model_file_data[file_name]["vc_model_tag_data"])
+            logging.debug("file_name : " + file_name, " | tag_data : ", model_file_data[file_name]["vc_model_tag_data"])
             
             if "vc_model_tag_data" in model_file_data[file_name].keys():
                 if model_file_data[file_name]["vc_model_tag_data"].version != "":
