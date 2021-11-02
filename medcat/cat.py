@@ -1081,8 +1081,6 @@ class CAT(object):
         while True:
             if not in_q.empty():
                 if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
-                    print("Killing a process")
-                    print(len(out))
                     with lock:
                         out_list.extend(out)
                     # Kill a process if there is not enough memory left
