@@ -8,10 +8,9 @@ import math
 import types
 import time
 import psutil
-import random
 from time import sleep
 from copy import deepcopy
-from multiprocessing import Process, Manager, Queue, cpu_count
+from multiprocessing import Process, Manager, cpu_count
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc
