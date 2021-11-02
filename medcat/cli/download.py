@@ -4,8 +4,9 @@ import os
 import sys
 import subprocess
 import logging
+
 from .system_utils import *
-from medcat.cli.config import get_auth_environment_vars, get_git_api_request_url, get_git_default_headers, get_git_download_headers
+from .config import *
 
 def get_matching_version(full_model_tag_name):
 
@@ -19,6 +20,7 @@ def get_matching_version(full_model_tag_name):
         for asset in response.json()['assets']:
             if asset['name'] == str(full_model_tag_name + get_asset_file_extension()):   
                 result['tag_asset_id'] = str(asset['id'])
+        result['release_id'] = response.json()['id']
     if response.status_code == 404:
         result['response_message'] = response.json()['message']
     if response.status_code == 401:
