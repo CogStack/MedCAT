@@ -5,21 +5,22 @@ import traceback
 import json
 import logging
 import math
-import types
 import time
 import psutil
 from time import sleep
 from copy import deepcopy
 from multiprocessing import Process, Manager, Queue, cpu_count
-from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator, Set
+from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc, Token
+from spacy.language import Language
 
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.utils.loggers import add_handlers
+from medcat.cdb import CDB
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.ner.vocab_based_ner import NER
@@ -29,7 +30,6 @@ from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
-from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.vocab import Vocab
 
@@ -73,7 +73,7 @@ class CAT(object):
     log = add_handlers(log)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
-    def __init__(self, cdb: CDB, config: Config, vocab: Vocab, meta_cats: List[MetaCAT] = []):
+    def __init__(self, cdb: CDB, config: Config, vocab: Vocab, meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
         # Take config from the cdb
@@ -107,7 +107,7 @@ class CAT(object):
         # Set max document length
         self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
 
-    def get_spacy_nlp(self):
+    def get_spacy_nlp(self) -> Language:
         ''' Returns the spacy pipeline with MedCAT
         '''
         return self.pipe.nlp
@@ -209,6 +209,7 @@ class CAT(object):
             return None
         else:
             text = self._get_trimmed_text(str(text))
+            text = cast(str, text)
             return self.pipe(text)
 
     def _print_stats(self,
@@ -722,13 +723,14 @@ class CAT(object):
                                           negative=deleted,
                                           devalue_others=devalue_others)
                     if train_from_false_positives:
-                        fps: List[Span] = get_false_positives(doc, spacy_doc)
+                        fps = get_false_positives(doc, spacy_doc)
 
                         for fp in fps:
-                            self.add_and_train_concept(cui=fp._.cui,
-                                                       name=fp.text,
+                            fp_: Span = fp
+                            self.add_and_train_concept(cui=fp_._.cui,
+                                                       name=fp_.text,
                                                        spacy_doc=spacy_doc,
-                                                       spacy_entity=fp,
+                                                       spacy_entity=fp_,
                                                        negative=True,
                                                        do_add_concept=False)
 
@@ -765,35 +767,35 @@ class CAT(object):
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
-                     batch_size: Optional[int] = None) -> List[Union[Dict, None]]:
+                     batch_size: Optional[int] = None) -> List[Dict]:
         r''' Get entities
         text:  text to be annotated
         return:  entities
         '''
-        out: List[Union[Dict, None]] = []
+        out: List[Dict] = []
 
         if n_process is None:
-            texts = self._generate_trimmed_texts(texts)
-            for text in texts:
+            texts_ = self._generate_trimmed_texts(texts)
+            for text in texts_:
                 out.append(self._doc_to_out(self(text), only_cui, addl_info))
         else:
             self.pipe.set_error_handler(self._pipe_error_handler)
             try:
-                texts = self._get_trimmed_texts(texts)
-                docs = self.pipe.batch_multi_process(texts, n_process, batch_size)
+                texts_ = self._get_trimmed_texts(texts)
+                docs = self.pipe.batch_multi_process(texts_, n_process, batch_size)
 
-                for doc in tqdm(docs, total=len(texts)):
+                for doc in tqdm(docs, total=len(texts_)):
                     doc = None if doc.text.strip() == '' else doc
                     out.append(self._doc_to_out(doc, only_cui, addl_info, out_with_text=True))
 
                 # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
                 # which also assumes texts are different from each others.
-                if len(out) < len(texts):
+                if len(out) < len(texts_):
                     self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
-                    for i, text in enumerate(texts):
+                    for i, text in enumerate(texts_):
                         if i == len(out):
                             out.append(self._doc_to_out(None, only_cui, addl_info))
-                        elif out[i]['text'] != text:
+                        elif out[i].get('text') != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))
 
                 cnf_annotation_output = getattr(self.config, 'annotation_output', {})
@@ -866,7 +868,8 @@ class CAT(object):
         pickle.dump(docs, open(path, "wb"))
         self.log.info("Saved part: %s, to: %s", part_counter, path)
         part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
-        pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
+        if annotated_ids_path is not None:
+            pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
     def multiprocessing(self,
@@ -877,7 +880,7 @@ class CAT(object):
                         addl_info: List[str] = [],
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
-                        save_dir_path: Optional[str] = None,
+                        save_dir_path: str = os.path.dirname(os.path.abspath(__file__)),
                         use_char_limit=True) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
@@ -897,7 +900,7 @@ class CAT(object):
             out_split_size_chars (`int`, None):
                 If set once more than out_split_size_chars are annotated
                 they will be saved to a file (save_dir_path) and the memory cleared.
-            save_dir_path(`str`, None):
+            save_dir_path(`str`, defaults to the directory of the script being run):
                 Where to save the annotated documents if splitting.
             use_char_limit(`bool`, defaults to True):
                 If set this method will calculate the maximum number of characters your PC can handle at once,
@@ -1099,7 +1102,7 @@ class CAT(object):
             import torch
             torch.set_num_threads(1)
 
-        in_data = list(in_data) if isinstance(in_data, types.GeneratorType) else in_data
+        in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
@@ -1166,7 +1169,7 @@ class CAT(object):
         out: Dict = {'entities': {}, 'tokens': []}
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         if doc is not None:
-            out_ent = {}
+            out_ent: Dict = {}
             if self.config.general.get('show_nested_entities', False):
                 _ents = []
                 for _ent in doc._.ents:
@@ -1233,23 +1236,21 @@ class CAT(object):
                 out['text'] = doc.text
         return out
 
-    def _get_trimmed_text(self, text: str) -> Optional[str]:
+    def _get_trimmed_text(self, text: Optional[str]) -> str:
         return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else ""
 
-    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Generator[Optional[str], None, None]:
+    def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[str]:
+        text_: str
         for text in texts:
-            if isinstance(text, Tuple):
-                yield self._get_trimmed_text(text[1])
-            else:
-                yield self._get_trimmed_text(text)
+            text_ = text[1] if isinstance(text, tuple) else text
+            yield self._get_trimmed_text(text_)
 
-    def _get_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[Union[str, None]]:
-        trimmed = []
+    def _get_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> List[str]:
+        trimmed: List = []
+        text_: str
         for text in texts:
-            if isinstance(text, Tuple):
-                trimmed.append(self._get_trimmed_text(text[1]))
-            else:
-                trimmed.append(self._get_trimmed_text(text))
+            text_ = text[1] if isinstance(text, tuple) else text
+            trimmed.append(self._get_trimmed_text(text_))
         return trimmed
 
     @staticmethod
