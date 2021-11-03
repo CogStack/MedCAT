@@ -1,9 +1,38 @@
 import os
+from abc import ABC, abstractmethod
 from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 
-class TokenizerWrapperBPE(object):
+class TokenizerWrapperBase(ABC):
+
+    @abstractmethod
+    def __call__(self, text):
+        ...
+
+    @abstractmethod
+    def save(self, dir_path):
+        ...
+
+    @classmethod
+    @abstractmethod
+    def load(cls, dir_path, **kwargs):
+        ...
+
+    @abstractmethod
+    def get_size(self):
+        ...
+
+    @abstractmethod
+    def token_to_id(self, token):
+        ...
+
+    @abstractmethod
+    def get_pad_id(self):
+        ...
+
+
+class TokenizerWrapperBPE(TokenizerWrapperBase):
     ''' Wrapper around a huggingface tokenizer so that it works with the
     MetaCAT models.
 
@@ -54,10 +83,8 @@ class TokenizerWrapperBPE(object):
         else:
             raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
 
-
     def save(self, dir_path):
         self.hf_tokenizers.save_model(dir_path, prefix=self.name)
-
 
     @classmethod
     def load(cls, dir_path, **kwargs):
@@ -71,14 +98,11 @@ class TokenizerWrapperBPE(object):
         tokenizer.hf_tokenizers.add_tokens(['<PAD>'])
         return tokenizer
 
-
     def get_size(self):
         return self.hf_tokenizers.get_vocab_size()
 
-
     def token_to_id(self, token):
         return self.hf_tokenizers.token_to_id(token)
-
 
     def get_pad_id(self):
         pad = self.token_to_id('<PAD>')
@@ -87,7 +111,7 @@ class TokenizerWrapperBPE(object):
         return pad
 
 
-class TokenizerWrapperBERT(object):
+class TokenizerWrapperBERT(TokenizerWrapperBase):
     ''' Wrapper around a huggingface BERT tokenizer so that it works with the
     MetaCAT models.
 
