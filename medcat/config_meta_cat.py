@@ -1,4 +1,3 @@
-import jsonpickle
 from typing import Dict, Any
 from medcat.config import ConfigMixin
 

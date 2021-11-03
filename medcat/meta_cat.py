@@ -5,7 +5,7 @@ import torch
 from multiprocessing import Lock
 from torch import nn, Tensor
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, Optional, Any, Dict, List, Tuple, cast
+from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
