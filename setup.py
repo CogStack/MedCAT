@@ -34,6 +34,7 @@ setuptools.setup(
         'datasets~=1.14.0',
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
+        'multiprocess', # seems to work better than standard mp
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -1,3 +1,6 @@
+import dill
+
+
 class TokenizerNER(object):
     r'''
 
@@ -8,11 +11,19 @@ class TokenizerNER(object):
             Max sequence length, if longer it will be split into multiple examples
     '''
 
-    def __init__(self, hf_tokenizer, max_len=512, id2type=None):
+    def __init__(self, hf_tokenizer=None, max_len=512, id2type=None):
         self.hf_tokenizer = hf_tokenizer
         self.max_len = max_len
         self.label_map = {'O': 0, 'X': 1}
         self.id2type = id2type
+
+
+    def calculate_label_map(self, dataset):
+        for cuis in dataset['ent_cuis']:
+            for cui in cuis:
+                if cui not in self.label_map:
+                    self.label_map[cui] = len(self.label_map)
+
 
     def encode(self, examples, ignore_subwords=False):
         r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
@@ -45,8 +56,6 @@ class TokenizerNER(object):
                 input_ids.append(tokens['input_ids'][ind])
 
                 if entities and (offset[0] >= entities[0][0] and offset[1] <= entities[0][1]):
-                    if entities[0][2] not in self.label_map:
-                        self.label_map[entities[0][2]] = len(self.label_map)
                     # Means this token is part of entity at position 0
                     tkn_part_of_entity = True
                     if not ignore_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
@@ -84,3 +93,19 @@ class TokenizerNER(object):
                 examples['id'].append(old_ids[_ind])
 
         return examples
+
+
+    def save(self, path):
+        with open(path, 'wb') as f:
+            dill.dump(self.__dict__, f)
+
+
+    @classmethod
+    def load(cls, path):
+        tokenizer = cls()
+        with open(path, 'rb') as f:
+            d = dill.load(f)
+            for k in tokenizer.__dict__:
+                if k in d:
+                    tokenizer.__dict__[k] = d[k]
+        return tokenizer

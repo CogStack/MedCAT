@@ -9,7 +9,7 @@ import time
 import psutil
 from time import sleep
 from copy import deepcopy
-from multiprocessing import Process, Manager, Queue, cpu_count
+from multiprocess import Process, Manager, cpu_count
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc, Token
@@ -881,7 +881,7 @@ class CAT(object):
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.dirname(os.path.abspath(__file__)),
-                        use_char_limit=True) -> Dict:
+                        min_free_memory=0.1) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -899,12 +899,14 @@ class CAT(object):
                 runs the documents one by one.
             out_split_size_chars (`int`, None):
                 If set once more than out_split_size_chars are annotated
-                they will be saved to a file (save_dir_path) and the memory cleared.
+                they will be saved to a file (save_dir_path) and the memory cleared. Recommended
+                value is 20*batch_size_chars.
             save_dir_path(`str`, defaults to the directory of the script being run):
                 Where to save the annotated documents if splitting.
-            use_char_limit(`bool`, defaults to True):
-                If set this method will calculate the maximum number of characters your PC can handle at once,
-                based on that concurrent processes will not be allowed to process more at once than what is max.
+            min_free_memory(`float`, defaults to 0.1):
+                If set a process will not start unless there is at least this much RAM memory left,
+                should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
+                very large datasets because spacy is not the best with memory management and multiprocessing.
 
         Returns:
             A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
@@ -948,10 +950,11 @@ class CAT(object):
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
-                                                    batch_size_chars=internal_batch_size_chars,
                                                     only_cui=only_cui,
+                                                    batch_size_chars=internal_batch_size_chars,
                                                     addl_info=addl_info,
-                                                    nn_components=nn_components)
+                                                    nn_components=nn_components,
+                                                    min_free_memory=min_free_memory)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
                 _batch_counter += 1
@@ -994,7 +997,7 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components=[],
-                               use_char_limit=True) -> Dict:
+                               min_free_memory=0) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -1009,62 +1012,44 @@ class CAT(object):
             A dictionary: {id: doc_json, id2: doc_json2, ...}
         '''
         # Create the input output for MP
-        in_q: Queue = Queue(maxsize=4*nproc)
-        manager = Manager()
-        out_dict: Dict = manager.dict()
-        out_dict['processed'] = []
+        with Manager() as manager:
+            out_list = manager.list()
+            lock = manager.Lock()
+            in_q = manager.Queue(maxsize=10*nproc)
 
-        char_counter = manager.Value('i', 0)
-        lock = manager.Lock()
+            id2text = {}
+            for batch in self._batch_generator(data, batch_size_chars):
+                if nn_components:
+                    # We need this for the json_to_fake_spacy
+                    id2text.update({k:v for k,v in batch})
+                in_q.put(batch)
 
-        # SpaCy is garbage with respect to memory consumption (and some other things).
-        # 1mb of RAM can take 400 characters, here we calculate how many characters can fit
-        #into 60% of the available RAM memory. Why 60%, cannot be really justified, but looked
-        #like a good approximation during the test runs.
-        if use_char_limit:
-            char_counter_max = (int(psutil.virtual_memory().available / (10**6)) * 400) * 0.6
-        else:
-            char_counter_max = -1
+            # Final data point for workers
+            for _ in range(nproc):
+                in_q.put(None)
+            sleep(2)
 
-        # Create processes
-        procs = []
-        for i in range(nproc):
-            p = Process(target=self._mp_cons,
-                        kwargs={'in_q': in_q,
-                                'out_dict': out_dict,
-                                'pid': i,
-                                'only_cui': only_cui,
-                                'addl_info': addl_info,
-                                'lock': lock,
-                                'char_counter': char_counter,
-                                'char_counter_max': char_counter_max})
-            p.start()
-            procs.append(p)
+            # Create processes
+            procs = []
+            for i in range(nproc):
+                p = Process(target=self._mp_cons,
+                            kwargs={'in_q': in_q,
+                                    'out_list': out_list,
+                                    'pid': i,
+                                    'only_cui': only_cui,
+                                    'addl_info': addl_info,
+                                    'min_free_memory': min_free_memory,
+                                    'lock': lock})
+                p.start()
+                procs.append(p)
 
-        id2text = {}
-        for batch in self._batch_generator(data, batch_size_chars):
-            if nn_components:
-                # We need this for the json_to_fake_spacy
-                id2text.update({k:v for k,v in batch})
-            in_q.put(batch)
+            # Join processes
+            for p in procs:
+                p.join()
 
-        # Final data point for workers
-        for _ in range(nproc):
-            in_q.put(None)
-        # Join processes
-        for p in procs:
-            p.join()
-
-        docs = {}
-        for key in out_dict.keys():
-            if 'pid' in key:
-                # Covnerts a touple into a dict
-                docs.update({k:v for k,v in out_dict[key]})
-
-        # Cleanup - to prevent memory leaks, maybe
-        out_dict.clear()
-        del out_dict
-        in_q.close()
+            docs = {}
+            # Covnerts a touple into a dict
+            docs.update({k:v for k,v in out_list})
 
         # If we have separate GPU components now we pipe that
         if nn_components:
@@ -1120,46 +1105,34 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q, out_dict, lock, char_counter, char_counter_max, pid=0, only_cui=False, addl_info=[]):
+    def _mp_cons(self, in_q, out_list, min_free_memory, lock, pid=0, only_cui=False, addl_info=[]):
         out = []
-        first_fail = True
+
         while True:
             if not in_q.empty():
+                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                    with lock:
+                        out_list.extend(out)
+                    # Stop a process if there is not enough memory left
+                    break
+
                 data = in_q.get()
                 if data is None:
-                    out_dict['pid: {}'.format(pid)] = out
+                    with lock:
+                        out_list.extend(out)
                     break
 
                 for i_text, text in data:
                     try:
-                        if char_counter_max > 0 and isinstance(text, str):
-                            while True:
-                                with lock:
-                                    # If we already have max chars in memory, then wait
-                                    if char_counter.value < char_counter_max:
-                                        char_counter.value += len(text)
-                                        break
-                                sleep(10)
                         # Annotate document
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
-
-                        if char_counter_max > 0 and isinstance(text, str):
-                            with lock:
-                                char_counter.value -= len(text)
                     except Exception as e:
-                        if char_counter_max > 0 and isinstance(text, str):
-                            with lock:
-                                char_counter.value -= len(text)
                         self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         self.log.warning(str(e))
-                        if first_fail:
-                            # If it is the first time we fail wait a bit
-                            sleep(180)
-                            first_fail = False
+        sleep(2)
 
-            sleep(1)
 
     def _doc_to_out(self,
                     doc: Doc,
