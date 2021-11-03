@@ -6,7 +6,7 @@ from sklearn.metrics import cohen_kappa_score
 from typing import Dict, List, Optional, Union, Tuple, Any, Set
 from spacy.tokens.doc import Doc
 from spacy.tokens.span import Span
-from medcat.cat import CAT, CDB
+from medcat.cat import CDB
 
 
 def set_all_seeds(seed: int) -> None:
@@ -225,8 +225,8 @@ def print_consolid_stats(ann_stats: List = [], meta_names: List = []) -> None:
                 print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
 
 
-
-def check_differences(data_path: str, cat: CAT, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False) -> None:
+# Deprecated and removable?
+def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False) -> None:
     data = load_data(data_path, require_annotations=True)
     for pid, project in enumerate(data['projects']):
         print("Starting: {} / {}".format(pid, len(data['projects'])))
