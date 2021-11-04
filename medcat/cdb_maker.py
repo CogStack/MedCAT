@@ -166,7 +166,7 @@ class CDBMaker(object):
                                          description=description, full_build=full_build)
                     # DEBUG
                     self.log.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
-                                   (cui, names, ontologies, name_status, type_ids, description, full_build))
+                                   cui, names, ontologies, name_status, type_ids, description, full_build)
 
         return self.cdb
 

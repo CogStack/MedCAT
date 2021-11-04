@@ -6,9 +6,11 @@ import json
 import logging
 import math
 import types
-from copy import deepcopy
-from multiprocessing import Process, Manager, Queue, cpu_count
+import time
+import psutil
 from time import sleep
+from copy import deepcopy
+from multiprocess import Process, Manager, cpu_count
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Generator
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc
@@ -93,11 +95,10 @@ class CAT(object):
         self.linker = Linker(self.cdb, vocab, self.config)
         self.pipe.add_linker(self.linker)
 
+        self._meta_cats = meta_cats
         # Add meta_annotaiton classes if they exist
-        self._meta_annotations = False
         for meta_cat in meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
-            self._meta_annotations = True
 
         # Set max document length
         self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
@@ -121,14 +122,11 @@ class CAT(object):
         os.makedirs(save_dir_path, exist_ok=True)
 
         # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, 'spacy_model')
+        spacy_path = os.path.join(save_dir_path, os.path.basename(self.config.general['spacy_model']))
         if str(self.pipe.nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
             shutil.copytree(self.pipe.nlp._path, spacy_path)
-
-        # Change the name of the spacy model in the config
-        self.config.general['spacy_model'] = 'spacy_model'
 
         # Save the CDB
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
@@ -839,7 +837,7 @@ class CAT(object):
     def _save_docs_to_file(self, docs, annotated_ids, save_dir_path, annotated_ids_path, part_counter=0):
         path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
-        self.log.info("Saved part: %s, to: %s", (part_counter, path))
+        self.log.info("Saved part: %s, to: %s", part_counter, path)
         part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
         pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
@@ -851,9 +849,10 @@ class CAT(object):
                         only_cui: bool = False,
                         addl_info: List[str] = [],
                         separate_nn_components: bool = True,
-                        out_split_size: int = None,
-                        save_dir_path: str = None,) -> Dict:
-        r''' Run multiprocessing for inference, if out_save_path and out_split_size is used this will also continue annotating
+                        out_split_size_chars: int = None,
+                        save_dir_path: str = None,
+                        min_free_memory=0.1) -> Dict:
+        r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
         Args:
@@ -868,18 +867,26 @@ class CAT(object):
                 they will be run sequentially. This is useful as the NN components
                 have batching and like to process many docs at once, while the rest of the pipeline
                 runs the documents one by one.
-            out_split_size (`int`, None):
-                If set once more than out_split_size documents are annotated
-                they will be saved to a file (save_dir_path) and the memory cleared.
+            out_split_size_chars (`int`, None):
+                If set once more than out_split_size_chars are annotated
+                they will be saved to a file (save_dir_path) and the memory cleared. Recommended
+                value is 20*batch_size_chars.
             save_dir_path(`str`, None):
                 Where to save the annotated documents if splitting.
+            min_free_memory(`float`, defaults to 0.1):
+                If set a process will not start unless there is at least this much RAM memory left,
+                should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
+                very large datasets because spacy is not the best with memory management and multiprocessing.
 
         Returns:
-            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size is used
+            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         '''
-        if self._meta_annotations and not separate_nn_components:
+        # Set max document length
+        self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
+
+        if self._meta_cats and not separate_nn_components:
             # Hack for torch using multithreading, which is not good if not 
             #separate_nn_components, need for CPU runs only
             import torch
@@ -902,19 +909,26 @@ class CAT(object):
             part_counter = 0
 
         docs = {}
+        _start_time = time.time()
+        _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
         for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
-            self.log.info("Annotated until now: %s docs; Current BS: %s docs", (len(annotated_ids), len(batch)))
+            self.log.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
+                          len(annotated_ids),
+                          len(batch),
+                          (time.time() - _start_time)/60)
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
-                                                    batch_size_chars=internal_batch_size_chars,
                                                     only_cui=only_cui,
+                                                    batch_size_chars=internal_batch_size_chars,
                                                     addl_info=addl_info,
-                                                    nn_components=nn_components)
+                                                    nn_components=nn_components,
+                                                    min_free_memory=min_free_memory)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
+                _batch_counter += 1
                 del _docs
-                if out_split_size is not None and len(docs) > out_split_size:
+                if out_split_size_chars is not None and (_batch_counter * batch_size_chars) > out_split_size_chars:
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
                                            annotated_ids=annotated_ids,
@@ -923,12 +937,13 @@ class CAT(object):
                                            part_counter=part_counter)
                     del docs
                     docs = {}
+                    _batch_counter = 0
             except Exception as e:
                 self.log.warning("Failed an outer batch in the multiprocessing script")
                 self.log.warning(e, exc_info=True, stack_info=True)
 
         # Save the last batch
-        if out_split_size is not None and len(docs) > 0:
+        if out_split_size_chars is not None and len(docs) > 0:
             # Save to file and reset the docs 
             self._save_docs_to_file(docs=docs,
                                    annotated_ids=annotated_ids,
@@ -950,7 +965,8 @@ class CAT(object):
                                batch_size_chars: int = 1000000,
                                only_cui: bool = False,
                                addl_info: List[str] = [],
-                               nn_components=[]) -> Dict:
+                               nn_components=[],
+                               min_free_memory=0) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -965,47 +981,44 @@ class CAT(object):
             A dictionary: {id: doc_json, id2: doc_json2, ...}
         '''
         # Create the input output for MP
-        in_q = Queue(maxsize=4*nproc)
-        manager = Manager()
-        out_dict = manager.dict()
-        out_dict['processed'] = []
+        with Manager() as manager:
+            out_list = manager.list()
+            lock = manager.Lock()
+            in_q = manager.Queue(maxsize=10*nproc)
 
-        # Create processes
-        procs = []
-        for i in range(nproc):
-            p = Process(target=self._mp_cons,
-                        kwargs={'in_q': in_q,
-                                'out_dict': out_dict,
-                                'pid': i,
-                                'only_cui': only_cui,
-                                'addl_info': addl_info})
-            p.start()
-            procs.append(p)
+            id2text = {}
+            for batch in self._batch_generator(data, batch_size_chars):
+                if nn_components:
+                    # We need this for the json_to_fake_spacy
+                    id2text.update({k:v for k,v in batch})
+                in_q.put(batch)
 
-        id2text = {}
-        for batch in self._batch_generator(data, batch_size_chars):
-            if nn_components:
-                # We need this for the json_to_fake_spacy
-                id2text.update({k:v for k,v in batch})
-            in_q.put(batch)
+            # Final data point for workers
+            for _ in range(nproc):
+                in_q.put(None)
+            sleep(2)
 
-        # Final data point for workers
-        for _ in range(nproc):
-            in_q.put(None)
-        # Join processes
-        for p in procs:
-            p.join()
+            # Create processes
+            procs = []
+            for i in range(nproc):
+                p = Process(target=self._mp_cons,
+                            kwargs={'in_q': in_q,
+                                    'out_list': out_list,
+                                    'pid': i,
+                                    'only_cui': only_cui,
+                                    'addl_info': addl_info,
+                                    'min_free_memory': min_free_memory,
+                                    'lock': lock})
+                p.start()
+                procs.append(p)
 
-        docs = {}
-        for key in out_dict.keys():
-            if 'pid' in key:
-                # Covnerts a touple into a dict
-                docs.update({k:v for k,v in out_dict[key]})
+            # Join processes
+            for p in procs:
+                p.join()
 
-        # Cleanup - to prevent memory leaks, maybe
-        out_dict.clear()
-        del out_dict
-        in_q.close()
+            docs = {}
+            # Covnerts a touple into a dict
+            docs.update({k:v for k,v in out_list})
 
         # If we have separate GPU components now we pipe that
         if nn_components:
@@ -1038,7 +1051,7 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        if self._meta_annotations:
+        if self._meta_cats:
             # Hack for torch using multithreading, which is not good here
             import torch
             torch.set_num_threads(1)
@@ -1061,13 +1074,21 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q, out_dict, pid=0, only_cui=False, addl_info=[]):
+    def _mp_cons(self, in_q, out_list, min_free_memory, lock, pid=0, only_cui=False, addl_info=[]):
         out = []
+
         while True:
             if not in_q.empty():
+                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                    with lock:
+                        out_list.extend(out)
+                    # Stop a process if there is not enough memory left
+                    break
+
                 data = in_q.get()
                 if data is None:
-                    out_dict['pid: {}'.format(pid)] = out
+                    with lock:
+                        out_list.extend(out)
                     break
 
                 for i_text, text in data:
@@ -1076,10 +1097,11 @@ class CAT(object):
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
                     except Exception as e:
-                        self.log.warning("Exception in _mp_cons")
-                        self.log.warning(e, exc_info=True, stack_info=True)
+                        self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
+                                         "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
+                        self.log.warning(str(e))
+        sleep(2)
 
-            sleep(1)
 
     def _doc_to_out(self,
                     doc: Doc,

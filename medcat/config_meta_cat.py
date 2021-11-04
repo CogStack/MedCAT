@@ -19,15 +19,15 @@ class ConfigMetaCAT(BaseConfig):
                 'cntx_left': 15, # Number of tokens to take from the left of the concept
                 'cntx_right': 10, # Number of tokens to take from the right of the concept
                 'replace_center': None, # If set the center (concept) will be replaced with this string
-                'batch_size_eval': 5000,
+                'batch_size_eval': 5000, # Number of annotations to be meta-annotated at once in eval
                 'annotate_overlapping': False, # If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents
-                'tokenizer_name': 'bbpe',
+                'tokenizer_name': 'bbpe', # Tokenizer name used with of MetaCAT
                 # This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
                 #context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
                 #so you need to be sure that the models for which this is turned on have the same tokenizer and context size, during
                 #a deployment.
                 'save_and_reuse_tokens': False,
-                'pipe_batch_size_in_chars': 20000000,
+                'pipe_batch_size_in_chars': 20000000, # How many characters are piped at once into the meta_cat class
                 }
         self.model = {
                 'model_name': 'lstm',
