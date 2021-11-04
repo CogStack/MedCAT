@@ -331,11 +331,11 @@ class CDB(object):
 
                 # DEBUG
                 self.log.debug("Updated vector embedding.\n" +
-                        "CUI: %s, Context Type: %s, Similarity: %.2f, Is Negative: %s, LR: %.5f, b: %.3f", (cui, context_type,
-                            similarity, negative, lr, b))
+                        "CUI: %s, Context Type: %s, Similarity: %.2f, Is Negative: %s, LR: %.5f, b: %.3f", cui, context_type,
+                            similarity, negative, lr, b)
                 cv = self.cui2context_vectors[cui][context_type]
                 similarity_after = np.dot(unitvec(cv), unitvec(vector))
-                self.log.debug("Similarity before vs after: %.5f vs %.5f", (similarity, similarity_after))
+                self.log.debug("Similarity before vs after: %.5f vs %.5f", similarity, similarity_after)
             else:
                 if negative:
                     self.cui2context_vectors[cui][context_type] = -1 * vector
@@ -344,7 +344,7 @@ class CDB(object):
 
                 # DEBUG
                 self.log.debug("Added new context type with vectors.\n" +
-                        "CUI: %s, Context Type: %s, Is Negative: %s", (cui, context_type, negative))
+                        "CUI: %s, Context Type: %s, Is Negative: %s", cui, context_type, negative)
 
         if not negative:
             # Increase counter only for positive examples

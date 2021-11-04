@@ -61,36 +61,40 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-    def _split_generators(self):
+    def _split_generators(self, dl_manger):
         """Returns SplitGenerators."""
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
-                    "filepath": self.config.data_files,
+                    "filepaths": self.config.data_files['train'],
                 },
             ),
         ]
 
-    def _generate_examples(self, filepath):
-        logging.info("generating examples from = %s", filepath)
-        with open(filepath, 'r') as f:
-            projects = json.load(f)['projects']
-            for project in projects:
-                for ind, doc in enumerate(project['documents']):
-                    starts = []
-                    ends = []
-                    cuis = []
-                    for entity in doc['annotations']:
-                        if entity.get('correct', True) or entity.get('manually_created', False) or entity.get('alternative', False):
-                            starts.append(entity['start'])
-                            ends.append(entity['end'])
-                            cuis.append(entity['cui'])
-                    doc_id = doc.get('id', ind)
-                    yield "{}".format(doc_id), {
-                            'id': int(doc_id),
-                            'text': str(doc['text']),
-                            'ent_starts': starts,
-                            'ent_ends': ends,
-                            'ent_cuis': cuis,
-                            }
+    def _generate_examples(self, filepaths):
+        for filepath in filepaths:
+            logging.info("generating examples from = %s", filepath)
+            with open(filepath, 'r') as f:
+                projects = json.load(f)['projects']
+                for project in projects:
+                    for ind, doc in enumerate(project['documents']):
+                        starts = []
+                        ends = []
+                        cuis = []
+                        for entity in doc['annotations']:
+                            if entity.get('correct', True) or \
+                               entity.get('manually_created', False) or \
+                               entity.get('alternative', False):
+
+                                starts.append(entity['start'])
+                                ends.append(entity['end'])
+                                cuis.append(entity['cui'])
+                        doc_id = doc.get('id', ind)
+                        yield "{}".format(doc_id), {
+                                'id': int(doc_id),
+                                'text': str(doc['text']),
+                                'ent_starts': starts,
+                                'ent_ends': ends,
+                                'ent_cuis': cuis,
+                                }
