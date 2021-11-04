@@ -62,7 +62,7 @@ class PatientConceptStream(datasets.GeneratorBasedBuilder):
             citation=_CITATION,
         )
 
-    def _split_generators(self):
+    def _split_generators(self, dl_manager): # noqa
         """Returns SplitGenerators."""
         return [
             datasets.SplitGenerator(
