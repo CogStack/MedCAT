@@ -11,11 +11,12 @@ class TokenizerNER(object):
             Max sequence length, if longer it will be split into multiple examples
     '''
 
-    def __init__(self, hf_tokenizer=None, max_len=512, id2type=None):
+    def __init__(self, hf_tokenizer=None, max_len=512, id2type=None, cui2name=None):
         self.hf_tokenizer = hf_tokenizer
         self.max_len = max_len
         self.label_map = {'O': 0, 'X': 1}
         self.id2type = id2type
+        self.cui2name = cui2name
 
 
     def calculate_label_map(self, dataset):
