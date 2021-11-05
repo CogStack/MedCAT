@@ -169,7 +169,7 @@ class CDB(object):
                     name_status: str,
                     type_ids: Set[str],
                     description: str,
-                    full_build: bool=False) -> None:
+                    full_build: bool = False) -> None:
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.

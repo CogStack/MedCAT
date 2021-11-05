@@ -10,6 +10,8 @@ import psutil
 from time import sleep
 from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
+from multiprocess.queues import Queue
+from multiprocess.synchronize import Lock
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc, Token
@@ -185,7 +187,7 @@ class CAT(object):
 
         return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
 
-    def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Union[Doc, List[Doc]]]:
+    def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         r'''
         Push the text through the pipeline.
 
@@ -521,7 +523,7 @@ class CAT(object):
                               cui: str,
                               name: str,
                               spacy_doc: Optional[Doc] = None,
-                              spacy_entity: Optional[List[Token]] = None,
+                              spacy_entity: Optional[Union[List[Token], Span]] = None,
                               ontologies: Set = set(),
                               name_status: str = 'A',
                               type_ids: Set = set(),
@@ -541,7 +543,7 @@ class CAT(object):
                 selected value in text, no preprocessing or anything needed).
             spacy_doc (spacy.tokens.Doc):
                 Spacy represenation of the document that was manually annotated.
-            spacy_entity (List[spacy.tokens.Token]):
+            spacy_entity (Optional[Union[List[Token], Span]]):
                 Given the spacy document, this is the annotated span of text - list of annotated tokens that are marked with this CUI.
             negative (bool):
                 Is this a negative or positive example.
@@ -808,7 +810,7 @@ class CAT(object):
 
         return out
 
-    def get_json(self, text: str, only_cui=False, addl_info=['cui2icd10', 'cui2ontologies']) -> str:
+    def get_json(self, text: str, only_cui: bool = False, addl_info=['cui2icd10', 'cui2ontologies']) -> str:
         """ Get output in json format
 
         text:  text to be annotated
@@ -829,7 +831,7 @@ class CAT(object):
 
         return nn_components
 
-    def _run_nn_components(self, docs: Dict, nn_components: Dict, id2text: Dict) -> None:
+    def _run_nn_components(self, docs: Dict, nn_components: List, id2text: Dict) -> None:
         r''' This will add meta_anns in-place to the docs dict.
         '''
         self.log.debug("Running GPU components separately")
@@ -880,7 +882,7 @@ class CAT(object):
                         addl_info: List[str] = [],
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
-                        save_dir_path: str = os.path.dirname(os.path.abspath(__file__)),
+                        save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
         r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
@@ -901,7 +903,7 @@ class CAT(object):
                 If set once more than out_split_size_chars are annotated
                 they will be saved to a file (save_dir_path) and the memory cleared. Recommended
                 value is 20*batch_size_chars.
-            save_dir_path(`str`, defaults to the directory of the script being run):
+            save_dir_path(`str`, defaults to the current working directory):
                 Where to save the annotated documents if splitting.
             min_free_memory(`float`, defaults to 0.1):
                 If set a process will not start unless there is at least this much RAM memory left,
@@ -996,8 +998,8 @@ class CAT(object):
                                batch_size_chars: int = 1000000,
                                only_cui: bool = False,
                                addl_info: List[str] = [],
-                               nn_components=[],
-                               min_free_memory=0) -> Dict:
+                               nn_components: List = [],
+                               min_free_memory: int = 0) -> Dict:
         r''' Run multiprocessing on one batch
 
         Args:
@@ -1105,8 +1107,8 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q, out_list, min_free_memory, lock, pid=0, only_cui=False, addl_info=[]):
-        out = []
+    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: int, lock: Lock, pid: int = 0, only_cui: bool = False, addl_info: List = []) -> None:
+        out: List = []
 
         while True:
             if not in_q.empty():
@@ -1132,7 +1134,6 @@ class CAT(object):
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         self.log.warning(str(e))
         sleep(2)
-
 
     def _doc_to_out(self,
                     doc: Doc,
