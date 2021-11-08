@@ -15,8 +15,6 @@ from medcat.cli.download import download, get_matching_version
 
 from medcat.cat import CAT
 
-unittest.defaultTestLoader.sortTestMethodsUsing = lambda *args: -1
-
 def make_orderer():
     order = {}
 
