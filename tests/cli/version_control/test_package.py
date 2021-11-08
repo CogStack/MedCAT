@@ -9,26 +9,13 @@ from tqdm import tqdm
 from unittest import mock
 
 from medcat.cli.config import get_auth_environment_vars, get_git_api_request_url, get_git_default_headers, set_git_global_git_credentials
-from medcat.cli.system_utils import create_new_base_repository, force_delete_path, get_local_model_storage_path
+from medcat.cli.system_utils import create_new_base_repository, force_delete_path, get_local_model_storage_path, make_orderer
 from medcat.cli.package import package
 from medcat.cli.download import download, get_matching_version
 
 from medcat.cat import CAT
 
-def make_orderer():
-    order = {}
-
-    def ordered(f):
-        order[f.__name__] = len(order)
-        return f
-
-    def compare(a, b):
-        return [1, -1][order[a] < order[b]]
-
-    return ordered, compare
-
 ordered, compare = make_orderer()
-
 unittest.defaultTestLoader.sortTestMethodsUsing = compare
 
 class PackageTests(unittest.TestCase):
