@@ -147,8 +147,14 @@ class CAT(object):
 
 
     @classmethod
-    def load_model_pack(cls, zip_path):
+    def load_model_pack(cls, zip_path, device=None):
         r''' Load everything
+
+        Args:
+            zip_path
+            device:
+                Which device to use for NN modeles (cpu/cuda), if set it will
+                overwrite configs for all NN models.
         '''
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -180,7 +186,13 @@ class CAT(object):
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
         meta_cats = []
         for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(meta_path))
+            if device is not None:
+                config_dict = {'general': {'device': device}}
+            else:
+                config_dict = None
+
+            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
+                                          config_dict=config_dict))
 
         return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
 
