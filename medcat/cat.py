@@ -53,7 +53,7 @@ class CAT(object):
             Concept database used with this CAT instance, please do not assign
             this value directly.
         config (medcat.config.Config):
-            The global configuration for medcat. Usually cdb.config can be used for this
+            The global configuration for medcat. Usually cdb.config will be used for this
             field.
         vocab (medcat.utils.vocab.Vocab):
             The vocabulary object used with this instance, please do not assign
@@ -69,11 +69,16 @@ class CAT(object):
     # Add file and console handlers
     log = add_handlers(log)
 
-    def __init__(self, cdb, config, vocab, meta_cats=[]):
+    def __init__(self, cdb, config=None, vocab=None, meta_cats=[]):
         self.cdb = cdb
         self.vocab = vocab
-        # Take config from the cdb
-        self.config = config
+        if config is None:
+            # Take config from the cdb
+            self.config = cdb.config
+        else:
+            # Take the new config and assign it to the CDB also
+            self.config = config
+            self.cdb.config = config
 
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
