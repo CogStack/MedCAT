@@ -126,7 +126,7 @@ class SpacyHFTok(object):
         # Add pad
         self.embs.append([0.0] * 300)
 
-    def encode(self, text: str) -> SpacyHFDoc:
+    def encode(self, text: str) -> 'SpacyHFDoc':
         doc = self.nlp(text)
         return SpacyHFDoc(doc)
 

@@ -5,6 +5,7 @@ from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.cdb import CDB
 from medcat.config import Config
 
+
 class NER(PipeRunner):
     r'''
     '''

@@ -4,7 +4,7 @@ import math
 import torch
 import numpy as np
 import torch.optim as optim
-from typing import List, Optional, Tuple, Any, Dict, Union
+from typing import List, Optional, Tuple, Any, Dict
 from torch import nn
 from scipy.special import softmax
 from sklearn.metrics import classification_report, f1_score
