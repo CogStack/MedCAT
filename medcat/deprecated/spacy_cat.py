@@ -1,6 +1,7 @@
 from spacy.tokens import Span
 import numpy as np
-from medcat.utils.loggers import basic_logger
+# Why is basic_logger not defined in medcat.utils.loggers?
+from medcat.utils.loggers import basic_logger   # type: ignore
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import load_hf_tokenizer, build_vocab_from_hf
 from spacy.lang.en.stop_words import STOP_WORDS
@@ -26,10 +27,10 @@ class SpacyCat(object):
             it will not be performed
     """
     # Convert filters tu sets
-    if TUI_FILTER is not None: # noqa
-        TUI_FILTER = set(TUI_FILTER) # noqa
-    if CUI_FILTER is not None: # noqa
-        CUI_FILTER = set(CUI_FILTER) # noqa
+    if TUI_FILTER is not None: # type: ignore # noqa
+        TUI_FILTER = set(TUI_FILTER) # type: ignore # noqa
+    if CUI_FILTER is not None: # type: ignore # noqa
+        CUI_FILTER = set(CUI_FILTER) # type: ignore # noqa
 
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):

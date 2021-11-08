@@ -30,6 +30,7 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
+    # Override
     def __init__(self, tokenizer: Optional[TokenizerWrapperBase] = None, embeddings: Optional[Tensor] = None, config: Optional[ConfigMetaCAT] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
@@ -47,7 +48,7 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
 
-    def get_model(self, embeddings: Tensor) -> nn.Module:
+    def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -377,6 +378,7 @@ class MetaCAT(PipeRunner):
                 self.get_error_handler()(self.name, self, docs, e)
                 yield from [None] * len(docs)
 
+    # Override
     def __call__(self, doc: Doc) -> Doc:
         ''' Process one document, used in the spacy pipeline for sequential
         document processing.

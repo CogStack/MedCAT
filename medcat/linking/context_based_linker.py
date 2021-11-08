@@ -1,11 +1,20 @@
 import random
 import logging
 
-from spacy.tokens import Span
-
+from enum import Enum, auto
+from spacy.tokens import Span, Doc
+from typing import Optional, List, Dict
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
 from medcat.pipeline.pipe_runner import PipeRunner
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.config import Config
+
+
+class LabelStyle(Enum):
+    short = auto()
+    long = auto()
 
 
 class Linker(PipeRunner):
@@ -21,16 +30,17 @@ class Linker(PipeRunner):
     # Custom pipeline component name
     name = 'cat_linker'
 
-    def __init__(self, cdb, vocab, config):
+    # Override
+    def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb
         self.vocab = vocab
         self.config = config
         self.context_model = ContextModel(self.cdb, self.vocab, self.config)
         # Counter for how often did a pair (name,cui) appear and was used during training
-        self.train_counter = {}
+        self.train_counter: Dict = {}
         super().__init__(self.config.general['workers'])
 
-    def _train(self, cui, entity, doc, add_negative=True):
+    def _train(self, cui: str, entity: Span, doc: Doc, add_negative: bool = True) -> None:
         name = "{} - {}".format(entity._.detected_name, cui)
         if self.train_counter.get(name, 0) > self.config.linking['subsample_after']:
             if random.random() < 1 / (self.train_counter.get(name) - self.config.linking['subsample_after']):
@@ -45,7 +55,8 @@ class Linker(PipeRunner):
                 self.context_model.train_using_negative_sampling(cui)
             self.train_counter[name] = self.train_counter.get(name, 0) + 1
 
-    def __call__(self, doc):
+    # Override
+    def __call__(self, doc: Doc) -> Doc:
         r'''
         '''
         cnf_l = self.config.linking
@@ -121,27 +132,25 @@ class Linker(PipeRunner):
         self._create_main_ann(doc)
 
         if self.config.general['make_pretty_labels'] is not None:
-            self._make_pretty_labels(doc, self.config.general['make_pretty_labels'])
+            self._make_pretty_labels(doc, LabelStyle[self.config.general['make_pretty_labels']])
 
         if self.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
             self._map_ents_to_groups(doc)
 
         return doc
 
-
-    def _map_ents_to_groups(self, doc):
+    def _map_ents_to_groups(self, doc: Doc) -> None:
         for ent in doc.ents:
             ent._.cui = self.cdb.addl_info['cui2group'].get(ent._.cui, ent._.cui)
 
-
-    def _make_pretty_labels(self, doc, style=None):
+    def _make_pretty_labels(self, doc: Doc, style: Optional[LabelStyle] = None) -> None:
         ents = list(doc.ents)
 
         n_ents = []
         for ent in ents:
-            if style == 'short':
+            if style == LabelStyle.short:
                 label = ent._.cui
-            elif style == 'long':
+            elif style == LabelStyle.long:
                 label = "{} | {} | {:.2f}".format(ent._.cui, self.cdb.get_name(ent._.cui), ent._.context_similarity)
             else:
                 label = 'concept'
@@ -153,9 +162,7 @@ class Linker(PipeRunner):
 
         doc.ents = n_ents
 
-
-
-    def _create_main_ann(self, doc, tuis=None):
+    def _create_main_ann(self, doc: Doc, tuis: Optional[List] = None) -> None:
         # TODO: Separate into another piece of the pipeline
         """ Creates annotation in the spacy ents list
         from all the annotations for this document.

@@ -2,9 +2,12 @@
 pretty much everything that is not a word.
 """
 import re
+from typing import Dict, Optional, List
+from spacy.language import Language
+from medcat.config import Config
 
 
-def prepare_name(raw_name, nlp, names, config):
+def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> Dict:
     r''' Generates different forms of a name. Will edit the provided `names` dictionary
     and add information generated from the `name`.
 
@@ -36,7 +39,7 @@ def prepare_name(raw_name, nlp, names, config):
                     if len(t.lower_) < config.preprocessing['min_len_normalize']:
                         tokens.append(t.lower_)
                     elif (config.preprocessing.get('do_not_normalize', set())) and t.tag_ is not None and \
-                            t.tag_ in config.preprocessing.get('do_not_normalize'):
+                            t.tag_ in (config.preprocessing.get('do_not_normalize', set())):
                         tokens.append(t.lower_)
                     else:
                         tokens.append(t.lemma_.lower())
@@ -45,7 +48,7 @@ def prepare_name(raw_name, nlp, names, config):
             snames = set()
             name = config.general['separator'].join(tokens)
 
-            if not config.cdb_maker.get('min_letters_required', 0) or len(re.sub("[^A-Za-z]*", '', name)) >= config.cdb_maker.get('min_letters_required'):
+            if not config.cdb_maker.get('min_letters_required', 0) or len(re.sub("[^A-Za-z]*", '', name)) >= config.cdb_maker.get('min_letters_required', 0):
                 if name not in names:
                     sname = ""
                     for token in tokens:
@@ -60,7 +63,7 @@ def prepare_name(raw_name, nlp, names, config):
     return names
 
 
-def basic_clean(text):
+def basic_clean(text: str) -> str:
     """ Remove almost everything from text
 
     text:  text to be cleaned
@@ -88,7 +91,7 @@ def basic_clean(text):
     return text.strip().lower()
 
 
-def clean_text(text):
+def clean_text(text: str) -> str:
     """ Remove almost everything from text
 
     text:  text to be cleaned
@@ -133,7 +136,7 @@ PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|di
 SKIP_CHARS = re.compile("[\[\]\*]+")
 
 
-def clean_drugs_uk(text, stopwords=None, umls=None):
+def clean_drugs_uk(text: str, stopwords: Optional[List[str]] = None, umls: bool = False) -> str:
     _text = CB.sub(" ", text)
     _text = CB.sub(" ", _text)
     _text = CB_D.sub(" ", _text)
@@ -143,7 +146,7 @@ def clean_drugs_uk(text, stopwords=None, umls=None):
     return clean_name(text, stopwords, umls)
 
 
-def clean_name(text, stopwords=None, umls=False):
+def clean_name(text: str, stopwords: Optional[List[str]] = None, umls: bool = False) -> str:
     # Remove multi spaces
     text = re.sub("[ ]+", " ", text).strip()
 
@@ -164,7 +167,7 @@ def clean_name(text, stopwords=None, umls=False):
     return text
 
 
-def clean_umls(text, stopwords=None):
+def clean_umls(text: str, stopwords: Optional[List[str]] = None) -> str:
     # Remove [] if < 4 letters inside
     text = BR_U4.sub(" ", text)
 
@@ -192,7 +195,7 @@ def clean_umls(text, stopwords=None):
     return text
 
 
-def clean_def(text):
+def clean_def(text: str) -> str:
     # Remove things inside of () or []
     text = re.sub("\([^\)]*\)", " ", text)
     text = re.sub("\[[^\]]*\]", " ", text)
@@ -203,7 +206,7 @@ def clean_def(text):
     return text
 
 
-def clean_snt(text):
+def clean_snt(text: str) -> str:
     # Remove things inside of () or []
     text = re.sub("\[\*[^\]]*\*\]", " ", text)
 
@@ -216,7 +219,7 @@ def clean_snt(text):
     return text
 
 
-def clean_snomed_name(text):
+def clean_snomed_name(text: str) -> str:
     # Remove () from end of string
     text = text.strip()
     text = re.sub("\([^\)]*\)$", " ", text).strip()
