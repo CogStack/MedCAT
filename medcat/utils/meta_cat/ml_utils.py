@@ -7,7 +7,6 @@ import numpy as np
 from scipy.special import softmax
 from sklearn.metrics import classification_report, f1_score
 from torch import nn
-import torch.nn.functional as F
 import torch.optim as optim
 
 
@@ -193,7 +192,7 @@ def train_model(model, data, config, save_dir_path=None):
                 x, cpos, y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
                 logits = model(x, cpos, ignore_cpos=ignore_cpos)
 
-                 # Track loss and logits
+                # Track loss and logits
                 running_loss_test.append(loss.item())
                 all_logits_test.append(logits.detach().cpu().numpy())
 
@@ -251,7 +250,7 @@ def eval_model(model, data, config, tokenizer):
             logits = model(x, cpos, ignore_cpos=ignore_cpos)
             loss = criterion(logits, y)
 
-             # Track loss and logits
+            # Track loss and logits
             running_loss.append(loss.item())
             all_logits.append(logits.detach().cpu().numpy())
 
@@ -269,7 +268,7 @@ def eval_model(model, data, config, tokenizer):
         c = data[i][1]
         tkns = data[i][0]
         text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<"+ tokenizer.hf_tokenizers.decode(tkns[c:c+1]).strip() + ">> " + \
-                tokenizer.hf_tokenizers.decode(tkns[c+1:])
+            tokenizer.hf_tokenizers.decode(tkns[c+1:])
         info = "Predicted: {}, True: {}".format(p, y)
         if p != y:
             # We made a mistake

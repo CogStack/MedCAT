@@ -1,13 +1,14 @@
-import numpy as np
 import json
-import copy
-from sklearn.metrics import cohen_kappa_score
 import torch
-import pickle
+import copy
+import numpy as np
+from sklearn.metrics import cohen_kappa_score
+
 
 def set_all_seeds(seed):
     torch.manual_seed(seed)
     np.random.seed(seed)
+
 
 def count_annotations_project(project):
     cnt = 0
@@ -111,8 +112,9 @@ def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
     return True
 
 
-def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], meta_names=[]):
-    are_same = True
+def get_same_anns(
+    document, document2, require_double_inner=True, ann_stats=[], meta_names=[]
+):
     new_document = copy.deepcopy(document)
     new_document['annotations'] = []
 
@@ -134,24 +136,23 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
 
             if ann2 is not None:
                 # Only do meta_anns if both anns exist
-                for id, meta_name in enumerate(meta_names):
-                    ann_stats[id+2].append(['unk', 'unk'])
+                for id_meta, meta_name in enumerate(meta_names):
+                    ann_stats[id_meta+2].append(['unk', 'unk'])
 
                     # For ann1
                     meta_ann = meta_ann_from_ann(ann, meta_name)
                     if meta_ann is not None:
-                        ann_stats[id+2][-1][0] = meta_ann['value']
+                        ann_stats[id_meta+2][-1][0] = meta_ann['value']
                     # For ann2
                     meta_ann = meta_ann_from_ann(ann2, meta_name)
                     if meta_ann is not None:
-                        ann_stats[id+2][-1][1] = meta_ann['value']
+                        ann_stats[id_meta+2][-1][1] = meta_ann['value']
 
                 if ann2['correct']:
                     pair[1] = 1
 
                 if not are_anns_same(ann, ann2, meta_names):
                     ann_stats[0].append((1, 0))
-                    are_same = False
                 else:
                     ann_stats[0].append((1, 1))
                     new_document['annotations'].append(ann)
@@ -160,7 +161,6 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
                 new_document['annotations'].append(ann)
             else:
                 ann_stats[0].append((1, 0))
-                are_same = False
 
             # Append for NER+L stats
             ann_stats[1].append(pair)
@@ -179,10 +179,8 @@ def get_same_anns(document, document2, require_double_inner=True, ann_stats=[], 
                 new_document['annotations'].append(ann2)
             else:
                 ann_stats[0].append((0, 1))
-                are_same = False
 
     return new_document
-
 
 
 def print_consolid_stats(ann_stats=[], meta_names=[]):
@@ -206,9 +204,9 @@ def print_consolid_stats(ann_stats=[], meta_names=[]):
         print("   Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
         print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
 
-        for id, meta_name in enumerate(meta_names):
-            if len(ann_stats) > id + 2:
-                _ann_stats = np.array(ann_stats[id+2])
+        for id_meta, meta_name in enumerate(meta_names):
+            if len(ann_stats) > id_meta + 2:
+                _ann_stats = np.array(ann_stats[id_meta+2])
 
                 ck = cohen_kappa_score(_ann_stats[:, 0], _ann_stats[:, 1])
 
@@ -266,9 +264,9 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
 
 
                 print("\n\nSTARTING MC TO GT")
-                for id, p_ann in enumerate(p_anns_norm):
+                for id_p_ann, p_ann in enumerate(p_anns_norm):
                     if (only_start and p_ann[0] not in t_anns_start) or (not only_start and p_ann not in t_anns_norm):
-                        ann = s_doc.ents[id]
+                        ann = s_doc.ents[id_p_ann]
                         if not only_saved:
                             print("\n\nThis does not exist in gt annotations")
                             start = ann.start_char
@@ -284,7 +282,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
 
                             if d:
                                 new_ann = {}
-                                new_ann['id'] = 0 #ignore
+                                new_ann['id'] = 0   # ignore
                                 new_ann['user'] = 'auto'
                                 new_ann['validated'] = True
                                 new_ann['last_modified'] = ''
@@ -321,9 +319,9 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
                     t_anns_norm.append((ann['start'], ann['cui']))
                     t_anns_start.append(ann['start'])
                 new_doc_anns = []
-                for id, t_ann in enumerate(t_anns_norm):
+                for id_t_ann, t_ann in enumerate(t_anns_norm):
                     add_ann = True
-                    ann = doc['annotations'][id]
+                    ann = doc['annotations'][id_t_ann]
                     if (not only_saved and not only_start and t_ann not in p_anns_norm) or \
                        (not only_saved and only_start and t_ann[0] not in p_anns_start) or \
                        (only_saved and ann.get("_saved", False)):
@@ -373,6 +371,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
 
     json.dump(data, open(data_path, 'w'))
 
+
 def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=False, meta_anns_to_match=[]):
     """ Consolidated a dataset that was multi-annotated (same documents two times).
 
@@ -400,18 +399,18 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
     ann_stats = [] # This will keep score for agreement
     # Consolidate
     for project in data['projects']:
-        id = project['id']
+        id_project = project['id']
         new_documents = []
         ann_stats_project = []
         new_project = None
-        if id not in projects_done:
-            projects_done.add(id)
+        if id_project not in projects_done:
+            projects_done.add(id_project)
             name = project['name']
             documents = project['documents']
 
             if not require_double:
                 new_project = copy.deepcopy(project)
-                projects_done.add(id)
+                projects_done.add(id_project)
             else:
                 # Means we need double annotations
                 has_double = False
@@ -419,7 +418,7 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
                     id2 = project2['id']
                     name2 = project2['name']
 
-                    if name == name2 and id != id2:
+                    if name == name2 and id_project != id2:
                         has_double = True
                         projects_done.add(id2)
                         break
@@ -440,7 +439,7 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
 
             if new_project is not None:
                 if not ann_stats:
-                    for one in ann_stats_project:
+                    for _ in ann_stats_project:
                         ann_stats.append([])
                 for irow, one in enumerate(ann_stats_project):
                     ann_stats[irow].extend(one)
@@ -459,6 +458,7 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
     print("** Overall stats")
     print_consolid_stats(ann_stats, meta_names=meta_anns_to_match)
     return d_stats_proj
+
 
 def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if_already_done=False):
     """ Please just ignore this function, I'm afraid to even look at it
@@ -496,7 +496,7 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                 else:
                     cui2status[cui] = {name: {status: 1}}
 
-    quit = False
+    quit_ = False
 
     if not status_only:
         for project in data['projects']:
@@ -526,17 +526,17 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                             print()
                             print("C | {:3} | {:20} | {:70} | {}".format("ID", "CUI", "Concept", "Number of annotations in the dataset"))
                             print("-"*110)
-                            for id, _cui in enumerate(cuis):
+                            for id_cui, _cui in enumerate(cuis):
                                 if _cui == cui:
                                     c = "+"
                                 else:
                                     c = " "
-                                print("{} | {:3} | {:20} | {:70} | {}".format(c, id, _cui, cdb.cui2pretty_name.get(_cui, 'unk')[:69], name2cui[name][_cui]))
+                                print("{} | {:3} | {:20} | {:70} | {}".format(c, id_cui, _cui, cdb.cui2pretty_name.get(_cui, 'unk')[:69], name2cui[name][_cui]))
                             print()
                             d = str(input("###Change to ([s]kip/[q]uit/id): "))
 
                             if d == 'q':
-                                quit = True
+                                quit_ = True
                                 break
 
                             ann['manul_verification_mention'] = True
@@ -546,12 +546,12 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                                 d = int(d)
                                 ann['cui'] = cuis[d]
 
-                if quit:
+                if quit_:
                     break
-            if quit:
+            if quit_:
                 break
 
-    if not quit:
+    if not quit_:
         # Re-calculate
         name2cui = {}
         cui2status = {}
@@ -604,7 +604,6 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                             status = 'unk'
 
                         if len(cui2status[cui][name]) > 1:
-                            ss = list(cui2status[cui][name].keys())
                             print("\n\nThis name was annotated with different status\n")
                             b = text[max(0, start-cntx_size):start].replace("\n", " ")
                             m = text[start:end].replace("\n", " ")
@@ -620,7 +619,7 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                             d = str(input("###Change to ([q]uit/[s]kip/[c]orrect/[i]ncorrect/[t]erminate): "))
 
                             if d == 'q':
-                                quit = True
+                                quit_ = True
                                 break
 
                             ann['manual_verification_status'] = True
@@ -643,9 +642,9 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                                 ann['alternative'] = False
                             print()
                             print()
-                if quit:
+                if quit_:
                     break
-            if quit:
+            if quit_:
                 break
 
     json.dump(data, open(data_path, 'w'))
@@ -664,7 +663,6 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
         self.data = data
         self.category_map = category_map
 
-
     def __getitem__(self, idx):
         item = {}
         for key, value in self.data.items():
@@ -674,9 +672,10 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
                 item[key] = torch.tensor(self.category_map[value[idx]])
         return item
 
-
     def __len__(self):
         return len(self.data['input_ids'])
+
+
 """
 def add_ids_and_cpos_to_docs(data_path, cntx_left, cntx_right, tokenizer, max_seq_len, cui_filter=None, replace_center=None, batch_size=100000):
     data = pickle.load(open(data_path, 'rb'))
@@ -725,7 +724,7 @@ def prepare_from_docs_hf(data_path, tkns_path, cntx_left, cntx_right, tokenizer,
                 tkns_center = tokens[start:end]
 
                 # Get the index of the center token
-                ind = 0 
+                ind = 0
                 for ind, pair in enumerate(doc_text['offset_mapping']):
                     if start >= pair[0] and start < pair[1]:
                         break
@@ -782,14 +781,15 @@ def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter
 
     return out
 """
-def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None, max_seq_len=None):
+
+
+def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None):
     out = {}
     data = json.load(open(data_path))
 
     p_data = prepare_from_json_chars(data, cntx_left=cntx_left, cntx_right=cntx_right, tokenizer=tokenizer,
                                cui_filter=cui_filter, replace_center=replace_center)
 
-    _max_seq_len = max_seq_len
     for name in p_data.keys():
         out[name] = {}
 
@@ -821,8 +821,7 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
             if len(text) > 0:
 
-                for ann in document['annotations']:
-                    tui = ""
+                for ann in document["annotations"]:
                     if cui_filter:
                         cui = ann['cui']
 
@@ -866,7 +865,7 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
     return out_data
 
 
-def make_mc_train_test(data, cdb, seed=17, test_size=0.2):
+def make_mc_train_test(data, cdb, test_size=0.2):
     """ This is a disaster
     """
     cnts = {}
@@ -998,5 +997,5 @@ def get_false_positives(doc, spacy_doc):
     for ent in spacy_doc._.ents:
         if (ent.start_char, ent._.cui) not in truth:
             fps.append(ent)
-    
+
     return fps

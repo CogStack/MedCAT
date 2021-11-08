@@ -7,6 +7,7 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
 
 ## News
+- **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT. 
 - **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs (compatble with MedCAT v1) will work without any changes.
 - **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
 - **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), 
@@ -33,74 +34,76 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - For macOS/linux: `pip install --upgrade medcat`
 - For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
-2. Get the scispacy models:
+2. Quickstart (MedCAT v1.2+):
+```python
+from medcat.cat import CAT
 
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz`
-or
-`pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_lg-0.4.0.tar.gz`
+# Download the model_pack from the models section in the github repo.
+cat = CAT.load_model_pack('<path to downloaded zip file>')
 
-3. Downlad the Vocabulary and CDB from the Models section bellow
+# Test it
+text = "My simple document with kidney failure"
+entities = cat.get_entities(text)
+print(entities)
 
-4. Quickstart:
+# To run unsupervised training over documents
+data_iterator = <your iterator>
+cat.train(data_iterator)
+#Once done, save the whole model_pack 
+cat.create_model_pack(<save path>)
+```
+
+
+3. Quick start with separate models:
+New Models (MedCAT v1.2+) need the spacy `en_core_web_md` while older ones use the scispacy models, install the one you need or all if not sure. If using model packs you do not need to download these models: 
+```
+python -m spacy download en_core_web_md
+pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
+pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_lg-0.4.0.tar.gz
+```
 ```python
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.cat import CAT
+from medcat.meta_cat import MetaCAT
 
 # Load the vocab model you downloaded
 vocab = Vocab.load(vocab_path)
 # Load the cdb model you downloaded
 cdb = CDB.load('<path to the cdb file>') 
 
-# Create cat - each cdb comes with a config that was used
-#to train it. You can change that config in any way you want, before or after creating cat.
-cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab)
-
-# Test it
-text = "My simple document with kidney failure"
-doc_spacy = cat(text)
-# Print detected entities
-print(doc_spacy.ents)
-
-# Or to get an array of entities, this will return much more information
-#and usually easier to use unless you know a lot about spaCy
-doc = cat.get_entities(text)
-print(doc)
-
-
-# To train on one example
-_ = cat(text, do_train=True)
-
-# To train on a iterator over documents
-data_iterator = <your iterator>
-cat.train(data_iterator)
-
-#Once done, save the new CDB
-cat.cdb.save(<save path>)
-```
-
-### MetaCAT example
-```python
-from medcat.meta_cat import MetaCAT
-# Assume we have a CDB and Vocab object from before
 # Download the mc_status model from the models section below and unzip it
-
 mc_status = MetaCAT.load("<path to the unziped mc_status directory>")
 cat = CAT(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=[mc_status])
 
-# Now annotate a document, it will have the meta annotation 'status'
-doc = cat.get_entities(text)
+# Test it
+text = "My simple document with kidney failure"
+entities = cat.get_entities(text)
+print(entities)
+
+# To run unsupervised training over documents
+data_iterator = <your iterator>
+cat.train(data_iterator)
+#Once done you can make the current pipeline into a model_pack 
+cat.create_model_pack(<save path>)
 ```
 
 
 ## Models
-A basic trained model is made public for the vocabulary and CDB. It is trained for the ~ 35K concepts available in `MedMentions`. 
+A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`. 
 
-Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
+#### ModelPacks
 
-CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat) - Built from MedMentions
+- MedMentions with Status (Is Concept Affirmed or Negated/Hypothetical) [Download](https://medcat.rosalind.kcl.ac.uk/media/medmen_wstatus_2021_oct.zip)
 
-MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical)
+
+#### Separate models
+
+- Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
+
+- CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1_2.dat) - Built from MedMentions
+
+- MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical)
 
 
 (Note: This was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
@@ -110,7 +113,7 @@ that data is not publicaly available.)
 If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
 
 
-## Acknowledgement
+## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
 The vocabulary was compiled from [Wiktionary](https://en.wiktionary.org/wiki/Wiktionary:Main_Page) In total ~ 800K unique words

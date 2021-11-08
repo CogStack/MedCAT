@@ -41,6 +41,8 @@ setuptools.setup(
         'jsonpickle==2.0.0',
         'pywin32>=301' if os.name == "nt" else "",
         'pypiwin32>=223' if os.name == "nt" else ""
+        'psutil<6.0.0,>=5.8.0',
+        'multiprocess', # seems to work better than standard mp
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

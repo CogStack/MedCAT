@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 
+
 def original2concept_csv(data_path, out_path):
     f = open(data_path)
     csv_data = [['cui', 'type_id', 'name', 'name_status']]
@@ -28,6 +29,7 @@ def original2concept_csv(data_path, out_path):
 
     return df
 
+
 def original2pure_text(data_path, out_path):
     f = open(data_path)
     out = open(out_path, 'w')
@@ -45,6 +47,7 @@ def original2pure_text(data_path, out_path):
                 out.write(title + " " + text + " " + "\n")
     out.close()
 
+
 def original2json(data_path, out_path):
     f = open(data_path)
     data = {'projects': [{'name': 'medmentions', 'id': 0, 'documents': []}]}
@@ -56,7 +59,6 @@ def original2json(data_path, out_path):
             if '|t|' in row[0:13]:
                 # It is title
                 parts = row.split("|t|")
-                doc_id = parts[0]
                 title = parts[1].strip()
             elif '|a|' in row[0:13]:
                 # Text row

@@ -2,6 +2,8 @@ import types
 import spacy
 import gc
 import logging
+from typing import List, Optional, Union, Iterable, Callable, Generator
+from multiprocessing import cpu_count
 from spacy.tokens import Token, Doc, Span
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
@@ -15,8 +17,6 @@ from medcat.utils.loggers import add_handlers
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
-from typing import List, Optional, Union, Iterable, Callable, Generator
-from multiprocessing import cpu_count
 
 
 class Pipe(object):
@@ -35,6 +35,7 @@ class Pipe(object):
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
+
     def __init__(self, tokenizer: Tokenizer, config: Config):
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:
@@ -212,11 +213,11 @@ class Pipe(object):
                 try:
                     doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
-                    self.log.warning("Exception raised when processing text: {}".format(t[:50] + "..." if isinstance(t, str) else t))
+                    self.log.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
                     self.log.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
             return docs
         else:
-            self.log.error("The input text should be either a string or a sequence of strings but got: {}".format(type(text)))
+            self.log.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
             return None

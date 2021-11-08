@@ -1,10 +1,7 @@
 import os
 import json
-import pickle
 import logging
-import numpy as np
 import torch
-from scipy.special import softmax
 from multiprocessing import Lock
 from spacy.tokens import Doc
 from typing import Iterable, Generator
@@ -120,6 +117,9 @@ class MetaCAT(PipeRunner):
             path = os.path.join(save_dir_path, 'model.dat')
             device = torch.device(g_config['device'])
             self.model.load_state_dict(torch.load(path, map_location=device))
+
+            # Save everything now
+            self.save(save_dir_path=save_dir_path)
 
         return report
 

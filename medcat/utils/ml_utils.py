@@ -1,15 +1,4 @@
-from sklearn.model_selection import train_test_split
-import numpy as np
-from sklearn.metrics import classification_report, f1_score, confusion_matrix, precision_score, recall_score
-import torch
-from torch import nn
-import torch.nn.functional as F
-import torch.optim as optim
-import os
-import math
-
-
-def get_lr_linking(config, cui_count, params, similarity):
+def get_lr_linking(config, cui_count):
     if config.linking['optim']['type'] == 'standard':
         return config.linking['optim']['lr']
     elif config.linking['optim']['type'] == 'linear':
@@ -18,6 +7,7 @@ def get_lr_linking(config, cui_count, params, similarity):
         return max(lr / cui_count, config.linking['optim']['min_lr'])
     else:
         raise Exception("Optimizer not implemented")
+
 
 def get_batch(ind, batch_size, x, y, cpos, device):
     # Get the start/end index for this batch
@@ -37,8 +27,9 @@ def load_hf_tokenizer(tokenizer_name):
     try:
         from transformers import AutoTokenizer
         hf_tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
-    except Exception as e:
-        log.exception("The Huggingface tokenizer could not be created")
+    except Exception:
+        # Where is log defined?
+        log.exception("The Huggingface tokenizer could not be created") # noqa
 
     return hf_tokenizer
 
@@ -52,7 +43,8 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             rebuild = True
 
     if rebuild:
-        log.info("Rebuilding vocab")
+        # Where is log defined?
+        log.info("Rebuilding vocab") # noqa
         try:
             from transformers import AutoModel
             model = AutoModel.from_pretrained(model_name)
@@ -74,5 +66,6 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
             # Crate the new unigram table
             vocab.reset_counts()
             vocab.make_unigram_table()
-        except Exception as e:
-            log.exception("The Huggingface model could not be loaded")
+        except Exception:
+            # Where is log defined?
+            log.exception("The Huggingface model could not be loaded") # noqa

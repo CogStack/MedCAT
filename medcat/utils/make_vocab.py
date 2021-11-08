@@ -1,14 +1,12 @@
-from medcat.vocab import Vocab
-import numpy as np
-import pandas
-from pathlib import Path
-from medcat.preprocessing.tokenizers import spacy_split_all
-from functools import partial
-from gensim.models import Word2Vec
-from medcat.preprocessing.iterators import SimpleIter
 import logging
+from pathlib import Path
+from gensim.models import Word2Vec
+from medcat.vocab import Vocab
 from medcat.pipe import Pipe
+from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.preprocessing.iterators import SimpleIter
 from medcat.preprocessing.taggers import tag_skip_and_punct
+
 
 class MakeVocab(object):
     r'''
@@ -29,6 +27,7 @@ class MakeVocab(object):
     >>>
     '''
     log = logging.getLogger(__name__)
+
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
         self.config = config
@@ -53,10 +52,8 @@ class MakeVocab(object):
         # Used for saving if the real path is not set
         self.vocab_path = "./tmp_vocab.dat"
 
-
     def _tok(self, text):
         return [text]
-
 
     def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=False):
         r'''
@@ -83,7 +80,7 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                self.log.info("Vocab builder at: " + str(ind))
+                self.log.info("Vocab builder at: %s", str(ind))
                 print(ind)
 
             doc = self.nlp.nlp.tokenizer(doc)
@@ -119,8 +116,7 @@ class MakeVocab(object):
         # Save the vocab also
         self.vocab.save(path=self.vocab_path)
 
-
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, niter=2, min_count=10, window=10, vsize=300,
+    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, epochs=2, min_count=10, window=10, vector_size=300,
                     unigram_table_size=100000000):
         r'''
         Add vectors to an existing vocabulary and save changes to the vocab_path.
@@ -144,9 +140,9 @@ class MakeVocab(object):
                 data = SimpleIter(in_path)
             else:
                 data = data_iter
-            w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, size=vsize, iter=niter)
+            w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, vector_size=vector_size, epochs=epochs)
 
-        for word in w2v.wv.vocab.keys():
+        for word in w2v.wv.key_to_index.keys():
             if word in self.vocab:
                 if overwrite:
                     self.vocab.add_vec(word, w2v.wv.get_vector(word))

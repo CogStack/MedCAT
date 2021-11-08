@@ -1,6 +1,6 @@
+import os
 from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
-import os
 
 
 class TokenizerWrapperBPE(object):
@@ -48,7 +48,7 @@ class TokenizerWrapperBPE(object):
                 output.append({'offset_mapping': result.offsets,
                     'input_ids': result.ids,
                     'tokens': result.tokens,
-                    })
+                })
 
             return output
         else:
@@ -96,9 +96,9 @@ class TokenizerWrapperBERT(object):
             A huggingface Fast BERT.
     '''
     name = 'bert-tokenizer'
+
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers
-
 
     def __call__(self, text):
         if isinstance(text, str):
@@ -122,11 +122,9 @@ class TokenizerWrapperBERT(object):
         else:
             raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
 
-
     def save(self, dir_path):
         path = os.path.join(dir_path, self.name)
         self.hf_tokenizers.save_pretrained(path)
-
 
     @classmethod
     def load(cls, dir_path, **kwargs):
@@ -136,14 +134,11 @@ class TokenizerWrapperBERT(object):
 
         return tokenizer
 
-
     def get_size(self):
         return len(self.hf_tokenizers.vocab)
 
-
     def token_to_id(self, token):
         return self.hf_tokenizers.convert_tokens_to_ids(token)
-
 
     def get_pad_id(self):
         return self.hf_tokenizers.pad_token_id

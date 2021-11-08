@@ -4,6 +4,7 @@ import os
 from medcat.cli import ModelTagData, system_utils
 
 
+
 class Vocab(object):
     r''' Vocabulary used to store word embeddings for context similarity
     calculation. Also used by the spell checker - but not for fixing the spelling
