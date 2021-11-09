@@ -132,8 +132,6 @@ def create_model_folder(full_model_tag_name: str):
     except Exception as exception:
         logging.info("Could not create model folder " + full_model_tag_name + ".")
         logging.info(repr(exception))
-    finally:
-        return False
 
 def get_downloaded_local_model_folder(full_model_tag_name: str):
     r'''

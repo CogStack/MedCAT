@@ -346,7 +346,7 @@ def upload_model(model_name, version):
         tag_name = model_name + "-" + version
 
     # create folder for new model release
-    # folder where the original model files are: /lib/python/site-packages/medcat-{version}/models/...
+    # folder where the original model files are: $HOME/.cache/medcat/models/...
     new_model_package_folder = os.path.join(get_local_model_storage_path(), tag_name)
     
     if get_downloaded_local_model_folder(tag_name) is not False:
