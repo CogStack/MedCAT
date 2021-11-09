@@ -297,7 +297,7 @@ class BertModel_RelationExtracation(BertPreTrainedModel):
         buffer = []
 
         for i in range(blankv1v2.shape[0]): # iterate batch & collect
-            v1v2 = blankv1v2[i, i, :, :] # blankv1v2[i] 
+            v1v2 = blankv1v2[i, i, :, :] 
             v1v2 = torch.cat((v1v2[0], v1v2[1]))
             buffer.append(v1v2)
         del blankv1v2
@@ -305,7 +305,7 @@ class BertModel_RelationExtracation(BertPreTrainedModel):
         del buffer
         
         if self.task is None:
-            blanks_logits = self.activation(v1v2) # self.blanks_linear(- torch.log(Q)
+            blanks_logits = self.activation(v1v2)
             lm_logits = self.cls(sequence_output, pooled_output=pooled_output)
             return blanks_logits, lm_logits
         elif self.task == 'classification':

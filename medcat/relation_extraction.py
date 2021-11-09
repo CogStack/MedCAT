@@ -34,8 +34,8 @@ from transformers import AutoTokenizer
 
 from tqdm.autonotebook import tqdm  
 
-Doc.set_extension("relations", default=[], force=True)
-Doc.set_extension("ents", default=[], force=False)
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
 
 def load_bin_file(file_name, path="./"):
     with open(os.path.join(path, file_name), 'rb') as f:
@@ -46,27 +46,22 @@ def save_bin_file(file_name, data, path="./"):
     with open(os.path.join(path, file_name), "wb") as f:
         pickle.dump(data, f)
 
-
 class RelData(object):
 
-    def __init__(self, docs):
-        self.docs = docs
-        self.predictions = []
-        self.create_base_relations()
-        self.relations_dataframe = pandas.DataFrame()
+    Doc.set_extension("relations", default=[], force=True)
+    Doc.set_extension("ents", default=[], force=False)
 
-    def create_base_relations(self):
-        for doc_id, doc in self.docs.items():
+    def __init__(self, docs):
+        self.create_base_relations(docs)
+        self.relations_dataframe = pandas.DataFrame(self.get_all_instances(docs), columns=["relation", "ent1", "ent2"])
+
+    def create_base_relations(self, docs):
+        for doc_id, doc in docs.items():
             if len(doc._.relations) == 0:
                 doc._.ents = doc.ents
                 doc._.relations = self.get_instances(doc)
-    
-    def __call__(self, doc_id):
-        if doc_id in self.docs.keys():
-            return self.docs[doc_id]._.relations
-        return []
 
-    def get_instances(self, doc, window_size=250):
+    def get_instances(self, doc, window_size=20):
         """  
             doc : SpacyDoc
             window_size : int, Character distance between any two entities start positions.
@@ -76,11 +71,13 @@ class RelData(object):
         
         doc_length = len(doc)
 
+        chars_to_exclude = ":!@#$%^&*()-+?_=,<>/"
+
         j = 1
         for ent1 in doc.ents:
             j += 1
             for ent2 in doc.ents[j:]:
-                if ent1 != ent2 and window_size and abs(ent2.start - ent1.start) <= window_size:
+                if ent1.text.lower() != ent2.text.lower() and window_size and 1 < ent2.start - ent1.start <= window_size:
                     is_char_punctuation = False
                     start_pos = ent1.start
 
@@ -100,9 +97,14 @@ class RelData(object):
                     right_sentence_context= start_pos + 1 if start_pos > 0 else doc_length
 
                     if window_size < (right_sentence_context - left_sentence_context):
-                        pass
-                    
-                    sentence_window_tokens = [token.text for token in doc[left_sentence_context:right_sentence_context]]
+                        continue
+
+                    sentence_window_tokens = []
+
+                    for token in doc[left_sentence_context:right_sentence_context]:
+                        text = token.text.strip()
+                        if text != "" and not any(chr in chars_to_exclude for chr in text):
+                            sentence_window_tokens.append(token.text)
 
                     sentence_token_span = (sentence_window_tokens,
                                      (ent1.start - left_sentence_context, ent1.end - left_sentence_context ),
@@ -113,9 +115,9 @@ class RelData(object):
 
         return relation_instances
 
-    def get_all_instances(self):
+    def get_all_instances(self, docs):
         relation_instances = []
-        for doc_id, doc in self.docs.items():
+        for doc_id, doc in docs.items():
             relation_instances.extend(doc._.relations)
         return relation_instances
         
@@ -156,12 +158,16 @@ class RelationExtraction(object):
        self.tokenizer = tokenizer
        self.embeddings = embeddings
        self.learning_rate = 0.1
-       self.batch_size = 100
-       self.device = "cpu"
+       self.batch_size = 16
+
+       self.is_cuda_available = torch.cuda.is_available()
 
        if model_name is None or model_name == "BERT":
            self.config = BertConfig.from_pretrained("bert-base-uncased")  
            self.model = BertModel_RelationExtracation.from_pretrained(pretrained_model_name_or_path="bert-base-uncased", model_size="bert-base-uncased", config=config)  
+        
+       if self.is_cuda_available:
+           self.model = self.model.to(device)
 
        if self.tokenizer is None:
             if os.path.isfile("./BERT_tokenizer_relation_extraction.dat"):
@@ -177,10 +183,10 @@ class RelationExtraction(object):
 
        self.rel_data = RelData(docs)
 
-       self.alpha = 0.7
-       self.mask_probability = 0.15
+       self.alpha = 0.6
+       self.mask_probability = 0.10
 
-    def train(self, num_epoch=10, gradient_acc_steps=10, multistep_lr_gamma=0.8):
+    def train(self, num_epoch=2, gradient_acc_steps=2, multistep_lr_gamma=0.8):
         self.model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         criterion = Two_Headed_Loss(lm_ignore_idx=self.tokenizer.hf_tokenizers.pad_token_id, use_logits=True, normalize=False)
@@ -209,29 +215,31 @@ class RelationExtraction(object):
             losses_per_batch = []
             total_acc = 0.0
             lm_accuracy_per_batch = []
-            
+
+            print ("epoch #: ", epoch)
             for i, data in enumerate(self, 0):
                 tokens, masked_for_pred, e1_e2_start, _, blank_labels, _, _, _, _, _ = data
                 masked_for_pred = masked_for_pred[(masked_for_pred != pad_id)]
-
+                
+                print("processing record : ", i)
                 if masked_for_pred.shape[0] == 0:
                     print('Empty dataset, skipping...')
                     continue
 
                 attention_mask = (tokens != pad_id).float()
-
                 token_type_ids = torch.zeros((tokens.shape[0], tokens.shape[1])).long()
                 
-                #if cuda:
-                #    x = x.cuda(); masked_for_pred = masked_for_pred.cuda()
-                #    attention_mask = attention_mask.cuda()
-                #    token_type_ids = token_type_ids.cuda()
+                if self.is_cuda_available:
+                    tokens = tokens.to(device)
+                    masked_for_pred = masked_for_pred.to(device)
+                    attention_mask = attention_mask.to(device)
+                    token_type_ids = token_type_ids.to(device)
                 
                 blanks_logits, lm_logits = self.model(tokens, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None, \
                           e1_e2_start=e1_e2_start, pooled_output=None)
 
-                token_mask_matches = (tokens == mask_id).to(dtype=torch.bool, device=self.device)
-                
+                token_mask_matches = (tokens == mask_id) 
+               
                 if (i % update_size) == (update_size - 1):
                     verbose = True
                 else:
@@ -241,10 +249,8 @@ class RelationExtraction(object):
 
                 input_matched_lm_logits = lm_logits[0][token_mask_matches]
 
-
                 loss = criterion(input_matched_lm_logits, blanks_logits, masked_for_pred, blank_labels, verbose=verbose)
                 loss = loss/gradient_acc_steps
-                
               
                 loss.backward()
                 
@@ -266,21 +272,42 @@ class RelationExtraction(object):
                     total_loss = 0.0; total_acc = 0.0
                     logging.info("Last batch samples (pos, neg): %d, %d" % ((blank_labels.squeeze() == 1).sum().item(),\
                                                                         (blank_labels.squeeze() == 0).sum().item()))
-
-            print("")
-
+               
             scheduler.step()
             losses_per_epoch.append(sum(losses_per_batch)/len(losses_per_batch))
             accuracy_per_epoch.append(sum(lm_accuracy_per_batch)/len(lm_accuracy_per_batch))
+         
+
             end_time = datetime.now().time()
             
             print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
-            print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
-            print("Accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
+            # print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
+            # print("Accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
 
+            # if accuracy_per_epoch[-1] > best_pred:
+            #     best_pred = accuracy_per_epoch[-1]
+            #     torch.save({
+            #             'epoch': epoch + 1,\
+            #             'state_dict': net.state_dict(),\
+            #             'best_acc': accuracy_per_epoch[-1],\
+            #             'optimizer' : optimizer.state_dict(),\
+            #             'scheduler' : scheduler.state_dict(),\
+            #             'amp': amp.state_dict() if amp is not None else amp
+            #         }, os.path.join("./data/" , "test_model_best_%d.pth.tar" % args.model_no))
+        
+            # if (epoch % 1) == 0:
+            #     save_as_pickle("test_losses_per_epoch_%d.pkl" % args.model_no, losses_per_epoch)
+            #     save_as_pickle("test_accuracy_per_epoch_%d.pkl" % args.model_no, accuracy_per_epoch)
+            #     torch.save({
+            #             'epoch': epoch + 1,\
+            #             'state_dict': net.state_dict(),\
+            #             'best_acc': accuracy_per_epoch[-1],\
+            #             'optimizer' : optimizer.state_dict(),\
+            #             'scheduler' : scheduler.state_dict(),\
+            #             'amp': amp.state_dict() if amp is not None else amp
+            #         }, os.path.join("./data/" , "test_checkpoint_%d.pth.tar" % args.model_no))
+        
     def pretrain_dataset(self):
-       self.rel_data.relations_dataframe = pandas.DataFrame(self.rel_data.get_all_instances(), columns=["relation", "ent1", "ent2"])
-
        self.ENT1_list = list(self.rel_data.relations_dataframe["ent1"].unique())
        self.ENT2_list = list(self.rel_data.relations_dataframe["ent2"].unique())
 
@@ -357,8 +384,8 @@ class RelationExtraction(object):
         token_ids = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
         masked_for_pred = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(masked_for_pred)
 
-        print(tokens)
-        
+        # print(tokens)
+
         return token_ids, masked_for_pred, ent1_ent2_start
 
     def __len__(self):
@@ -367,8 +394,8 @@ class RelationExtraction(object):
     def __getitem__(self, index):
         relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index]
 
-        print("relation : ", str(relation), " | ent1_text: " + ent1_text, "| ent2_text" + ent2_text)
-        print("\n")
+        logging.debug("relation : ", str(relation), " | ent1_text: " + ent1_text, "| ent2_text" + ent2_text)
+        logging.debug("\n")
 
         pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent1_text) & (self.rel_data.relations_dataframe["ent2"] == ent2_text))].index
         
@@ -396,8 +423,8 @@ class RelationExtraction(object):
         neg_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
         Q = 1/len(pool)
 
-        print(" Pos Idx: " + str(pos_idxs))
-        print(" Neg Idx: " + str(neg_idxs))
+        logging.debug(" Pos Idx: " + str(pos_idxs))
+        logging.debug(" Neg Idx: " + str(neg_idxs))
 
         batch = []
         ## process positive sample
@@ -478,8 +505,6 @@ class Two_Headed_Loss(nn.Module):
             pos_labels = [1.0 for _ in range(pos_logits.shape[0])]
         else:
             pos_logits, pos_labels = torch.FloatTensor([]), []
-            # if blank_logits.is_cuda:
-            #     pos_logits = pos_logits.cuda()
         
         # negatives
         neg_logits = []
@@ -491,10 +516,11 @@ class Two_Headed_Loss(nn.Module):
         
         blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
         
+        
         if blank_logits.is_cuda:
             blank_labels_ = blank_labels_.cuda()
-
-        blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
+            pos_logits = pos_logits.cuda()
+            neg_logits = neg_logits.cuda()
 
         lm_loss = self.LM_criterion(lm_logits, target=lm_labels.long())
 
@@ -560,7 +586,7 @@ class Two_Headed_Loss(nn.Module):
             print("Predicted masked tokens: \n")
             print(tokenizer.decode(lm_logits_pred_ids.cpu().numpy() if lm_logits_pred_ids.is_cuda else \
                                 lm_logits_pred_ids.numpy()))
-            print("\nMasked labels tokens: \n")
+            print("\n Masked labels tokens: \n")
             print(tokenizer.decode(masked_for_pred.cpu().numpy() if masked_for_pred.is_cuda else \
                                 masked_for_pred.numpy()))
   
