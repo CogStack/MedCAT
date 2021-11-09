@@ -34,6 +34,7 @@ from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
+from medcat.utils.decorators import deprecated
 
 
 class CAT(object):
@@ -106,13 +107,11 @@ class CAT(object):
         for meta_cat in meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
 
-        # Set max document length
-        self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
-
+    @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
         ''' Returns the spacy pipeline with MedCAT
         '''
-        return self.pipe.nlp
+        return self.pipe.spacy_nlp
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> None:
         r''' Will crete a .zip file containing all the models in the current running instance
@@ -127,10 +126,10 @@ class CAT(object):
 
         # Save the used spacy model
         spacy_path = os.path.join(save_dir_path, os.path.basename(self.config.general['spacy_model']))
-        if str(self.pipe.nlp._path) != spacy_path:
+        if str(self.pipe.spacy_nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
-            shutil.copytree(str(self.pipe.nlp._path), spacy_path)
+            shutil.copytree(str(self.pipe.spacy_nlp._path), spacy_path)
 
         # Save the CDB
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
@@ -141,7 +140,7 @@ class CAT(object):
         self.vocab.save(vocab_path)
 
         # Save all meta_cats
-        for comp in self.pipe.nlp.components:
+        for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], MetaCAT):
                 name = comp[0]
                 meta_path = os.path.join(save_dir_path, "meta_" + name)
@@ -508,7 +507,7 @@ class CAT(object):
         if preprocessed_name:
             names = {name: 'nothing'}
         else:
-            names = prepare_name(name, self, {}, self.config)
+            names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
 
         # If full unlink find all CUIs
         if self.config.general.get('full_unlink', False):
@@ -555,7 +554,7 @@ class CAT(object):
                 Refer to CDB.add_concept
         '''
 
-        names = prepare_name(name, self, {}, self.config)
+        names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
         if do_add_concept:
             self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
@@ -824,9 +823,9 @@ class CAT(object):
     def _separate_nn_components(self):
         # Loop though the models and check are there GPU devices
         nn_components = []
-        for component in self.pipe.nlp.components:
+        for component in self.pipe.spacy_nlp.components:
             if isinstance(component[1], MetaCAT):
-                self.pipe.nlp.disable_pipe(component[0])
+                self.pipe.spacy_nlp.disable_pipe(component[0])
                 nn_components.append(component)
 
         return nn_components
@@ -916,7 +915,7 @@ class CAT(object):
             written to disk (out_save_dir).
         '''
         # Set max document length
-        self.pipe.nlp.max_length = self.config.preprocessing.get('max_document_length')
+        self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 
         if self._meta_cats and not separate_nn_components:
             # Hack for torch using multithreading, which is not good if not 
@@ -988,7 +987,7 @@ class CAT(object):
         if separate_nn_components:
             for name, _ in nn_components:
                 # No need to do anything else as it was already in the pipe
-                self.pipe.nlp.enable_pipe(name)
+                self.pipe.spacy_nlp.enable_pipe(name)
 
         return docs
 
