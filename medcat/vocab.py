@@ -1,6 +1,7 @@
 import numpy as np
 import pickle
 
+
 class Vocab(object):
     r''' Vocabulary used to store word embeddings for context similarity
     calculation. Also used by the spell checker - but not for fixing the spelling

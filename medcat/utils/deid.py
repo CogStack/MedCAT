@@ -1,6 +1,7 @@
 import torch
 import numpy as np
 
+
 def deid_document(text, tokenizer, model, cdb, verbose=False):
     label2name = {v:k for k,v in tokenizer.label_map.items()}
 
@@ -8,7 +9,7 @@ def deid_document(text, tokenizer, model, cdb, verbose=False):
     offsets = tkns_raw['offset_mapping']
     del tkns_raw['offset_mapping']
     preds = [0] * len(offsets)
-    for i in range((len(tkns_raw['input_ids']) // 500) + 1):
+    for i in range(((len(tkns_raw['input_ids']) - 1) // 500) + 1):
         tkns = {k:torch.tensor([v[i*500:(i+1)*500]]).to(model.device) for k,v in tkns_raw.items()}
         _preds = model(**tkns).logits[0].detach().cpu().numpy()
         _preds = np.argmax(_preds, axis=1)

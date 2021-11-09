@@ -1,10 +1,14 @@
 import random
 import logging
+
+from spacy.tokens import Span
+
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
+from medcat.pipeline.pipe_runner import PipeRunner
 
 
-class Linker(object):
+class Linker(PipeRunner):
     r''' Link to a biomedical database.
 
     Args:
@@ -24,6 +28,7 @@ class Linker(object):
         self.context_model = ContextModel(self.cdb, self.vocab, self.config)
         # Counter for how often did a pair (name,cui) appear and was used during training
         self.train_counter = {}
+        super().__init__(self.config.general['workers'])
 
     def _train(self, cui, entity, doc, add_negative=True):
         name = "{} - {}".format(entity._.detected_name, cui)
@@ -40,17 +45,13 @@ class Linker(object):
                 self.context_model.train_using_negative_sampling(cui)
             self.train_counter[name] = self.train_counter.get(name, 0) + 1
 
-
     def __call__(self, doc):
         r'''
         '''
         cnf_l = self.config.linking
         linked_entities = []
 
-        doc_tkns = [tkn for tkn in doc if not tkn._.to_skip]
-        doc_tkn_ids = [tkn.idx for tkn in doc_tkns]
-
-        if cnf_l['train']:
+        if cnf_l["train"]:
             # Run training
             for entity in doc._.ents:
                 # Check does it have a detected name
@@ -78,7 +79,7 @@ class Linker(object):
                                     linked_entities.append(entity)
         else:
             for entity in doc._.ents:
-                self.log.debug("Linker started with entity: {}".format(entity))
+                self.log.debug("Linker started with entity: %s", entity)
                 # Check does it have a detected name
                 if entity._.link_candidates is not None:
                     if entity._.detected_name is not None:
@@ -118,7 +119,40 @@ class Linker(object):
 
         doc._.ents = linked_entities
         self._create_main_ann(doc)
+
+        if self.config.general['make_pretty_labels'] is not None:
+            self._make_pretty_labels(doc, self.config.general['make_pretty_labels'])
+
+        if self.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
+            self._map_ents_to_groups(doc)
+
         return doc
+
+
+    def _map_ents_to_groups(self, doc):
+        for ent in doc.ents:
+            ent._.cui = self.cdb.addl_info['cui2group'].get(ent._.cui, ent._.cui)
+
+
+    def _make_pretty_labels(self, doc, style=None):
+        ents = list(doc.ents)
+
+        n_ents = []
+        for ent in ents:
+            if style == 'short':
+                label = ent._.cui
+            elif style == 'long':
+                label = "{} | {} | {:.2f}".format(ent._.cui, self.cdb.get_name(ent._.cui), ent._.context_similarity)
+            else:
+                label = 'concept'
+
+            n_ent = Span(doc, ent.start, ent.end, label)
+            for attr in ent._.__dict__['_extensions'].keys():
+                setattr(n_ent._, attr, getattr(ent._, attr))
+            n_ents.append(n_ent)
+
+        doc.ents = n_ents
+
 
 
     def _create_main_ann(self, doc, tuis=None):

@@ -1,8 +1,9 @@
 import logging
 from medcat.ner.vocab_based_annotator import maybe_annotate_name
+from medcat.pipeline.pipe_runner import PipeRunner
 
 
-class NER(object):
+class NER(PipeRunner):
     r'''
     '''
     log = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ class NER(object):
     def __init__(self, cdb, config):
         self.config = config
         self.cdb = cdb
+        super().__init__(self.config.general['workers'])
 
     def __call__(self, doc):
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
@@ -25,7 +27,6 @@ class NER(object):
             doc (`spacy.tokens.Doc`):
                 Spacy document with detected entities.
         '''
-
         # Just take the tokens we need
         _doc = [tkn for tkn in doc if not tkn._.to_skip]
         for i in range(len(_doc)):
@@ -48,8 +49,8 @@ class NER(object):
             if name: # There has to be at least something appended to the name to go forward
                 for j in range(i+1, len(_doc)):
                     if _doc[j].i - _doc[j-1].i - 1 > self.config.ner['max_skip_tokens']:
-                         # Do not allow to skip more than limit
-                         break
+                        # Do not allow to skip more than limit
+                        break
                     tkn = _doc[j]
                     tkns.append(tkn)
                     name_versions = [tkn._.norm, tkn.lower_]

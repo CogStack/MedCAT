@@ -1,7 +1,8 @@
-from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
+from typing import Any, Dict, List, NewType
 import torch
 
 InputDataClass = NewType("InputDataClass", Any)
+
 
 class CollateAndPadNER(object):
     def __init__(self, pad_id):

@@ -9,15 +9,18 @@ with open("./README.md", "r") as fh:
 
 setuptools.setup(
     name="medcat",
-    version="1.1.3",
+    setup_requires=["setuptools_scm"],
+    use_scm_version={"local_scheme": "no-local-version", "fallback_version": "unknown"},
     author="w-is-h",
     author_email="w.kraljevic@gmail.com",
     description="Concept annotation tool for Electronic Health Records",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
-    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated'],
+    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline'],
     install_requires=[
+<<<<<<< HEAD
         'numpy>=1.19.0',
         'pandas~=1.0',
         'gensim~=3.8',
@@ -31,6 +34,23 @@ setuptools.setup(
         'dill~=0.3.3',
         'datasets~=1.6.0',
         'jsonpickle~=2.0.0'
+=======
+        'numpy<1.21.0,>=1.19.0',
+        'pandas<=1.3.4,>=1.1.5',
+        'gensim~=4.1.2',
+        'spacy<3.1.4,>=3.0.1',
+        'scipy<=1.7.1,>=1.5.4',
+        'transformers~=4.11.3',
+        'torch<1.10,>=1.0',
+        'tqdm>=4.27',
+        'sklearn~=0.0',
+        'elasticsearch>=7.10',
+        'dill~=0.3.4',
+        'datasets~=1.14.0',
+        'jsonpickle~=2.0.0',
+        'psutil<6.0.0,>=5.8.0',
+        'multiprocess', # seems to work better than standard mp
+>>>>>>> 070c3f271168d5f0e1a28ed5c8d370c2dbbd1ea8
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
