@@ -2,10 +2,11 @@ import os
 import json
 import logging
 import torch
+import numpy
 from multiprocessing import Lock
 from torch import nn, Tensor
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast
+from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
@@ -30,7 +31,10 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
-    def __init__(self, tokenizer: Optional[TokenizerWrapperBase] = None, embeddings: Optional[Tensor] = None, config: Optional[ConfigMetaCAT] = None) -> None:
+    def __init__(self,
+                 tokenizer: Optional[TokenizerWrapperBase] = None,
+                 embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
+                 config: Optional[ConfigMetaCAT] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config

@@ -4,7 +4,7 @@
 import dill
 import logging
 import numpy as np
-from typing import Dict, Set, Optional, List, cast
+from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
 
 from medcat.utils.matutils import unitvec
@@ -401,19 +401,21 @@ class CDB(object):
 
         return cdb
 
+    @no_type_check
     def import_old_cdb_vectors(self, cdb: "CDB") -> None:
         # Import context vectors
         for cui in self.cui2names: # Loop through all CUIs in the current CDB
-            if cui in cdb.cui2context_vec:  # type: ignore
-                self.cui2context_vectors[cui] = {'medium': cdb.cui2context_vec[cui],    # type: ignore
-                                                 'long': cdb.cui2context_vec[cui],      # type: ignore
-                                                 'xlong': cdb.cui2context_vec[cui]}     # type: ignore
+            if cui in cdb.cui2context_vec:
+                self.cui2context_vectors[cui] = {'medium': cdb.cui2context_vec[cui],
+                                                 'long': cdb.cui2context_vec[cui],
+                                                 'xlong': cdb.cui2context_vec[cui]}
 
-                if cui in cdb.cui2context_vec_short:    # type: ignore
-                    self.cui2context_vectors[cui]['short'] = cdb.cui2context_vec_short[cui] # type: ignore
+                if cui in cdb.cui2context_vec_short:
+                    self.cui2context_vectors[cui]['short'] = cdb.cui2context_vec_short[cui]
 
-                self.cui2count_train[cui] = cdb.cui_count[cui]  # type: ignore
+                self.cui2count_train[cui] = cdb.cui_count[cui]
 
+    @no_type_check
     def import_old_cdb(self, cdb: "CDB", import_vectors: bool = True) -> None:
         r''' Import all data except for cuis and names from an old CDB.
         '''
@@ -424,16 +426,16 @@ class CDB(object):
 
         # Import TUIs
         for cui in cdb.cui2names:
-            self.cui2type_ids[cui] = {cdb.cui2tui.get(cui, 'unk')}  # type: ignore
+            self.cui2type_ids[cui] = {cdb.cui2tui.get(cui, 'unk')}
 
         # Import TUI to CUIs
-        self.addl_info['type_id2cuis'] = cdb.tui2cuis   # type: ignore
+        self.addl_info['type_id2cuis'] = cdb.tui2cuis
 
         # Import type_id to name
-        self.addl_info['type_id2name'] = cdb.tui2name   # type: ignore
+        self.addl_info['type_id2name'] = cdb.tui2name
 
         # Import description
-        self.addl_info['cui2description'] = cdb.cui2desc    # type: ignore
+        self.addl_info['cui2description'] = cdb.cui2desc
 
         # Import ICD10 and SNOMED
         self.addl_info['cui2snomed'] = {}
@@ -447,7 +449,7 @@ class CDB(object):
 
 
         # Import cui 2 ontologies
-        self.addl_info['cui2ontologies'] = cdb.cui2ontos    # type: ignore
+        self.addl_info['cui2ontologies'] = cdb.cui2ontos
 
     def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
         r''' This will import vector embeddings from another CDB. No new concepts will be added.
@@ -498,7 +500,7 @@ class CDB(object):
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
 
-    def filter_by_cui(self, cuis_to_keep: List[str]) -> None:
+    def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         ''' Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
         find all CUIs that link to those names and keep all of them.
