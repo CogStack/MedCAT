@@ -168,6 +168,7 @@ class Empty(object):
     def __init__(self) -> None:
         pass
 
+
 class Span(object):
     def __init__(self, start_char: str, end_char: str, id_: str) -> None:
         self._ = Empty()
@@ -175,6 +176,7 @@ class Span(object):
         self.end_char = end_char
         self._.id = id_  # type: ignore
         self._.meta_anns = None # type: ignore
+
 
 class Doc(object):
     def __init__(self, text: str, id_: str) -> None:
