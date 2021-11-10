@@ -58,7 +58,7 @@ class CAT(object):
             Concept database used with this CAT instance, please do not assign
             this value directly.
         config (medcat.config.Config):
-            The global configuration for medcat. Usually cdb.config can be used for this
+            The global configuration for medcat. Usually cdb.config will be used for this
             field.
         vocab (medcat.utils.vocab.Vocab):
             The vocabulary object used with this instance, please do not assign
@@ -75,11 +75,20 @@ class CAT(object):
     log = add_handlers(log)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
-    def __init__(self, cdb: CDB, config: Config, vocab: Vocab, meta_cats: List[MetaCAT] = []) -> None:
+    def __init__(self,
+                 cdb: CDB,
+                 config: Optional[Config] = None,
+                 vocab: Optional[Vocab] = None,
+                 meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
-        # Take config from the cdb
-        self.config = config
+        if config is None:
+            # Take config from the cdb
+            self.config = cdb.config
+        else:
+            # Take the new config and assign it to the CDB also
+            self.config = config
+            self.cdb.config = config
 
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
@@ -98,7 +107,7 @@ class CAT(object):
         self.pipe.add_ner(self.ner)
 
         # Add LINKER
-        self.linker = Linker(self.cdb, vocab, self.config)
+        self.linker = Linker(self.cdb, vocab, self.config) # type: ignore
         self.pipe.add_linker(self.linker)
 
         self._meta_cats = meta_cats
@@ -138,7 +147,10 @@ class CAT(object):
 
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
-        self.vocab.save(vocab_path)
+        if self.vocab is None:
+            raise ValueError("Model pack creation is failed due to the missing 'vocab'")
+        else:
+            self.vocab.save(vocab_path)
 
         # Save all meta_cats
         for comp in self.pipe.nlp.components:
@@ -150,8 +162,15 @@ class CAT(object):
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
 
     @classmethod
-    def load_model_pack(cls, zip_path: str) -> "CAT":
+    def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
         r''' Load everything
+
+        Args:
+            zip_path
+            meta_cat_config_dict:
+                A config dict that will overwrite existing configs in meta_cat.
+                Can be something like:
+                    meta_cat_config_dict = {'general': {'device': 'cpu'}}
         '''
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -183,7 +202,8 @@ class CAT(object):
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
         meta_cats = []
         for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(meta_path))
+            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
+                                          config_dict=meta_cat_config_dict))
 
         return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
 

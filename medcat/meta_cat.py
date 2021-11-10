@@ -2,16 +2,18 @@ import os
 import json
 import logging
 import torch
+import numpy
 from multiprocessing import Lock
 from torch import nn, Tensor
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast
+from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 from medcat.utils.loggers import add_handlers
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
+from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 # It should be safe to do this always, as all other multiprocessing
 #will be finished before data comes to meta_cat
@@ -30,8 +32,10 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
-    # Override
-    def __init__(self, tokenizer: Optional[TokenizerWrapperBase] = None, embeddings: Optional[Tensor] = None, config: Optional[ConfigMetaCAT] = None) -> None:
+    def __init__(self,
+                 tokenizer: Optional[TokenizerWrapperBase] = None,
+                 embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
+                 config: Optional[ConfigMetaCAT] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
@@ -295,8 +299,7 @@ class MetaCAT(PipeRunner):
         if len(docs) > 0:
             yield docs
 
-    # Override
-    def pipe(self, stream: Iterable[Doc], *args, **kwargs) -> Iterator[Doc]:
+    def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
         r''' Process many documents at once.
 
         Args:
@@ -318,7 +321,7 @@ class MetaCAT(PipeRunner):
                 yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
 
     def _set_meta_anns(self,
-                       stream: Iterable[Doc],
+                       stream: Iterable[Union[Doc, FakeDoc]],
                        batch_size_chars: int,
                        config: ConfigMetaCAT,
                        id2category_value: Dict) -> Iterator[Optional[Doc]]:

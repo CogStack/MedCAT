@@ -4,7 +4,7 @@
 import dill
 import logging
 import numpy as np
-from typing import Dict, Set, Optional, List, cast
+from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
 
 from medcat.utils.matutils import unitvec
@@ -401,6 +401,7 @@ class CDB(object):
 
         return cdb
 
+    @no_type_check
     def import_old_cdb_vectors(self, cdb: "CDB") -> None:
         # Import context vectors
         for cui in self.cui2names: # Loop through all CUIs in the current CDB
@@ -414,6 +415,7 @@ class CDB(object):
 
                 self.cui2count_train[cui] = cdb.cui_count[cui]  # type: ignore
 
+    @no_type_check
     def import_old_cdb(self, cdb: "CDB", import_vectors: bool = True) -> None:
         r''' Import all data except for cuis and names from an old CDB.
         '''
@@ -498,7 +500,7 @@ class CDB(object):
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
 
-    def filter_by_cui(self, cuis_to_keep: List[str]) -> None:
+    def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         ''' Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
         find all CUIs that link to those names and keep all of them.
