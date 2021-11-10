@@ -8,4 +8,4 @@ if sys.version_info.major == 3 and sys.version_info.minor <= 6:
     import copy
     import re
 
-    copy._deepcopy_dispatch[type(re.compile(''))] = lambda r, _: r
+    copy._deepcopy_dispatch[type(re.compile(''))] = lambda r, _: r  # type: ignore

@@ -1,14 +1,12 @@
-import jsonpickle
-from medcat.config import BaseConfig
+from typing import Dict, Any
+from medcat.config import ConfigMixin
 
 
-class ConfigMetaCAT(BaseConfig):
-    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+class ConfigMetaCAT(ConfigMixin):
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self) -> None:
 
-        self.general = {
+        self.general: Dict[str, Any] = {
                 'device': 'cpu',
                 'disable_component_lock': False,
                 'seed': 13,
@@ -29,7 +27,7 @@ class ConfigMetaCAT(BaseConfig):
                 'save_and_reuse_tokens': False,
                 'pipe_batch_size_in_chars': 20000000, # How many characters are piped at once into the meta_cat class
                 }
-        self.model = {
+        self.model: Dict[str, Any] = {
                 'model_name': 'lstm',
                 'num_layers': 2,
                 'input_size': 300,
@@ -42,7 +40,7 @@ class ConfigMetaCAT(BaseConfig):
                 'ignore_cpos': False, # If set to True center positions will be ignored when calculating represenation
                 }
 
-        self.train = {
+        self.train: Dict[str, Any] = {
                 'batch_size': 100,
                 'nepochs': 50,
                 'lr': 0.001,

@@ -36,7 +36,7 @@ class Pipe(object):
     # Add file and console handlers
     log = add_handlers(log)
 
-    def __init__(self, tokenizer: Tokenizer, config: Config):
+    def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         if config.preprocessing['stopwords'] is not None:
             self.nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
@@ -184,10 +184,10 @@ class Pipe(object):
                              batch_size=batch_size,
                              component_cfg=component_cfg)
 
-    def set_error_handler(self, error_handler):
+    def set_error_handler(self, error_handler: Callable) -> None:
         self.nlp.set_error_handler(error_handler)
 
-    def reset_error_handler(self):
+    def reset_error_handler(self) -> None:
         self.nlp.set_error_handler(raise_error)
 
     def force_remove(self, component_name: str) -> None:
@@ -196,7 +196,7 @@ class Pipe(object):
         except ValueError:
             pass
 
-    def destroy(self):
+    def destroy(self) -> None:
         del self.nlp
         gc.collect()
 
@@ -209,7 +209,7 @@ class Pipe(object):
             return self.nlp(text) if len(text) > 0 else None
         elif isinstance(text, Iterable):
             docs = []
-            for t in text if isinstance(text, types.GeneratorType) else tqdm(text, total=len(text)):
+            for t in text if isinstance(text, types.GeneratorType) else tqdm(text, total=len(list(text))):
                 try:
                     doc = self.nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:

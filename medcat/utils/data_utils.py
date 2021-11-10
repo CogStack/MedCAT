@@ -3,14 +3,18 @@ import torch
 import copy
 import numpy as np
 from sklearn.metrics import cohen_kappa_score
+from typing import Dict, List, Optional, Union, Tuple, Any, Set
+from spacy.tokens.doc import Doc
+from spacy.tokens.span import Span
+from medcat.cat import CDB
 
 
-def set_all_seeds(seed):
+def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
-def count_annotations_project(project):
+def count_annotations_project(project: Dict) -> int:
     cnt = 0
     for doc in project['documents']:
         for ann in doc['annotations']:
@@ -20,10 +24,10 @@ def count_annotations_project(project):
     return cnt
 
 
-def load_data(data_path, require_annotations=True, order_by_num_ann=True):
+def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann: bool = True) -> Dict:
     data_candidates = json.load(open(data_path))
     if require_annotations:
-        data = {'projects': []}
+        data: Dict = {'projects': []}
         # Keep only projects that have annotations
         for project in data_candidates['projects']:
             keep = False
@@ -48,7 +52,7 @@ def load_data(data_path, require_annotations=True, order_by_num_ann=True):
     return data
 
 
-def count_annotations(data_path):
+def count_annotations(data_path: str) -> None:
     data = load_data(data_path, require_annotations=True)
 
     g_cnt = 0
@@ -60,21 +64,21 @@ def count_annotations(data_path):
     print("Total number of annotations is: {}".format(g_cnt))
 
 
-def get_doc_from_project(project, doc_id):
+def get_doc_from_project(project: Dict, doc_id: str) -> Optional[Dict]:
     for document in project['documents']:
         if document['id'] == doc_id:
             return document
     return None
 
 
-def get_ann_from_doc(document, start, end):
+def get_ann_from_doc(document: Dict, start: int, end: int) -> Optional[Dict]:
     for ann in document['annotations']:
         if ann['start'] == start and ann['end'] == end:
             return ann
     return None
 
 
-def meta_ann_from_ann(ann, meta_name):
+def meta_ann_from_ann(ann: Dict, meta_name: Union[Dict, List]) -> Optional[Dict]:
     meta_anns = ann['meta_anns']
     # need for old versions of data
     if type(meta_anns) == dict:
@@ -86,7 +90,7 @@ def meta_ann_from_ann(ann, meta_name):
     return None
 
 
-def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
+def are_anns_same(ann: Dict, ann2: Dict, meta_names: List = [], require_double_inner: bool = True) -> bool:
     if ann['cui'] == ann2['cui'] and \
        ann['correct'] == ann2['correct'] and \
        ann['deleted'] == ann2['deleted'] and \
@@ -113,8 +117,8 @@ def are_anns_same(ann, ann2, meta_names=[], require_double_inner=True):
 
 
 def get_same_anns(
-    document, document2, require_double_inner=True, ann_stats=[], meta_names=[]
-):
+    document: Dict, document2: Dict, require_double_inner: bool = True, ann_stats: List = [], meta_names: List = []
+) -> Dict:
     new_document = copy.deepcopy(document)
     new_document['annotations'] = []
 
@@ -167,9 +171,10 @@ def get_same_anns(
 
     # Check the reverse also, but only ann2 if not in first doc
     for ann2 in document2['annotations']:
-        ann = get_ann_from_doc(document, ann2['start'], ann2['end'])
+        if ann2 is not None:
+            ann = get_ann_from_doc(document, ann2['start'], ann2['end'])
 
-        if ann is None and ann2['validated']:
+        if ann is None and ann2 is not None and ann2['validated']:
             # Add a negative example to the stats
             ann_stats[1].append([0, 1])
 
@@ -183,7 +188,7 @@ def get_same_anns(
     return new_document
 
 
-def print_consolid_stats(ann_stats=[], meta_names=[]):
+def print_consolid_stats(ann_stats: List = [], meta_names: List = []) -> None:
     if ann_stats:
         _ann_stats = np.array(ann_stats[0])
         t = 0
@@ -220,8 +225,8 @@ def print_consolid_stats(ann_stats=[], meta_names=[]):
                 print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
 
 
-
-def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False):
+# Deprecated and removable?
+def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False) -> None:
     data = load_data(data_path, require_annotations=True)
     for pid, project in enumerate(data['projects']):
         print("Starting: {} / {}".format(pid, len(data['projects'])))
@@ -281,7 +286,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
                             d = str(input("###Add as (or empty for skip): 1-Correct, 2-Incorrect, s-save: "))
 
                             if d:
-                                new_ann = {}
+                                new_ann: Dict = {}
                                 new_ann['id'] = 0   # ignore
                                 new_ann['user'] = 'auto'
                                 new_ann['validated'] = True
@@ -372,7 +377,7 @@ def check_differences(data_path, cat, cntx_size=30, min_acc=0.2, ignore_already_
     json.dump(data, open(data_path, 'w'))
 
 
-def consolidate_double_annotations(data_path, out_path, require_double=True, require_double_inner=False, meta_anns_to_match=[]):
+def consolidate_double_annotations(data_path: str, out_path: str, require_double: bool = True, require_double_inner: bool = False, meta_anns_to_match: List = []) -> Dict:
     """ Consolidated a dataset that was multi-annotated (same documents two times).
 
     data_path:
@@ -392,16 +397,16 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
         List of meta annotations that must match for two annotations to be the same. If empty only the mention
             level will be checked.
     """
-    d_stats_proj = {}
-    data = load_data(data_path, require_annotations=True)
-    out_data = {'projects': []}
-    projects_done = set()
-    ann_stats = [] # This will keep score for agreement
+    d_stats_proj: Dict = {}
+    data: Dict = load_data(data_path, require_annotations=True)
+    out_data: Dict = {'projects': []}
+    projects_done: Set = set()
+    ann_stats: List = [] # This will keep score for agreement
     # Consolidate
     for project in data['projects']:
         id_project = project['id']
         new_documents = []
-        ann_stats_project = []
+        ann_stats_project: List = []
         new_project = None
         if id_project not in projects_done:
             projects_done.add(id_project)
@@ -460,12 +465,12 @@ def consolidate_double_annotations(data_path, out_path, require_double=True, req
     return d_stats_proj
 
 
-def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if_already_done=False):
+def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only: bool = False, ignore_if_already_done: bool = False) -> None:
     """ Please just ignore this function, I'm afraid to even look at it
     """
-    data = json.load(open(data_path))
-    name2cui = {}
-    cui2status = {}
+    data: Dict = json.load(open(data_path))
+    name2cui: Dict = {}
+    cui2status: Dict = {}
 
     print("This will overwrite the original data, make sure you've a backup")
     print("If something is completely wrong or you do not know what to do, chose the [s]kip option, you can also skip by leaving input blank.")
@@ -543,8 +548,8 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
                             if d == 's':
                                 continue
                             if d.isnumeric():
-                                d = int(d)
-                                ann['cui'] = cuis[d]
+                                d_ = int(d)
+                                ann['cui'] = cuis[d_]
 
                 if quit_:
                     break
@@ -651,7 +656,7 @@ def validate_ner_data(data_path, cdb, cntx_size=70, status_only=False, ignore_if
 
 
 class MetaAnnotationDS(torch.utils.data.Dataset):
-    def __init__(self, data, category_map):
+    def __init__(self, data: Dict, category_map: Dict):
         r'''
 
         Args:
@@ -663,7 +668,7 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
         self.data = data
         self.category_map = category_map
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx: int) -> Dict:
         item = {}
         for key, value in self.data.items():
             if key != 'labels':
@@ -672,7 +677,7 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
                 item[key] = torch.tensor(self.category_map[value[idx]])
         return item
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.data['input_ids'])
 
 
@@ -783,9 +788,14 @@ def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter
 """
 
 
-def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None):
-    out = {}
-    data = json.load(open(data_path))
+def prepare_from_json_hf(data_path: str,
+                         cntx_left: int,
+                         cntx_right: int,
+                         tokenizer: Any,
+                         cui_filter: Optional[Dict] = None,
+                         replace_center: Optional[Dict] = None) -> Dict:
+    out: Dict = {}
+    data: Dict = json.load(open(data_path))
 
     p_data = prepare_from_json_chars(data, cntx_left=cntx_left, cntx_right=cntx_right, tokenizer=tokenizer,
                                cui_filter=cui_filter, replace_center=replace_center)
@@ -802,7 +812,12 @@ def prepare_from_json_hf(data_path, cntx_left, cntx_right, tokenizer, cui_filter
     return out
 
 
-def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=None, replace_center=None):
+def prepare_from_json_chars(data: Dict,
+                            cntx_left: int,
+                            cntx_right: int,
+                            tokenizer: Any,
+                            cui_filter: Optional[Dict] = None,
+                            replace_center: Optional[Dict] = None) -> Dict:
     """ Convert the data from a json format into a CSV-like format for training.
 
     data:  json file from MedCAT
@@ -813,7 +828,7 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
 
     return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
     """
-    out_data = {}
+    out_data: Dict = {}
 
     for project in data['projects']:
         for document in project['documents']:
@@ -843,12 +858,12 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
                             cpos = len(t_left)
 
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
-                            meta_anns = []
+                            meta_anns: Union[List, Dict] = []
                             if 'meta_anns' in ann:
                                 meta_anns = ann['meta_anns']
 
                                 if type(meta_anns) == dict:
-                                    meta_anns = meta_anns.values()
+                                    meta_anns = list(meta_anns.values())
 
                             # If the annotation is validated
                             for meta_ann in meta_anns:
@@ -865,10 +880,10 @@ def prepare_from_json_chars(data, cntx_left, cntx_right, tokenizer, cui_filter=N
     return out_data
 
 
-def make_mc_train_test(data, cdb, test_size=0.2):
+def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
     """ This is a disaster
     """
-    cnts = {}
+    cnts: Dict = {}
     total_anns = 0
     # Count all CUIs
     for project in data['projects']:
@@ -887,7 +902,7 @@ def make_mc_train_test(data, cdb, test_size=0.2):
             if type(document['annotations']) == list:
                 doc_annotations = document['annotations']
             elif type(document['annotations']) == dict:
-                doc_annotations = document['annotations'].values()
+                doc_annotations = list(document['annotations'].values())
 
             for ann in doc_annotations:
                 if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter):
@@ -899,20 +914,20 @@ def make_mc_train_test(data, cdb, test_size=0.2):
                     total_anns += 1
 
 
-    test_cnts = {}
+    test_cnts: Dict = {}
     test_anns = 0
     test_prob = 0.90
 
-    test_set = {'projects': []}
-    train_set = {'projects': []}
+    test_set: Dict = {'projects': []}
+    train_set: Dict = {'projects': []}
 
     for i_project in np.random.permutation(np.arange(0, len(data['projects']))):
         project = data['projects'][i_project]
         cui_filter = None
         tui_filter = None
 
-        test_project = {}
-        train_project = {}
+        test_project: Dict = {}
+        train_project: Dict = {}
         for k, v in project.items():
             if k == 'documents':
                 test_project['documents'] = []
@@ -937,11 +952,11 @@ def make_mc_train_test(data, cdb, test_size=0.2):
             document = project['documents'][i_document]
 
             # Coutn CUIs for this document
-            _cnts = {}
+            _cnts: Dict = {}
             if type(document['annotations']) == list:
                 doc_annotations = document['annotations']
             elif type(document['annotations']) == dict:
-                doc_annotations = document['annotations'].values()
+                doc_annotations = list(document['annotations'].values())
 
             for ann in doc_annotations:
                 if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
@@ -968,7 +983,7 @@ def make_mc_train_test(data, cdb, test_size=0.2):
                 if type(document['annotations']) == list:
                     doc_annotations = document['annotations']
                 elif type(document['annotations']) == dict:
-                    doc_annotations = document['annotations'].values()
+                    doc_annotations = list(document['annotations'].values())
 
                 for ann in doc_annotations:
                     if (cui_filter is None and tui_filter is None) or (cui_filter is not None and ann['cui'] in cui_filter) or \
@@ -987,7 +1002,7 @@ def make_mc_train_test(data, cdb, test_size=0.2):
     return train_set, test_set, test_anns, total_anns
 
 
-def get_false_positives(doc, spacy_doc):
+def get_false_positives(doc: Dict, spacy_doc: Doc) -> List[Span]:
     if type(doc['annotations']) == list:
         truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
     elif type(doc['annotations']) == dict:
