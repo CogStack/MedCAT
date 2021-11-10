@@ -25,6 +25,9 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
+      - name: Check types
+        run: |
+          python -m mypy --follow-imports=skip medcat/*.py
       - name: Lint
         run: |
           flake8 medcat

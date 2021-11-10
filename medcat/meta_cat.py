@@ -2,14 +2,18 @@ import os
 import json
 import logging
 import torch
+import numpy
 from multiprocessing import Lock
+from torch import nn, Tensor
 from spacy.tokens import Doc
-from typing import Iterable, Generator
+from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 from medcat.utils.loggers import add_handlers
 from medcat.pipeline.pipe_runner import PipeRunner
+from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
+from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 # It should be safe to do this always, as all other multiprocessing
 #will be finished before data comes to meta_cat
@@ -28,7 +32,10 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
-    def __init__(self, tokenizer=None, embeddings=None, config=None):
+    def __init__(self,
+                 tokenizer: Optional[TokenizerWrapperBase] = None,
+                 embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
+                 config: Optional[ConfigMetaCAT] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
@@ -45,16 +52,17 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
 
-    def get_model(self, embeddings):
+    def get_model(self, embeddings: Tensor) -> nn.Module:
         config = self.config
-        model = None
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
             model = LSTM(embeddings, config)
+        else:
+            raise ValueError("Unknown model name %s" % config.model['model_name'])
 
         return model
 
-    def train(self, json_path, save_dir_path=None):
+    def train(self, json_path: str, save_dir_path: Optional[str] = None) -> Dict:
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -113,16 +121,19 @@ class MetaCAT(PipeRunner):
 
         # If autosave, then load the best model here
         if t_config['auto_save_model']:
-            path = os.path.join(save_dir_path, 'model.dat')
-            device = torch.device(g_config['device'])
-            self.model.load_state_dict(torch.load(path, map_location=device))
+            if save_dir_path is None:
+                raise Exception("The `save_dir_path` argument is required if `aut_save_model` is `True` in the config")
+            else:
+                path = os.path.join(save_dir_path, 'model.dat')
+                device = torch.device(g_config['device'])
+                self.model.load_state_dict(torch.load(path, map_location=device))
 
-            # Save everything now
-            self.save(save_dir_path=save_dir_path)
+                # Save everything now
+                self.save(save_dir_path=save_dir_path)
 
         return report
 
-    def eval(self, json_path):
+    def eval(self, json_path: str) -> Dict:
         g_config = self.config.general
         t_config = self.config.train
 
@@ -150,7 +161,7 @@ class MetaCAT(PipeRunner):
 
         return result
 
-    def save(self, save_dir_path):
+    def save(self, save_dir_path: str) -> None:
         r''' Save all components of this class to a file
 
         Args:
@@ -174,7 +185,7 @@ class MetaCAT(PipeRunner):
         #save the class itself.
 
     @classmethod
-    def load(cls, save_dir_path, config_dict=None):
+    def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
         r''' Load a meta_cat object.
 
         Args:
@@ -190,7 +201,7 @@ class MetaCAT(PipeRunner):
         '''
 
         # Load config
-        config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
+        config = cast(ConfigMetaCAT, ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json')))
 
         # Overwrite loaded paramters with something new
         if config_dict is not None:
@@ -214,7 +225,7 @@ class MetaCAT(PipeRunner):
 
         return meta_cat
 
-    def prepare_document(self, doc, input_ids, offset_mapping, lowercase):
+    def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
         r'''
 
         Args:
@@ -272,7 +283,7 @@ class MetaCAT(PipeRunner):
         return ent_id2ind, samples
 
     @staticmethod
-    def batch_generator(stream, batch_size_chars):
+    def batch_generator(stream: Iterable[Doc], batch_size_chars: int) -> Iterable[List[Doc]]:
         docs = []
         char_count = 0
         for doc in stream:
@@ -288,8 +299,7 @@ class MetaCAT(PipeRunner):
         if len(docs) > 0:
             yield docs
 
-    # Override
-    def pipe(self, stream: Iterable[Doc], *args, **kwargs) -> Generator[Doc, None, None]:
+    def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
         r''' Process many documents at once.
 
         Args:
@@ -310,7 +320,11 @@ class MetaCAT(PipeRunner):
             with MetaCAT._component_lock:
                 yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
 
-    def _set_meta_anns(self, stream, batch_size_chars, config, id2category_value):
+    def _set_meta_anns(self,
+                       stream: Iterable[Union[Doc, FakeDoc]],
+                       batch_size_chars: int,
+                       config: ConfigMetaCAT,
+                       id2category_value: Dict) -> Iterator[Optional[Doc]]:
         for docs in self.batch_generator(stream, batch_size_chars):
             try:
                 if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
@@ -321,7 +335,7 @@ class MetaCAT(PipeRunner):
 
                     all_text_processed = self.tokenizer(all_text)
                     doc_ind2positions = {}
-                    data = [] # The thing that goes into the model
+                    data: List = [] # The thing that goes into the model
                     for i, doc in enumerate(docs):
                         ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
                                                                     offset_mapping=all_text_processed[i]['offset_mapping'],
@@ -367,7 +381,7 @@ class MetaCAT(PipeRunner):
                 self.get_error_handler()(self.name, self, docs, e)
                 yield from [None] * len(docs)
 
-    def __call__(self, doc):
+    def __call__(self, doc: Doc) -> Doc:
         ''' Process one document, used in the spacy pipeline for sequential
         document processing.
 
