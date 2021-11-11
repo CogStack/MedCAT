@@ -26,12 +26,6 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    # Convert filters tu sets
-    if TUI_FILTER is not None: # type: ignore # noqa
-        TUI_FILTER = set(TUI_FILTER) # type: ignore # noqa
-    if CUI_FILTER is not None: # type: ignore # noqa
-        CUI_FILTER = set(CUI_FILTER) # type: ignore # noqa
-
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
@@ -56,7 +50,6 @@ class SpacyCat(object):
 
         # Weight drops for average
         self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2] + [0.1] * 300
-
 
     def _tok_hf(self, token):
         text = token.text

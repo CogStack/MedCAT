@@ -52,7 +52,7 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
 
-    def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
+    def get_model(self, embeddings: Optional[Union[Tensor, numpy.ndarray]]) -> nn.Module:
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM

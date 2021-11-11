@@ -77,8 +77,8 @@ class CAT(object):
 
     def __init__(self,
                  cdb: CDB,
+                 vocab: Vocab,
                  config: Optional[Config] = None,
-                 vocab: Optional[Vocab] = None,
                  meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -107,7 +107,7 @@ class CAT(object):
         self.pipe.add_ner(self.ner)
 
         # Add LINKER
-        self.linker = Linker(self.cdb, vocab, self.config) # type: ignore
+        self.linker = Linker(self.cdb, vocab, self.config)
         self.pipe.add_linker(self.linker)
 
         self._meta_cats = meta_cats
