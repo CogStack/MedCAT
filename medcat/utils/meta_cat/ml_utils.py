@@ -5,7 +5,7 @@ import torch
 import numpy as np
 
 from scipy.special import softmax
-from sklearn.metrics import classification_report, f1_score
+from sklearn.metrics import classification_report, f1_score, precision_recall_fscore_support
 from torch import nn
 import torch.optim as optim
 
@@ -258,7 +258,7 @@ def eval_model(model, data, config, tokenizer):
 
     score_average = config.train['score_average']
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
-    f1 = f1_score(y_eval, predictions, average=score_average)
+    precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
     examples = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
@@ -277,4 +277,4 @@ def eval_model(model, data, config, tokenizer):
         else:
             examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
 
-    return {'f1': f1, 'examples': examples}
+    return {'precision': precision, 'recall': recall, 'f1': f1, 'examples': examples}
