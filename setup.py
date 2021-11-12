@@ -20,21 +20,6 @@ setuptools.setup(
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline'],
     install_requires=[
-<<<<<<< HEAD
-        'numpy>=1.19.0',
-        'pandas~=1.0',
-        'gensim~=3.8',
-        'spacy<3.1.0,>=3.0.1',
-        'scipy~=1.5',
-        'transformers~=4.5.1',
-        'torch~=1.8.1',
-        'tqdm<4.50.0,>=4.27',
-        'sklearn~=0.0',
-        'elasticsearch~=7.10',
-        'dill~=0.3.3',
-        'datasets~=1.6.0',
-        'jsonpickle~=2.0.0'
-=======
         'numpy<1.21.0,>=1.19.0',
         'pandas<=1.3.4,>=1.1.5',
         'gensim~=4.1.2',
@@ -50,7 +35,6 @@ setuptools.setup(
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
         'multiprocess', # seems to work better than standard mp
->>>>>>> 070c3f271168d5f0e1a28ed5c8d370c2dbbd1ea8
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -18,21 +18,21 @@ from datetime import date, datetime
 from itertools import combinations
 from torch.nn.modules.module import T
 from torch.nn.utils.rnn import pad_sequence
-from transformers import  BertConfig
+from transformers import BertConfig
 
 from transformers.configuration_utils import PretrainedConfig
 from itertools import permutations
 from pandas.core.series import Series
 
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
-from medcat.utils.models import BertModel_RelationExtracation
-from medcat.vocab import Vocab
-from medcat.config import Config
+
 from spacy.tokens import Doc
 from typing import Dict, Iterable, List, Set, Tuple
 from transformers import AutoTokenizer
 
-from tqdm.autonotebook import tqdm  
+from tqdm.autonotebook import tqdm
+
+from medcat.utils.models import BertModel_RelationExtracation
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -61,7 +61,7 @@ class RelData(object):
                 doc._.ents = doc.ents
                 doc._.relations = self.get_instances(doc)
 
-    def get_instances(self, doc, window_size=20):
+    def get_instances(self, doc, window_size=30):
         """  
             doc : SpacyDoc
             window_size : int, Character distance between any two entities start positions.
@@ -151,20 +151,20 @@ class RelationExtraction(object):
 
     name : str = "rel"
 
-    def __init__(self, docs, config: PretrainedConfig = None, spacy_model : str = None, tokenizer = None, embeddings=None, model_name=None, threshold: float = 0.1):
+    def __init__(self, docs, batch_size=100, config: PretrainedConfig = None, spacy_model : str = None, tokenizer = None, embeddings=None, model_name=None, threshold: float = 0.1):
     
        self.config = config
        self.cfg = {"labels": [], "threshold": threshold }
        self.tokenizer = tokenizer
        self.embeddings = embeddings
        self.learning_rate = 0.1
-       self.batch_size = 16
+       self.batch_size = batch_size
 
        self.is_cuda_available = torch.cuda.is_available()
 
        if model_name is None or model_name == "BERT":
-           self.config = BertConfig.from_pretrained("bert-base-uncased")  
-           self.model = BertModel_RelationExtracation.from_pretrained(pretrained_model_name_or_path="bert-base-uncased", model_size="bert-base-uncased", config=config)  
+           self.config = BertConfig.from_pretrained("dmis-lab/biobert-base-cased-v1.2") #BertConfig.from_pretrained("bert-base-uncased")  
+           self.model = BertModel_RelationExtracation.from_pretrained(pretrained_model_name_or_path="dmis-lab/biobert-base-cased-v1.2", model_size="dmis-lab/biobert-base-cased-v1.2", config=config)  
         
        if self.is_cuda_available:
            self.model = self.model.to(device)
@@ -186,12 +186,12 @@ class RelationExtraction(object):
        self.alpha = 0.6
        self.mask_probability = 0.10
 
-    def train(self, num_epoch=2, gradient_acc_steps=2, multistep_lr_gamma=0.8):
+    def train(self, num_epoch=15, gradient_acc_steps=4, multistep_lr_gamma=0.8):
         self.model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         criterion = Two_Headed_Loss(lm_ignore_idx=self.tokenizer.hf_tokenizers.pad_token_id, use_logits=True, normalize=False)
         optimizer = torch.optim.Adam([{"params" : self.model.parameters(), "lr": self.learning_rate}])
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2,4,6,8,12,15,18,20,22,24,26,30], gamma=multistep_lr_gamma)
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2,4,6,8,16,18,20,22,30], gamma=multistep_lr_gamma)
 
         start_epoch, best_pred, amp_checkpoint = Two_Headed_Loss.load_state(self.model, optimizer, scheduler, load_best=False)  
 
@@ -267,6 +267,8 @@ class RelationExtraction(object):
                 if (i % update_size) == (update_size - 1):
                     losses_per_batch.append(gradient_acc_steps * total_loss/ update_size)
                     lm_accuracy_per_batch.append(total_acc/update_size)
+                    print("Losses per batch: " , str(losses_per_batch))
+                    print("LM acc per batch: " , str(lm_accuracy_per_batch))
                     print('[Epoch: %d, %5d/ %d points] total loss, lm accuracy per batch: %.3f, %.3f' %
                         (epoch + 1, (i + 1), train_len, losses_per_batch[-1], lm_accuracy_per_batch[-1]))
                     total_loss = 0.0; total_acc = 0.0
@@ -281,31 +283,29 @@ class RelationExtraction(object):
             end_time = datetime.now().time()
             
             print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
-            # print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
-            # print("Accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
+            print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
+            print("Accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
 
-            # if accuracy_per_epoch[-1] > best_pred:
-            #     best_pred = accuracy_per_epoch[-1]
-            #     torch.save({
-            #             'epoch': epoch + 1,\
-            #             'state_dict': net.state_dict(),\
-            #             'best_acc': accuracy_per_epoch[-1],\
-            #             'optimizer' : optimizer.state_dict(),\
-            #             'scheduler' : scheduler.state_dict(),\
-            #             'amp': amp.state_dict() if amp is not None else amp
-            #         }, os.path.join("./data/" , "test_model_best_%d.pth.tar" % args.model_no))
+            if accuracy_per_epoch[-1] > best_pred:
+                best_pred = accuracy_per_epoch[-1]
+                torch.save({
+                        'epoch': epoch + 1,\
+                        'state_dict': self.model.state_dict(),\
+                        'best_acc': accuracy_per_epoch[-1],\
+                        'optimizer' : optimizer.state_dict(),\
+                        'scheduler' : scheduler.state_dict()
+                    }, os.path.join("./data/" , "test_model_best_%s.pth.tar" % "BERT_uncased"))
         
-            # if (epoch % 1) == 0:
-            #     save_as_pickle("test_losses_per_epoch_%d.pkl" % args.model_no, losses_per_epoch)
-            #     save_as_pickle("test_accuracy_per_epoch_%d.pkl" % args.model_no, accuracy_per_epoch)
-            #     torch.save({
-            #             'epoch': epoch + 1,\
-            #             'state_dict': net.state_dict(),\
-            #             'best_acc': accuracy_per_epoch[-1],\
-            #             'optimizer' : optimizer.state_dict(),\
-            #             'scheduler' : scheduler.state_dict(),\
-            #             'amp': amp.state_dict() if amp is not None else amp
-            #         }, os.path.join("./data/" , "test_checkpoint_%d.pth.tar" % args.model_no))
+            if (epoch % 1) == 0:
+                save_bin_file("test_losses_per_epoch_%s.pkl" % "BERT_uncased", losses_per_epoch)
+                save_bin_file("test_accuracy_per_epoch_%s.pkl" % "BERT_uncased", accuracy_per_epoch)
+                torch.save({
+                        'epoch': epoch + 1,\
+                        'state_dict': self.model.state_dict(),\
+                        'best_acc': accuracy_per_epoch[-1],\
+                        'optimizer' : optimizer.state_dict(),\
+                        'scheduler' : scheduler.state_dict()
+                    }, os.path.join("./data/" , "test_checkpoint_%s.pth.tar" % "BERT_uncased"))
         
     def pretrain_dataset(self):
        self.ENT1_list = list(self.rel_data.relations_dataframe["ent1"].unique())
@@ -511,9 +511,10 @@ class Two_Headed_Loss(nn.Module):
         for pos_idx in pos_idxs:
             for neg_idx in neg_idxs:
                 neg_logits.append(self.p_(blank_logits[pos_idx, :], blank_logits[neg_idx, :]))
+
         neg_logits = torch.stack(neg_logits, dim=0)
+
         neg_labels = [0.0 for _ in range(neg_logits.shape[0])]
-        
         blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
         
         
