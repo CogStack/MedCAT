@@ -1,13 +1,13 @@
 import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union
-from tokenizers import ByteLevelBPETokenizer
+from tokenizers import Tokenizer, ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 
 class TokenizerWrapperBase(ABC):
 
-    def __init__(self, hf_tokenizer: Optional[Union[ByteLevelBPETokenizer, BertTokenizerFast]] = None) -> None:
+    def __init__(self, hf_tokenizer: Optional[Tokenizer] = None) -> None:
         self.hf_tokenizers = hf_tokenizer
 
     @abstractmethod
@@ -18,7 +18,7 @@ class TokenizerWrapperBase(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, dir_path: str, **kwargs) -> Union[ByteLevelBPETokenizer, BertTokenizerFast]: ...
+    def load(cls, dir_path: str, **kwargs) -> Tokenizer: ...
 
     @abstractmethod
     def get_size(self) -> int: ...
@@ -29,7 +29,7 @@ class TokenizerWrapperBase(ABC):
     @abstractmethod
     def get_pad_id(self) -> Union[Optional[int], List[int]]: ...
 
-    def ensure_tokenizer(self) -> Union[ByteLevelBPETokenizer, BertTokenizerFast]:
+    def ensure_tokenizer(self) -> Tokenizer:
         if self.hf_tokenizers is None:
             raise ValueError("The tokenizer is not loaded yet")
         return self.hf_tokenizers
