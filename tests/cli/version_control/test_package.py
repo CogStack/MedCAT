@@ -228,7 +228,7 @@ class PackageTests(unittest.TestCase):
  
         with unittest.mock.patch("builtins.input", side_effect=["y", "y", "y"]):
             self.assertEqual(package(), True)
-
+    
     @classmethod
     def tearDownClass(cls):
         unit_test_dummy_repo_tear_down = os.path.join(get_local_model_storage_path(), "unit_test_dummy_repo_tear_down")
@@ -258,3 +258,4 @@ class PackageTests(unittest.TestCase):
         for root, dirs, files in os.walk(get_local_model_storage_path()):
             if "unit_test" in root:
                 force_delete_path(root)
+    

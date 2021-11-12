@@ -218,14 +218,17 @@ class CAT(object):
             return None
         else:
             text = self._get_trimmed_text(str(text))
-            return self.pipe(text)
-            
+            return self.pipe(text)  
+
     def save(self, path="./", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=False):
         self.vocab.save(os.path.join(path, vocab_output_file_name))
         self.cdb.save(os.path.join(path, cdb_output_file_name))
         
         if self.trainer_data is not None and not skip_stat_generation:
+            self.train_supervised(self.trainer_data)
             
+            pass    
+            """
             fps, fns, tps, cui_precision, cui_recall, cui_f1, cui_counts, examples = self._print_stats(self.trainer_data)
 
             tp = sum([v for i,v in tps.items()])
@@ -256,8 +259,8 @@ class CAT(object):
                 meta_project_data[project["name"]] = list(set(meta_tasks))
             
             self.trainer_stats.meta_project_data = meta_project_data
-
-            self.trainer_data["trainer_stats"] = asdict(self.trainer_stats)
+            """
+        self.trainer_data["trainer_stats"] = asdict(self.trainer_stats)
 
         if self.trainer_data is not None:
             with open(os.path.join(path, trainer_data_file_name), "w+") as f:
@@ -283,9 +286,6 @@ class CAT(object):
 
         if not medcat_export:
             medcat_export = None
-        else:
-            if "trainer_stats" not in medcat_export.keys():
-                medcat_export["trainer_stats"] = asdict(TrainerStats())
     
         if cdb is False or vocab is False:
             logging.error("No CDB or VOCAB detected.... make sure the model paths are valid")
@@ -639,7 +639,7 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
 
-    def train_supervised(self, data_path, reset_cui_count=False, nepochs=1,
+    def train_supervised(self, data_path="", reset_cui_count=False, nepochs=1,
                          print_stats=0, use_filters=False, terminate_last=False, use_overlaps=False,
                          use_cui_doc_limit=False, test_size=0, devalue_others=False, use_groups=False,
                          never_terminate=False, train_from_false_positives=False, extra_cui_filter=None):
@@ -707,8 +707,18 @@ class CAT(object):
         filters = self.config.linking['filters']
 
         fp = fn = tp = p = r = f1 = cui_counts = examples = {}
-        with open(data_path) as f:
-            data = json.load(f)
+
+        data = {}
+        
+        if self.trainer_data is not None:
+            data = self.trainer_data
+      
+        # merge existing data (if any) with new one from data_path
+        if not data_path:
+            with open(data_path) as f:
+                data = json.load(f)
+            
+
         cui_counts = {}
 
         if test_size == 0:

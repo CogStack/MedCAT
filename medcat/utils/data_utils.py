@@ -1,8 +1,12 @@
+import datetime
 import json
 import torch
 import copy
 import numpy as np
 from sklearn.metrics import cohen_kappa_score
+import os
+
+from medcat.cli.global_settings import DEFEAULT_DATETIME_FORMAT
 
 
 def set_all_seeds(seed):
@@ -999,3 +1003,37 @@ def get_false_positives(doc, spacy_doc):
             fps.append(ent)
 
     return fps
+
+
+def merge_med_exports_vc(path="./"):
+    '''
+        Merge existing MedCAT export files within the specified folder.
+        If the files have some version history it takes into account only the version with the latest timestamp.
+    '''
+    
+    trainer_data = {}
+
+    root, subdirs, files = next(os.walk(path))
+
+    latest_version = ()
+    for file_name in files:
+        if file_name.lower().startswith("MedCAT_Export"): 
+            medexport_data = json.load(os.path.join(path, file_name))
+            trainer_data.update(medexport_data["projects"])
+
+            if "vc_model_tag_data" in medexport_data.keys():
+                current_vc_data = medexport_data["vc_model_tag_data"]
+                current_timestamp = datetime.datetime.strptime(current_vc_data["timestamp"], DEFEAULT_DATETIME_FORMAT)
+                if len(latest_version) > 0:
+                    biggest_ver_timestamp = datetime.datetime.strptime(latest_version[1], DEFEAULT_DATETIME_FORMAT)
+                    if current_timestamp > biggest_ver_timestamp:
+                        latest_version = ()
+                        latest_version = (file_name, latest_version["vc_model_tag_data"].timestamp)
+                else:
+                    latest_version = (file_name, latest_version["vc_model_tag_data"].timestamp)
+               
+
+                
+                
+                
+
