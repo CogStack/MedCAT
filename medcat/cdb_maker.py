@@ -3,9 +3,11 @@ import numpy as np
 import datetime
 import logging
 import re
+from typing import Optional, List, Dict
 
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
+from medcat.config import Config
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -29,7 +31,7 @@ class CDBMaker(object):
     log = logging.getLogger(__package__)
     log = add_handlers(log)
 
-    def __init__(self, config, cdb=None):
+    def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
@@ -49,7 +51,14 @@ class CDBMaker(object):
                             additional_fields=['is_punct'])
 
 
-    def prepare_csvs(self, csv_paths, sep=',', encoding=None, escapechar=None, index_col=False, full_build=False, only_existing_cuis=False, **kwargs):
+    def prepare_csvs(self,
+                     csv_paths: List[str],
+                     sep: str = ',',
+                     encoding: Optional[str] = None,
+                     escapechar: Optional[str] = None,
+                     index_col: bool = False,
+                     full_build: bool = False,
+                     only_existing_cuis: bool = False, **kwargs) -> CDB:
         r''' Compile one or multiple CSVs into a CDB.
 
         Args:
@@ -90,7 +99,7 @@ class CDBMaker(object):
             df = df.fillna('')
 
             # Find which columns to use from the CSV
-            cols = []
+            cols: List = []
             col2ind = {}
             for col in list(df.columns):
                 if str(col).lower().strip() in useful_columns:
@@ -148,7 +157,7 @@ class CDBMaker(object):
                         description = ""
 
                     # We can have multiple versions of a name
-                    names = {} # {'name': {'tokens': [<str>], 'snames': [<str>]}}
+                    names: Dict = {} # {'name': {'tokens': [<str>], 'snames': [<str>]}}
 
                     raw_names = [raw_name.strip() for raw_name in row[col2ind['name']].split(self.cnf_cm['multi_separator']) if
                                  len(raw_name.strip()) > 0]
@@ -170,5 +179,5 @@ class CDBMaker(object):
 
         return self.cdb
 
-    def destroy_pipe(self):
+    def destroy_pipe(self) -> None:
         self.nlp.destroy()

@@ -1,5 +1,6 @@
 import os
 import unittest
+import tempfile
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.cat import CAT
@@ -47,6 +48,7 @@ class CATTests(unittest.TestCase):
             (3, None)
         ]
         out = self.undertest.multiprocessing(in_data, nproc=1)
+
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))
         self.assertEqual(0, len(out[2]['entities']))
@@ -199,6 +201,22 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, out[4]["entities"])
         self.assertEqual([], out[4]["tokens"])
         self.assertFalse("text" in out[4])
+
+    def test_create_model_pack(self):
+        save_dir_path = tempfile.TemporaryDirectory()
+        self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        pack = [f for f in os.listdir(save_dir_path.name)]
+        self.assertTrue("mp_name" in pack)
+        self.assertTrue("mp_name.zip" in pack)
+        contents = [f for f in os.listdir(os.path.join(save_dir_path.name, "mp_name"))]
+        self.assertTrue("cdb.dat" in contents)
+        self.assertTrue("vocab.dat" in contents)
+
+    def test_load_model_pack(self):
+        save_dir_path = tempfile.TemporaryDirectory()
+        self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, "mp_name.zip"))
+        self.assertTrue(isinstance(cat, CAT))
 
 
 if __name__ == '__main__':
