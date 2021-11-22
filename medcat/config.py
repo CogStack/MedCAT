@@ -273,6 +273,11 @@ class Config(BaseConfig):
                     'cuis': set(), # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
                     },
                 }
+        
+        # Used in the CAT object
+        self.train = {
+            'nepochs' : 2
+        }
 
 
         # Some regex that we will need
