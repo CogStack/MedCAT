@@ -21,7 +21,7 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.utils.loggers import add_handlers
-from medcat.utils.data_utils import make_mc_train_test, get_false_positives
+from medcat.utils.data_utils import get_meta_project_list, make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
@@ -30,9 +30,8 @@ from medcat.preprocessing.cleaners import prepare_name
 from medcat.utils.helpers import tkns_from_doc
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
-
+from medcat.cli.system_utils import get_downloaded_local_model_folder, load_file_from_model_storage
 from medcat.cli.modelstats import TrainerStats
-from medcat.cli.system_utils import load_file_from_model_storage
 from dataclasses import asdict
 
 
@@ -110,7 +109,6 @@ class CAT(object):
 
         # MedCAT Export data
         self.trainer_data = trainer_data
-        self.trainer_stats = TrainerStats()
 
 
     def get_spacy_nlp(self):
@@ -120,7 +118,7 @@ class CAT(object):
 
 
     def create_model_pack(self, save_dir_path, model_pack_name='medcat_model_pack'):
-        r''' Will crete a .zip file containing all the models in the current running instance
+        r''' Will create a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
         '''
 
@@ -128,31 +126,11 @@ class CAT(object):
         _save_dir_path = save_dir_path
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
+        model_pack_path = os.path.join(_save_dir_path, model_pack_name)
         os.makedirs(save_dir_path, exist_ok=True)
+        self.save(save_dir_path)
 
-        # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, os.path.basename(self.config.general['spacy_model']))
-        if str(self.pipe.nlp._path) != spacy_path:
-            # First remove if something is there
-            shutil.rmtree(spacy_path, ignore_errors=True)
-            shutil.copytree(self.pipe.nlp._path, spacy_path)
-
-        # Save the CDB
-        cdb_path = os.path.join(save_dir_path, "cdb.dat")
-        self.cdb.save(cdb_path)
-
-        # Save the Vocab
-        vocab_path = os.path.join(save_dir_path, "vocab.dat")
-        self.vocab.save(vocab_path)
-
-        # Save all meta_cats
-        for comp in self.pipe.nlp.components:
-            if isinstance(comp[1], MetaCAT):
-                name = comp[0]
-                meta_path = os.path.join(save_dir_path, "meta_" + name)
-                comp[1].save(meta_path)
-
-        shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
+        shutil.make_archive(model_pack_path, 'zip', root_dir=save_dir_path)
 
 
     @classmethod
@@ -174,24 +152,9 @@ class CAT(object):
             print("Unziping the model pack and loading models.")
             shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
 
-        # Load the CDB
-        cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        cdb = CDB.load(cdb_path)
+        cat = CAT.load(model_pack_path)
 
-        # Modify the config to contain full path to spacy model
-        cdb.config.general['spacy_model'] = os.path.join(model_pack_path, cdb.config.general['spacy_model'])
-
-        # Load Vocab
-        vocab_path = os.path.join(model_pack_path, "vocab.dat")
-        vocab = Vocab.load(vocab_path)
-
-        # Find meta models in the model_pack
-        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
-        meta_cats = []
-        for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(meta_path))
-
-        return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+        return cat
 
 
     def __call__(self, text: str, do_train: bool = False):
@@ -220,54 +183,58 @@ class CAT(object):
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)  
 
-    def save(self, path="./", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=False):
+    def save(self, path="./", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat",
+             trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=True):
+       
+        #Save the used spacy model
+        spacy_path = os.path.join(path, os.path.basename(self.config.general['spacy_model']))
+
+        if str(self.pipe.nlp._path) != spacy_path:
+            # First remove if something is there
+            shutil.rmtree(spacy_path, ignore_errors=True)
+            shutil.copytree(self.pipe.nlp._path, spacy_path)
+
+        if not os.path.exists(spacy_path):
+            shutil.copytree(self.pipe.nlp._path, spacy_path)
+
+        if self.vocab is None:
+            raise ValueError("Model pack creation is failed due to the missing 'vocab'")
+
         self.vocab.save(os.path.join(path, vocab_output_file_name))
         self.cdb.save(os.path.join(path, cdb_output_file_name))
-        
+
+        trainer_stats = TrainerStats()
         if self.trainer_data is not None and not skip_stat_generation:
-            self.train_supervised(self.trainer_data)
-            
-            pass    
-            """
-            fps, fns, tps, cui_precision, cui_recall, cui_f1, cui_counts, examples = self._print_stats(self.trainer_data)
-
-            tp = sum([v for i,v in tps.items()])
-            fp = sum([v for i,v in fps.items()])
-            fn = sum([v for i,v in fns.items()])
-
-            precision = tp / (tp + fp)
-            recall = tp / (tp + fn)
+            fps, fns, tps, _, _, _, cui_counts, _ = \
+                 self.train_supervised(self.trainer_data, nepochs=self.config.train["nepochs"], print_stats=1)
+           
+            tp, fp, fn = sum(tps.values()), sum(fps.values()), sum(fns.values())
+            precision, recall = tp / (tp + fp), tp / (tp + fn)
             f1 = 2 * (precision * recall) / (precision + recall)
 
-            self.trainer_stats = TrainerStats(epoch=0, concept_precision=precision, concept_f1=f1, concept_recall=recall, false_negatives=fn, false_positives=fp, true_positives=tp,
-            cui_counts = sum(cui_counts.values()))
+            trainer_stats = TrainerStats(epoch=self.config.train["nepochs"], concept_precision=precision,
+                                         concept_f1=f1, concept_recall=recall,
+                                         false_negatives=fn, false_positives=fp, true_positives=tp,
+                                         cui_counts = sum(cui_counts.values()))
+           
+            trainer_stats.meta_project_data = get_meta_project_list(self.trainer_data)
 
-            meta_project_data = {}
-                
-            for project in self.trainer_data["projects"]:
-                meta_tasks = []
-                if len(project["documents"]) > 0:
-                    for doc in project["documents"]:
-                        if "annotations" in doc.keys():
-                            annotations = doc["annotations"]
-                            for annotation in annotations:
-                                if "meta_anns" in annotation.keys():
-                                    meta_anns = annotation["meta_anns"]
-                                    for meta_ann in meta_anns:
-                                        meta_tasks.append(meta_ann["name"])
-
-                meta_project_data[project["name"]] = list(set(meta_tasks))
-            
-            self.trainer_stats.meta_project_data = meta_project_data
-            """
-        self.trainer_data["trainer_stats"] = asdict(self.trainer_stats)
+        self.trainer_data["trainer_stats"] = asdict(trainer_stats)
 
         if self.trainer_data is not None:
             with open(os.path.join(path, trainer_data_file_name), "w+") as f:
                 json.dump(self.trainer_data, fp=f)
 
+        # Save all meta_cats
+        for comp in self.pipe.nlp.components:
+            if isinstance(comp[1], MetaCAT):
+                name = comp[0]
+                meta_path = os.path.join(path, "meta_" + name)
+                comp[1].save(meta_path)
+
     @classmethod
-    def load(cls, path="", full_model_tag_name=None, vocab_input_file_name="vocab.dat", cdb_input_file_name="cdb.dat", trainer_data_file_name="MedCAT_Export.json", bypass_model_path=False):
+    def load(cls, path="", full_model_tag_name : str = "", vocab_input_file_name : str = "vocab.dat", cdb_input_file_name : str = "cdb.dat",
+             trainer_data_file_name : str = "MedCAT_Export.json") -> "CAT":
         """ Loads variables of this object
             This is used to search the /.cache/medcat/models folder for installed models..
         """
@@ -275,22 +242,38 @@ class CAT(object):
         from medcat.vocab import Vocab
         from medcat.cdb import CDB
 
-        if full_model_tag_name is None:
+        if not full_model_tag_name:
             vocab = Vocab.load(path=os.path.join(path, vocab_input_file_name))
             cdb = CDB.load(path=os.path.join(path, cdb_input_file_name))
-            medcat_export = load_file_from_model_storage(file_name=trainer_data_file_name, bypass_model_path=bypass_model_path)
+            medcat_export = load_file_from_model_storage(file_name=trainer_data_file_name, bypass_model_path=True)
         else:
             vocab = Vocab.load(full_model_tag_name=full_model_tag_name)
             cdb = CDB.load(full_model_tag_name=full_model_tag_name)
-            medcat_export = load_file_from_model_storage(full_model_tag_name=full_model_tag_name, file_name=trainer_data_file_name, bypass_model_path=bypass_model_path)
+            medcat_export = load_file_from_model_storage(full_model_tag_name=full_model_tag_name, file_name=trainer_data_file_name)
+            
+            # make sure we update the path if we are loading via model tag way
+            path = get_downloaded_local_model_folder(full_model_tag_name)
 
         if not medcat_export:
             medcat_export = None
-    
+      
         if cdb is False or vocab is False:
-            logging.error("No CDB or VOCAB detected.... make sure the model paths are valid")
+            logging.error("No CDB or VOCAB detected.... make sure the model paths are valid") 
+            raise ValueError()
+        
+        _path = "./" if not path else path
+        meta_paths = [os.path.join(_path, mpath) for mpath in os.listdir(_path) if mpath.startswith("meta_")]
+        meta_cats = []
 
-        return CAT(cdb, config=cdb.config, vocab=vocab, trainer_data=medcat_export)
+        for meta_path in meta_paths:
+            meta_cats.append(MetaCAT.load(meta_path))
+
+        # update spacy path since we are loading
+        spacy_path = os.path.join(path, os.path.basename(cdb.config.general['spacy_model']))
+
+        cdb.config.general['spacy_model'] = spacy_path
+
+        return CAT(cdb, config=cdb.config, vocab=vocab, trainer_data=medcat_export, meta_cats=meta_cats)
 
     def _print_stats(self, data, epoch=0, use_project_filters=False, use_overlaps=False, use_cui_doc_limit=False,
                      use_groups=False, extra_cui_filter=None):
@@ -412,7 +395,6 @@ class CAT(object):
                                                   "document inedex": dind})
                         elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
                             anns_norm_neg.append((ann['start'], cui))
-
 
                         if ann.get("validated", True):
                             # This is used to test was someone annotating for this CUI in this document
@@ -713,13 +695,9 @@ class CAT(object):
         if self.trainer_data is not None:
             data = self.trainer_data
       
-        # merge existing data (if any) with new one from data_path
         if not data_path:
             with open(data_path) as f:
                 data = json.load(f)
-            
-
-        cui_counts = {}
 
         if test_size == 0:
             self.log.info("Running without a test set, or train==test")

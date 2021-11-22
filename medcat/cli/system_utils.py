@@ -22,7 +22,7 @@ if os.name == "nt":
     import win32api, win32con
 
 
-def load_file_from_model_storage(full_model_tag_name="", file_name="", model_folder=".", bypass_model_path=False, ignore_non_model_files=False):
+def load_file_from_model_storage(full_model_tag_name="", file_name="", model_folder_path=".", bypass_model_path=False, ignore_non_model_files=False):
     """
         Looks into the models directory in your ~/.cache/medcat/model_name/ folder.
 
@@ -50,44 +50,45 @@ def load_file_from_model_storage(full_model_tag_name="", file_name="", model_fol
         full_file_path = os.path.join(local_model_folder_path, file_name)
 
     if bypass_model_path is True:
-        full_file_path = os.path.join(model_folder, file_name)
+        full_file_path = os.path.join(model_folder_path, file_name)
 
     data = False
-        
-    if type(full_file_path) is str and "MedCAT_Export.json" in full_file_path:
-        with open(full_file_path, "r", encoding="utf8") as f:
-            data = json.load(f)
-        
-            if "trainer_stats" not in data.keys():
-                data["trainer_stats"] = asdict(TrainerStats())
-            
-            if "vc_model_tag_data" not in data.keys():
-                data["vc_model_tag_data"] = asdict(ModelTagData())
-
-    elif full_file_path:
-        if get_model_binary_file_extension() in full_file_path:
-            from medcat.cdb import CDB
-            from medcat.vocab import Vocab
-                
-            try:
-                if "cdb" in full_file_path.lower():
-                    data = CDB.load(full_file_path)
-                elif "vocab" in full_file_path.lower():
-                    data = Vocab.load(full_file_path)
-
-            except Exception as exception:
-                    logging.error("could not add vc_model_tag_data attribute to model data file")
-                    logging.error(repr(exception))
-                    logging.error(traceback.format_exc())
-                    return False         
+    
+    if os.path.exists(full_file_path):
+        if type(full_file_path) is str and ".json" in full_file_path:
+            with open(full_file_path, "r") as f:
+                    data = json.load(f)
+            if  "MedCAT_Export.json" in full_file_path:
+                    if "trainer_stats" not in data.keys():
+                        data["trainer_stats"] = asdict(TrainerStats())
                     
-        elif ignore_non_model_files:
-            pass
-        elif ".npy" in full_file_path:
-            data = numpy.load(full_file_path)
-        else:
-            with open(full_file_path, "rb") as f:
-                data = dill.load(f)
+                    if "vc_model_tag_data" not in data.keys():
+                        data["vc_model_tag_data"] = asdict(ModelTagData())
+
+        elif full_file_path:
+            if get_model_binary_file_extension() in full_file_path:
+                from medcat.cdb import CDB
+                from medcat.vocab import Vocab
+                    
+                try:
+                    if "cdb" in full_file_path.lower():
+                        data = CDB.load(full_file_path)
+                    elif "vocab" in full_file_path.lower():
+                        data = Vocab.load(full_file_path)
+
+                except Exception as exception:
+                        logging.error("could not add vc_model_tag_data attribute to model data file")
+                        logging.error(repr(exception))
+                        logging.error(traceback.format_exc())
+                        return False         
+                        
+            elif ignore_non_model_files:
+                pass
+            elif ".npy" in full_file_path:
+                data = numpy.load(full_file_path)
+            else:
+                with open(full_file_path, "rb") as f:
+                    data = dill.load(f)
     return data
 
 def get_tag_str_model_name_and_version(full_model_tag_name: str, delimiter: str = '-'):
@@ -179,16 +180,30 @@ def get_local_model_storage_path(storage_path=os.path.join(os.path.expanduser("~
     
 def copy_model_files_to_folder(source_folder, dest_folder):
 
-    root, subdirs, files = next(os.walk(source_folder))
+    for dirs, subdirs, files in os.walk(source_folder):
+        dirs = dirs if type(dirs) == list else [dirs]
+        for dir in dirs:
+            current_subdir = dir.replace(source_folder,"").strip("\\").strip("/")
+            dest_subdir_path = os.path.join(dest_folder, current_subdir)
+            
+            if not os.path.exists(dest_subdir_path):
+                os.makedirs(dest_subdir_path)
 
-    print("files : ", files)
-    for file_name in files:
-        if file_name in get_permitted_push_file_list():
-            logging.info("Copying file : " + file_name + " to " + dest_folder)
-            shutil.copy2(os.path.join(source_folder, file_name), dest_folder)
-        else:
-            logging.info("Discarding " + file_name + " as it is not in the permitted model file pushing convention...")
+            for file_name in files:
+                file_path = os.path.join(dir, file_name)
 
+                if os.path.isfile(file_path):
+                    logging.info("Detected file : " + file_name)
+                    logging.info("Copying file : " + file_name  + " to " + dest_subdir_path)
+                    if file_name in set(get_permitted_versioned_files() + get_permitted_push_file_list()):
+                        if not os.path.exists(dest_subdir_path):
+                            os.makedirs(dest_subdir_path)
+                        shutil.copy2(file_path, dest_subdir_path)
+                    elif any(name in dir for name in  get_standalone_exceptions_push_files()):
+                        shutil.copy2(file_path, dest_subdir_path)
+                    else:
+                        logging.info("Discarding " + file_name + " as it is not in the permitted model file pushing convention...")
+    
 def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="origin", branch="master", checkout_full_tag_name=""):
     """
         Creates a base repository for a NEW base model release. 
@@ -256,11 +271,15 @@ def is_input_valid(input_string):
 def get_model_binary_file_extension():
     return ".dat"
 
+def get_standalone_exceptions_push_files():
+    # used for model packs and spacy models
+    return ["en_core", "_pack.zip",]
+
 def get_permitted_push_file_list():
-    return ["cdb.dat", "vocab.dat", "modelcard.md", "modelcard.json", "MedCAT_Export.json" , "embeddings.npy"]
+    return ["modelcard.md", "modelcard.json", "embeddings.npy", "bbpe-merges.txt", "bbpe-vocab.json", "bert-tokenizer.json", "model.dat"] + get_permitted_versioned_files()
 
 def get_permitted_versioned_files():
-    return ["cdb.dat", "vocab.dat", "MedCAT_Export.json"]
+    return ["cdb.dat", "vocab.dat", "MedCAT_Export.json", "bert-tokenizer.json", "config.json", "trainer_stats.json", "meta_stats.json"]
 
 def dict_diff(dict_1, dict_2):
     diff_1, diff_2 = {}, {}

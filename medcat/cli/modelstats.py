@@ -37,5 +37,4 @@ class MetaCATStats:
     recall : float = 0.0
     learning_rate : float = 0.0
     nepochs : int = 0
-    cls_report : Dict = field(default_factory=list)
-    score_average : str = "weighted"
+    class_report : Dict = field(default_factory=list)

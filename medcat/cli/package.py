@@ -172,7 +172,7 @@ def inject_tag_data_to_model_files(model_folder_path, model_name, parent_model_n
         if os.path.isfile(file_path) and file_name in changed_files:
             logging.info("Updating model object : " + organisation_name + "-" + model_name + "-" + str(version) + ", " + file_name + " with tag data...")
 
-            loaded_model_file = load_file_from_model_storage(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True)
+            loaded_model_file = load_file_from_model_storage(model_folder_path=model_folder_path, file_name=file_name, bypass_model_path=True)
 
             if file_name.endswith(get_model_binary_file_extension()):
                 loaded_model_file.vc_model_tag_data = model_tag_data
@@ -195,7 +195,7 @@ def detect_model_name_from_files(model_folder_path="./"):
 
     for file_name in get_permitted_versioned_files(): 
         if os.path.isfile(os.path.join(model_folder_path, file_name)):
-            loaded_model_file = load_file_from_model_storage(model_folder=model_folder_path, file_name=file_name, bypass_model_path=True, ignore_non_model_files=False)
+            loaded_model_file = load_file_from_model_storage(model_folder_path=model_folder_path, file_name=file_name, bypass_model_path=True, ignore_non_model_files=False)
 
             if loaded_model_file != False :
                 model_data[file_name] = {}

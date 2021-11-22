@@ -259,9 +259,8 @@ class Vocab(object):
 
         return False
 
-    def save(self, path, vc_model_tag_data: ModelTagData = None):
+    def save(self, path : str, vc_model_tag_data: ModelTagData = None):
         r''' 
-        
         Args:
             path (`str`):
                 Path to a file where the model will be saved
@@ -275,9 +274,9 @@ class Vocab(object):
             pickle.dump(self.__dict__, f)
 
     @classmethod
-    def load(cls, path="", full_model_tag_name=None):
+    def load(cls, path : str="", full_model_tag_name : str = ""):
         
-        if full_model_tag_name is not None:
+        if full_model_tag_name:
             path = os.path.join(system_utils.get_downloaded_local_model_folder(full_model_tag_name), "vocab.dat")
 
         with open(path, 'rb') as f:

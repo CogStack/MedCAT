@@ -171,7 +171,7 @@ class CDB(object):
 
     def add_concept(self, cui: str, names: Dict, ontologies: set, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
         r'''
-        Add a concept to internal Concept Database (CDB). Depending on what you are providing
+        Add a concept to internal Concept Database (CDB). Depending on what you are 
         this will add a large number of properties for each concept.
 
         Args:
@@ -357,14 +357,14 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save(self, path, vc_model_tag_data: ModelTagData = None):
+    def save(self, path : str, vc_model_tag_data: ModelTagData = None):
         r''' Saves model to file (in fact it saves vairables of this class). 
 
         Args:
             path (`str`):
                 Path to a file where the model will be saved
             vc_model_tag_data (`ModelTagData`):
-                Files saved are in the model folder match by it's   
+                DataClass containing all the info about the model file tag. 
         '''
 
         if vc_model_tag_data:
@@ -384,7 +384,7 @@ class CDB(object):
             dill.dump(to_save, f)
 
     @classmethod
-    def load(cls, path="", config=None, full_model_tag_name=None):
+    def load(cls, path : str="", config : Config=None, full_model_tag_name : str=""):
         r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
@@ -395,7 +395,7 @@ class CDB(object):
                 Will attempt to load the "cdb.dat" from there.
         '''
 
-        if full_model_tag_name is not None:
+        if full_model_tag_name:
             path = os.path.join(system_utils.get_downloaded_local_model_folder(full_model_tag_name), "cdb.dat")
 
         with open(path, 'rb') as f:
@@ -413,17 +413,13 @@ class CDB(object):
                 if k in data['cdb']:
                     cdb.__dict__[k] = data['cdb'][k]
 
-            try: 
-                # if the version control/stat attributes are not present then create them
-                if not hasattr(cdb, "vc_model_tag_data"):
-                    cdb.vc_model_tag_data = ModelTagData()
+            # if the version control/stat attributes are not present then create them
+            if not hasattr(cdb, "vc_model_tag_data"):
+                cdb.vc_model_tag_data = ModelTagData()
 
-                if not hasattr(cdb, "cdb_stats"):    
-                    cdb.cdb_stats = CDBStats()
-
-            except Exception as exception:
-                    logging.error(repr(exception))
-
+            if not hasattr(cdb, "cdb_stats"):    
+                cdb.cdb_stats = CDBStats()
+                
         return cdb
 
     def import_old_cdb_vectors(self, cdb):
@@ -695,17 +691,13 @@ class CDB(object):
         return res
 
     @staticmethod
-    def _ensure_backward_compatibility(config: Config):
+    def _ensure_backward_compatibility(config: Config) -> None:
         # Hacky way of supporting old CDBs
         weighted_average_function = config.linking['weighted_average_function']
         if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
             config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
         if config.general.get('workers', None) is None:
             config.general['workers'] = workers()
-        if config.general.get('diacritics', None) is None:
-            config.general['diacritics'] = False
-        if config.general.get('make_pretty_labels', None) is None:
-            config.general['make_pretty_labels'] = False
         disabled_comps = config.general.get('spacy_disabled_components', [])
         if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
             config.general['spacy_disabled_components'].append('lemmatizer')

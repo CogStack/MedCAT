@@ -1,3 +1,4 @@
+from dataclasses import asdict
 import os
 import json
 import logging
@@ -5,7 +6,10 @@ import torch
 from multiprocessing import Lock
 from spacy.tokens import Doc
 from typing import Iterable, Generator
+from build.lib.medcat.cli.modeltagdata import ModelTagData
+from build.lib.medcat.cli.system_utils import load_file_from_model_storage
 from medcat.cli.modelstats import MetaCATStats
+from medcat.cli.system_utils import get_downloaded_local_model_folder
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
@@ -46,6 +50,7 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
         self.meta_cat_stats = MetaCATStats()
+        self.vc_model_tag_data = ModelTagData()
 
     def get_model(self, embeddings):
         config = self.config
@@ -120,6 +125,8 @@ class MetaCAT(PipeRunner):
 
             # Save everything now
             self.save(save_dir_path=save_dir_path)
+        
+        self.meta_cat_stats = MetaCATStats(f1=report['f1'], nepochs=report['epoch'], class_report=report['report'])
 
         return report
 
@@ -151,7 +158,7 @@ class MetaCAT(PipeRunner):
 
         return result
 
-    def save(self, save_dir_path):
+    def save(self, save_dir_path, model_tag_data : ModelTagData=None):
         r''' Save all components of this class to a file
         Args:
             save_dir_path(`str`):
@@ -170,11 +177,18 @@ class MetaCAT(PipeRunner):
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         torch.save(self.model.state_dict(), model_save_path)
 
+        with open(os.path.join(save_dir_path, "meta_stats.json"), "w+") as f:
+            json.dump(asdict(self.meta_cat_stats), fp=f)
+
+        if model_tag_data:
+            with open(os.path.join(save_dir_path, "vc_model_tag_data.json"), "w+") as f:
+                json.dump(asdict(model_tag_data), fp=f)
+
         # This is everything we need to save from the class, we do not
         #save the class itself.
 
     @classmethod
-    def load(cls, save_dir_path, config_dict=None):
+    def load(cls, save_dir_path="", config_dict=None):
         r''' Load a meta_cat object.
         Args:
             save_dir_path (`str`):
@@ -186,10 +200,9 @@ class MetaCAT(PipeRunner):
             meta_cat (`medcat.MetaCAT`):
                 You don't say
         '''
-
+   
         # Load config
         config = ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json'))
-
         # Overwrite loaded paramters with something new
         if config_dict is not None:
             config.merge_config(config_dict)
@@ -201,14 +214,23 @@ class MetaCAT(PipeRunner):
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
             tokenizer = TokenizerWrapperBERT.load(save_dir_path)
-
-        # Create meta_cat
+            
+       # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
 
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
+        
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
+    
+        meta_stats = load_file_from_model_storage(model_folder_path=save_dir_path, file_name="meta_stats.json", bypass_model_path=True)
+        vc_model_tag_data = load_file_from_model_storage(model_folder_path=save_dir_path, file_name="vc_model_tag_data.json", bypass_model_path=True)
+
+        if meta_stats != False:
+            meta_cat.meta_cat_stats = MetaCATStats(*meta_stats.values())
+        if vc_model_tag_data != False:
+            meta_cat.vc_model_tag_data = ModelTagData(*vc_model_tag_data.values())
 
         return meta_cat
 
