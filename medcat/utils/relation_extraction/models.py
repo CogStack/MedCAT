@@ -6,9 +6,9 @@ from transformers import BertPreTrainedModel
 
 from medcat.utils.model_utils import BertPooler, BertPreTrainingHeads, BertEmbeddings, BertEncoder
 
-class BertModel_RelationExtracation(BertPreTrainedModel):
+class BertModel_RelationExtraction(BertPreTrainedModel):
     def __init__(self, config, model_size, task=None, n_classes_=None):
-        super(BertModel_RelationExtracation, self).__init__(config)
+        super(BertModel_RelationExtraction, self).__init__(config)
         self.config = config
         self.task = task
         self.model_size = model_size
@@ -160,5 +160,3 @@ class BertModel_RelationExtracation(BertPreTrainedModel):
         elif self.task == 'classification':
             classification_logits = self.classification_layer(v1v2)
             return classification_logits
-        elif self.task == 'fewrel':
-            return v1v2

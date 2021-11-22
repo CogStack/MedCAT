@@ -10,14 +10,11 @@ import torch.nn
 import pickle
 import dill
 import regex as re
-from torch.nn.utils.clip_grad import clip_grad_norm_
 import torch.optim
 import torch
 import torch.nn as nn
 from datetime import date, datetime
-from itertools import combinations
 from torch.nn.modules.module import T
-from torch.nn.utils.rnn import pad_sequence
 from transformers import BertConfig
 
 from transformers.configuration_utils import PretrainedConfig
@@ -31,25 +28,17 @@ from typing import Dict, Iterable, List, Set, Tuple
 from transformers import AutoTokenizer
 
 from tqdm.autonotebook import tqdm
+from medcat.utils.relation_extraction.eval import Two_Headed_Loss
 
-from medcat.utils.models import BertModel_RelationExtracation
+from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
+from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
+from medcat.utils.relation_extraction.utils import load_bin_file, save_bin_file
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
-
-def load_bin_file(file_name, path="./"):
-    with open(os.path.join(path, file_name), 'rb') as f:
-        data = pickle.load(f)
-    return data
-
-def save_bin_file(file_name, data, path="./"):
-    with open(os.path.join(path, file_name), "wb") as f:
-        pickle.dump(data, f)
 
 class RelData(object):
 
     Doc.set_extension("relations", default=[], force=True)
-    Doc.set_extension("ents", default=[], force=False)
 
     def __init__(self, docs):
         self.create_base_relations(docs)
@@ -164,7 +153,7 @@ class RelationExtraction(object):
 
        if model_name is None or model_name == "BERT":
            self.config = BertConfig.from_pretrained("dmis-lab/biobert-base-cased-v1.2") #BertConfig.from_pretrained("bert-base-uncased")  
-           self.model = BertModel_RelationExtracation.from_pretrained(pretrained_model_name_or_path="dmis-lab/biobert-base-cased-v1.2", model_size="dmis-lab/biobert-base-cased-v1.2", config=config)  
+           self.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="dmis-lab/biobert-base-cased-v1.2", model_size="dmis-lab/biobert-base-cased-v1.2", config=config)  
         
        if self.is_cuda_available:
            self.model = self.model.to(device)
@@ -221,7 +210,7 @@ class RelationExtraction(object):
                 tokens, masked_for_pred, e1_e2_start, _, blank_labels, _, _, _, _, _ = data
                 masked_for_pred = masked_for_pred[(masked_for_pred != pad_id)]
                 
-                print("processing record : ", i)
+                print("processing rel : ", i)
                 if masked_for_pred.shape[0] == 0:
                     print('Empty dataset, skipping...')
                     continue
@@ -455,177 +444,3 @@ class RelationExtraction(object):
         return batch
 
 
-class Two_Headed_Loss(nn.Module):
-    '''
-    Implements LM Loss and matching-the-blanks loss concurrently
-    '''
-    def __init__(self, lm_ignore_idx, use_logits=False, normalize=False):
-        super(Two_Headed_Loss, self).__init__()
-        self.lm_ignore_idx = lm_ignore_idx
-        self.LM_criterion = nn.CrossEntropyLoss(ignore_index=lm_ignore_idx)
-        self.use_logits = use_logits
-        self.normalize = normalize
-        
-        if not self.use_logits:
-            self.BCE_criterion = nn.BCELoss(reduction='mean')
-        else:
-            self.BCE_criterion = nn.BCEWithLogitsLoss(reduction='mean')
-    
-    def p_(self, f1_vec, f2_vec):
-        if self.normalize:
-            factor = 1 / (torch.norm(f1_vec)*torch.norm(f2_vec))
-        else:
-            factor = 1.0
-        
-        if not self.use_logits:
-            p = 1/(1 + torch.exp(-factor*torch.dot(f1_vec, f2_vec)))
-        else:
-            p = factor*torch.dot(f1_vec, f2_vec)
-        return p
-    
-    def dot_(self, f1_vec, f2_vec):
-        return -torch.dot(f1_vec, f2_vec)
-    
-    def forward(self, lm_logits, blank_logits, lm_labels, blank_labels, verbose=False):
-        '''
-        lm_logits: (batch_size, sequence_length, hidden_size)
-        lm_labels: (batch_size, sequence_length, label_idxs)
-        blank_logits: (batch_size, enumerate)
-        blank_labels: (batch_size, 0 or 1)
-        '''
-        pos_idxs = [i for i, l in enumerate(blank_labels.squeeze().tolist()) if l == 1]
-        neg_idxs = [i for i, l in enumerate(blank_labels.squeeze().tolist()) if l == 0]
-        
-        if len(pos_idxs) > 1:
-            # positives
-            pos_logits = []
-            for pos1, pos2 in combinations(pos_idxs, 2):
-                pos_logits.append(self.p_(blank_logits[pos1, :], blank_logits[pos2, :]))
-            pos_logits = torch.stack(pos_logits, dim=0)
-            pos_labels = [1.0 for _ in range(pos_logits.shape[0])]
-        else:
-            pos_logits, pos_labels = torch.FloatTensor([]), []
-        
-        # negatives
-        neg_logits = []
-        for pos_idx in pos_idxs:
-            for neg_idx in neg_idxs:
-                neg_logits.append(self.p_(blank_logits[pos_idx, :], blank_logits[neg_idx, :]))
-
-        neg_logits = torch.stack(neg_logits, dim=0)
-
-        neg_labels = [0.0 for _ in range(neg_logits.shape[0])]
-        blank_labels_ = torch.FloatTensor(pos_labels + neg_labels)
-        
-        
-        if blank_logits.is_cuda:
-            blank_labels_ = blank_labels_.cuda()
-            pos_logits = pos_logits.cuda()
-            neg_logits = neg_logits.cuda()
-
-        lm_loss = self.LM_criterion(lm_logits, target=lm_labels.long())
-
-
-        blank_loss = self.BCE_criterion(torch.cat([pos_logits, neg_logits], dim=0), \
-                                        blank_labels_)
-
-        if verbose:
-            print("LM loss, blank_loss for last batch: %.5f, %.5f" % (lm_loss, blank_loss))
-           
-        total_loss = lm_loss + blank_loss
-        return total_loss
-
-    @classmethod
-    def load_state(net, optimizer, scheduler, model_name="BERT", load_best=False):
-        """ Loads saved model and optimizer states if exists """
-        base_path = "./data/"
-        amp_checkpoint = None
-        checkpoint_path = os.path.join(base_path,"test_checkpoint_%s.pth.tar" % model_name)
-        best_path = os.path.join(base_path,"test_model_best_%s.pth.tar" % model_name)
-        start_epoch, best_pred, checkpoint = 0, 0, None
-        if (load_best == True) and os.path.isfile(best_path):
-            checkpoint = torch.load(best_path)
-            logging.info("Loaded best model.")
-        elif os.path.isfile(checkpoint_path):
-            checkpoint = torch.load(checkpoint_path)
-            logging.info("Loaded checkpoint model.")
-        if checkpoint != None:
-            start_epoch = checkpoint['epoch']
-            best_pred = checkpoint['best_acc']
-            net.load_state_dict(checkpoint['state_dict'])
-            if optimizer is not None:
-                optimizer.load_state_dict(checkpoint['optimizer'])
-            if scheduler is not None:
-                scheduler.load_state_dict(checkpoint['scheduler'])
-            amp_checkpoint = checkpoint['amp']
-            logging.info("Loaded model and optimizer.")    
-        return start_epoch, best_pred, amp_checkpoint
-
-    @classmethod
-    def load_results(cls, model_name="BERT"):
-        """ Loads saved results if exists """
-        losses_path = "./data/test_losses_per_epoch_%s.pkl" % model_name
-        accuracy_path = "./data/test_accuracy_per_epoch_%s.pkl" % model_name
-        if os.path.isfile(losses_path) and os.path.isfile(accuracy_path):
-            losses_per_epoch = load_bin_file("test_losses_per_epoch_%s.pkl" % model_name)
-            accuracy_per_epoch = load_bin_file("test_accuracy_per_epoch_%s.pkl" % model_name)
-            logging.info("Loaded results buffer")
-        else:
-            losses_per_epoch, accuracy_per_epoch = [], []
-        return losses_per_epoch, accuracy_per_epoch
-    
-    @classmethod
-    def evaluate_results(cls, lm_logits, blanks_logits, masked_for_pred, blank_labels, tokenizer, print_=False):
-        '''
-        evaluate must be called after loss.backward()
-        '''
-     
-        lm_logits_pred_ids = torch.softmax(input=lm_logits, dim=-1).max(1)[1]
-        lm_accuracy = ((lm_logits_pred_ids == masked_for_pred).sum().float()/len(masked_for_pred)).item()
-        
-        if print_:
-            print("Predicted masked tokens: \n")
-            print(tokenizer.decode(lm_logits_pred_ids.cpu().numpy() if lm_logits_pred_ids.is_cuda else \
-                                lm_logits_pred_ids.numpy()))
-            print("\n Masked labels tokens: \n")
-            print(tokenizer.decode(masked_for_pred.cpu().numpy() if masked_for_pred.is_cuda else \
-                                masked_for_pred.numpy()))
-  
-        return lm_accuracy
-
-class Pad_Sequence():
-    """
-        collate_fn for dataloader to collate sequences of different lengths into a fixed length batch
-        Returns padded x sequence, y sequence, x lengths and y lengths of batch
-    """
-    def __init__(self, seq_pad_value, label_pad_value=1, label2_pad_value=-1, label3_pad_value=-1, label4_pad_value=-1):
-        self.seq_pad_value = seq_pad_value
-        self.label_pad_value = label_pad_value
-        self.label2_pad_value = label2_pad_value
-        self.label3_pad_value = label3_pad_value
-        self.label4_pad_value = label4_pad_value
-        
-    def __call__(self, batch):
-        sorted_batch = sorted(batch, key=lambda x: x[0].shape[0], reverse=True)
-        seqs = [x[0] for x in sorted_batch]
-        seqs_padded = pad_sequence(seqs, batch_first=True, padding_value=self.seq_pad_value)
-        x_lengths = torch.LongTensor([len(x) for x in seqs])
-        
-        labels = list(map(lambda x: x[1], sorted_batch))
-        labels_padded = pad_sequence(labels, batch_first=True, padding_value=self.label_pad_value)
-        y_lengths = torch.LongTensor([len(x) for x in labels])
-        
-        labels2 = list(map(lambda x: x[2], sorted_batch))
-        labels2_padded = pad_sequence(labels2, batch_first=True, padding_value=self.label2_pad_value)
-        y2_lengths = torch.LongTensor([len(x) for x in labels2])
-        
-        labels3 = list(map(lambda x: x[3], sorted_batch))
-        labels3_padded = pad_sequence(labels3, batch_first=True, padding_value=self.label3_pad_value)
-        y3_lengths = torch.LongTensor([len(x) for x in labels3])
-        
-        labels4 = list(map(lambda x: x[4], sorted_batch))
-        labels4_padded = pad_sequence(labels4, batch_first=True, padding_value=self.label4_pad_value)
-        y4_lengths = torch.LongTensor([len(x) for x in labels4])
-
-        return seqs_padded, labels_padded, labels2_padded, labels3_padded, labels4_padded, \
-               x_lengths, y_lengths, y2_lengths, y3_lengths, y4_lengths
