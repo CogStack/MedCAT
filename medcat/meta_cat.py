@@ -6,8 +6,8 @@ import torch
 from multiprocessing import Lock
 from spacy.tokens import Doc
 from typing import Iterable, Generator
-from build.lib.medcat.cli.modeltagdata import ModelTagData
-from build.lib.medcat.cli.system_utils import load_file_from_model_storage
+from medcat.cli.modeltagdata import ModelTagData
+from medcat.cli.system_utils import load_file_from_model_storage
 from medcat.cli.modelstats import MetaCATStats
 from medcat.cli.system_utils import get_downloaded_local_model_folder
 from medcat.config_meta_cat import ConfigMetaCAT
