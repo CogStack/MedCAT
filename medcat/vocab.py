@@ -1,9 +1,8 @@
 import numpy as np
 import pickle
+from typing import Optional, List, Dict
 import os
 from medcat.cli import ModelTagData, system_utils
-
-
 
 class Vocab(object):
     r''' Vocabulary used to store word embeddings for context similarity
@@ -20,26 +19,25 @@ class Vocab(object):
         unigram_table (dict):
             Negative sampling.
     '''
-    def __init__(self):
-        self.vocab = {}
-        self.index2word = {}
-        self.vec_index2word = {}
-        self.unigram_table = []
+    def __init__(self) -> None:
+        self.vocab: Dict = {}
+        self.index2word: Dict = {}
+        self.vec_index2word: Dict = {}
+        self.unigram_table: np.ndarray = np.array([])
 
         # Model Version Control variables
         self.vc_model_tag_data = ModelTagData()
 
-
-    def inc_or_add(self, word, cnt=1, vec=None):
+    def inc_or_add(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None):
         r''' Add a word or incrase its count.
 
         Args:
             word (str):
                 Word to be added
-            cnt (str):
+            cnt (int):
                 By how much should the count be increased, or to wha
                 should it be set if a new word.
-            vec (np.array):
+            vec (numpy.ndarray):
                 Word vector
         '''
         if word not in self.vocab:
@@ -47,8 +45,7 @@ class Vocab(object):
         else:
             self.inc_wc(word, cnt)
 
-
-    def remove_all_vectors(self):
+    def remove_all_vectors(self) -> None:
         r''' Remove all stored vector representations
         '''
         self.vec_index2word = {}
@@ -56,8 +53,7 @@ class Vocab(object):
         for word in self.vocab:
             self.vocab[word]['vec'] = None
 
-
-    def remove_words_below_cnt(self, cnt):
+    def remove_words_below_cnt(self, cnt: int) -> None:
         r''' Remove all words with frequency below cnt.
 
         Args:
@@ -81,26 +77,24 @@ class Vocab(object):
             if self.vocab[word]['vec'] is not None:
                 self.vec_index2word[ind] = word
 
-
-    def inc_wc(self, word, cnt=1):
+    def inc_wc(self, word: str, cnt: int = 1):
         r''' Incraese word count by cnt.
 
         Args:
             word (str):
                 For which word to increase the count
-            cnt:
+            cnt (int):
                 By how muhc to incrase the count
         '''
         self.item(word)['cnt'] += cnt
 
-
-    def add_vec(self, word, vec):
+    def add_vec(self, word: str, vec: np.ndarray) -> None:
         r''' Add vector to a word.
 
         Args:
             word (str):
                 To which word to add the vector.
-            vec (np.array):
+            vec (numpy.ndarray):
                 The vector to add.
         '''
         self.vocab[word]['vec'] = vec
@@ -109,8 +103,7 @@ class Vocab(object):
         if ind not in self.vec_index2word:
             self.vec_index2word[ind] = word
 
-
-    def reset_counts(self, cnt=1):
+    def reset_counts(self, cnt: int = 1) -> None:
         r''' Reset the count for all word to cnt.
 
         Args:
@@ -120,7 +113,7 @@ class Vocab(object):
         for word in self.vocab.keys():
             self.vocab[word]['cnt'] = cnt
 
-    def update_counts(self, tokens):
+    def update_counts(self, tokens: List[str]) -> None:
         r''' Given a list of tokens update counts for words in the vocab.
 
         Args:
@@ -131,8 +124,7 @@ class Vocab(object):
             if token in self:
                 self.inc_wc(token, 1)
 
-
-    def add_word(self, word, cnt=1, vec=None, replace=True):
+    def add_word(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None, replace: bool = True) -> None:
         """Add a word to the vocabulary
 
         Args:
@@ -140,7 +132,7 @@ class Vocab(object):
                 the word to be added, it should be lemmatized and lowercased
             cnt (int):
                 count of this word in your dataset
-            vec (np.array):
+            vec (numpy.ndarray):
                 the vector representation of the word
             replace (bool):
                 will replace old vector representation
@@ -162,8 +154,7 @@ class Vocab(object):
             if ind not in self.vec_index2word:
                 self.vec_index2word[ind] = word
 
-
-    def add_words(self, path, replace=True):
+    def add_words(self, path: str, replace: bool = True) -> None:
         """Adds words to the vocab from a file, the file
         is required to have the following format (vec being optional):
             <word>\t<cnt>[\t<vec_space_separated>]
@@ -188,13 +179,12 @@ class Vocab(object):
 
                 self.add_word(word, cnt, vec, replace)
 
-
-    def make_unigram_table(self, table_size=100000000):
+    def make_unigram_table(self, table_size: int = 100000000) -> None:
         r''' Make unigram table for negative sampling, look at the paper if interested
         in details.
         '''
         freqs = []
-        self.unigram_table = []
+        unigram_table = []
 
         words = list(self.vec_index2word.values())
         for word in words:
@@ -208,12 +198,11 @@ class Vocab(object):
             word = self.vec_index2word[ind]
             f_ind = words.index(word)
             p = freqs[f_ind] / sm
-            self.unigram_table.extend([ind] * int(p * table_size))
+            unigram_table.extend([ind] * int(p * table_size))
 
-        self.unigram_table = np.array(self.unigram_table)
+        self.unigram_table = np.array(unigram_table)
 
-
-    def get_negative_samples(self, n=6, ignore_punct_and_num=False):
+    def get_negative_samples(self, n: int = 6, ignore_punct_and_num: bool = False) -> List[int]:
         r''' Get N negative samples.
 
         Args:
@@ -236,37 +225,25 @@ class Vocab(object):
 
         return inds
 
-
-    def __getitem__(self, word):
+    def __getitem__(self, word: str) -> int:
         return self.count(word)
 
-
-    def vec(self, word):
+    def vec(self, word: str) -> np.ndarray:
         return self.vocab[word]['vec']
 
-
-    def count(self, word):
+    def count(self, word: str) -> int:
         return self.vocab[word]['cnt']
 
-
-    def item(self, word):
+    def item(self, word: str) -> Dict:
         return self.vocab[word]
 
-
-    def __contains__(self, word):
+    def __contains__(self, word: str) -> bool:
         if word in self.vocab:
             return True
 
         return False
 
-    def save(self, path : str, vc_model_tag_data: ModelTagData = None):
-        r''' 
-        Args:
-            path (`str`):
-                Path to a file where the model will be saved
-            vc_model_tag_data (`ModelTagData`):
-                Files saved are in the model folder match by the model release tag name.
-        '''
+    def save(self, path : str, vc_model_tag_data: ModelTagData = None) -> None:
         if vc_model_tag_data:
                 self.vc_model_tag_data = vc_model_tag_data
 
@@ -274,7 +251,7 @@ class Vocab(object):
             pickle.dump(self.__dict__, f)
 
     @classmethod
-    def load(cls, path : str="", full_model_tag_name : str = ""):
+    def load(cls, path : str = "", full_model_tag_name : str = "") -> "Vocab":
         
         if full_model_tag_name:
             path = os.path.join(system_utils.get_downloaded_local_model_folder(full_model_tag_name), "vocab.dat")

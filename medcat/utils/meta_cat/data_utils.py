@@ -149,28 +149,6 @@ def json_to_fake_spacy(data, id2text):
             Generator of spacy like documents that can be feed into meta_cat.pipe
     '''
 
-    class Empty(object):
-        def __init__(self):
-            pass
-
-    class Span(object):
-        def __init__(self, start_char, end_char, id):
-            self._ = Empty()
-            self.start_char = start_char
-            self.end_char = end_char
-            self._.id = id
-            self._.meta_anns = None
-
-    class Doc(object):
-        def __init__(self, text, id):
-            self._ = Empty()
-            self._.share_tokens = None
-            self.ents = []
-            # We do not have overlapps at this stage
-            self._ents = self.ents
-            self.text = text
-            self.id = id
-
     for id in data.keys():
         ents = data[id]['entities'].values()
 
@@ -178,3 +156,28 @@ def json_to_fake_spacy(data, id2text):
         doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
 
         yield doc
+
+
+class Empty(object):
+    def __init__(self):
+        pass
+
+
+class Span(object):
+    def __init__(self, start_char, end_char, id):
+        self._ = Empty()
+        self.start_char = start_char
+        self.end_char = end_char
+        self._.id = id
+        self._.meta_anns = None
+
+
+class Doc(object):
+    def __init__(self, text, id):
+        self._ = Empty()
+        self._.share_tokens = None
+        self.ents = []
+        # We do not have overlapps at this stage
+        self._ents = self.ents
+        self.text = text
+        self.id = id

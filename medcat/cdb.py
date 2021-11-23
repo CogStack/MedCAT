@@ -5,7 +5,7 @@ import dill
 import logging
 import numpy as np
 import os
-from typing import Dict, List, Set
+from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
 
 from medcat.utils.matutils import unitvec
@@ -53,26 +53,26 @@ class CDB(object):
     """
     log = logging.getLogger(__name__)
 
-    def __init__(self, config):
+    def __init__(self, config: Config) -> None:
         self.config = config
-        self.name2cuis = {}
-        self.name2cuis2status = {}
+        self.name2cuis: Dict = {}
+        self.name2cuis2status: Dict = {}
 
-        self.snames = set()
+        self.snames: Set = set()
 
-        self.cui2names = {}
-        self.cui2snames = {}
-        self.cui2context_vectors = {}
-        self.cui2count_train = {}
-        self.cui2info = {}
-        self.cui2tags = {} # Used to add custom tags to CUIs
-        self.cui2type_ids = {}
-        self.cui2preferred_name = {}
-        self.cui2average_confidence = {}
-        self.name2count_train = {}
-        self.name_isupper = {}
+        self.cui2names: Dict = {}
+        self.cui2snames: Dict = {}
+        self.cui2context_vectors: Dict = {}
+        self.cui2count_train: Dict = {}
+        self.cui2info: Dict = {}
+        self.cui2tags: Dict = {} # Used to add custom tags to CUIs
+        self.cui2type_ids: Dict = {}
+        self.cui2preferred_name: Dict = {}
+        self.cui2average_confidence: Dict = {}
+        self.name2count_train: Dict = {}
+        self.name_isupper: Dict = {}
 
-        self.addl_info = {
+        self.addl_info: Dict= {
                 'cui2icd10': {},
                 'cui2opcs4': {},
                 'cui2ontologies': {},
@@ -83,14 +83,14 @@ class CDB(object):
                 'cui2group': {},
                 # Can be extended with whatever is necessary
                 }
-        self.vocab = {} # Vocabulary of all words ever in our cdb
+        self.vocab: Dict = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
 
         # Model Version Control variables
         self.vc_model_tag_data = ModelTagData()
         self.cdb_stats = CDBStats()
 
-    def get_name(self, cui):
+    def get_name(self, cui: str) -> str:
         r''' Returns preferred name if it exists, otherwise it will return
         the logest name assigend to the concept.
 
@@ -107,11 +107,11 @@ class CDB(object):
 
         return name
 
-    def update_cui2average_confidence(self, cui, new_sim):
+    def update_cui2average_confidence(self, cui: str, new_sim: float) -> None:
         self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim) / \
                                             (self.cui2count_train.get(cui, 0) + 1)
 
-    def remove_names(self, cui: str, names: Dict):
+    def remove_names(self, cui: str, names: Dict) -> None:
         r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
@@ -146,7 +146,7 @@ class CDB(object):
                         elif self.name2cuis2status[name][_cui] == 'P':
                             self.name2cuis2status[name][_cui] = 'PD'
 
-    def add_names(self, cui: str, names: Dict, name_status: str='A', full_build: bool=False):
+    def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:
         r''' Adds a name to an existing concept.
 
         Args:
@@ -169,7 +169,14 @@ class CDB(object):
 
         self.add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
-    def add_concept(self, cui: str, names: Dict, ontologies: set, name_status: str, type_ids: Set[str], description: str, full_build: bool=False):
+    def add_concept(self,
+                    cui: str,
+                    names: Dict,
+                    ontologies: set,
+                    name_status: str,
+                    type_ids: Set[str],
+                    description: str,
+                    full_build: bool = False) -> None:
         r'''
         Add a concept to internal Concept Database (CDB). Depending on what you are 
         this will add a large number of properties for each concept.
@@ -281,7 +288,7 @@ class CDB(object):
                 else:
                     self.addl_info['type_id2cuis'][type_id] = {cui}
 
-    def add_addl_info(self, name, data, reset_existing=False):
+    def add_addl_info(self, name: str, data: Dict, reset_existing: bool = False) -> None:
         r''' Add data to the addl_info dictionary. This is done in a function to
         not directly access the addl_info dictionary.
 
@@ -298,12 +305,17 @@ class CDB(object):
 
         self.addl_info[name].update(data)
 
-    def update_context_vector(self, cui, vectors, negative=False, lr=None, cui_count=0):
+    def update_context_vector(self,
+                              cui: str,
+                              vectors: Dict[str, np.ndarray],
+                              negative: bool = False,
+                              lr: Optional[float] = None,
+                              cui_count: int = 0) -> None:
         r''' Add the vector representation of a context for this CUI.
 
         cui (`str`):
             The concept in question.
-        vectors (`Dict[str, np.array]`):
+        vectors (`Dict[str, numpy.ndarray]`):
             Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
             context_type - is usually one of: ['long', 'medium', 'short']
         negative (`bool`, defaults to `False`):
@@ -357,8 +369,8 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save(self, path : str, vc_model_tag_data: ModelTagData = None):
-        r''' Saves model to file (in fact it saves vairables of this class). 
+    def save(self, path: str, vc_model_tag_data: ModelTagData = None) -> None:
+        r''' Saves model to file (in fact it saves vairables of this class).
 
         Args:
             path (`str`):
@@ -384,7 +396,7 @@ class CDB(object):
             dill.dump(to_save, f)
 
     @classmethod
-    def load(cls, path : str="", config : Config=None, full_model_tag_name : str=""):
+    def load(cls, path : str = "", config: Optional[Config] = None, full_model_tag_name : str="") -> "CDB":
         r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
@@ -402,7 +414,7 @@ class CDB(object):
             # Again no idea
             data = dill.load(f)
             if config is None:
-                config = Config.from_dict(data['config'])
+                config = cast(Config, Config.from_dict(data['config']))
                 cls._ensure_backward_compatibility(config)
 
             # Create an instance of the CDB (empty)
@@ -422,7 +434,8 @@ class CDB(object):
                 
         return cdb
 
-    def import_old_cdb_vectors(self, cdb):
+    @no_type_check
+    def import_old_cdb_vectors(self, cdb: "CDB") -> None:
         # Import context vectors
         for cui in self.cui2names: # Loop through all CUIs in the current CDB
             if cui in cdb.cui2context_vec:
@@ -435,7 +448,8 @@ class CDB(object):
 
                 self.cui2count_train[cui] = cdb.cui_count[cui]
 
-    def import_old_cdb(self, cdb, import_vectors=True):
+    @no_type_check
+    def import_old_cdb(self, cdb: "CDB", import_vectors: bool = True) -> None:
         r''' Import all data except for cuis and names from an old CDB.
         '''
 
@@ -470,7 +484,7 @@ class CDB(object):
         # Import cui 2 ontologies
         self.addl_info['cui2ontologies'] = cdb.cui2ontos
 
-    def import_training(self, cdb, overwrite=True):
+    def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
         r''' This will import vector embeddings from another CDB. No new concepts will be added.
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 
@@ -496,7 +510,7 @@ class CDB(object):
                 # Increase the vector count
                 self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
 
-    def reset_cui_count(self, n=10):
+    def reset_cui_count(self, n: int = 10) -> None:
         r''' Reset the CUI count for all concepts that received training, used when starting new unsupervised training
         or for suppervised with annealing.
 
@@ -510,7 +524,7 @@ class CDB(object):
         for cui in self.cui2count_train.keys():
             self.cui2count_train[cui] = n
 
-    def reset_training(self):
+    def reset_training(self) -> None:
         r''' Will remove all training efforts - in other words all embeddings that are learnt
         for concepts in the current CDB. Please note that this does not remove synonyms (names) that were
         potentially added during supervised/online learning.
@@ -519,7 +533,7 @@ class CDB(object):
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
 
-    def filter_by_cui(self, cuis_to_keep):
+    def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         ''' Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
         find all CUIs that link to those names and keep all of them.
@@ -589,7 +603,7 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
 
-    def print_stats(self):
+    def print_stats(self) -> None:
         r'''Print basic statistics for the CDB.
         '''
         self.log.info("Number of concepts: {:,}".format(len(self.cui2names)))
@@ -599,12 +613,18 @@ class CDB(object):
         self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
             [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
 
-    def reset_concept_similarity(self):
+    def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
         '''
         self.addl_info['similarity'] = {}
 
-    def most_similar(self, cui, context_type, type_id_filter=[], min_cnt=0, topn=50, force_build=False):
+    def most_similar(self,
+                     cui: str,
+                     context_type: str,
+                     type_id_filter: List[str] = [],
+                     min_cnt: int = 0,
+                     topn: int = 50,
+                     force_build: bool = False) -> Dict:
         r''' Given a concept it will calculate what other concepts in this CDB have the most similar
         embedding.
 
