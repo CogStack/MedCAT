@@ -33,7 +33,7 @@ setuptools.setup(
         'dill~=0.3.4',
         'datasets~=1.14.0',
         'psutil<6.0.0,>=5.8.0',
-        'gitpython==3.1.24',
+        'gitpython==3.1.18',
         'pydrive2==1.10.0',
         'dvc>=2.7.4',
         'fire==0.4.0',
