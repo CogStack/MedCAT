@@ -43,3 +43,6 @@ tmp.py
 # models files
 *.dat
 !examples/*.dat
+
+# Test output
+tests/model_creator/output/*

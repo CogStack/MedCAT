@@ -88,6 +88,23 @@ cat.train(data_iterator)
 cat.create_model_pack(<save path>)
 ```
 
+4. Quick start with to create CDB and vocab models using local data and a config file:
+```bash
+# Run model creator with local config file
+python medcat/utils/model_creator.py <path_to_model_creator_config_file>
+
+# Run model creator with example file
+python medcat/utils/model_creator.py tests/model_creator/config_example.yml
+```
+
+| Model creator parameter | Description |
+| -------- | ----------- |
+| concept_csv_file | Path to file containing UMLS concepts, including primary names, synonyms, types and source ontology. See [examples](examples) and [tests/model_creator/umls_sample.csv](tests/model_creator/umls_sample.csv) for format description and examples. |
+| unsupervised_training_data_file | Path to file containing text dataset used for spell checking and unsupervised training.|
+| output_dir | Path to output directory for writing the CDB and vocab models. |
+| medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](configs), [medcat/config.py](medcat/config.py) and [tests/model_creator/medcat.txt](tests/model_creator/medcat.txt)| 
+| unigram_table_size | Optional parameter for setting the initialization size of the unigram table in the vocab model. Default is 100000000, while for testing with a small unsupervised training data file a much smaller size could work. | 
+
 
 ## Models
 A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`. 
