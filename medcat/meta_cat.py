@@ -221,6 +221,10 @@ class MetaCAT(PipeRunner):
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
+        if not torch.cuda.is_available() and device.type == 'cuda':
+            MetaCAT.log.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
+            config.general['device'] = 'cpu'
+            device = torch.device('cpu')
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
         return meta_cat
