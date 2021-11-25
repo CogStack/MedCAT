@@ -9,10 +9,10 @@ class NeoConnector:
             password = getpass.getpass("Password:")
         self.graph = Graph(uri, auth=(user, password))
 
-
     def execute(self, query):
         r = self.graph.run(query)
         return r
+
     def bucket_concepts(self, data, bucket_size_seconds):
         entities = data['entities']
 
@@ -78,7 +78,6 @@ class NeoConnector:
         data = self.execute(q).data() # Do not like this too much 
 
         return [n['pt']['patientId'] for n in data], q
-
 
     def get_all_concepts_from(self, patient_id=None, document_id=None,
             limit=1000, bucket_size_seconds=None, min_count=0, meta_requirements=None, require_time=True):

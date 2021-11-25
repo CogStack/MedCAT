@@ -1,12 +1,14 @@
 import os
 import pandas as pd
 
+
 def get_index_queries():
     r''' Run before everything to speed up things
     '''
     return ['CREATE INDEX patientId FOR (p:Patient) ON (p.patientId);',
             'CREATE INDEX conceptId FOR (c:Concept) ON (c.conceptId);',
             'CREATE INDEX documentId FOR (d:Document) ON (d.documentId);']
+
 
 def create_neo_csv(data, columns, output_dir='/etc/lib/neo4j/import/',
                    base_name='patients'):
