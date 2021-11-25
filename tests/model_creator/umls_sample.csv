@@ -1,0 +1,21 @@
+cui,name,ontologies,name_status,type_ids,description
+C0006826,Cancer,MTH|MSH,P,T191,Neoplastic Process
+C0006826,Malignant Neoplasms,MTH,A,T191,Neoplastic Process
+C0006826,Malignant tumour,MTH,A,T191,Neoplastic Process
+C0242379,Lung Cancer,MTH,P,T191,Neoplastic Process
+C0242379,Malignant neoplasm of lung,MTH,A,T191,Neoplastic Process
+C0242379,Cancer of Lung,MTH,A,T191,Neoplastic Process
+C0007131,Non-Small Cell Lung Carcinoma,MTH,P,T191,Neoplastic Process
+C0007131,NSCLC,MTH,A,T191,Neoplastic Process
+C0149925,Small cell carcinoma of lung,MTH,P,T191,Neoplastic Process
+C0149925,SCLC,MTH,A,T191,Neoplastic Process
+C0543467,Surgery,MTH,P,T061,Therapeutic or Preventive Procedure
+C0543467,Operative Surgical Procedures,MTH,A,T061,Therapeutic or Preventive Procedure
+C0543467,Operation,MTH,A,T061,Therapeutic or Preventive Procedure
+C1274039,Surgery,MTH,P,T091,Biomedical Occupation or Discipline
+C1522449,Radiotherapy,MTH,P,T061,Therapeutic or Preventive Procedure
+C3665472,Chemotherapy,MTH,P,T061,Therapeutic or Preventive Procedure
+C0085639,Fall,MTH,P,T033,Finding
+C0025281,Ménière's Disease,MTH,A,T047,Disease or Syndrome
+C0026045,MAP,MTH,A,T116,"Amino Acid, Peptide, or Protein"
+C0699967,Taxotere,MTH,A,T109,Organical Chemical

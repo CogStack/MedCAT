@@ -3,30 +3,26 @@ import logging
 import jsonpickle
 from functools import partial
 from multiprocessing import cpu_count
+from typing import Optional, Iterable, Tuple, Dict, Any
 
 
-def weighted_average(step, factor):
+def weighted_average(step: int, factor: float) -> float:
     return max(0.1, 1 - (step ** 2 * factor))
 
 
-def workers(workers_override=None):
+def workers(workers_override: Optional[int] = None):
     return max(cpu_count() - 1, 1) if workers_override is None else workers_override
 
 
-class BaseConfig(object):
+class ConfigMixin(object):
+
     jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
 
-
-    def __init__(self):
-        pass
-
-
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Tuple]:
         for attr, value in self.__dict__.items():
             yield attr, value
 
-
-    def save(self, save_path):
+    def save(self, save_path: str) -> None:
         r''' Save the config into a .json file
 
         Args:
@@ -39,8 +35,7 @@ class BaseConfig(object):
         with open(save_path, 'w') as f:
             f.write(json_string)
 
-
-    def merge_config(self, config_dict):
+    def merge_config(self, config_dict: Dict) -> None:
         r''' Merge a config_dict with the existing config object.
 
         Args:
@@ -53,8 +48,7 @@ class BaseConfig(object):
             else:
                 self.__dict__[key] = config_dict[key]
 
-
-    def parse_config_file(self, path):
+    def parse_config_file(self, path: str) -> None:
         r'''
         Parses a configuration file in text format. Must be like:
                 cat.<variable>.<key> = <value>
@@ -79,20 +73,17 @@ class BaseConfig(object):
 
         self.rebuild_re()
 
-
-    def rebuild_re():
+    def rebuild_re(self) -> None:
         pass
 
-
-    def __str__(self):
+    def __str__(self) -> str:
         json_obj = {}
-        for attr, value in self:
+        for attr, value in self:    # type: ignore
             json_obj[attr] = value
         return jsonpickle.encode(json_obj)
 
-
     @classmethod
-    def load(cls, save_path):
+    def load(cls, save_path: str) -> "ConfigMixin":
         r''' Load config from a json file, note that fields that
         did not exist in the old config but do exist in the current
         version of the ConfigMetaCAT class will be kept.
@@ -111,24 +102,20 @@ class BaseConfig(object):
 
         return config
 
-
     @classmethod
-    def from_dict(cls, config_dict):
+    def from_dict(cls, config_dict: Dict) -> "ConfigMixin":
         config = cls()
         config.merge_config(config_dict)
 
         return config
 
 
-class Config(BaseConfig):
+class Config(ConfigMixin):
 
-    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
-
-    def __init__(self):
-        super().__init__()
+    def __init__(self) -> None:
 
         # CDB Maker
-        self.cdb_maker = {
+        self.cdb_maker: Dict[str, Any] = {
                 # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
                 # by the character below.
                 'multi_separator': '|',
@@ -143,7 +130,7 @@ class Config(BaseConfig):
 
         # Used mainly to configure the output of the get_entities function, and in that also the output of
         #get_json and multiprocessing
-        self.annotation_output = {
+        self.annotation_output: Dict[str, Any] = {
                 'doc_extended_info': False,
                 'context_left': -1,
                 'context_right': -1,
@@ -151,7 +138,7 @@ class Config(BaseConfig):
                 'include_text_in_output': False,
                 }
 
-        self.general = {
+        self.general: Dict[str, Any] = {
                 # What was used to build the CDB, e.g. SNOMED_202009
                 'cdb_source_name': '',
                 # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
@@ -191,7 +178,7 @@ class Config(BaseConfig):
                 'map_cui_to_group': False,
                 }
 
-        self.preprocessing = {
+        self.preprocessing: Dict[str, Any] = {
                 # Should stopwords be skipped/ingored when processing input
                 'skip_stopwords': False,
                 # This words will be completly ignored from concepts and from the text (must be a Set)
@@ -208,7 +195,7 @@ class Config(BaseConfig):
                 'do_not_normalize': {'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'},
                 }
 
-        self.ner = {
+        self.ner: Dict[str, Any] = {
                 # Do not detect names below this limit, skip them
                 'min_name_len': 3,
                 # When checkng tokens for concepts you can have skipped tokens inbetween
@@ -223,7 +210,7 @@ class Config(BaseConfig):
                 'try_reverse_word_order': False,
                 }
 
-        self.linking = {
+        self.linking: Dict[str, Any] = {
                 # Should it train or not, this is set automatically ignore in 99% of cases and do not set manually
                 'train': True,
                 # Linear anneal
@@ -279,8 +266,7 @@ class Config(BaseConfig):
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
 
-
-    def rebuild_re(self):
+    def rebuild_re(self) -> None:
         # Some regex that we will need
         self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
         # Very agressive punct checker, input will be lowercased
