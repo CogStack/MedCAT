@@ -84,7 +84,7 @@ class CAT(object):
                  config: Optional[Config] = None,
                  vocab: Optional[Vocab] = None,
                  meta_cats: List[MetaCAT] = [],
-                 trainer_data: Dict = None) -> None:
+                 trainer_data: Optional[Dict] = None) -> None:
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
