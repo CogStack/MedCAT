@@ -10,7 +10,6 @@ from spacy.tokens import Doc
 from medcat.cli.modeltagdata import ModelTagData
 from medcat.cli.system_utils import load_file_from_model_storage
 from medcat.cli.modelstats import MetaCATStats
-from medcat.cli.system_utils import get_downloaded_local_model_folder
 from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
@@ -233,7 +232,12 @@ class MetaCAT(PipeRunner):
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
-        
+
+        if not torch.cuda.is_available() and device.type == 'cuda':
+            MetaCAT.log.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
+            config.general['device'] = 'cpu'
+            device = torch.device('cpu')
+
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
     
         meta_stats = load_file_from_model_storage(model_folder_path=save_dir_path, file_name="meta_stats.json", bypass_model_path=True)

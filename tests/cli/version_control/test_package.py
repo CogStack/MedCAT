@@ -144,7 +144,7 @@ class PackageTests(unittest.TestCase):
     
         os.chdir(self.unit_testing_model_path_download_location)
     
-        cat = CAT.load(vocab_input_file_name = "vocab.dat", cdb_input_file_name = "cdb.dat", trainer_data_file_name = "MedCAT_Export.json")
+        cat = CAT.load(path="", vocab_input_file_name = "vocab.dat", cdb_input_file_name = "cdb.dat", trainer_data_file_name = "MedCAT_Export.json")
         
         os.chdir(self.unit_testing_model_path_origin)
 
@@ -173,10 +173,10 @@ class PackageTests(unittest.TestCase):
             
         os.chdir(new_release_tmp_path)
 
-        cat = CAT.load(full_model_tag_name=self.tmp_full_model_tag_name)
+        cat = CAT.load(path="", full_model_tag_name=self.tmp_full_model_tag_name)
         text = ["My patient has kidney failure, bowel cancer and heart failure",
-                "She was evaluated by an ophthalmologist and diagnosed with conjunctivitis.\
-                 She was given eye drops that did not relieve her eye symptoms."]
+                "patient was evaluated by an ophthalmologist and diagnosed with conjunctivitis.\
+                 patient was given eye drops that did not relieve her eye symptoms."]
                 
         cat.train = True
 
@@ -202,13 +202,13 @@ class PackageTests(unittest.TestCase):
     @ordered
     def test_x_package_model_specialist(self):
 
-        new_release_tmp_path =  os.path.join(get_local_model_storage_path(), "_unit_test_new_release_tmp_")
+        new_release_tmp_path = os.path.join(get_local_model_storage_path(), "_unit_test_new_release_tmp_")
 
         if not os.path.exists(new_release_tmp_path):
             os.mkdir(new_release_tmp_path)
         os.chdir(new_release_tmp_path)
 
-        cat = CAT.load(full_model_tag_name=self.tmp_full_model_tag_name)
+        cat = CAT.load(path="", full_model_tag_name=self.tmp_full_model_tag_name)
 
         text = ["My patient has pancreatitis, and liver disease.", "Patient has nausea, symptoms appeared, vomiting.",
                 "Patient has coronavirus, symptoms appeared 2 weeks ago."]
@@ -216,7 +216,6 @@ class PackageTests(unittest.TestCase):
 
         for sentence in text:
             doc_spacy = cat(sentence, do_train=True)
-
         cat.save()
 
         with unittest.mock.patch('builtins.input', side_effect=["No", "Yes", self.unit_test_specialist_model_name, "y"]):
@@ -234,10 +233,10 @@ class PackageTests(unittest.TestCase):
  
         os.chdir(new_release_tmp_path)
  
-        cat = CAT.load(full_model_tag_name=self.unit_test_specialist_model_tag_name)
+        cat = CAT.load(path="", full_model_tag_name=self.unit_test_specialist_model_tag_name)
  
         text = ["My patient has Tuberculosis",
-                "She was evaluated by an Tuberculosis, ulcer and gastroentritis + ToF."]
+                "Tuberculosis, ulcer and gastroentritis + ToF."]
         cat.train = True
    
         for sentence in text:
