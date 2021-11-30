@@ -47,7 +47,7 @@ class BertEmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths: List[str], tokenizer: BertTokenizer) -> None: # type: ignore
+    def __init__(self, csv_paths: List[str], tokenizer: BertTokenizer) -> None: # type: ignore # noqa
         # Why pytorch-pretrained-bert is not among the dependencies?
         # Looks like it needs to be migrated to transformers
         from pytorch_pretrained_bert import BertTokenizer
@@ -76,7 +76,7 @@ class BaseEmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths: List[str], tokenizer: 'BertTokenizer') -> None:   # type: ignore
+    def __init__(self, csv_paths: List[str], tokenizer: BertTokenizer) -> None:   # type: ignore # noqa
         # Why pytorch-pretrained-bert is not among the dependencies?
         # Looks like it needs to be migrated to transformers
         from pytorch_pretrained_bert import BertTokenizer
