@@ -1,7 +1,6 @@
 import pandas
 import re
 from typing import List, Optional, Dict, Iterable, Any, Tuple
-from pytorch_pretrained_bert import BertTokenizer
 
 NUM = "NUMNUM"
 
@@ -49,6 +48,10 @@ class BertEmbMimicCSV(object):
     csv_paths:  paths to csv files containing the mimic data
     """
     def __init__(self, csv_paths: List[str], tokenizer: BertTokenizer) -> None:
+        # Why pytorch-pretrained-bert is not among the dependencies?
+        # Looks like it needs to be migrated to transformers
+        from pytorch_pretrained_bert import BertTokenizer
+
         self.csv_paths = csv_paths
         self.tokenizer = tokenizer
         self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
