@@ -1,0 +1,5 @@
+cat.general.spacy_model = 'en_core_web_md'
+cat.preprocessing.do_not_normalize = {}
+cat.general.diacritics = True
+cat.general.spell_check_deep = False
+cat.ner.check_upper_case_names = True
