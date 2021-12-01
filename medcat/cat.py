@@ -13,6 +13,7 @@ from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
+from itertools import islice
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
@@ -458,7 +459,14 @@ class CAT(object):
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
-    def train(self, data_iterator: Iterable, fine_tune: bool = True, progress_print: int = 1000) -> None:
+    def train(self,
+              data_iterator: Iterable,
+              fine_tune: bool = True,
+              progress_print: int = 1000,
+              checkpoint_dir_path: str = os.path.join(os.path.abspath(os.getcwd()), "checkpoints"),
+              checkpoint_size: int = 1,
+              iterator_start: int = 0,
+              resumed: bool = False) -> None:
         """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
@@ -469,13 +477,23 @@ class CAT(object):
             If False old training will be removed
         progress_print:
             Print progress after N lines
+        checkpoint_dir_path: TODO
+        checkpoint_size: TODO
+        iterator_start: TODO
+        resumed: TODO
         """
         if not fine_tune:
             self.log.info("Removing old training data!")
             self.cdb.reset_training()
 
-        cnt = 0
-        for line in data_iterator:
+        os.makedirs(checkpoint_dir_path, exist_ok=True)
+        if not resumed:
+            shutil.rmtree(checkpoint_dir_path)
+            os.makedirs(checkpoint_dir_path)
+
+        cnt = iterator_start
+        # import pdb; pdb.set_trace()
+        for line in islice(data_iterator, iterator_start, None):
             if line is not None and line:
                 # Convert to string
                 line = str(line).strip()
@@ -488,8 +506,43 @@ class CAT(object):
                 if cnt % progress_print == 0:
                     self.log.info("DONE: %s", str(cnt))
                 cnt += 1
+                if cnt % checkpoint_size == 0:
+                    checkpoint_file_path = os.path.join(os.path.abspath(checkpoint_dir_path), 'checkpoint-%s-%s' % (checkpoint_size, cnt))
+                    self.cdb.save(checkpoint_file_path)
+                    self.log.info("Checkpoint saved: %s", checkpoint_file_path)
+
+        if cnt % checkpoint_size != 0:
+            checkpoint_file_path = os.path.join(os.path.abspath(checkpoint_dir_path), 'checkpoint-%s-%s' % (checkpoint_size, cnt))
+            self.cdb.save(checkpoint_file_path)
+            self.log.info("Checkpoint saved: %s", checkpoint_file_path)
 
         self.config.linking['train'] = False
+
+    def resume_training(self,
+                        data_iterator: Iterable,
+                        progress_print: int = 1000,
+                        checkpoint_dir_path: str = os.path.join(os.path.abspath(os.getcwd()), "checkpoints")) -> None:
+        if not os.path.isdir(checkpoint_dir_path):
+            raise ValueError("Checkpoints not found. You need to train from scratch.")
+
+        checkpoint_file_paths = [os.path.abspath(os.path.join(checkpoint_dir_path, f)) for f in os.listdir(checkpoint_dir_path)]
+        checkpoint_file_paths = [f for f in checkpoint_file_paths if os.path.isfile(f) and "checkpoint-" in f]
+        checkpoint_file_paths.sort(key=lambda f: os.path.getmtime(f))
+        if not checkpoint_file_paths:
+            raise ValueError("Checkpoints not found. You need to train from scratch.")
+
+        latest_checkpoint = checkpoint_file_paths[-1]
+        self.cdb.load(latest_checkpoint)
+        file_name_parts = os.path.basename(latest_checkpoint).split('-')
+        checkpoint_size = int(file_name_parts[1])
+        start = int(file_name_parts[2])
+        self.train(data_iterator=data_iterator,
+                   fine_tune=True,
+                   progress_print=progress_print,
+                   checkpoint_dir_path=checkpoint_dir_path,
+                   checkpoint_size=checkpoint_size,
+                   iterator_start=start,
+                   resumed=True)
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
         r'''

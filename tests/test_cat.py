@@ -100,9 +100,24 @@ class CATTests(unittest.TestCase):
         self.assertEqual({'entities': [], 'tokens': []}, out[3])
 
     def test_train(self):
+        checkpoint_dir_path = tempfile.TemporaryDirectory().name
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house", "The house is not a dog"])
+        self.undertest.train(["The dog is not a house", "The house is not a dog"] * 10,
+                             checkpoint_dir_path=checkpoint_dir_path, checkpoint_size=2)
         self.undertest.cdb.print_stats()
+        checkpoints = [f for f in os.listdir(checkpoint_dir_path) if "checkpoint-" in f]
+        self.assertEqual(10, len(checkpoints))
+
+    def test_resume_training(self):
+        checkpoint_dir_path = tempfile.TemporaryDirectory().name
+        self.undertest.cdb.print_stats()
+        self.undertest.train(["The dog is not a house", "The house is not a dog"] * 10,
+                             checkpoint_dir_path=checkpoint_dir_path, checkpoint_size=3)
+        self.undertest.cdb.print_stats()
+        self.undertest.resume_training(["The dog is not a house", "The house is not a dog"] * 20,
+                                       checkpoint_dir_path=checkpoint_dir_path)
+        checkpoints = [f for f in os.listdir(checkpoint_dir_path) if "checkpoint-" in f]
+        self.assertEqual(15, len(checkpoints))
 
     def test_get_entities(self):
         text = "The dog is sitting outside the house."
