@@ -160,8 +160,8 @@ class CATTests(unittest.TestCase):
         self.undertest.cdb.print_stats()
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual(2, len(checkpoints))
-        self.assertEqual("checkpoint-%s-18" % ckpt_steps, checkpoints[0])
-        self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[1])
+        self.assertTrue("checkpoint-%s-18" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-20" % ckpt_steps in checkpoints)
 
     def test_get_entities(self):
         text = "The dog is sitting outside the house."
