@@ -576,7 +576,8 @@ class CAT(object):
         '''
 
         names = prepare_name(name, self, {}, self.config)
-        if do_add_concept:
+        # Only if not negative, otherwise do not add the new name if in fact it should not be detected
+        if do_add_concept and not negative:
             self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
 
