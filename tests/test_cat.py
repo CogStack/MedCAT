@@ -1,4 +1,5 @@
 import os
+import sys
 import unittest
 import tempfile
 from medcat.vocab import Vocab
@@ -100,24 +101,67 @@ class CATTests(unittest.TestCase):
         self.assertEqual({'entities': [], 'tokens': []}, out[3])
 
     def test_train(self):
-        checkpoint_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_steps = 2
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house", "The house is not a dog"] * 10,
-                             checkpoint_dir_path=checkpoint_dir_path, checkpoint_size=2)
+        self.undertest.train(["The dog is not a house"] * 20,
+                             ckpt_dir_path=ckpt_dir_path,
+                             ckpt_steps=ckpt_steps)
         self.undertest.cdb.print_stats()
-        checkpoints = [f for f in os.listdir(checkpoint_dir_path) if "checkpoint-" in f]
-        self.assertEqual(10, len(checkpoints))
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
+        self.assertEqual(1, len(checkpoints))
+        self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[0])
 
     def test_resume_training(self):
-        checkpoint_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_steps = 3
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house", "The house is not a dog"] * 10,
-                             checkpoint_dir_path=checkpoint_dir_path, checkpoint_size=3)
+        self.undertest.train(["The dog is not a house"] * 20,
+                             ckpt_dir_path=ckpt_dir_path,
+                             ckpt_steps=ckpt_steps,
+                             ckpt_max_to_keep=sys.maxsize)
         self.undertest.cdb.print_stats()
-        self.undertest.resume_training(["The dog is not a house", "The house is not a dog"] * 20,
-                                       checkpoint_dir_path=checkpoint_dir_path)
-        checkpoints = [f for f in os.listdir(checkpoint_dir_path) if "checkpoint-" in f]
+        self.undertest.resume_training(["The dog is not a house"] * 40,
+                                       ckpt_dir_path=ckpt_dir_path,
+                                       ckpt_max_to_keep=sys.maxsize)
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual(15, len(checkpoints))
+        self.assertTrue("checkpoint-%s-3" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-6" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-9" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-12" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-15" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-18" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-21" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-24" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-27" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-30" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-33" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-36" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-39" % ckpt_steps in checkpoints)
+        self.assertTrue("checkpoint-%s-40" % ckpt_steps in checkpoints)
+
+    def test_resume_training_on_absent_checkpoints(self):
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        with self.assertRaises(ValueError) as e:
+            self.undertest.resume_training(["The dog is not a house"] * 40,
+                                           ckpt_dir_path=ckpt_dir_path,
+                                           ckpt_max_to_keep=sys.maxsize)
+        self.assertEqual("Checkpoints not found. You need to train from scratch.", str(e.exception))
+
+    def test_train_keep_n_checkpoints(self):
+        ckpt_steps = 2
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        self.undertest.cdb.print_stats()
+        self.undertest.train(["The dog is not a house"] * 20,
+                             ckpt_dir_path=ckpt_dir_path,
+                             ckpt_steps=ckpt_steps,
+                             ckpt_max_to_keep=2)
+        self.undertest.cdb.print_stats()
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
+        self.assertEqual(2, len(checkpoints))
+        self.assertEqual("checkpoint-%s-18" % ckpt_steps, checkpoints[0])
+        self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[1])
 
     def test_get_entities(self):
         text = "The dog is sitting outside the house."
