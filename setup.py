@@ -19,7 +19,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
-              'medcat.cli', 'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo'],
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.cli'],
     install_requires=[
         'numpy<1.21.0,>=1.19.0',
         'pandas<=1.3.4,>=1.1.5',
@@ -33,6 +33,7 @@ setuptools.setup(
         'elasticsearch>=7.10',
         'dill~=0.3.4',
         'datasets~=1.14.0',
+        'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
         'multiprocess', # seems to work better than standard mp
         'py2neo==2021.2.3',
@@ -42,7 +43,6 @@ setuptools.setup(
         'fire==0.4.0',
         'wexpect>=4.0.0' if os.name == "nt" else "",
         'pexpect>=4.8.0',
-        'jsonpickle==2.0.0',
         'plac>=1.3.3',
         'pywin32>=301' if os.name == "nt" else "",
         'pypiwin32>=223' if os.name == "nt" else ""
