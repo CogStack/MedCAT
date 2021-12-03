@@ -5,16 +5,17 @@ import sys
 import subprocess
 import logging
 
-from .system_utils import *
-from .config import *
+from medcat.cli.config import get_auth_environment_vars, get_git_api_request_url, get_git_default_headers, get_git_download_headers
+from medcat.cli.system_utils import force_delete_path, get_local_model_storage_path, is_dir_git_repository, prompt_statement
+
 
 def get_matching_version(full_model_tag_name):
 
     request_url = get_git_api_request_url() + 'releases/tags/' + full_model_tag_name
     response = requests.get(request_url, headers=get_git_default_headers())
 
-    result = {'request_success': False, 'credentials_correct': True ,'response_message': '', 'tag_asset_id': ''}
-   
+    result = {'request_success': False, 'credentials_correct': True,'response_message': '', 'tag_asset_id': ''}
+
     if response.status_code == 200:
         result['request_success'] = True
         for asset in response.json()['assets']:
@@ -29,6 +30,7 @@ def get_matching_version(full_model_tag_name):
 
     return result
 
+
 def download_asset(full_model_tag_name, asset_id):
 
     downloaded_tag_bundle_file = requests.get(get_git_api_request_url() + "releases/assets/" + asset_id, headers=get_git_download_headers())
@@ -39,14 +41,15 @@ def download_asset(full_model_tag_name, asset_id):
         if model_asset_file_and_folder_location != "":
             model_asset_file = os.path.join(model_asset_file_and_folder_location, full_model_tag_name) + get_asset_file_extension()
             with open(model_asset_file, 'wb') as f:
-               f.write(downloaded_tag_bundle_file.content)
-               print("Downloaded model package file to : ", model_asset_file)
+                f.write(downloaded_tag_bundle_file.content)
+                print("Downloaded model package file to : ", model_asset_file)
 
             return True
     else:
         logging.error("Could not download model package file : " + str(downloaded_tag_bundle_file.status_code) + ", " + downloaded_tag_bundle_file.text)
 
     return False
+
 
 def get_all_available_model_tags():
     list_tags_req = requests.get(url=get_git_api_request_url() + "tags", headers=get_git_default_headers())
@@ -59,6 +62,7 @@ def get_all_available_model_tags():
         logging.error("Failed to fetch list of all releases available: " + str(list_tags_req.status_code) + " " + list_tags_req.text)
 
     return model_tag_names
+
 
 def unpack_asset(full_model_tag_name, git_repo_url, remote_name="origin", branch="master"):
     try:
@@ -73,7 +77,7 @@ def unpack_asset(full_model_tag_name, git_repo_url, remote_name="origin", branch
                     force_delete_path(model_asset_dir_location)
                 else:
                     sys.exit()  
-                    
+
             subprocess.run(["git", "clone", model_asset_bundle_file], cwd=model_storage_path)  
 
             if is_dir_git_repository(model_asset_dir_location):
@@ -84,9 +88,10 @@ def unpack_asset(full_model_tag_name, git_repo_url, remote_name="origin", branch
                 os.remove(model_asset_bundle_file)
 
             subprocess.run([sys.executable, "-m", "dvc", "pull"], cwd=model_asset_dir_location)
-            
+
     except Exception as exception:
         logging.error("Error unpacking model file asset : " + repr(exception))
+
 
 def download(full_model_tag_name):
 
@@ -99,19 +104,19 @@ def download(full_model_tag_name):
     if result["request_success"]:
         print("Found release ", full_model_tag_name, ". Downloading...")
         if result["tag_asset_id"]:
-          download_asset(full_model_tag_name, asset_id=result["tag_asset_id"])
-          unpack_asset(full_model_tag_name, git_repo_url)
+            download_asset(full_model_tag_name, asset_id=result["tag_asset_id"])
+            unpack_asset(full_model_tag_name, git_repo_url)
         else:
             print("Release tag " + full_model_tag_name + " asset id not found, please retry...")
     else:
         available_model_release_tag_names = get_all_available_model_tags()
-       
+
         if available_model_release_tag_names:
             matching_tag_names = []
             for tag_name in available_model_release_tag_names:
                 if full_model_tag_name in tag_name:
                     matching_tag_names.append(tag_name)
-        
+
             if matching_tag_names:
                 print("Found the following tags with a similar name:")
                 print(matching_tag_names)
@@ -140,8 +145,10 @@ def download(full_model_tag_name):
             sys.exit()
     return True
 
+
 def get_asset_file_extension():
     return ".bundle"
-                
+
+
 if __name__ == '__main__':
-  fire.Fire(download)
+    fire.Fire(download)

@@ -5,7 +5,7 @@ import git
 import os
 import sys
 import dill
-import pickle
+import pickle # noqa
 import logging
 import traceback
 import re
@@ -19,7 +19,8 @@ from medcat.cli.modeltagdata import ModelTagData
 from medcat.cli.modelstats import TrainerStats
 
 if os.name == "nt":
-    import win32api, win32con
+    import win32api
+    import win32con
 
 
 def load_file_from_model_storage(full_model_tag_name="", file_name="", model_folder_path=".", bypass_model_path=False, ignore_non_model_files=False):
@@ -53,23 +54,23 @@ def load_file_from_model_storage(full_model_tag_name="", file_name="", model_fol
         full_file_path = os.path.join(model_folder_path, file_name)
 
     data = False
-    
+
     if os.path.exists(full_file_path):
         if type(full_file_path) is str and ".json" in full_file_path:
             with open(full_file_path, "r") as f:
-                    data = json.load(f)
-            if  "MedCAT_Export.json" in full_file_path:
-                    if "trainer_stats" not in data.keys():
-                        data["trainer_stats"] = asdict(TrainerStats())
-                    
-                    if "vc_model_tag_data" not in data.keys():
-                        data["vc_model_tag_data"] = asdict(ModelTagData())
+                data = json.load(f)
+            if "MedCAT_Export.json" in full_file_path:
+                if "trainer_stats" not in data.keys():
+                    data["trainer_stats"] = asdict(TrainerStats())
+
+                if "vc_model_tag_data" not in data.keys():
+                    data["vc_model_tag_data"] = asdict(ModelTagData())
 
         elif full_file_path:
             if get_model_binary_file_extension() in full_file_path:
                 from medcat.cdb import CDB
                 from medcat.vocab import Vocab
-                    
+
                 try:
                     if "cdb" in full_file_path.lower():
                         data = CDB.load(full_file_path)
@@ -77,11 +78,11 @@ def load_file_from_model_storage(full_model_tag_name="", file_name="", model_fol
                         data = Vocab.load(full_file_path)
 
                 except Exception as exception:
-                        logging.error("could not add vc_model_tag_data attribute to model data file")
-                        logging.error(repr(exception))
-                        logging.error(traceback.format_exc())
-                        return False         
-                        
+                    logging.error("could not add vc_model_tag_data attribute to model data file")
+                    logging.error(repr(exception))
+                    logging.error(traceback.format_exc())
+                    return False         
+
             elif ignore_non_model_files:
                 pass
             elif ".npy" in full_file_path:
@@ -90,6 +91,7 @@ def load_file_from_model_storage(full_model_tag_name="", file_name="", model_fol
                 with open(full_file_path, "rb") as f:
                     data = dill.load(f)
     return data
+
 
 def get_tag_str_model_name_and_version(full_model_tag_name: str, delimiter: str = '-'):
     """
@@ -106,16 +108,17 @@ def get_tag_str_model_name_and_version(full_model_tag_name: str, delimiter: str 
         version = split_name_and_version[-1]
     return model_name, version
 
+
 def prompt_statement(prompt_text, default_answer="yes"):
     valid_answers = {"yes": True, "no": False, "y": True, "n": False}
     exit_answer = ["exit", "cancel", "abort"]
-    
+
     while True:
         print(prompt_text)
         print(" \t (Yes/No or Y/N), type exit/cancel/abort, or press CTRL+C to ABORT, all choices are case insensitive!")
 
         choice = input().lower()
- 
+
         if choice in valid_answers.keys():
             return valid_answers[choice]
         else:
@@ -123,16 +126,18 @@ def prompt_statement(prompt_text, default_answer="yes"):
             if choice in exit_answer:
                 sys.exit()
 
+
 def create_model_folder(full_model_tag_name: str):
     try:
         model_dir_path = os.path.join(get_local_model_storage_path(), full_model_tag_name)
         if not os.path.isdir(model_dir_path):
             os.makedirs(model_dir_path)
         return True
-        
+
     except Exception as exception:
         logging.info("Could not create model folder " + full_model_tag_name + ".")
         logging.info(repr(exception))
+
 
 def get_downloaded_local_model_folder(full_model_tag_name: str):
     r'''
@@ -147,7 +152,7 @@ def get_downloaded_local_model_folder(full_model_tag_name: str):
     '''
     try:
         full_model_path = os.path.join(get_local_model_storage_path(), full_model_tag_name)
-        
+
         if os.path.exists(full_model_path) and os.path.isdir(full_model_path):
             if is_dir_git_repository(full_model_path):
                 return full_model_path
@@ -159,8 +164,9 @@ def get_downloaded_local_model_folder(full_model_tag_name: str):
         logging.error(repr(exception))
         return False
 
+
 def get_local_model_storage_path(storage_path=os.path.join(os.path.expanduser("~"), ".cache", "medcat"), models_dir="models"):
-    
+
     medcat_model_installation_dir_path = os.path.join(storage_path, models_dir)
 
     try:
@@ -177,7 +183,8 @@ def get_local_model_storage_path(storage_path=os.path.join(os.path.expanduser("~
         return medcat_model_installation_dir_path
 
     return ""
-    
+
+
 def copy_model_files_to_folder(source_folder, dest_folder):
 
     for dirs, subdirs, files in os.walk(source_folder):
@@ -185,7 +192,7 @@ def copy_model_files_to_folder(source_folder, dest_folder):
         for dir in dirs:
             current_subdir = dir.replace(source_folder,"").strip("\\").strip("/")
             dest_subdir_path = os.path.join(dest_folder, current_subdir)
-            
+
             if not os.path.exists(dest_subdir_path):
                 os.makedirs(dest_subdir_path)
 
@@ -199,11 +206,12 @@ def copy_model_files_to_folder(source_folder, dest_folder):
                         if not os.path.exists(dest_subdir_path):
                             os.makedirs(dest_subdir_path)
                         shutil.copy2(file_path, dest_subdir_path)
-                    elif any(name in dir for name in  get_standalone_exceptions_push_files()):
+                    elif any(name in dir for name in get_standalone_exceptions_push_files()):
                         shutil.copy2(file_path, dest_subdir_path)
                     else:
                         logging.info("Discarding " + file_name + " as it is not in the permitted model file pushing convention...")
-    
+
+
 def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="origin", branch="master", checkout_full_tag_name=""):
     """
         Creates a base repository for a NEW base model release. 
@@ -216,9 +224,9 @@ def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="orig
         subprocess.run(["git", "init"], cwd=repo_folder_path)
         subprocess.run(["git", "remote", "add", remote_name, git_repo_url], cwd=repo_folder_path)
         subprocess.run(["git", "fetch", "--tags", "--force"], cwd=repo_folder_path)
-        
+
         if checkout_full_tag_name != "":
-             subprocess.run(["git", "checkout", "tags/" + checkout_full_tag_name, "-b" , branch], cwd=repo_folder_path)
+            subprocess.run(["git", "checkout", "tags/" + checkout_full_tag_name, "-b", branch], cwd=repo_folder_path)
 
         subprocess.run(["git", "pull", remote_name, branch], cwd=repo_folder_path)
         return True
@@ -227,13 +235,15 @@ def create_new_base_repository(repo_folder_path, git_repo_url, remote_name="orig
         logging.error("Error creating base model repository: " + repr(exception))
         return False
 
+
 def is_dir_git_repository(path):
     try:
-        repo = git.Repo(path).git_dir
+        git.Repo(path).git_dir
         return True
     except git.exc.InvalidGitRepositoryError as exception:
         logging.error("Folder:" + path + " is not a git repository. Description:" + repr(exception))
         return False
+
 
 def file_is_hidden(path):
     if os.name == "nt":
@@ -241,6 +251,7 @@ def file_is_hidden(path):
         return attribute & (win32con.FILE_ATTRIBUTE_HIDDEN | win32con.FILE_ATTRIBUTE_SYSTEM)
     else:
         return path.startswith('.')
+
 
 def force_delete_path(path):
     if os.name == "nt":
@@ -255,31 +266,39 @@ def force_delete_path(path):
     elif os.path.isfile(path):
         os.remove(path)
 
+
 def get_medcat_package_version():
     import pkg_resources 
     version = pkg_resources.require("medcat")[0].version
     return str(version)
+
 
 def sanitize_input(input_string):
     input_string = re.compile('-').sub('_', input_string).strip()
     input_string = re.compile("[^a-zA-Z_]").sub('', input_string).strip("_")
     return input_string
 
+
 def is_input_valid(input_string): 
     return len(re.findall("[^a-zA-Z_]", input_string)) == 0
-    
+
+
 def get_model_binary_file_extension():
     return ".dat"
+
 
 def get_standalone_exceptions_push_files():
     # used for model packs and spacy models
     return ["en_core", "_pack.zip",]
 
+
 def get_permitted_push_file_list():
     return ["modelcard.md", "modelcard.json", "embeddings.npy", "bbpe-merges.txt", "bbpe-vocab.json", "bert-tokenizer.json", "model.dat"] + get_permitted_versioned_files()
 
+
 def get_permitted_versioned_files():
     return ["cdb.dat", "vocab.dat", "MedCAT_Export.json", "bert-tokenizer.json", "config.json", "trainer_stats.json", "meta_stats.json"]
+
 
 def dict_diff(dict_1, dict_2):
     diff_1, diff_2 = {}, {}
@@ -294,20 +313,21 @@ def dict_diff(dict_1, dict_2):
     if len(dict_2_key_diff) > 0:
         for k2 in dict_2_key_diff:
             diff_1[k2] = []
-    
+
     for k1, v1 in dict_1.items():
         for k2, v2 in dict_2.items():
             diffv1 = set(v1) - set(v2)
 
             if len(diffv1) > 0:
                 diff_1[k1]= diffv1
-            
+
             diffv2 = set(v2) - set(v1)
             if len(diffv2) > 0:
                 diff_2[k2] = diffv2
-            
+
 
     return diff_1, diff_2
+
 
 def make_orderer():
     order = {}

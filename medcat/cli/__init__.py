@@ -1,11 +1,11 @@
+import logging
 name="medcat.cli"
 
-from .package import package
-from .config import config
-from .download import download
-from .listmodels import listmodels
-from .modeltagdata import ModelTagData
-from .system_utils import *
+from .package import package # noqa
+from .config import config # noqa
+from .download import download # noqa
+from .listmodels import listmodels # noqa
+from .modeltagdata import ModelTagData # noqa
+from .system_utils import * # noqa
 
-import logging
 logging.basicConfig(level=logging.INFO)

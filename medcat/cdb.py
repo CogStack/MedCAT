@@ -15,6 +15,7 @@ from medcat.config import Config, weighted_average, workers
 from medcat.cli import ModelTagData, system_utils
 from medcat.cli.modelstats import CDBStats
 
+
 class CDB(object):
     """ Concept DataBase - holds all information necessary for NER+L.
 
@@ -381,7 +382,7 @@ class CDB(object):
 
         if vc_model_tag_data:
             self.vc_model_tag_data = vc_model_tag_data
-        
+
         self.cdb_stats.number_of_concepts = len(self.cui2names)
         self.cdb_stats.number_of_names = len(self.name2cuis)
         self.cdb_stats.number_of_concepts_received_training = len(self.cui2context_vectors)
@@ -396,7 +397,7 @@ class CDB(object):
             dill.dump(to_save, f)
 
     @classmethod
-    def load(cls, path : str = "", config: Optional[Config] = None, full_model_tag_name : str="") -> "CDB":
+    def load(cls, path: str = "", config: Optional[Config] = None, full_model_tag_name: str="") -> "CDB":
         r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
@@ -431,7 +432,7 @@ class CDB(object):
 
             if not hasattr(cdb, "cdb_stats"):    
                 cdb.cdb_stats = CDBStats()
-                
+
         return cdb
 
     @no_type_check

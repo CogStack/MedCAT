@@ -4,6 +4,7 @@ from typing import Optional, List, Dict
 import os
 from medcat.cli import ModelTagData, system_utils
 
+
 class Vocab(object):
     r''' Vocabulary used to store word embeddings for context similarity
     calculation. Also used by the spell checker - but not for fixing the spelling
@@ -243,16 +244,15 @@ class Vocab(object):
 
         return False
 
-    def save(self, path : str, vc_model_tag_data: ModelTagData = None) -> None:
+    def save(self, path: str, vc_model_tag_data: ModelTagData = None) -> None:
         if vc_model_tag_data:
-                self.vc_model_tag_data = vc_model_tag_data
+            self.vc_model_tag_data = vc_model_tag_data
 
         with open(path, 'wb') as f:
             pickle.dump(self.__dict__, f)
 
     @classmethod
-    def load(cls, path : str = "", full_model_tag_name : str = "") -> "Vocab":
-        
+    def load(cls, path: str = "", full_model_tag_name: str = "") -> "Vocab":
         if full_model_tag_name:
             path = os.path.join(system_utils.get_downloaded_local_model_folder(full_model_tag_name), "vocab.dat")
 
@@ -262,5 +262,5 @@ class Vocab(object):
 
             if not hasattr(vocab, "vc_model_tag_data"):
                 vocab.vc_model_tag_data = ModelTagData()
-                
+
         return vocab

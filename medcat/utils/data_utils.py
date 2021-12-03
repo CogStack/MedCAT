@@ -1,4 +1,3 @@
-import datetime
 import json
 import torch
 import copy
@@ -10,6 +9,7 @@ from typing import Dict, List, Optional, Union, Tuple, Any, Set
 from spacy.tokens.doc import Doc
 from spacy.tokens.span import Span
 from medcat.cat import CDB
+
 
 def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
@@ -1023,23 +1023,21 @@ def merge_med_exports_vc(path="./", file_name_pattern="MedCAT_Export", output_fi
         Merge existing MedCAT export files within the specified folder.
         If the files have some version history it takes into account only the version with the latest timestamp.
     '''
-    
-    trainer_data = {}
 
+    trainer_data = {}
     root, subdirs, files = next(os.walk(path))
-    
     for file_name in files:
         if file_name_pattern.lower() in file_name.lower(): 
             medexport_data = json.load(os.path.join(path, file_name))
             trainer_data.update(medexport_data["projects"])
-    
+
     with open(os.path.join(path, output_file_name), "w+") as f:
         json.dump(trainer_data, fp=f)
 
-                
+
 def get_meta_project_list(trainer_json_data):
     meta_project_data = {}
-        
+
     for project in trainer_json_data["projects"]:
         meta_tasks = []
         if len(project["documents"]) > 0:

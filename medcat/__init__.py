@@ -1,9 +1,9 @@
 name = 'medcat'
 
-from medcat.cli import download
-from medcat.cli import package
-from medcat.cli import listmodels
-from medcat.cli import config
+from medcat.cli import download # noqa
+from medcat.cli import package # noqa
+from medcat.cli import listmodels # noqa
+from medcat.cli import config # noqa
 
 # Hacky patch to the built-in copy module coz otherwise, thinc.config.Config.copy will fail on Python <= 3.6.
 # (fixed in python 3.7 https://docs.python.org/3/whatsnew/3.7.html#re)

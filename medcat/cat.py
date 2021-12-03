@@ -1,5 +1,4 @@
 from dataclasses import asdict
-import sys
 import os
 import shutil
 import pickle
@@ -125,7 +124,7 @@ class CAT(object):
 
         # MedCAT Export data
         self.trainer_data = trainer_data
-        
+
     def get_spacy_nlp(self) -> Language:
         ''' Returns the spacy pipeline with MedCAT
         '''
@@ -139,7 +138,7 @@ class CAT(object):
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
-  
+
         os.makedirs(save_dir_path, exist_ok=True)
         self.save(save_dir_path)
 
@@ -203,7 +202,7 @@ class CAT(object):
 
     def save(self, path="./", vocab_output_file_name="vocab.dat", cdb_output_file_name="cdb.dat",
              trainer_data_file_name="MedCAT_Export.json", skip_stat_generation=True):
-       
+
         #Save the used spacy model
         spacy_path = os.path.join(path, os.path.basename(self.config.general['spacy_model']))
 
@@ -226,7 +225,7 @@ class CAT(object):
         if self.trainer_data is not None and not skip_stat_generation:
             fps, fns, tps, _, _, _, cui_counts, _ = \
                  self.train_supervised(self.trainer_data, nepochs=self.config.train["nepochs"], print_stats=1)
-           
+
             tp, fp, fn = sum(tps.values()), sum(fps.values()), sum(fns.values())
             precision, recall = tp / (tp + fp), tp / (tp + fn)
             f1 = 2 * (precision * recall) / (precision + recall)
@@ -234,8 +233,8 @@ class CAT(object):
             trainer_stats = TrainerStats(epoch=self.config.train["nepochs"], concept_precision=precision,
                                          concept_f1=f1, concept_recall=recall,
                                          false_negatives=fn, false_positives=fp, true_positives=tp,
-                                         cui_counts = sum(cui_counts.values()))
-           
+                                         cui_counts=sum(cui_counts.values()))
+
             trainer_stats.meta_project_data = get_meta_project_list(self.trainer_data)
 
         self.trainer_data["trainer_stats"] = asdict(trainer_stats)
@@ -252,8 +251,8 @@ class CAT(object):
                 comp[1].save(meta_path)
 
     @classmethod
-    def load(cls, path="", full_model_tag_name : str = "", vocab_input_file_name : str = "vocab.dat", cdb_input_file_name : str = "cdb.dat",
-             trainer_data_file_name : str = "MedCAT_Export.json") -> "CAT":
+    def load(cls, path="", full_model_tag_name: str = "", vocab_input_file_name: str = "vocab.dat", cdb_input_file_name: str = "cdb.dat",
+             trainer_data_file_name: str = "MedCAT_Export.json") -> "CAT":
         """ Loads variables of this object
             This is used to search the /.cache/medcat/models folder for installed models..
         """
@@ -269,17 +268,17 @@ class CAT(object):
             vocab = Vocab.load(full_model_tag_name=full_model_tag_name)
             cdb = CDB.load(full_model_tag_name=full_model_tag_name)
             medcat_export = load_file_from_model_storage(full_model_tag_name=full_model_tag_name, file_name=trainer_data_file_name)
-            
+
             # make sure we update the path if we are loading via model tag way
             path = get_downloaded_local_model_folder(full_model_tag_name)
 
         if not medcat_export:
             medcat_export = None
-      
+
         if cdb is False or vocab is False:
             logging.error("No CDB or VOCAB detected.... make sure the model paths are valid") 
             raise ValueError()
-        
+
         _path = "./" if not path else path
         meta_paths = [os.path.join(_path, mpath) for mpath in os.listdir(_path) if mpath.startswith("meta_")]
         meta_cats = []
@@ -356,7 +355,7 @@ class CAT(object):
 
         fp_docs: Set = set()
         fn_docs: Set = set()
-        
+
         # Reset and shortcut for filters
         filters = self.config.linking['filters']
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
@@ -736,11 +735,11 @@ class CAT(object):
         fp = fn = tp = p = r = f1 = examples = {}
         if self.trainer_data is not None:
             data = self.trainer_data
-      
+
         if not data_path:
             with open(data_path) as f:
                 data = json.load(f)
-                
+
         cui_counts = {}
 
         if test_size == 0:

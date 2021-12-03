@@ -135,7 +135,7 @@ class MetaCAT(PipeRunner):
 
             # Save everything now
             self.save(save_dir_path=save_dir_path)
-        
+
         self.meta_cat_stats = MetaCATStats(f1=report['f1'], nepochs=report['epoch'], class_report=report['report'])
 
         return report
@@ -168,7 +168,7 @@ class MetaCAT(PipeRunner):
 
         return result
 
-    def save(self, save_dir_path: str, model_tag_data : ModelTagData=None) -> None:
+    def save(self, save_dir_path: str, model_tag_data: ModelTagData=None) -> None:
         r''' Save all components of this class to a file
         Args:
             save_dir_path(`str`):
@@ -210,7 +210,7 @@ class MetaCAT(PipeRunner):
             meta_cat (`medcat.MetaCAT`):
                 You don't say
         '''
-   
+
         # Load config
         config = cast(ConfigMetaCAT, ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json')))
 
@@ -225,8 +225,8 @@ class MetaCAT(PipeRunner):
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
             tokenizer = TokenizerWrapperBERT.load(save_dir_path)
-            
-       # Create meta_cat
+
+        # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
 
         # Load the model
@@ -239,13 +239,13 @@ class MetaCAT(PipeRunner):
             device = torch.device('cpu')
 
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
-    
+
         meta_stats = load_file_from_model_storage(model_folder_path=save_dir_path, file_name="meta_stats.json", bypass_model_path=True)
         vc_model_tag_data = load_file_from_model_storage(model_folder_path=save_dir_path, file_name="vc_model_tag_data.json", bypass_model_path=True)
 
-        if meta_stats != False:
+        if meta_stats is not False:
             meta_cat.meta_cat_stats = MetaCATStats(*meta_stats.values())
-        if vc_model_tag_data != False:
+        if vc_model_tag_data is not False:
             meta_cat.vc_model_tag_data = ModelTagData(*vc_model_tag_data.values())
 
         return meta_cat
