@@ -18,19 +18,20 @@ from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
 
-from medcat.utils.matutils import intersect_nonempty_set
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
-from medcat.utils.loggers import add_handlers
 from medcat.cdb import CDB
+from medcat.utils.matutils import intersect_nonempty_set
+from medcat.utils.loggers import add_handlers
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
+from medcat.utils.helpers import tkns_from_doc
+from medcat.utils.checkpoint import Checkpoint
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import get_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
-from medcat.utils.helpers import tkns_from_doc
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
@@ -463,9 +464,7 @@ class CAT(object):
               data_iterator: Iterable,
               fine_tune: bool = True,
               progress_print: int = 1000,
-              ckpt_dir_path: str = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train"),
-              ckpt_steps: int = 1000,
-              ckpt_max_to_keep: int = 1,
+              checkpoint: Optional[Checkpoint] = None,
               num_of_skipped: int = 0,
               is_resumed: bool = False) -> None:
         """ Runs training on the data, note that the maximum length of a line
@@ -479,32 +478,23 @@ class CAT(object):
                 If False old training will be removed.
             progress_print (int):
                 Print progress after N lines.
-            ckpt_dir_path (str):
-                The path to the checkpoint directory.
-            ckpt_steps (int):
-                The number of processed sentences/documents before checkpoint is created.
-                N.B.: A smaller number could result in the out-of-disk-space error.
-            ckpt_max_to_keep (int):
-                The maximum number of checkpoints to keep.
-                N.B.: A larger number could result in the out-of-disk-space error.
+            checkpoint (Optional[Checkpoint]):
+                The checkpoint object containing all checkpoints
             num_of_skipped (int):
                 The number of sentences/documents to ignore at the beginning.
             is_resumed (bool):
                 Used for resuming a previous training (True) or starting a fresh new training (False).
         """
-        if ckpt_max_to_keep < 1:
-            raise ValueError("ckpt_max_to_keep needs to be a positive integer")
 
         if not fine_tune:
             self.log.info("Removing old training data!")
             self.cdb.reset_training()
 
-        os.makedirs(ckpt_dir_path, exist_ok=True)
-        if not is_resumed:
-            shutil.rmtree(ckpt_dir_path)
-            os.makedirs(ckpt_dir_path)
-
-        ckpt_file_paths = self._get_ckpt_file_paths(ckpt_dir_path)
+        if checkpoint is None:
+            checkpoint = Checkpoint(ckpt_dir_path=os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train"),
+                                    ckpt_steps=1000,
+                                    ckpt_max_to_keep=1)
+        checkpoint.ensure_ckpt_dir(reset=not is_resumed)
 
         cnt = num_of_skipped
         for line in islice(data_iterator, num_of_skipped, None):
@@ -520,20 +510,19 @@ class CAT(object):
                 if cnt % progress_print == 0:
                     self.log.info("DONE: %s", str(cnt))
                 cnt += 1
-                if cnt % ckpt_steps == 0:
-                    self._save_checkpoint(ckpt_dir_path, ckpt_file_paths, ckpt_steps, ckpt_max_to_keep, cnt)
+                if cnt % checkpoint.ckpt_steps == 0:
+                    checkpoint.save_checkpoint(cnt)
 
         # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
-        if cnt % ckpt_steps != 0:
-            self._save_checkpoint(ckpt_dir_path, ckpt_file_paths, ckpt_steps, ckpt_max_to_keep, cnt)
+        if cnt % checkpoint.ckpt_steps != 0:
+            checkpoint.save_checkpoint(cnt)
 
         self.config.linking['train'] = False
 
     def resume_training(self,
                         data_iterator: Iterable,
                         progress_print: int = 1000,
-                        ckpt_dir_path: str = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train"),
-                        ckpt_max_to_keep: int = 1) -> None:
+                        checkpoint: Optional[Checkpoint] = None) -> None:
         """ Resume training on the data from where it was left, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
@@ -543,30 +532,22 @@ class CAT(object):
                 or an array or anything that we can use in a for loop.
             progress_print (int):
                 Print progress after N lines.
-            ckpt_dir_path (str):
-                The path to the checkpoint directory.
-            ckpt_max_to_keep (int):
-                The maximum number of checkpoints to keep.
-                N.B.: A larger number could result in the out-of-disk-space error.
+            checkpoint (Optional[Checkpoint]):
+                The checkpoint object containing all checkpoints.
         """
-        if not os.path.isdir(ckpt_dir_path):
-            raise ValueError("Checkpoints not found. You need to train from scratch.")
+        if checkpoint is None:
+            checkpoint = Checkpoint(ckpt_dir_path=os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train"),
+                                    ckpt_steps=1000,
+                                    ckpt_max_to_keep=1)
+        checkpoint.ensure_ckpt_existence()
 
-        ckpt_file_paths = self._get_ckpt_file_paths(ckpt_dir_path)
-        if not ckpt_file_paths:
-            raise ValueError("Checkpoints not found. You need to train from scratch.")
-
-        latest_ckpt = ckpt_file_paths[-1]
-        file_name_parts = os.path.basename(latest_ckpt).split('-')
-        ckpt_steps = int(file_name_parts[1])
-        num_of_skipped = int(file_name_parts[2])
-        self.cdb.load(latest_ckpt)
+        ckpt_steps, num_of_skipped = checkpoint.get_ckpt_metadata()
+        checkpoint.ckpt_steps = ckpt_steps
+        self.cdb.load(checkpoint.get_latest_path())
         self.train(data_iterator=data_iterator,
                    fine_tune=True,
                    progress_print=progress_print,
-                   ckpt_dir_path=ckpt_dir_path,
-                   ckpt_steps=ckpt_steps,
-                   ckpt_max_to_keep=ckpt_max_to_keep,
+                   checkpoint=checkpoint,
                    num_of_skipped=num_of_skipped,
                    is_resumed=True)
 
