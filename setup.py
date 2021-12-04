@@ -37,6 +37,7 @@ setuptools.setup(
         'psutil<6.0.0,>=5.8.0',
         'multiprocess', # seems to work better than standard mp
         'py2neo==2021.2.3',
+        'dataclasses>=0.6',
         'gitpython==3.1.18',
         'pydrive2==1.10.0',
         'dvc>=2.7.4',
