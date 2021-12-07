@@ -48,7 +48,7 @@ class NeoConnector:
 
         data['entities'] = new_stream
 
-    def get_all_patients(self, concepts, limit=1000, require_time=False):
+    def get_all_patients(self, concepts, limit=1000, require_time=False, ignore_meta=False):
         r''' Return all patients having all concepts
 
         Args:
@@ -60,8 +60,10 @@ class NeoConnector:
 
         q = "WITH [{}] AS cs ".format(",".join(["'{}'".format(c) for c in concepts]))
         if not require_time:
-            q += '''MATCH (c:Concept)<-[:HAS {metaPresence: 'True', metaSubject:
-            'Patient'}]-(:Document)<-[:HAS]-(pt:Patient)
+            q += '''MATCH (c:Concept)<-[:HAS '''
+            if not ignore_meta:
+                q += '''{metaPresence: 'True', metaSubject: 'Patient'}'''
+            q += ''']-(:Document)<-[:HAS]-(pt:Patient)
             WHERE c.conceptId in cs
             WITH pt, size(cs) as inputCnt, count(DISTINCT c) as cnt
             WHERE cnt = inputCnt
