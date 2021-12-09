@@ -1,7 +1,9 @@
 import os
 import unittest
 import tempfile
+import asyncio
 from unittest.mock import patch
+from tests.helper import AsyncMock
 from medcat.utils.checkpoint import Checkpoint
 
 
@@ -44,7 +46,21 @@ class CheckpointTest(unittest.TestCase):
 
         checkpoint.save(cdb, 1)
 
-        self.assertTrue(cdb.save.called)
+        cdb.save.assert_called()
+        self.assertEqual(1, checkpoint.steps)
+        self.assertEqual(1, checkpoint.max_to_keep)
+        self.assertEqual(1, checkpoint.count)
+
+    @patch("medcat.cdb.CDB", new_callable=AsyncMock)
+    def test_save_async(self, cdb):
+        dir_path = tempfile.TemporaryDirectory()
+        checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
+
+        loop = asyncio.get_event_loop()
+        loop.run_until_complete(checkpoint.save_async(cdb, 1))
+        loop.close()
+
+        cdb.save_async.assert_called()
         self.assertEqual(1, checkpoint.steps)
         self.assertEqual(1, checkpoint.max_to_keep)
         self.assertEqual(1, checkpoint.count)
@@ -68,10 +84,3 @@ class CheckpointTest(unittest.TestCase):
             checkpoint = Checkpoint(dir_path="dir_path", steps=1000, max_to_keep=1)
             checkpoint.max_to_keep = -1
         self.assertEqual("Argument at position 1 is not a positive integer", str(e2.exception))
-
-
-
-
-
-
-

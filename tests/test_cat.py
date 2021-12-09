@@ -109,6 +109,7 @@ class CATTests(unittest.TestCase):
         self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
         self.undertest.cdb.print_stats()
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
+
         self.assertEqual(1, len(checkpoints))
         self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[0])
 

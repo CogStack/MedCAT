@@ -1,7 +1,7 @@
 import os
 import shutil
 import logging
-from typing import List
+from typing import List, Tuple
 from medcat.cdb import CDB
 from medcat.utils.decorators import check_positive
 
@@ -60,9 +60,7 @@ class Checkpoint(object):
         if not ckpt_file_paths:
             raise Exception("Checkpoints not found. You need to train from scratch.")
         latest_ckpt = ckpt_file_paths[-1]
-        file_name_parts = os.path.basename(latest_ckpt).split('-')
-        steps = int(file_name_parts[1])
-        count = int(file_name_parts[2])
+        steps, count = cls._get_steps_and_count(latest_ckpt)
         checkpoint = cls(dir_path, steps=steps)
         checkpoint._file_paths = ckpt_file_paths
         checkpoint._count = count
@@ -84,6 +82,17 @@ class Checkpoint(object):
         self._file_paths.append(ckpt_file_path)
         self._count = count
 
+    async def save_async(self, cdb: CDB, count: int) -> None:
+        ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), 'checkpoint-%s-%s' % (self.steps, count))
+        await cdb.save_async(ckpt_file_path)
+        self.log.info("Checkpoint saved: %s", ckpt_file_path)
+        self._file_paths.append(ckpt_file_path)
+        self._file_paths.sort(key=lambda f: self._get_steps_and_count(f)[1])
+        self._count = count
+        while len(self._file_paths) > self._max_to_keep:
+            to_remove = self._file_paths.pop(0)
+            os.remove(to_remove)
+
     def populate(self, cdb: CDB) -> None:
         if not self._file_paths:
             raise Exception("Checkpoints not found. You need to restore or train from scratch.")
@@ -94,5 +103,10 @@ class Checkpoint(object):
         ckpt_file_paths = [os.path.abspath(os.path.join(dir_path, f)) for f in os.listdir(dir_path)]
         ckpt_file_paths = [f for f in ckpt_file_paths if os.path.isfile(f) and "checkpoint-" in f]
         if ckpt_file_paths:
-            ckpt_file_paths.sort(key=lambda f: os.path.getmtime(f))
+            ckpt_file_paths.sort(key=lambda f: Checkpoint._get_steps_and_count(f)[1])
         return ckpt_file_paths
+
+    @staticmethod
+    def _get_steps_and_count(file_path) -> Tuple[int, int]:
+        file_name_parts = os.path.basename(file_path).split('-')
+        return int(file_name_parts[1]), int(file_name_parts[2])

@@ -7,6 +7,7 @@ import logging
 import math
 import time
 import psutil
+import asyncio
 from time import sleep
 from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
@@ -492,26 +493,7 @@ class CAT(object):
         if not resume_from_checkpoint:
             checkpoint.purge()
 
-        cnt = checkpoint.count
-        for line in islice(data_iterator, checkpoint.count, None):
-            if line is not None and line:
-                # Convert to string
-                line = str(line).strip()
-
-                try:
-                    _ = self(line, do_train=True)
-                except Exception as e:
-                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
-                    self.log.warning("BECAUSE OF: %s", str(e))
-                if cnt % progress_print == 0:
-                    self.log.info("DONE: %s", str(cnt))
-                cnt += 1
-                if cnt % checkpoint.steps == 0:
-                    checkpoint.save(cdb=self.cdb, count=cnt)
-
-        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
-        if cnt % checkpoint.steps != 0:
-            checkpoint.save(cdb=self.cdb, count=cnt)
+        asyncio.run(self._train_main(checkpoint, data_iterator, progress_print))
 
         self.config.linking['train'] = False
 
@@ -1295,6 +1277,31 @@ class CAT(object):
             text_ = text[1] if isinstance(text, tuple) else text
             trimmed.append(self._get_trimmed_text(text_))
         return trimmed
+
+    async def _train_main(self, checkpoint, data_iterator, progress_print):
+        tasks = []
+        cnt = checkpoint.count
+        for line in islice(data_iterator, checkpoint.count, None):
+            if line is not None and line:
+                # Convert to string
+                line = str(line).strip()
+
+                try:
+                    _ = self(line, do_train=True)
+                except Exception as e:
+                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
+                    self.log.warning("BECAUSE OF: %s", str(e))
+                if cnt % progress_print == 0:
+                    self.log.info("DONE: %s", str(cnt))
+                cnt += 1
+                if cnt % checkpoint.steps == 0:
+                    tasks.append(asyncio.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
+
+        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
+        if cnt % checkpoint.steps != 0:
+            tasks.append(asyncio.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
+
+        await asyncio.wait(tasks)
 
     @staticmethod
     def _pipe_error_handler(proc_name: str, proc: "Pipe", docs: List[Doc], e: Exception) -> None:
