@@ -1286,6 +1286,7 @@ class CAT(object):
 
     async def _train_main(self, checkpoint, data_iterator, progress_print):
         tasks = []
+        loop = asyncio.get_event_loop()
         cnt = checkpoint.count
         for line in islice(data_iterator, checkpoint.count, None):
             if line is not None and line:
@@ -1301,11 +1302,11 @@ class CAT(object):
                     self.log.info("DONE: %s", str(cnt))
                 cnt += 1
                 if cnt % checkpoint.steps == 0:
-                    tasks.append(asyncio.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
+                    tasks.append(loop.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
 
         # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
         if cnt % checkpoint.steps != 0:
-            tasks.append(asyncio.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
+            tasks.append(loop.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
 
         await asyncio.wait(tasks)
 
