@@ -493,7 +493,13 @@ class CAT(object):
         if not resume_from_checkpoint:
             checkpoint.purge()
 
-        asyncio.run(self._train_main(checkpoint, data_iterator, progress_print))
+        # This will be simplified after deprecating support on py36
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        loop.run_until_complete(self._train_main(checkpoint, data_iterator, progress_print))
+        loop.close()
 
         self.config.linking['train'] = False
 
