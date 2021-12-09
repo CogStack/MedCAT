@@ -57,6 +57,9 @@ class CheckpointTest(unittest.TestCase):
         checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
 
         loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
         loop.run_until_complete(checkpoint.save_async(cdb, 1))
         loop.close()
 
