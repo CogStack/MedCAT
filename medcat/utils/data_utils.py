@@ -281,7 +281,7 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
                             m = text[start:end].replace("\n", " ").replace('\r', ' ')
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ").replace('\r', ' ')
                             print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                            print(cui, " | ", cat.cdb.cui2pretty_name.get(cui, ''), " | ", cat.cdb.cui2tui.get(cui, ''), " | ", ann.start_char)
+                            print(cui, " | ", cat.cdb.get_name(cui), " | ", cat.cdb.cui2tui.get(cui, ''), " | ", ann.start_char)
                             print(ann._.acc)
                             d = str(input("###Add as (or empty for skip): 1-Correct, 2-Incorrect, s-save: "))
 
@@ -337,7 +337,7 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
                             m = text[ann['start']:ann['end']].replace("\n", " ").replace('\r', ' ')
                             e = text[ann['end']:min(len(text), ann['end']+cntx_size)].replace("\n", " ").replace('\r', ' ')
                             print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                            print(ann['cui'], " | ", cat.cdb.cui2pretty_name.get(ann['cui'], ''), " | ", ann['start'])
+                            print(ann['cui'], " | ", cat.cdb.get_name(ann['cui']), " | ", ann['start'])
                             print("Current status")
                             print("  Correct:     " + str(ann['correct']))
                             print("  Incorrect:   " + str(ann['deleted']))
@@ -536,7 +536,7 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                                     c = "+"
                                 else:
                                     c = " "
-                                print("{} | {:3} | {:20} | {:70} | {}".format(c, id_cui, _cui, cdb.cui2pretty_name.get(_cui, 'unk')[:69], name2cui[name][_cui]))
+                                print("{} | {:3} | {:20} | {:70} | {}".format(c, id_cui, _cui, cdb.get_name(_cui)[:69], name2cui[name][_cui]))
                             print()
                             d = str(input("###Change to ([s]kip/[q]uit/id): "))
 
@@ -615,7 +615,7 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
                             print("SNIPPET           : {} <<<{}>>> {}".format(b, m, e))
                             print("CURRENT STATUS    : {}".format(status))
-                            print("CURRENT ANNOTATION: {} - {}".format(cui, cdb.cui2pretty_name.get(cui, 'unk')))
+                            print("CURRENT ANNOTATION: {} - {}".format(cui, cdb.get_name(cui)))
                             print("ANNS TOTAL        :")
                             for k,v in cui2status[cui][name].items():
                                 print("        {}: {}".format(str(k), str(v)))

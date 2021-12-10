@@ -1,6 +1,7 @@
 from spacy.tokens import Span
 import numpy as np
-from medcat.utils.loggers import basic_logger
+# Why is basic_logger not defined in medcat.utils.loggers?
+from medcat.utils.loggers import basic_logger   # type: ignore
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import load_hf_tokenizer, build_vocab_from_hf
 from spacy.lang.en.stop_words import STOP_WORDS
@@ -25,12 +26,6 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-    # Convert filters tu sets
-    if TUI_FILTER is not None: # noqa
-        TUI_FILTER = set(TUI_FILTER) # noqa
-    if CUI_FILTER is not None: # noqa
-        CUI_FILTER = set(CUI_FILTER) # noqa
-
 
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
@@ -55,7 +50,6 @@ class SpacyCat(object):
 
         # Weight drops for average
         self.wdrops = [1.0, 0.9, 0.8, 0.7, 0.6, 0.5, 0.4, 0.3, 0.2] + [0.1] * 300
-
 
     def _tok_hf(self, token):
         text = token.text

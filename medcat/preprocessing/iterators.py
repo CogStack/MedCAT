@@ -1,5 +1,6 @@
 import pandas
 import re
+from typing import List, Optional, Dict, Iterable, Any, Tuple
 
 NUM = "NUMNUM"
 
@@ -11,12 +12,12 @@ class EmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths, tokenizer, emb_dict=None):
+    def __init__(self, csv_paths: List[str], tokenizer: Any, emb_dict: Optional[Dict] = None) -> None:
         self.csv_paths = csv_paths
         self.tokenizer = tokenizer
         self.emb_dict = emb_dict
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[List]:
         chunksize = 10 ** 8
         for csv_path in self.csv_paths:
             for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
@@ -46,14 +47,16 @@ class BertEmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths, tokenizer):
+    def __init__(self, csv_paths: List[str], tokenizer: 'BertTokenizer') -> None: # type: ignore # noqa
+        # Why pytorch-pretrained-bert is not among the dependencies?
+        # Looks like it needs to be migrated to transformers
         from pytorch_pretrained_bert import BertTokenizer
 
         self.csv_paths = csv_paths
         self.tokenizer = tokenizer
         self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[List]:
         chunksize = 10 ** 8
         for csv_path in self.csv_paths:
             for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
@@ -73,14 +76,16 @@ class BaseEmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths, tokenizer):
+    def __init__(self, csv_paths: List[str], tokenizer: 'BertTokenizer') -> None:   # type: ignore # noqa
+        # Why pytorch-pretrained-bert is not among the dependencies?
+        # Looks like it needs to be migrated to transformers
         from pytorch_pretrained_bert import BertTokenizer
 
         self.csv_paths = csv_paths
         self.tokenizer = tokenizer
         self.bert_tokenizer = BertTokenizer.from_pretrained('bert-base-uncased')
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[Tuple]:
         chunksize = 10 ** 8
         for csv_path in self.csv_paths:
             for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
@@ -112,10 +117,10 @@ class RawCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths):
+    def __init__(self, csv_paths: List[str]) -> None:
         self.csv_paths = csv_paths
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[str]:
         chunksize = 10 ** 8
         for csv_path in self.csv_paths:
             for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
@@ -128,10 +133,10 @@ class FastEmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
-    def __init__(self, csv_paths):
+    def __init__(self, csv_paths: List[str]) -> None:
         self.csv_paths = csv_paths
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[List[str]]:
         chunksize = 10 ** 8
         for csv_path in self.csv_paths:
             for chunk in pandas.read_csv(csv_path, chunksize=chunksize):
@@ -142,10 +147,10 @@ class FastEmbMimicCSV(object):
 
 
 class SimpleIter(object):
-    def __init__(self, text_path):
+    def __init__(self, text_path: str) -> None:
         self.text_path = text_path
 
-    def __iter__(self):
+    def __iter__(self) -> Iterable[List[str]]:
         data = open(self.text_path, encoding='utf-8')
         for line in data:
             yield str(line).strip().split(" ")

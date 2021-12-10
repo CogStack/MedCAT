@@ -1,6 +1,9 @@
 import logging
+from spacy.tokens import Doc
 from medcat.ner.vocab_based_annotator import maybe_annotate_name
 from medcat.pipeline.pipe_runner import PipeRunner
+from medcat.cdb import CDB
+from medcat.config import Config
 
 
 class NER(PipeRunner):
@@ -11,12 +14,14 @@ class NER(PipeRunner):
     # Custom pipeline component name
     name = 'cat_ner'
 
-    def __init__(self, cdb, config):
+    # Override
+    def __init__(self, cdb: CDB, config: Config) -> None:
         self.config = config
         self.cdb = cdb
         super().__init__(self.config.general['workers'])
 
-    def __call__(self, doc):
+    # Override
+    def __call__(self, doc: Doc) -> Doc:
         r''' Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
         doc._.ents and each entity can have the entitiy._.link_candidates - that the linker will resolve.
 
