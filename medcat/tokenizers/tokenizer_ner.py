@@ -1,4 +1,6 @@
 import dill
+from typing import Optional, Dict
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 
 class TokenizerNER(object):
@@ -11,21 +13,22 @@ class TokenizerNER(object):
             Max sequence length, if longer it will be split into multiple examples
     '''
 
-    def __init__(self, hf_tokenizer=None, max_len=512, id2type=None):
+    def __init__(self,
+                 hf_tokenizer: Optional[PreTrainedTokenizerBase] = None,
+                 max_len: int = 512,
+                 id2type: Optional[Dict] = None) -> None:
         self.hf_tokenizer = hf_tokenizer
         self.max_len = max_len
         self.label_map = {'O': 0, 'X': 1}
         self.id2type = id2type
 
-
-    def calculate_label_map(self, dataset):
+    def calculate_label_map(self, dataset: Dict) -> None:
         for cuis in dataset['ent_cuis']:
             for cui in cuis:
                 if cui not in self.label_map:
                     self.label_map[cui] = len(self.label_map)
 
-
-    def encode(self, examples, ignore_subwords=False):
+    def encode(self, examples: Dict, ignore_subwords: bool = False) -> Dict:
         r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
         appropriate form for NER with BERT. It will split long text segments into max_len sequences.
 
@@ -35,6 +38,7 @@ class TokenizerNER(object):
             ignore_subwords:
                 If set to `True` subwords of any token will get the special label `X`
         '''
+        self.hf_tokenizer = self.ensure_tokenizer()
         old_ids = examples['id']
         examples['input_ids'] = []
         examples['labels'] = []
@@ -42,8 +46,7 @@ class TokenizerNER(object):
 
         for _ind, example in enumerate(zip(examples['text'], examples['ent_starts'],
                 examples['ent_ends'], examples['ent_cuis'])):
-            tokens = self.hf_tokenizer(example[0], return_offsets_mapping=True,
-                    add_special_tokens=False)
+            tokens = self.hf_tokenizer(example[0], return_offsets_mapping=True, add_special_tokens=False)
             entities = [(start, end, cui) for start, end, cui in zip(example[1],
                         example[2], example[3])]
             entities.sort(key=lambda x: x[0])
@@ -58,7 +61,7 @@ class TokenizerNER(object):
                 if entities and (offset[0] >= entities[0][0] and offset[1] <= entities[0][1]):
                     # Means this token is part of entity at position 0
                     tkn_part_of_entity = True
-                    if not ignore_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
+                    if not ignore_subwords or (self.id2type is not None and self.id2type[tokens['input_ids'][ind]] == 'start'):
                         labels.append(self.label_map[entities[0][2]])
                     else:
                         labels.append(self.label_map['X'])
@@ -73,7 +76,7 @@ class TokenizerNER(object):
                         del entities[0]
                         tkn_part_of_entity = False
 
-                    if not ignore_subwords or self.id2type[tokens['input_ids'][ind]] == 'start':
+                    if not ignore_subwords or (self.id2type is not None and self.id2type[tokens['input_ids'][ind]] == 'start'):
                         labels.append(self.label_map["O"])
                     else:
                         labels.append(self.label_map['X'])
@@ -94,14 +97,17 @@ class TokenizerNER(object):
 
         return examples
 
-
-    def save(self, path):
+    def save(self, path: str) -> None:
         with open(path, 'wb') as f:
             dill.dump(self.__dict__, f)
 
+    def ensure_tokenizer(self) -> PreTrainedTokenizerBase:
+        if self.hf_tokenizer is None:
+            raise ValueError("The tokenizer is not loaded yet")
+        return self.hf_tokenizer
 
     @classmethod
-    def load(cls, path):
+    def load(cls, path: str) -> 'TokenizerNER':
         tokenizer = cls()
         with open(path, 'rb') as f:
             d = dill.load(f)

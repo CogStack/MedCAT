@@ -1,8 +1,12 @@
 import numpy as np
 import logging
+from typing import Tuple, Dict, List, Union
+from spacy.tokens import Span, Doc
 from medcat.utils.matutils import unitvec
 from medcat.utils.filters import check_filters
-import spacy
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.config import Config
 
 
 class ContextModel(object):
@@ -15,12 +19,12 @@ class ContextModel(object):
     '''
     log = logging.getLogger(__name__)
 
-    def __init__(self, cdb, vocab, config):
+    def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb
         self.vocab = vocab
         self.config = config
 
-    def get_context_tokens(self, entity, doc, size):
+    def get_context_tokens(self, entity: Span, doc: Doc, size: int) -> Tuple:
         r''' Get context tokens for an entity, this will skip anything that
         is marked as skip in token._.to_skip
 
@@ -42,7 +46,7 @@ class ContextModel(object):
 
         return tokens_left, tokens_center, tokens_right
 
-    def get_context_vectors(self, entity, doc):
+    def get_context_vectors(self, entity: Span, doc: Doc) -> Dict:
         r''' Given an entity and the document it will return the context representation for the
         given entity.
 
@@ -75,7 +79,7 @@ class ContextModel(object):
 
         return vectors
 
-    def similarity(self, cui, entity, doc):
+    def similarity(self, cui: str, entity: Span, doc: Doc) -> float:
         r''' Calculate the similarity between the learnt context for this CUI and the context
         in the given `doc`.
 
@@ -89,7 +93,7 @@ class ContextModel(object):
 
         return sim
 
-    def _similarity(self, cui, vectors):
+    def _similarity(self, cui: str, vectors: Dict) -> float:
         r''' Calculate similarity once we have vectors and a cui.
 
         Args:
@@ -115,7 +119,7 @@ class ContextModel(object):
         else:
             return -1
 
-    def disambiguate(self, cuis, entity, name, doc):
+    def disambiguate(self, cuis: List, entity: Span, name: str, doc: Doc) -> Tuple:
         vectors = self.get_context_vectors(entity, doc)
         filters = self.config.linking['filters']
 
@@ -161,7 +165,7 @@ class ContextModel(object):
         else:
             return None, 0
 
-    def train(self, cui, entity, doc, negative=False, names=[]):
+    def train(self, cui: str, entity: Span, doc: Doc, negative: bool = False, names: Union[List[str], Dict] = []) -> None:
         r''' Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
 
@@ -178,7 +182,7 @@ class ContextModel(object):
 
             if not negative:
                 # Update the name count, if possible
-                if type(entity) == spacy.tokens.span.Span:
+                if type(entity) == Span:
                     self.cdb.name2count_train[entity._.detected_name] = self.cdb.name2count_train.get(entity._.detected_name, 0) + 1
 
                 if self.config.linking.get('calculate_dynamic_threshold', False):
@@ -213,7 +217,7 @@ class ContextModel(object):
         else:
             self.log.warning("The provided entity for cui <%s> was empty, nothing to train", cui)
 
-    def train_using_negative_sampling(self, cui):
+    def train_using_negative_sampling(self, cui: str) -> None:
         vectors = {}
 
         # Get vectors for each context type

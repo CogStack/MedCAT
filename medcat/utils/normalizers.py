@@ -88,12 +88,14 @@ class TokenNormalizer(PipeRunner):
     # Custom pipeline component name
     name = 'token_normalizer'
 
+    # Override
     def __init__(self, config, spell_checker=None):
         self.config = config
         self.spell_checker = spell_checker
         self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
         super().__init__(self.config.general['workers'])
 
+    # Override
     def __call__(self, doc):
         for token in doc:
             if len(token.lower_) < self.config.preprocessing['min_len_normalize']:

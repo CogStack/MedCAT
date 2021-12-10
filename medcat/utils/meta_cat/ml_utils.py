@@ -3,19 +3,21 @@ import random
 import math
 import torch
 import numpy as np
-
-from scipy.special import softmax
-from sklearn.metrics import classification_report, f1_score, precision_recall_fscore_support
-from torch import nn
 import torch.optim as optim
+from typing import List, Optional, Tuple, Any, Dict
+from torch import nn
+from scipy.special import softmax
+from medcat.config_meta_cat import ConfigMetaCAT
+from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
+from sklearn.metrics import classification_report, f1_score, precision_recall_fscore_support
 
 
-def set_all_seeds(seed):
+def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
 
 
-def create_batch_piped_data(data, start_ind, end_ind, device, pad_id):
+def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: torch.device, pad_id: int) -> Tuple:
     r''' Creates a batch given data and start/end that denote batch size, will also add
     padding and move to the right device.
 
@@ -53,7 +55,7 @@ def create_batch_piped_data(data, start_ind, end_ind, device, pad_id):
     return x, cpos, y
 
 
-def predict(model, data, config):
+def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
     r''' Predict on data used in the meta_cat.pipe
 
     Args:
@@ -98,7 +100,7 @@ def predict(model, data, config):
     return predictions, confidences
 
 
-def split_list_train_test(data, test_size, shuffle=True):
+def split_list_train_test(data: List, test_size: int, shuffle: bool = True) -> Tuple:
     r''' Shuffle and randomply split data
 
     Args:
@@ -116,7 +118,7 @@ def split_list_train_test(data, test_size, shuffle=True):
     return train_data, test_data
 
 
-def print_report(epoch, running_loss, all_logits, y, name='Train'):
+def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name: str = 'Train') -> None:
     r''' Prints some basic stats during training
 
     Args:
@@ -131,7 +133,7 @@ def print_report(epoch, running_loss, all_logits, y, name='Train'):
         print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
 
-def train_model(model, data, config, save_dir_path=None):
+def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
     r''' Trains a LSTM model (for now) with autocheckpoints
 
     Args:
@@ -180,7 +182,7 @@ def train_model(model, data, config, save_dir_path=None):
             all_logits.append(logits.detach().cpu().numpy())
 
             parameters = filter(lambda p: p.requires_grad, model.parameters())
-            torch.nn.utils.clip_grad_norm_(parameters, 0.25)
+            nn.utils.clip_grad_norm_(parameters, 0.25)
             optimizer.step()
 
         all_logits_test = []
@@ -209,14 +211,18 @@ def train_model(model, data, config, save_dir_path=None):
 
             # Save if needed
             if config.train['auto_save_model']:
-                path = os.path.join(save_dir_path, 'model.dat')
-                torch.save(model.state_dict(), path)
-                print("\n##### Model saved to {} at epoch: {} and f1: {} #####\n".format(path, epoch, f1))
+                if save_dir_path is None:
+                    raise Exception(
+                        "The `save_dir_path` argument is required if `aut_save_model` is `True` in the config")
+                else:
+                    path = os.path.join(save_dir_path, 'model.dat')
+                    torch.save(model.state_dict(), path)
+                    print("\n##### Model saved to {} at epoch: {} and f1: {} #####\n".format(path, epoch, f1))
 
     return winner_report
 
 
-def eval_model(model, data, config, tokenizer):
+def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
     r''' Evaluate a trained model on the provided data
 
     Args:
@@ -260,7 +266,7 @@ def eval_model(model, data, config, tokenizer):
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
-    examples = {'FP': {}, 'FN': {}, 'TP': {}}
+    examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
     for i, p in enumerate(predictions):
         y = id2category_value[y_eval[i]]

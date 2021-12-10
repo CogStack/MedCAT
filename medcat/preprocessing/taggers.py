@@ -1,7 +1,10 @@
+from spacy.language import Language
+from spacy.tokens import Doc
+from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 
 
-def tag_skip_and_punct(nlp, name, config):
+def tag_skip_and_punct(nlp: Language, name: str, config: Config) -> "_Tagger":
     r''' Detects and tags spacy tokens that are punctuation and that should be skipped.
 
      Args:
@@ -16,17 +19,19 @@ def tag_skip_and_punct(nlp, name, config):
 
 
 # This is not elegant.
-tag_skip_and_punct.name = "tag_skip_and_punct"
+tag_skip_and_punct.name = "tag_skip_and_punct"  # type: ignore
 
 
 class _Tagger(PipeRunner):
 
-    def __init__(self, nlp, name, config):
+    # Override
+    def __init__(self, nlp: Language, name: str, config: Config) -> None:
         self.name = name
         self.config = config
         super().__init__(self.config.general['workers'])
 
-    def __call__(self, doc):
+    # Override
+    def __call__(self, doc: Doc) -> Doc:
         # Make life easier
         cnf_p = self.config.preprocessing
 

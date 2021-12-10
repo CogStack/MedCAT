@@ -81,8 +81,8 @@ class CAT(object):
 
     def __init__(self,
                  cdb: CDB,
+                 vocab: Vocab,
                  config: Optional[Config] = None,
-                 vocab: Optional[Vocab] = None,
                  meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -613,7 +613,8 @@ class CAT(object):
         '''
 
         names = prepare_name(name, self, {}, self.config)
-        if do_add_concept:
+        # Only if not negative, otherwise do not add the new name if in fact it should not be detected
+        if do_add_concept and not negative:
             self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
 
@@ -1197,7 +1198,7 @@ class CAT(object):
                     only_cui: bool,
                     addl_info: List[str],
                     out_with_text: bool = False) -> Dict:
-        out: Dict = {'entities': [], 'tokens': []}
+        out: Dict = {'entities': {}, 'tokens': []}
         cnf_annotation_output = getattr(self.config, 'annotation_output', {})
         if doc is not None:
             out_ent: Dict = {}
@@ -1259,9 +1260,9 @@ class CAT(object):
                     if hasattr(ent._, 'meta_anns') and ent._.meta_anns:
                         out_ent['meta_anns'] = ent._.meta_anns
 
-                    out['entities'].append(dict(out_ent))
+                    out['entities'][out_ent['id']] = dict(out_ent)
                 else:
-                    out['entities'].append(cui)
+                    out['entities'][ent._.id] = cui
 
             if cnf_annotation_output.get('include_text_in_output', False) or out_with_text:
                 out['text'] = doc.text

@@ -2,7 +2,8 @@
 """
 import pickle
 import numpy as np
-from medcat.utils.loggers import basic_logger
+# Why is basic_logger not defined in medcat.utils.loggers?
+from medcat.utils.loggers import basic_logger   # type: ignore
 from scipy.sparse import dok_matrix
 from medcat.utils.matutils import unitvec
 import os

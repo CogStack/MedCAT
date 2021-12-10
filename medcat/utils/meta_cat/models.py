@@ -1,13 +1,15 @@
 import torch
-from torch import nn
+from collections import OrderedDict
+from typing import Optional, Any, List
+from torch import nn, Tensor
 from torch.nn import CrossEntropyLoss
-
-from transformers import BertPreTrainedModel, BertModel
+from transformers import BertPreTrainedModel, BertModel, BertConfig
 from transformers.modeling_outputs import TokenClassifierOutput
+from medcat.meta_cat import ConfigMetaCAT
 
 
 class LSTM(nn.Module):
-    def __init__(self, embeddings, config):
+    def __init__(self, embeddings: Optional[Tensor], config: ConfigMetaCAT) -> None:
         super(LSTM, self).__init__()
 
         self.config = config
@@ -18,7 +20,7 @@ class LSTM(nn.Module):
         # Initialize embeddings
         self.embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=config.model['padding_idx'])
         if embeddings is not None:
-            self.embeddings.load_state_dict({'weight': embeddings})
+            self.embeddings.load_state_dict(OrderedDict([('weight', embeddings)]))
             # Disable training for the embeddings - IMPORTANT
             self.embeddings.weight.requires_grad = config.model['emb_grad']
 
@@ -32,7 +34,11 @@ class LSTM(nn.Module):
 
         self.d1 = nn.Dropout(config.model['dropout'])
 
-    def forward(self, input_ids, center_positions, attention_mask=None, ignore_cpos=False):
+    def forward(self,
+                input_ids: torch.LongTensor,
+                center_positions: Tensor,
+                attention_mask: Optional[torch.FloatTensor] = None,
+                ignore_cpos: bool = False) -> Tensor:
         x = input_ids
         # Get the mask from x
         if attention_mask is None:
@@ -73,9 +79,9 @@ class LSTM(nn.Module):
 
 class BertForMetaAnnotation(BertPreTrainedModel):
 
-    _keys_to_ignore_on_load_unexpected = [r"pooler"]
+    _keys_to_ignore_on_load_unexpected: List[str] = [r"pooler"]
 
-    def __init__(self, config):
+    def __init__(self, config: BertConfig) -> None:
         super().__init__(config)
         self.num_labels = config.num_labels
 
@@ -87,18 +93,18 @@ class BertForMetaAnnotation(BertPreTrainedModel):
 
     def forward(
         self,
-        input_ids=None,
-        attention_mask=None,
-        token_type_ids=None,
-        position_ids=None,
-        head_mask=None,
-        inputs_embeds=None,
-        labels=None,
-        center_positions=None,
-        output_attentions=None,
-        output_hidden_states=None,
-        return_dict=None,
-    ):
+        input_ids: Optional[torch.LongTensor] = None,
+        attention_mask: Optional[torch.FloatTensor] = None,
+        token_type_ids: Optional[torch.LongTensor] = None,
+        position_ids: Optional[torch.LongTensor] = None,
+        head_mask: Optional[torch.FloatTensor] = None,
+        inputs_embeds: Optional[torch.FloatTensor] = None,
+        labels: Optional[torch.LongTensor] = None,
+        center_positions: Optional[Any] = None,
+        output_attentions: Optional[bool] = None,
+        output_hidden_states: Optional[bool] = None,
+        return_dict: Optional[bool] = None,
+    ) -> TokenClassifierOutput:
         r"""
         labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
             Labels for computing the token classification loss. Indices should be in ``[0, ..., config.num_labels -
