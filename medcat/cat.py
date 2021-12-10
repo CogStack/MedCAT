@@ -766,7 +766,7 @@ class CAT(object):
                         filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
 
                 for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
-                    spacy_doc = self(doc['text'])
+                    spacy_doc: Doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
@@ -783,7 +783,7 @@ class CAT(object):
                                           negative=deleted,
                                           devalue_others=devalue_others)
                     if train_from_false_positives:
-                        fps = get_false_positives(doc, spacy_doc)
+                        fps: List[Span] = get_false_positives(doc, spacy_doc)
 
                         for fp in fps:
                             fp_: Span = fp

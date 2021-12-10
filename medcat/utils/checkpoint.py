@@ -26,7 +26,7 @@ class Checkpoint(object):
         self._dir_path = os.path.abspath(dir_path)
         self._steps = steps
         self._max_to_keep = max_to_keep
-        self._file_paths = []
+        self._file_paths: List[str] = []
         self._count = 0
         os.makedirs(self._dir_path, exist_ok=True)
 
@@ -34,23 +34,25 @@ class Checkpoint(object):
     def steps(self) -> int:
         return self._steps
 
-    @property
-    def max_to_keep(self) -> int:
-        return self._max_to_keep
-
-    @property
-    def count(self) -> int:
-        return self._count
-
-    @steps.setter
+    @steps.setter  # type: ignore
+    # [https://github.com/python/mypy/issues/1362]
     @check_positive
     def steps(self, value) -> None:
         self._steps = value
 
-    @max_to_keep.setter
+    @property
+    def max_to_keep(self) -> int:
+        return self._max_to_keep
+
+    @max_to_keep.setter  # type: ignore
+    # [https://github.com/python/mypy/issues/1362]
     @check_positive
     def max_to_keep(self, value) -> None:
         self._max_to_keep = value
+
+    @property
+    def count(self) -> int:
+        return self._count
 
     @classmethod
     def restore(cls, dir_path: str) -> "Checkpoint":
