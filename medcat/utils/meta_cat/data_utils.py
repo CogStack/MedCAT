@@ -1,6 +1,15 @@
-def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
-                      cui_filter=None, replace_center=None, prerequisites={},
-                      lowercase=True):
+from typing import Dict, Optional, Tuple, Iterable, List
+from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
+
+
+def prepare_from_json(data: Dict,
+                      cntx_left: int,
+                      cntx_right: int,
+                      tokenizer: TokenizerWrapperBase,
+                      cui_filter: Optional[set] = None,
+                      replace_center: Optional[str] = None,
+                      prerequisites: Dict = {},
+                      lowercase: bool = True) -> Dict:
     """ Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
     working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
@@ -27,7 +36,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
         out_data (`dict`):
             Example: {'category_name': [('<category_value>', '<[tokens]>', '<center_token>'), ...], ...}
     """
-    out_data = {}
+    out_data: Dict = {}
 
     for project in data['projects']:
         for document in project['documents']:
@@ -81,10 +90,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
                             meta_anns = []
                             if 'meta_anns' in ann:
-                                meta_anns = ann['meta_anns']
-
-                                if type(meta_anns) == dict:
-                                    meta_anns = meta_anns.values()
+                                meta_anns = ann['meta_anns'].values() if type(ann['meta_anns']) == dict else ann['meta_anns']
 
                             # If the annotation is validated
                             for meta_ann in meta_anns:
@@ -100,7 +106,7 @@ def prepare_from_json(data, cntx_left, cntx_right, tokenizer,
     return out_data
 
 
-def encode_category_values(data, existing_category_value2id=None):
+def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None) -> Tuple:
     r''' Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
 
@@ -134,7 +140,7 @@ def encode_category_values(data, existing_category_value2id=None):
     return data, category_value2id
 
 
-def json_to_fake_spacy(data, id2text):
+def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
     r''' Creates a generator of fake spacy documents, used for running
     meta_cat pipe separately from main cat pipeline.
 
@@ -149,35 +155,35 @@ def json_to_fake_spacy(data, id2text):
             Generator of spacy like documents that can be feed into meta_cat.pipe
     '''
 
-    for id in data.keys():
-        ents = data[id]['entities'].values()
+    for id_ in data.keys():
+        ents = data[id_]['entities'].values()
 
-        doc = Doc(text=id2text[id], id=id)
+        doc = Doc(text=id2text[id_], id=id_)
         doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
 
         yield doc
 
 
 class Empty(object):
-    def __init__(self):
+    def __init__(self) -> None:
         pass
 
 
 class Span(object):
-    def __init__(self, start_char, end_char, id):
+    def __init__(self, start_char: str, end_char: str, id_: str) -> None:
         self._ = Empty()
         self.start_char = start_char
         self.end_char = end_char
-        self._.id = id
-        self._.meta_anns = None
+        self._.id = id_  # type: ignore
+        self._.meta_anns = None # type: ignore
 
 
 class Doc(object):
-    def __init__(self, text, id):
+    def __init__(self, text: str, id_: str) -> None:
         self._ = Empty()
-        self._.share_tokens = None
-        self.ents = []
+        self._.share_tokens = None  # type: ignore
+        self.ents: List = []
         # We do not have overlapps at this stage
         self._ents = self.ents
         self.text = text
-        self.id = id
+        self.id = id_

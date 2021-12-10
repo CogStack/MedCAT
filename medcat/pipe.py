@@ -165,7 +165,7 @@ class Pipe(object):
             inner_parallel = False
 
         component_cfg = {
-            tag_skip_and_punct.name: {
+            tag_skip_and_punct.name: {  # type: ignore
                 'parallel': inner_parallel
             },
             TokenNormalizer.name: {

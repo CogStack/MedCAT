@@ -1,13 +1,16 @@
 """ I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
 once the software is trained the main thing are the context vectors.
 """
-from spacy.tokens import Span
 import logging
+from typing import List, Optional
+from spacy.tokens import Span, Token, Doc
+from medcat.cdb import CDB
+from medcat.config import Config
 
 log = logging.getLogger(__name__)
 
 
-def maybe_annotate_name(name, tkns, doc, cdb, config, label='concept'):
+def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config: Config, label: str = 'concept') -> Optional[Span]:
     r''' Given a name it will check should it be annotated based on config rules. If yes
     the annotation will be added to the doc._.ents array.
 

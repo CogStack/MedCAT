@@ -77,8 +77,8 @@ class CAT(object):
 
     def __init__(self,
                  cdb: CDB,
+                 vocab: Vocab,
                  config: Optional[Config] = None,
-                 vocab: Optional[Vocab] = None,
                  meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
