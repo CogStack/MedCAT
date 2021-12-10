@@ -3,6 +3,7 @@
 
 import dill
 import logging
+import aiofiles
 import numpy as np
 from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
@@ -363,7 +364,7 @@ class CDB(object):
             self.cui2count_train[cui] += 1
 
     def save(self, path: str) -> None:
-        r''' Saves model to file (in fact it saves vairables of this class).
+        r''' Saves model to file (in fact it saves variables of this class).
 
         Args:
             path (`str`):
@@ -375,6 +376,20 @@ class CDB(object):
             to_save['config'] = self.config.__dict__
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
+
+    async def save_async(self, path: str) -> None:
+        r''' Async version of saving model to file (in fact it saves variables of this class).
+
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+        '''
+        async with aiofiles.open(path, 'wb') as f:
+            to_save = {
+                'config': self.config.__dict__,
+                'cdb': {k: v for k, v in self.__dict__.items() if k != 'config'}
+            }
+            await f.write(dill.dumps(to_save))
 
     @classmethod
     def load(cls, path: str, config: Optional[Config] = None) -> "CDB":
