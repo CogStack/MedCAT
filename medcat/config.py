@@ -10,7 +10,7 @@ def weighted_average(step: int, factor: float) -> float:
     return max(0.1, 1 - (step ** 2 * factor))
 
 
-def workers(workers_override: Optional[int] = None):
+def workers(workers_override: Optional[int] = None) -> int:
     return max(cpu_count() - 1, 1) if workers_override is None else workers_override
 
 
@@ -266,6 +266,7 @@ class Config(ConfigMixin):
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
 
+    # Override
     def rebuild_re(self) -> None:
         # Some regex that we will need
         self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
