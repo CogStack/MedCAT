@@ -39,7 +39,7 @@ from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
 from medcat.utils.relation_extraction.utils import batch_split, create_tokenizer_pretrain, load_bin_file, load_results, load_state, put_blanks, save_bin_file, save_results, tokenize
 
 from medcat.utils.relation_extraction.rel_dataset import RelData
-# from seqeval.metrics import precision_score, recall_score, f1_score
+from seqeval.metrics import precision_score, recall_score, f1_score
 
 class RelationExtraction(object):
 
@@ -281,9 +281,9 @@ class RelationExtraction(object):
         accuracy = acc/(i + 1)
         results = {
             "accuracy": accuracy,
-            # "precision": precision_score(true_labels, out_labels),
-            # "recall": recall_score(true_labels, out_labels),
-            # "f1": f1_score(true_labels, out_labels)
+            "precision": precision_score(true_labels, out_labels),
+            "recall": recall_score(true_labels, out_labels),
+            "f1": f1_score(true_labels, out_labels)
         }
 
         logging.info("***** Eval results *****")
