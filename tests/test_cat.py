@@ -190,7 +190,12 @@ class CATTests(unittest.TestCase):
         self.assertFalse("text" in out[2])
 
     def test_train_supervised(self):
-        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json"), nepochs=1)
+        nepochs = 3
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path, checkpoint=checkpoint, nepochs=nepochs)
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
         self.assertEqual({}, tp)
@@ -199,6 +204,32 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, f1)
         self.assertEqual({}, cui_counts)
         self.assertEqual({}, examples)
+        self.assertEqual(nepochs, len(checkpoints))
+        self.assertTrue("checkpoint-1-1" in checkpoints)
+        self.assertTrue("checkpoint-1-2" in checkpoints)
+        self.assertTrue("checkpoint-1-3" in checkpoints)
+
+    def test_resume_supervised_training(self):
+        nepochs_train = 1
+        nepochs_retrain = 2
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
+        self.undertest.train_supervised(data_path, checkpoint=checkpoint, nepochs=nepochs_train)
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.resume_supervised_training(data_path, checkpoint=checkpoint, nepochs=nepochs_retrain)
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
+        self.assertEqual({}, fp)
+        self.assertEqual({}, fn)
+        self.assertEqual({}, tp)
+        self.assertEqual({}, p)
+        self.assertEqual({}, r)
+        self.assertEqual({}, f1)
+        self.assertEqual({}, cui_counts)
+        self.assertEqual({}, examples)
+        self.assertEqual(nepochs_train + nepochs_retrain, len(checkpoints))
+        self.assertTrue("checkpoint-1-1" in checkpoints)
+        self.assertTrue("checkpoint-1-2" in checkpoints)
+        self.assertTrue("checkpoint-1-3" in checkpoints)
 
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)
