@@ -1,446 +1,293 @@
+import json
 import logging
 import os
 import numpy
-import spacy
 import logging
-import pandas
+from numpy.core.fromnumeric import take
 import torch
 
 import torch.nn
 import pickle
 import dill
-import regex as re
 import torch.optim
 import torch
+from torch.utils.data import dataloader
+import tqdm
 import torch.nn as nn
+from torch import Tensor
 from datetime import date, datetime
 from torch.nn.modules.module import T
 from transformers import BertConfig
-
-from transformers.configuration_utils import PretrainedConfig
+from ast import literal_eval
 from itertools import permutations
 from pandas.core.series import Series
-
-from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
+from medcat.cdb import CDB
+from medcat.config_re import ConfigRE
+from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 
 from spacy.tokens import Doc
-from typing import Dict, Iterable, List, Set, Tuple
+from typing import Dict, Iterable, List, Optional, Set, Tuple, Union
 from transformers import AutoTokenizer
+from torch.utils.data import Dataset, DataLoader
+from medcat.utils.meta_cat.ml_utils import split_list_train_test
 
-from tqdm.autonotebook import tqdm
+
 from medcat.utils.relation_extraction.eval import Two_Headed_Loss
-
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
-from medcat.utils.relation_extraction.utils import load_bin_file, save_bin_file
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+from medcat.utils.relation_extraction.utils import batch_split, create_tokenizer_pretrain, load_bin_file, load_results, load_state, put_blanks, save_bin_file, save_results, tokenize
 
-class RelData(object):
-
-    Doc.set_extension("relations", default=[], force=True)
-
-    def __init__(self, docs):
-        self.create_base_relations(docs)
-        self.relations_dataframe = pandas.DataFrame(self.get_all_instances(docs), columns=["relation", "ent1", "ent2"])
-
-    def create_base_relations(self, docs):
-        for doc_id, doc in docs.items():
-            if len(doc._.relations) == 0:
-                doc._.ents = doc.ents
-                doc._.relations = self.get_instances(doc)
-
-    def get_instances(self, doc, window_size=30):
-        """  
-            doc : SpacyDoc
-            window_size : int, Character distance between any two entities start positions.
-            Creates a list of tuples based on pairs of entities detected (relation, ent1, ent2) for one spacy document.
-        """
-        relation_instances = []
-        
-        doc_length = len(doc)
-
-        chars_to_exclude = ":!@#$%^&*()-+?_=,<>/"
-
-        j = 1
-        for ent1 in doc.ents:
-            j += 1
-            for ent2 in doc.ents[j:]:
-                if ent1.text.lower() != ent2.text.lower() and window_size and 1 < ent2.start - ent1.start <= window_size:
-                    is_char_punctuation = False
-                    start_pos = ent1.start
-
-                    while not is_char_punctuation and start_pos >= 0 :
-                        is_char_punctuation = doc[start_pos].is_punct
-                        start_pos -= 1
-
-                    left_sentence_context = start_pos + 1 if start_pos > 0 else 0
-
-                    is_char_punctuation = False
-                    start_pos = ent2.end
-
-                    while not is_char_punctuation and start_pos < doc_length:
-                        is_char_punctuation = doc[start_pos].is_punct
-                        start_pos += 1
-                    
-                    right_sentence_context= start_pos + 1 if start_pos > 0 else doc_length
-
-                    if window_size < (right_sentence_context - left_sentence_context):
-                        continue
-
-                    sentence_window_tokens = []
-
-                    for token in doc[left_sentence_context:right_sentence_context]:
-                        text = token.text.strip()
-                        if text != "" and not any(chr in chars_to_exclude for chr in text):
-                            sentence_window_tokens.append(token.text)
-
-                    sentence_token_span = (sentence_window_tokens,
-                                     (ent1.start - left_sentence_context, ent1.end - left_sentence_context ),
-                                     (ent2.start - left_sentence_context, ent2.end - left_sentence_context)
-                       )
-
-                    relation_instances.append((sentence_token_span, ent1.text, ent2.text))
-
-        return relation_instances
-
-    def get_all_instances(self, docs):
-        relation_instances = []
-        for doc_id, doc in docs.items():
-            relation_instances.extend(doc._.relations)
-        return relation_instances
-        
-    def get_subject_objects(self, entity):
-        """
-            entity: spacy doc entity
-        """
-        root = entity.sent.root
-        subject = None 
-        dependencies = []
-        pairs = []
-
-        for child in list(root.children):
-            if child.dep_ in ["nsubj", "nsubjpass"]: #, "nmod:poss"]:
-                subject = child; 
-            elif child.dep_ in ["compound", "dobj", "conj", "attr", "ccomp"]:
-                dependencies.append(child)
-
-        if subject is not None and len(dependencies) > 0:
-            for a, b in permutations([subject] + dependencies, 2):
-                a_ = [w for w in a.subtree]
-                b_ = [w for w in b.subtree]
-                pairs.append((a_, b_))
-                
-        return pairs
-
-    def __len__(self):
-        return len(self.relations_dataframe)
+from medcat.utils.relation_extraction.rel_dataset import RelData
+# from seqeval.metrics import precision_score, recall_score, f1_score
 
 class RelationExtraction(object):
 
     name : str = "rel"
 
-    def __init__(self, docs, batch_size=100, config: PretrainedConfig = None, spacy_model : str = None, tokenizer = None, embeddings=None, model_name=None, threshold: float = 0.1):
+    def __init__(self,  cdb : CDB, config: ConfigRE = ConfigRE(), re_model_path : str = "", tokenizer: Optional[TokenizerWrapperBERT] = None, task="train"):
     
        self.config = config
-       self.cfg = {"labels": [], "threshold": threshold }
        self.tokenizer = tokenizer
-       self.embeddings = embeddings
-       self.learning_rate = 0.1
-       self.batch_size = batch_size
+       self.cdb = cdb
+      
+       self.learning_rate = config.train["lr"]
+       self.batch_size = config.train["batch_size"]
+       self.n_classes = config.model["nclasses"]
 
        self.is_cuda_available = torch.cuda.is_available()
 
-       if model_name is None or model_name == "BERT":
-           self.config = BertConfig.from_pretrained("dmis-lab/biobert-base-cased-v1.2") #BertConfig.from_pretrained("bert-base-uncased")  
-           self.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="dmis-lab/biobert-base-cased-v1.2", model_size="dmis-lab/biobert-base-cased-v1.2", config=config)  
-        
+       self.device = torch.device("cuda:0" if self.is_cuda_available else "cpu")
+       self.hf_model_name = "bert-large-uncased"
+
+       self.model_config = BertConfig.from_pretrained(self.hf_model_name) 
+
        if self.is_cuda_available:
-           self.model = self.model.to(device)
+           self.model = self.model.to(self.device)
 
        if self.tokenizer is None:
-            if os.path.isfile("./BERT_tokenizer_relation_extraction.dat"):
-                self.tokenizer = load_bin_file(file_name="BERT_tokenizer_relation_extraction.dat")
+            tokenizer_path = os.path.join(re_model_path, "BERT_tokenizer_relation_extraction")
+            if os.path.exists(tokenizer_path):
+                self.tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
             else:
-                self.tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="emilyalsentzer/Bio_ClinicalBERT"))
+                self.tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-large-uncased"),
+                                                      max_seq_length=self.model_config.max_position_embeddings) 
+                create_tokenizer_pretrain(self.tokenizer)
+    
+       self.model_config.vocab_size = len(self.tokenizer.hf_tokenizers)
 
-       if self.embeddings is None:
-           embeddings = numpy.load(os.path.join("./", "embeddings.npy"), allow_pickle=False)
-           self.embeddings = torch.tensor(embeddings, dtype=torch.float32)
+       self.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=self.hf_model_name,
+                                                                 model_size=self.hf_model_name,
+                                                                 config=self.model_config,
+                                                                 task=task,
+                                                                 n_classes=self.n_classes)  
 
-       self.spacy_nlp = spacy.load("en_core_sci_md") if spacy_model is None else spacy.load(spacy_model)
+       self.model.resize_token_embeddings(self.model_config.vocab_size)
+       
+       unfrozen_layers = ["classifier", "pooler", "encoder.layer.11", \
+                          "classification_layer", "blanks_linear", "lm_linear", "cls"]
 
-       self.rel_data = RelData(docs)
-
-       self.alpha = 0.6
-       self.mask_probability = 0.10
-
-    def train(self, num_epoch=15, gradient_acc_steps=4, multistep_lr_gamma=0.8):
-        self.model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
-
-        criterion = Two_Headed_Loss(lm_ignore_idx=self.tokenizer.hf_tokenizers.pad_token_id, use_logits=True, normalize=False)
-        optimizer = torch.optim.Adam([{"params" : self.model.parameters(), "lr": self.learning_rate}])
-        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2,4,6,8,16,18,20,22,30], gamma=multistep_lr_gamma)
-
-        start_epoch, best_pred, amp_checkpoint = Two_Headed_Loss.load_state(self.model, optimizer, scheduler, load_best=False)  
-
-        losses_per_epoch, accuracy_per_epoch = Two_Headed_Loss.load_results()
+       for name, param in self.model.named_parameters():
+        if not any([layer in name for layer in unfrozen_layers]):
+            param.requires_grad = False
+        else:
+            param.requires_grad = True
         
+       self.pad_id = self.tokenizer.hf_tokenizers.pad_token_id
+       self.padding_seq = Pad_Sequence(seq_pad_value=self.pad_id,\
+                       label_pad_value=self.pad_id,\
+                       label2_pad_value=-1)
+
+    def create_test_train_datasets(self, data):
+        train_data, test_data = {}, {}
+        train_data["output_relations"], test_data["output_relations"] = split_list_train_test(data["output_relations"],
+                                    test_size=self.config.train["test_size"], shuffle=False)
+        for k,v in data.items():
+            if k != "output_relations":
+                train_data[k] = v
+                test_data[k] = v
+
+        return train_data, test_data
+
+    def train(self, export_data_path = "", csv_path = "", docs = None, checkpoint_path="./", num_epoch=1, gradient_acc_steps=1, multistep_lr_gamma=0.8, max_grad_norm=1.0):
+        
+        train_rel_data = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
+        test_rel_data = RelData(cdb=CDB(self.cdb.config), config=self.config, tokenizer=None)
+
+        if csv_path != "":
+            train_rel_data.dataset, test_rel_data.dataset = self.create_test_train_datasets(train_rel_data.create_base_relations_from_csv(csv_path))
+            
+            #print(train_rel_data.create_base_relations_from_csv(csv_path))
+        elif export_data_path != "":
+            export_data = {}
+            with open(export_data_path) as f:
+                export_data = json.load(f)
+
+            #print(train_rel_data.create_relations_from_export(export_data))
+            train_rel_data.dataset, test_rel_data.dataset = self.create_test_train_datasets(train_rel_data.create_relations_from_export(export_data))
+        else:
+            logging.error("NO DATA HAS BEEN PROVIDED (JSON/CSV/spacy_DOCS)")
+            return
+
+        train_dataset_size = len(train_rel_data)
+        batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
+        train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=True, \
+                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
+
+        test_dataset_size = len(test_rel_data)
+        test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
+        test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=True, \
+                                 num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
+
+        criterion = nn.CrossEntropyLoss(ignore_index=-1)
+        optimizer = torch.optim.Adam([{"params": self.model.parameters(), "lr": self.learning_rate}])
+        
+        scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer, milestones=[2,4,6,8,12,15,18,20,22,\
+                                                                        24,26,30], gamma=multistep_lr_gamma)
+        
+        start_epoch, best_pred = load_state(self.model, optimizer, scheduler, load_best=False)  
+
         logging.info("Starting training process...")
         
-        pad_id = self.tokenizer.hf_tokenizers.pad_token_id
-        mask_id =  self.tokenizer.hf_tokenizers.mask_token_id
+        losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = load_results(path=checkpoint_path)
 
-        update_size = 1 if (len(self) // 10 == 0) else len(self) // 10
-
-        train_len = len(self)
-
-        print("Update size: ", update_size, " Train set size:", train_len)
+        # update_size = 1 if len(train_dataloader) // 10 > 0
 
         for epoch in range(start_epoch, num_epoch):
             start_time = datetime.now().time()
             self.model.train()
+            # self.model.zero_grad()
             total_loss = 0.0
+
             losses_per_batch = []
             total_acc = 0.0
-            lm_accuracy_per_batch = []
-
-            print ("epoch #: ", epoch)
-            for i, data in enumerate(self, 0):
-                tokens, masked_for_pred, e1_e2_start, _, blank_labels, _, _, _, _, _ = data
-                masked_for_pred = masked_for_pred[(masked_for_pred != pad_id)]
+            accuracy_per_batch = []
+            
+            for i, data in enumerate(train_dataloader, 0): 
+                token_ids, e1_e2_start, labels, _, _, _ = data
                 
-                print("processing rel : ", i)
-                if masked_for_pred.shape[0] == 0:
-                    print('Empty dataset, skipping...')
-                    continue
+                attention_mask = (token_ids != self.pad_id).float()
+                token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long()
 
-                attention_mask = (tokens != pad_id).float()
-                token_type_ids = torch.zeros((tokens.shape[0], tokens.shape[1])).long()
-                
-                if self.is_cuda_available:
-                    tokens = tokens.to(device)
-                    masked_for_pred = masked_for_pred.to(device)
-                    attention_mask = attention_mask.to(device)
-                    token_type_ids = token_type_ids.to(device)
-                
-                blanks_logits, lm_logits = self.model(tokens, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None, \
-                          e1_e2_start=e1_e2_start, pooled_output=None)
-
-                token_mask_matches = (tokens == mask_id) 
-               
-                if (i % update_size) == (update_size - 1):
-                    verbose = True
-                else:
-                    verbose = False
-
-                #blank_labels = torch.zeros((blanks_logits.size()))
-
-                input_matched_lm_logits = lm_logits[0][token_mask_matches]
-
-                loss = criterion(input_matched_lm_logits, blanks_logits, masked_for_pred, blank_labels, verbose=verbose)
+                classification_logits = self.model(input_ids=token_ids,
+                          token_type_ids=token_type_ids,
+                          attention_mask=attention_mask,
+                          e1_e2_start=e1_e2_start)
+                loss = criterion(classification_logits, labels.squeeze(1))
                 loss = loss/gradient_acc_steps
-              
+
                 loss.backward()
+            
+                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_grad_norm)
                 
                 if (i % gradient_acc_steps) == 0:
                     optimizer.step()
                     optimizer.zero_grad()
                 
                 total_loss += loss.item()
-          
-                total_acc += Two_Headed_Loss.evaluate_results(input_matched_lm_logits, blanks_logits, 
-                                    masked_for_pred, blank_labels, \
-                                    self.tokenizer.hf_tokenizers, print_=verbose)
+                total_acc += self.evaluate_(classification_logits, labels, ignore_idx=-1)[0]
                 
-                if (i % update_size) == (update_size - 1):
-                    losses_per_batch.append(gradient_acc_steps * total_loss/ update_size)
-                    lm_accuracy_per_batch.append(total_acc/update_size)
-                    print("Losses per batch: " , str(losses_per_batch))
-                    print("LM acc per batch: " , str(lm_accuracy_per_batch))
-                    print('[Epoch: %d, %5d/ %d points] total loss, lm accuracy per batch: %.3f, %.3f' %
-                        (epoch + 1, (i + 1), train_len, losses_per_batch[-1], lm_accuracy_per_batch[-1]))
+                if (i % batch_size) == (batch_size - 1):
+                    losses_per_batch.append(gradient_acc_steps*total_loss/batch_size)
+                    accuracy_per_batch.append(total_acc/batch_size)
+
+                    print('[Epoch: %d, %5d/ %d points] total loss, accuracy per batch: %.3f, %.3f' %
+                        (epoch + 1, (i + 1)*self.batch_size, train_dataset_size, losses_per_batch[-1], accuracy_per_batch[-1]))
                     total_loss = 0.0; total_acc = 0.0
-                    logging.info("Last batch samples (pos, neg): %d, %d" % ((blank_labels.squeeze() == 1).sum().item(),\
-                                                                        (blank_labels.squeeze() == 0).sum().item()))
-               
-            scheduler.step()
-            losses_per_epoch.append(sum(losses_per_batch)/len(losses_per_batch))
-            accuracy_per_epoch.append(sum(lm_accuracy_per_batch)/len(lm_accuracy_per_batch))
-         
 
             end_time = datetime.now().time()
-            
-            print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
-            print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
-            print("Accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
+            scheduler.step()
+            results = self.evaluate_results(test_dataloader, self.pad_id)
+            if len(losses_per_batch) > 0:
+                losses_per_epoch.append(sum(losses_per_batch)/len(losses_per_batch))
+                print("Losses at Epoch %d: %.7f" % (epoch + 1, losses_per_epoch[-1]))
+            if len(accuracy_per_batch) > 0:
+                accuracy_per_epoch.append(sum(accuracy_per_batch)/len(accuracy_per_batch))
+                print("Train accuracy at Epoch %d: %.7f" % (epoch + 1, accuracy_per_epoch[-1]))
+                 
+            test_f1_per_epoch.append(results['f1'])
 
-            if accuracy_per_epoch[-1] > best_pred:
+            print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
+            print("Test f1 at Epoch %d: %.7f" % (epoch + 1, test_f1_per_epoch[-1]))
+
+            if len(accuracy_per_epoch) > 0 and accuracy_per_epoch[-1] > best_pred:
                 best_pred = accuracy_per_epoch[-1]
                 torch.save({
                         'epoch': epoch + 1,\
                         'state_dict': self.model.state_dict(),\
                         'best_acc': accuracy_per_epoch[-1],\
                         'optimizer' : optimizer.state_dict(),\
-                        'scheduler' : scheduler.state_dict()
-                    }, os.path.join("./data/" , "test_model_best_%s.pth.tar" % "BERT_uncased"))
-        
-            if (epoch % 1) == 0:
-                save_bin_file("test_losses_per_epoch_%s.pkl" % "BERT_uncased", losses_per_epoch)
-                save_bin_file("test_accuracy_per_epoch_%s.pkl" % "BERT_uncased", accuracy_per_epoch)
-                torch.save({
-                        'epoch': epoch + 1,\
-                        'state_dict': self.model.state_dict(),\
-                        'best_acc': accuracy_per_epoch[-1],\
-                        'optimizer' : optimizer.state_dict(),\
-                        'scheduler' : scheduler.state_dict()
-                    }, os.path.join("./data/" , "test_checkpoint_%s.pth.tar" % "BERT_uncased"))
-        
-    def pretrain_dataset(self):
-       self.ENT1_list = list(self.rel_data.relations_dataframe["ent1"].unique())
-       self.ENT2_list = list(self.rel_data.relations_dataframe["ent2"].unique())
-
-       self.tokenizer.hf_tokenizers.add_tokens(["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"])
-       
-       self.tokenizer.hf_tokenizers.convert_tokens_to_ids("[ENT1]")
-       self.tokenizer.hf_tokenizers.convert_tokens_to_ids("[ENT2]")
-
-       self.cls_token = self.tokenizer.hf_tokenizers.cls_token
-       self.sep_token = self.tokenizer.hf_tokenizers.sep_token
-
-       self.ENT1_token_id = self.tokenizer.hf_tokenizers.encode("[ENT1]")[1:-1][0]
-       self.ENT2_token_id = self.tokenizer.hf_tokenizers.encode("[ENT2]")[1:-1][0]
-       self.ENT1_s_token_id = self.tokenizer.hf_tokenizers.encode("[/ENT1]")[1:-1][0]
-       self.ENT2_s_token_id = self.tokenizer.hf_tokenizers.encode("[/ENT2]")[1:-1][0]
-
-       self.padding_seq = Pad_Sequence(seq_pad_value=self.tokenizer.hf_tokenizers.pad_token_id,\
-                              label_pad_value=self.tokenizer.hf_tokenizers.pad_token_id,\
-                              label2_pad_value=-1)
-       
-       save_bin_file(file_name="BERT_tokenizer_relation_extraction.dat", data=self.tokenizer)
-
-    def put_blanks(self, relations_dataset):
-        
-        blank_ent1 = numpy.random.uniform()
-        blank_ent2 = numpy.random.uniform()
-        
-        sentence_token_span, ent1, ent2 = relations_dataset
-        
-        if blank_ent1 >= self.alpha:
-            relations_dataset = (sentence_token_span, "[BLANK]", ent2)
-        
-        if blank_ent2 >= self.alpha:
-            relations_dataset = (sentence_token_span, ent1, "[BLANK]")
+                        'scheduler' : scheduler.state_dict(),\
+                }, os.path.join("./data/" , "training_model_best_BERT.dat"))
             
-        return relations_dataset
+            if (epoch % 1) == 0:
+                save_results(losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch, file_prefix="train")
+                #accuracy_per_epoch[-1],\
+                torch.save({ 
+                        'epoch': epoch + 1,\
+                        'state_dict': self.model.state_dict(),
+                        'best_acc':  0,  
+                        'optimizer' : optimizer.state_dict(),
+                        'scheduler' : scheduler.state_dict()
+                    }, os.path.join("./" , "training_checkpoint_BERT.dat"))
 
-    def tokenize(self, relations_dataset: Series):
+    def evaluate_(self, output, labels, ignore_idx):
+        ### ignore index 0 (padding) when calculating accuracy
+        idxs = (labels != ignore_idx).squeeze()
+        out_labels = torch.softmax(output, dim=1).max(1)[1]
+        l = labels.squeeze()[idxs]; 
+        o = out_labels[idxs]
 
-        (tokens, span_1_pos, span_2_pos), ent1_text, ent2_text = relations_dataset 
-
-        tokens = [token.lower() for token in tokens if tokens != '[BLANK]']
-
-        forbidden_indices = [i for i in range(span_1_pos[0], span_1_pos[1])] + [i for i in range(span_2_pos[0], span_2_pos[1])]
-
-        pool_indices = [ i for i in range(len(tokens)) if i not in forbidden_indices ]
-
-        masked_indices = numpy.random.choice(pool_indices, \
-                                          size=round(self.mask_probability * len(pool_indices)), \
-                                          replace=False)
-   
-        masked_for_pred = [token.lower() for idx, token in enumerate(tokens) if (idx in masked_indices)]
-
-        tokens = [token if (idx not in masked_indices) else self.tokenizer.hf_tokenizers.mask_token for idx, token in enumerate(tokens)]
-
-        if (ent1_text == "[BLANK]") and (ent2_text != "[BLANK]"):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]" ,"[BLANK]", "[/ENT1]"] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
-        
-        elif (ent1_text == "[BLANK]") and (ent2_text == "[BLANK]"):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]" ,"[BLANK]", "[/ENT1]"] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]", "[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
-        
-        elif (ent1_text != "[BLANK]") and (ent2_text == "[BLANK]"):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]", "[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
-        
-        elif (ent1_text != "[BLANK]") and (ent2_text != "[BLANK]"):
-            tokens = [self.cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
-                tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [self.sep_token]
-
-        ent1_ent2_start = ([i for i, e in enumerate(tokens) if e == "[ENT1]"] [0] , [i for i, e in enumerate(tokens) if e == "[ENT2]"] [0])
-
-        token_ids = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
-        masked_for_pred = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(masked_for_pred)
-
-        # print(tokens)
-
-        return token_ids, masked_for_pred, ent1_ent2_start
-
-    def __len__(self):
-        return len(self.rel_data.relations_dataframe)
-
-    def __getitem__(self, index):
-        relation, ent1_text, ent2_text = self.rel_data.relations_dataframe.iloc[index]
-
-        logging.debug("relation : ", str(relation), " | ent1_text: " + ent1_text, "| ent2_text" + ent2_text)
-        logging.debug("\n")
-
-        pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent1_text) & (self.rel_data.relations_dataframe["ent2"] == ent2_text))].index
-        
-        pool.append(self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] == ent2_text) & (self.rel_data.relations_dataframe["ent2"] == ent1_text))].index)
-        
-        pos_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
-
-        neg_idxs = []
-
-        if numpy.random.uniform() > 0.5:   
-            pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] != ent1_text) | \
-                                                     (self.rel_data.relations_dataframe["ent2"] != ent2_text))].index
+        if len(idxs) > 1:
+            acc = (l == o).sum().item()/len(idxs)
         else:
-            if numpy.random.uniform() > 0.5: # share e1 but not e2
-                pool = self.rel_data.relations_dataframe[(( self.rel_data.relations_dataframe['ent1'] == ent1_text) & \
-                     (self.rel_data.relations_dataframe['ent2'] != ent2_text))].index
-            else: # share e2 but not e1
-                pool = self.rel_data.relations_dataframe[(( self.rel_data.relations_dataframe['ent1'] != ent1_text) & \
-                     (self.rel_data.relations_dataframe['ent2'] == ent2_text))].index
+            acc = (l == o).sum().item()
 
-            if len(pool) == 0:
-                    pool = self.rel_data.relations_dataframe[((self.rel_data.relations_dataframe["ent1"] != ent1_text) | \
-                        (self.rel_data.relations_dataframe["ent2"] != ent2_text))].index
-                                                     
-        neg_idxs = numpy.random.choice(pool, size=min(int(self.batch_size//2), len(pool)), replace=False)
-        Q = 1/len(pool)
+        l = l.cpu().numpy().tolist() if l.is_cuda else l.numpy().tolist()
+        o = o.cpu().numpy().tolist() if o.is_cuda else o.numpy().tolist()
 
-        logging.debug(" Pos Idx: " + str(pos_idxs))
-        logging.debug(" Neg Idx: " + str(neg_idxs))
+        return acc, (o, l)
 
-        batch = []
-        ## process positive sample
-        pos_df = self.rel_data.relations_dataframe.loc[pos_idxs]
-        for idx, row in pos_df.iterrows():
-            relation, ent1_text, ent2_text = row[0], row[1], row[2]
-            relation_tokens, masked_for_pred, e1_e2_start = self.tokenize(self.put_blanks((relation, ent1_text, ent2_text)))
-            relation_tokens = torch.LongTensor(relation_tokens)
+    def evaluate_results(self, dataset, pad_id):
+        logging.info("Evaluating test samples...")
+        acc = 0
+        out_labels = []
+        true_labels = []
+        self.model.eval()
 
-            masked_for_pred = torch.LongTensor(masked_for_pred)
-            e1_e2_start = torch.tensor(e1_e2_start)
-            batch.append((relation_tokens, masked_for_pred, e1_e2_start, torch.FloatTensor([1.0]),\
-                            torch.LongTensor([1])))
+        with torch.no_grad():
+            for i, data in enumerate(dataset):
+                logging.info(data)
+            
+                token_ids, e1_e2_start, labels, _,_,_ = data
+                attention_mask = (token_ids != pad_id).float()
+                token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long()
+
+                if self.is_cuda_available:
+                    token_ids = token_ids.cuda()
+                    labels = labels.cuda()
+                    attention_mask = attention_mask.cuda()
+                    token_type_ids = token_type_ids.cuda()
+                    
+                classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,\
+                            e1_e2_start=e1_e2_start)
+                
+                accuracy, (o, l) = self.evaluate_(classification_logits, labels, ignore_idx=-1)
+
+                out_labels.append([str(i) for i in o])
+                true_labels.append([str(i) for i in l])
+                acc += accuracy
         
-        ## process negative samples
-        negs_df = self.rel_data.relations_dataframe.loc[neg_idxs]
-        for idx, row in negs_df.iterrows():
-            relation, ent1_text, ent2_text = row[0], row[1], row[2]
-            relation_tokens, masked_for_pred, e1_e2_start = self.tokenize(self.put_blanks((relation, ent1_text, ent2_text)))
-            relation_tokens = torch.LongTensor(relation_tokens)
-            masked_for_pred = torch.LongTensor(masked_for_pred)
-            e1_e2_start = torch.tensor(e1_e2_start)
-    
-            batch.append((relation_tokens, masked_for_pred, e1_e2_start, torch.FloatTensor([Q]), torch.LongTensor([0])))
+        accuracy = acc/(i + 1)
+        results = {
+            "accuracy": accuracy,
+            # "precision": precision_score(true_labels, out_labels),
+            # "recall": recall_score(true_labels, out_labels),
+            # "f1": f1_score(true_labels, out_labels)
+        }
 
-        batch = self.padding_seq(batch)
-
-        return batch
-
-
+        logging.info("***** Eval results *****")
+        for key in sorted(results.keys()):
+            logging.info("  %s = %s", key, str(results[key]))
+        
+        return results

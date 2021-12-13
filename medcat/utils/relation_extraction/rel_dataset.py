@@ -229,14 +229,7 @@ class RelData(Dataset):
                                         end_input_idx = idx
                         
                             input_ids = tokenizer_data["input_ids"] # [start_input_idx:end_input_idx]
-                            # for token in tokens_text:
-                            #    if token in relation_section_text and token.strip() != "":
-                            #        sentence_window_tokens.append(token.strip())
-
-                            # sentence_token_span = (sentence_window_tokens, 
-                            #                        (ann_start_start_pos - left_sentence_context, ann_start_end_pos),
-                            #                        (ann_end_start_pos - left_sentence_context, ann_end_end_pos + right_sentence_context ) )
-
+                     
                             relation_instances.append([input_ids, (start_input_idx, end_input_idx), start_entity_value, end_entity_value , relation_label, self.blank_label_id,
                                                          start_entity_types, end_entity_types, start_entity_id, end_entity_id, start_entity_cui, end_entity_cui, doc_id])
 
