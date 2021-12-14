@@ -714,10 +714,25 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
+        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR,
+                                              steps=1,
+                                              metadata={
+                                                  "reset_cui_count": reset_cui_count,
+                                                  "use_filters": use_filters,
+                                                  "terminate_last": terminate_last,
+                                                  "use_overlaps": use_overlaps,
+                                                  "use_cui_doc_limit": use_cui_doc_limit,
+                                                  "test_size": test_size,
+                                                  "devalue_others": devalue_others,
+                                                  "use_groups": use_groups,
+                                                  "never_terminate": never_terminate,
+                                                  "train_from_false_positives": train_from_false_positives,
+                                                  "extra_cui_filter": extra_cui_filter
+                                              })
 
-        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR, steps=1)
         if not resume_from_checkpoint:
             checkpoint.purge()
+            checkpoint.save_metadata()
 
         # This will be simplified once moving away from py36
         loop = asyncio.get_event_loop()
@@ -745,19 +760,8 @@ class CAT(object):
 
     def resume_supervised_training(self,
                                    data_path: str,
-                                   reset_cui_count: bool = False,
                                    nepochs: int = 1,
                                    print_stats: int = 0,
-                                   use_filters: bool = False,
-                                   terminate_last: bool = False,
-                                   use_overlaps: bool = False,
-                                   use_cui_doc_limit: bool = False,
-                                   test_size: int = 0,
-                                   devalue_others: bool = False,
-                                   use_groups: bool = False,
-                                   never_terminate: bool = False,
-                                   train_from_false_positives: bool = False,
-                                   extra_cui_filter: Optional[Set] = None,
                                    checkpoint: Optional[Checkpoint] = None) -> Tuple:
         r''' TODO: Refactor, left from old
         Resume supervised training on a dataset from MedCATtrainer from where it was left.
@@ -765,43 +769,12 @@ class CAT(object):
         Args:
             data_path (str):
                 The path to the json file that we get from MedCATtrainer on export.
-            reset_cui_count (boolean):
-                Used for training with weight_decay (annealing). Each concept has a count that is there
-                from the beginning of the CDB, that count is used for annealing. Resetting the count will
-                significantly increase the training impact. This will reset the count only for concepts
-                that exist in the the training data.
             nepochs (int):
                 Number of epochs for which to run the training.
             print_stats (int):
                 If > 0 it will print stats every print_stats epochs.
-            use_filters (boolean):
-                Each project in medcattrainer can have filters, do we want to respect those filters
-                when calculating metrics.
-            terminate_last (boolean):
-                If true, concept termination will be done after all training.
-            use_overlaps (boolean):
-                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
-            use_cui_doc_limit (boolean):
-                If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
-                if the document was annotated for that CUI. Useful in very specific situations when during the annotation
-                process the set of CUIs changed.
-            test_size (float):
-                If > 0 the data set will be split into train test based on this ration. Should be between 0 and 1.
-                Usually 0.1 is fine.
-            devalue_others(bool):
-                Check add_name for more details.
-            use_groups (boolean):
-                If True concepts that have groups will be combined and stats will be reported on groups.
-            never_terminate (boolean):
-                If True no termination will be applied
-            train_from_false_positives (boolean):
-                If True it will use false positive examples detected by medcat and train from them as negative examples.
-            extra_cui_filter(Optional[Set]):
-                This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
             checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
                 The medcat checkpoint object
-            resume_from_checkpoint (bool):
-                If True resume the previous training; If False, start a fresh new training.
         Returns:
             fp (dict):
                 False positives for each CUI
@@ -823,22 +796,25 @@ class CAT(object):
         checkpoint = checkpoint or Checkpoint.restore(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR)
         checkpoint.populate(self.cdb)
 
+        if checkpoint.metadata is None:
+            raise Exception("Checkpoints metadata not found.")
+
         return self.train_supervised(data_path=data_path,
-                              reset_cui_count=reset_cui_count,
-                              nepochs=nepochs,
-                              print_stats=print_stats,
-                              use_filters=use_filters,
-                              terminate_last=terminate_last,
-                              use_overlaps=use_overlaps,
-                              use_cui_doc_limit=use_cui_doc_limit,
-                              test_size=test_size,
-                              devalue_others=devalue_others,
-                              use_groups=use_groups,
-                              never_terminate=never_terminate,
-                              train_from_false_positives=train_from_false_positives,
-                              extra_cui_filter=extra_cui_filter,
-                              checkpoint=checkpoint,
-                              resume_from_checkpoint=True)
+                                     reset_cui_count=checkpoint.metadata["reset_cui_count"],
+                                     nepochs=nepochs,
+                                     print_stats=print_stats,
+                                     use_filters=checkpoint.metadata["use_filters"],
+                                     terminate_last=checkpoint.metadata["terminate_last"],
+                                     use_overlaps=checkpoint.metadata["use_overlaps"],
+                                     use_cui_doc_limit=checkpoint.metadata["use_cui_doc_limit"],
+                                     test_size=checkpoint.metadata["test_size"],
+                                     devalue_others=checkpoint.metadata["devalue_others"],
+                                     use_groups=checkpoint.metadata["use_groups"],
+                                     never_terminate=checkpoint.metadata["never_terminate"],
+                                     train_from_false_positives=checkpoint.metadata["train_from_false_positives"],
+                                     extra_cui_filter=checkpoint.metadata["extra_cui_filter"],
+                                     checkpoint=checkpoint,
+                                     resume_from_checkpoint=True)
 
     def get_entities(self,
                      text: str,
