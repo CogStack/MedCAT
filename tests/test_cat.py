@@ -109,7 +109,7 @@ class CATTests(unittest.TestCase):
         self.undertest.cdb.print_stats()
         self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
         self.undertest.cdb.print_stats()
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) and "metadata" not in f]
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
 
         self.assertEqual(1, len(checkpoints))
         self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[0])
@@ -122,7 +122,7 @@ class CATTests(unittest.TestCase):
         self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
         self.undertest.cdb.print_stats()
         self.undertest.resume_training(["The dog is not a house"] * 40, checkpoint=checkpoint)
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) and "metadata" not in f]
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
         self.assertEqual(15, len(checkpoints))
         self.assertTrue("checkpoint-%s-3" % ckpt_steps in checkpoints)
         self.assertTrue("checkpoint-%s-6" % ckpt_steps in checkpoints)
@@ -153,7 +153,7 @@ class CATTests(unittest.TestCase):
         self.undertest.cdb.print_stats()
         self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
         self.undertest.cdb.print_stats()
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) and "metadata" not in f]
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
         self.assertEqual(2, len(checkpoints))
         self.assertTrue("checkpoint-%s-18" % ckpt_steps in checkpoints)
         self.assertTrue("checkpoint-%s-20" % ckpt_steps in checkpoints)
