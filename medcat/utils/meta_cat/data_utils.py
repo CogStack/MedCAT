@@ -154,33 +154,35 @@ def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
         generator:
             Generator of spacy like documents that can be feed into meta_cat.pipe
     '''
-
-    class Empty(object):
-        def __init__(self) -> None:
-            pass
-
-    class Span(object):
-        def __init__(self, start_char: str, end_char: str, id: str) -> None:
-            self._ = Empty()
-            self.start_char = start_char
-            self.end_char = end_char
-            self._.id = id  # type: ignore
-            self._.meta_anns = None # type: ignore
-
-    class Doc(object):
-        def __init__(self, text: str, id: str) -> None:
-            self._ = Empty()
-            self._.share_tokens = None  # type: ignore
-            self.ents: List = []
-            # We do not have overlapps at this stage
-            self._ents = self.ents
-            self.text = text
-            self.id = id
-
     for id_ in data.keys():
         ents = data[id_]['entities'].values()
 
-        doc = Doc(text=id2text[id_], id=id_)
+        doc = Doc(text=id2text[id_], id_=id_)
         doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
 
         yield doc
+
+
+class Empty(object):
+    def __init__(self) -> None:
+        pass
+
+
+class Span(object):
+    def __init__(self, start_char: str, end_char: str, id_: str) -> None:
+        self._ = Empty()
+        self.start_char = start_char
+        self.end_char = end_char
+        self._.id = id_  # type: ignore
+        self._.meta_anns = None # type: ignore
+
+
+class Doc(object):
+    def __init__(self, text: str, id_: str) -> None:
+        self._ = Empty()
+        self._.share_tokens = None  # type: ignore
+        self.ents: List = []
+        # We do not have overlapps at this stage
+        self._ents = self.ents
+        self.text = text
+        self.id = id_

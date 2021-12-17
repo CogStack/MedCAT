@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union
 from tokenizers import Tokenizer, ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
+from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 
 class TokenizerWrapperBase(ABC):

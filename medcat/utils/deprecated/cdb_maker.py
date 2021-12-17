@@ -7,7 +7,6 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 # Why is spacy_tag_punct not defined in medcat.preprocessing.cleaners
 from medcat.preprocessing.cleaners import spacy_tag_punct, clean_umls, clean_def # type: ignore
 from medcat.utils.spacy_pipe import SpacyPipe
-#from pytorch_pretrained_bert import BertTokenizer
 import numpy as np
 from functools import partial
 

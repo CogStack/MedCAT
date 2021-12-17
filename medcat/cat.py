@@ -7,29 +7,33 @@ import logging
 import math
 import time
 import psutil
+import asyncio
 from time import sleep
 from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
+from itertools import islice
 from tqdm.autonotebook import tqdm
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
 
-from medcat.utils.matutils import intersect_nonempty_set
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.cdb import CDB
+from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.loggers import add_handlers
 from medcat.cdb import CDB
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
+from medcat.utils.helpers import tkns_from_doc
+from medcat.utils.checkpoint import Checkpoint
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import get_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
-from medcat.utils.helpers import tkns_from_doc
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
@@ -59,7 +63,7 @@ class CAT(object):
             Concept database used with this CAT instance, please do not assign
             this value directly.
         config (medcat.config.Config):
-            The global configuration for medcat. Usually cdb.config can be used for this
+            The global configuration for medcat. Usually cdb.config will be used for this
             field.
         vocab (medcat.utils.vocab.Vocab):
             The vocabulary object used with this instance, please do not assign
@@ -75,12 +79,22 @@ class CAT(object):
     # Add file and console handlers
     log = add_handlers(log)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
+    DEFAULT_TRAIN_CHECKPOINT_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train")
 
-    def __init__(self, cdb: CDB, config: Config, vocab: Vocab, meta_cats: List[MetaCAT] = []) -> None:
+    def __init__(self,
+                 cdb: CDB,
+                 vocab: Vocab,
+                 config: Optional[Config] = None,
+                 meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
-        # Take config from the cdb
-        self.config = config
+        if config is None:
+            # Take config from the cdb
+            self.config = cdb.config
+        else:
+            # Take the new config and assign it to the CDB also
+            self.config = config
+            self.cdb.config = config
 
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
@@ -106,6 +120,9 @@ class CAT(object):
         # Add meta_annotaiton classes if they exist
         for meta_cat in meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
+
+        # Set max document length
+        self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length')
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
@@ -137,7 +154,10 @@ class CAT(object):
 
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
-        self.vocab.save(vocab_path)
+        if self.vocab is None:
+            raise ValueError("Model pack creation is failed due to the missing 'vocab'")
+        else:
+            self.vocab.save(vocab_path)
 
         # Save all meta_cats
         for comp in self.pipe.spacy_nlp.components:
@@ -149,8 +169,15 @@ class CAT(object):
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
 
     @classmethod
-    def load_model_pack(cls, zip_path: str) -> "CAT":
+    def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
         r''' Load everything
+
+        Args:
+            zip_path
+            meta_cat_config_dict:
+                A config dict that will overwrite existing configs in meta_cat.
+                Can be something like:
+                    meta_cat_config_dict = {'general': {'device': 'cpu'}}
         '''
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -182,7 +209,8 @@ class CAT(object):
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
         meta_cats = []
         for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(meta_path))
+            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
+                                          config_dict=meta_cat_config_dict))
 
         return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
 
@@ -437,38 +465,71 @@ class CAT(object):
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
-    def train(self, data_iterator: Iterable, fine_tune: bool = True, progress_print: int = 1000) -> None:
+    def train(self,
+              data_iterator: Iterable,
+              fine_tune: bool = True,
+              progress_print: int = 1000,
+              checkpoint: Optional[Checkpoint] = None,
+              resume_from_checkpoint: bool = False) -> None:
         """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
-        data_iterator:
-            Simple iterator over sentences/documents, e.g. a open file
-            or an array or anything that we can use in a for loop.
-        fine_tune:
-            If False old training will be removed
-        progress_print:
-            Print progress after N lines
+        Args:
+            data_iterator (Iterable):
+                Simple iterator over sentences/documents, e.g. a open file
+                or an array or anything that we can use in a for loop.
+            fine_tune (bool):
+                If False old training will be removed.
+            progress_print (int):
+                Print progress after N lines.
+            checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
+                The medcat checkpoint object
+            resume_from_checkpoint (bool):
+                If True resume the previous training; If False, start a fresh new training.
         """
+
         if not fine_tune:
             self.log.info("Removing old training data!")
             self.cdb.reset_training()
 
-        cnt = 0
-        for line in data_iterator:
-            if line is not None and line:
-                # Convert to string
-                line = str(line).strip()
+        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_CHECKPOINT_DIR)
+        if not resume_from_checkpoint:
+            checkpoint.purge()
 
-                try:
-                    _ = self(line, do_train=True)
-                except Exception as e:
-                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
-                    self.log.warning("BECAUSE OF: %s", str(e))
-                if cnt % progress_print == 0:
-                    self.log.info("DONE: %s", str(cnt))
-                cnt += 1
+        # This will be simplified after deprecating support on py36
+        loop = asyncio.get_event_loop()
+        if loop.is_closed():
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+        loop.run_until_complete(self._train_main(checkpoint, data_iterator, progress_print))
+        loop.close()
 
         self.config.linking['train'] = False
+
+    def resume_training(self,
+                        data_iterator: Iterable,
+                        progress_print: int = 1000,
+                        checkpoint: Optional[Checkpoint] = None) -> None:
+        """ Resume training on the data from where it was left, note that the maximum length of a line
+        or document is 1M characters. Anything longer will be trimmed.
+
+        Args:
+            data_iterator (Iterable):
+                Simple iterator over sentences/documents, e.g. a open file
+                or an array or anything that we can use in a for loop.
+            progress_print (int):
+                Print progress after N lines.
+            checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
+                The medcat checkpoint object
+        """
+        checkpoint = checkpoint or Checkpoint.restore(dir_path=self.DEFAULT_TRAIN_CHECKPOINT_DIR)
+        checkpoint.populate(self.cdb)
+
+        self.train(data_iterator=data_iterator,
+                   fine_tune=True,
+                   progress_print=progress_print,
+                   checkpoint=checkpoint,
+                   resume_from_checkpoint=True)
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
         r'''
@@ -553,9 +614,9 @@ class CAT(object):
             **other:
                 Refer to CDB.add_concept
         '''
-
-        names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
-        if do_add_concept:
+        names = prepare_name(name, self, {}, self.config)
+        # Only if not negative, otherwise do not add the new name if in fact it should not be detected
+        if do_add_concept and not negative:
             self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
 
@@ -707,7 +768,7 @@ class CAT(object):
                         filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
 
                 for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False, total=len(project['documents'])):
-                    spacy_doc = self(doc['text'])
+                    spacy_doc: Doc = self(doc['text'])
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
@@ -724,7 +785,7 @@ class CAT(object):
                                           negative=deleted,
                                           devalue_others=devalue_others)
                     if train_from_false_positives:
-                        fps = get_false_positives(doc, spacy_doc)
+                        fps: List[Span] = get_false_positives(doc, spacy_doc)
 
                         for fp in fps:
                             fp_: Span = fp
@@ -1225,6 +1286,32 @@ class CAT(object):
             text_ = text[1] if isinstance(text, tuple) else text
             trimmed.append(self._get_trimmed_text(text_))
         return trimmed
+
+    async def _train_main(self, checkpoint, data_iterator, progress_print):
+        tasks = []
+        loop = asyncio.get_event_loop()
+        cnt = checkpoint.count
+        for line in islice(data_iterator, checkpoint.count, None):
+            if line is not None and line:
+                # Convert to string
+                line = str(line).strip()
+
+                try:
+                    _ = self(line, do_train=True)
+                except Exception as e:
+                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
+                    self.log.warning("BECAUSE OF: %s", str(e))
+                if cnt % progress_print == 0:
+                    self.log.info("DONE: %s", str(cnt))
+                cnt += 1
+                if cnt % checkpoint.steps == 0:
+                    tasks.append(loop.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
+
+        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
+        if cnt % checkpoint.steps != 0:
+            tasks.append(loop.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
+
+        await asyncio.wait(tasks)
 
     @staticmethod
     def _pipe_error_handler(proc_name: str, proc: "Pipe", docs: List[Doc], e: Exception) -> None:

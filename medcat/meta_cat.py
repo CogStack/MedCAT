@@ -2,16 +2,18 @@ import os
 import json
 import logging
 import torch
+import numpy
 from multiprocessing import Lock
 from torch import nn, Tensor
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast
+from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 from medcat.utils.loggers import add_handlers
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
+from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 # It should be safe to do this always, as all other multiprocessing
 #will be finished before data comes to meta_cat
@@ -31,7 +33,10 @@ class MetaCAT(PipeRunner):
     log = add_handlers(log)
 
     # Override
-    def __init__(self, tokenizer: Optional[TokenizerWrapperBase] = None, embeddings: Optional[Tensor] = None, config: Optional[ConfigMetaCAT] = None) -> None:
+    def __init__(self,
+                 tokenizer: Optional[TokenizerWrapperBase] = None,
+                 embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
+                 config: Optional[ConfigMetaCAT] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
@@ -48,7 +53,7 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
 
-    def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
+    def get_model(self, embeddings: Optional[Union[Tensor, numpy.ndarray]]) -> nn.Module:
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -217,6 +222,10 @@ class MetaCAT(PipeRunner):
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
+        if not torch.cuda.is_available() and device.type == 'cuda':
+            MetaCAT.log.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
+            config.general['device'] = 'cpu'
+            device = torch.device('cpu')
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
         return meta_cat
@@ -296,7 +305,7 @@ class MetaCAT(PipeRunner):
             yield docs
 
     # Override
-    def pipe(self, stream: Iterable[Doc], *args, **kwargs) -> Iterator[Doc]:
+    def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
         r''' Process many documents at once.
 
         Args:
@@ -318,7 +327,7 @@ class MetaCAT(PipeRunner):
                 yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
 
     def _set_meta_anns(self,
-                       stream: Iterable[Doc],
+                       stream: Iterable[Union[Doc, FakeDoc]],
                        batch_size_chars: int,
                        config: ConfigMetaCAT,
                        id2category_value: Dict) -> Iterator[Optional[Doc]]:

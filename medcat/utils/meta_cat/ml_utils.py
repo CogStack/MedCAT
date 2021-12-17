@@ -7,9 +7,9 @@ import torch.optim as optim
 from typing import List, Optional, Tuple, Any, Dict
 from torch import nn
 from scipy.special import softmax
-from sklearn.metrics import classification_report, f1_score
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
+from sklearn.metrics import classification_report, f1_score, precision_recall_fscore_support
 
 
 def set_all_seeds(seed: int) -> None:
@@ -55,7 +55,7 @@ def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: to
     return x, cpos, y
 
 
-def predict(model: torch.nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
+def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
     r''' Predict on data used in the meta_cat.pipe
 
     Args:
@@ -133,7 +133,7 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
 
-def train_model(model: torch.nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
+def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
     r''' Trains a LSTM model (for now) with autocheckpoints
 
     Args:
@@ -182,7 +182,7 @@ def train_model(model: torch.nn.Module, data: List, config: ConfigMetaCAT, save_
             all_logits.append(logits.detach().cpu().numpy())
 
             parameters = filter(lambda p: p.requires_grad, model.parameters())
-            torch.nn.utils.clip_grad_norm_(parameters, 0.25)
+            nn.utils.clip_grad_norm_(parameters, 0.25)
             optimizer.step()
 
         all_logits_test = []
@@ -222,7 +222,7 @@ def train_model(model: torch.nn.Module, data: List, config: ConfigMetaCAT, save_
     return winner_report
 
 
-def eval_model(model: torch.nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
+def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
     r''' Evaluate a trained model on the provided data
 
     Args:
@@ -264,7 +264,7 @@ def eval_model(model: torch.nn.Module, data: List, config: ConfigMetaCAT, tokeni
 
     score_average = config.train['score_average']
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
-    f1 = f1_score(y_eval, predictions, average=score_average)
+    precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
@@ -283,4 +283,4 @@ def eval_model(model: torch.nn.Module, data: List, config: ConfigMetaCAT, tokeni
         else:
             examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
 
-    return {'f1': f1, 'examples': examples}
+    return {'precision': precision, 'recall': recall, 'f1': f1, 'examples': examples}
