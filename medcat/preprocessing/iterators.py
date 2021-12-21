@@ -1,7 +1,6 @@
 import pandas
 import re
 from typing import List, Optional, Dict, Iterable, Any, Tuple
-from pytorch_pretrained_bert import BertTokenizer
 
 NUM = "NUMNUM"
 
