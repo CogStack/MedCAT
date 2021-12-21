@@ -25,7 +25,6 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.cdb import CDB
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.loggers import add_handlers
-from medcat.cdb import CDB
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.helpers import tkns_from_doc
