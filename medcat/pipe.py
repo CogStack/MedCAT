@@ -181,7 +181,7 @@ class Pipe(object):
             }
         }
 
-        return self._nlp.pipe(texts,
+        return self._nlp.pipe(texts,    # type: ignore
                              n_process=n_process,
                              batch_size=batch_size,
                              component_cfg=component_cfg)

@@ -122,7 +122,7 @@ class CAT(object):
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
 
         # Set max document length
-        self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length')
+        self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
@@ -614,7 +614,7 @@ class CAT(object):
             **other:
                 Refer to CDB.add_concept
         '''
-        names = prepare_name(name, self, {}, self.config)
+        names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
             self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
