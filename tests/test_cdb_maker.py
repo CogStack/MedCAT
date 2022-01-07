@@ -133,7 +133,7 @@ class B_CDBMakerEditTests(unittest.TestCase):
         cls.maker.destroy_pipe()
 
     def test_ba_addition_of_new_name(self):
-        self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config), name_status='P', full_build=True)
+        self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.spacy_nlp, {}, self.config), name_status='P', full_build=True)
         self.assertEqual(len(self.cdb.name2cuis), 6, "Should equal 6")
         target_result = {'MY: new,-_! Name.', 'Second csv'}
         self.assertEqual(self.cdb.addl_info['cui2original_names']['C0000239'], target_result)
@@ -142,7 +142,7 @@ class B_CDBMakerEditTests(unittest.TestCase):
         self.assertIn('my~:~new~name~.', self.cdb.name2cuis2status)
 
     def test_bb_removal_of_name(self):
-        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config))
+        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.spacy_nlp, {}, self.config))
         self.assertEqual(len(self.cdb.name2cuis), 5, "Should equal 5")
         self.assertNotIn('my:newname.', self.cdb.name2cuis2status)
 

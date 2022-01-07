@@ -1,14 +1,13 @@
 import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union
-from tokenizers import ByteLevelBPETokenizer
+from tokenizers import Tokenizer, ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
-from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 
 class TokenizerWrapperBase(ABC):
 
-    def __init__(self, hf_tokenizer: Optional[PreTrainedTokenizerBase] = None) -> None:
+    def __init__(self, hf_tokenizer: Optional[Tokenizer] = None) -> None:
         self.hf_tokenizers = hf_tokenizer
 
     @abstractmethod
@@ -19,18 +18,18 @@ class TokenizerWrapperBase(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, dir_path: str, **kwargs) -> PreTrainedTokenizerBase: ...
+    def load(cls, dir_path: str, **kwargs) -> Tokenizer: ...
 
     @abstractmethod
     def get_size(self) -> int: ...
 
     @abstractmethod
-    def token_to_id(self, token: str) -> Optional[int]: ...
+    def token_to_id(self, token: str) -> Union[int, List[int]]: ...
 
     @abstractmethod
-    def get_pad_id(self) -> int: ...
+    def get_pad_id(self) -> Union[Optional[int], List[int]]: ...
 
-    def ensure_tokenizer(self) -> PreTrainedTokenizerBase:
+    def ensure_tokenizer(self) -> Tokenizer:
         if self.hf_tokenizers is None:
             raise ValueError("The tokenizer is not loaded yet")
         return self.hf_tokenizers
@@ -46,7 +45,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
     '''
     name = 'bbpe'
 
-    def __init__(self, hf_tokenizers: Optional[PreTrainedTokenizerBase] = None) -> None:
+    def __init__(self, hf_tokenizers: Optional[ByteLevelBPETokenizer] = None) -> None:
         super().__init__(hf_tokenizers)
 
         if self.hf_tokenizers is not None:
@@ -97,7 +96,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         self.hf_tokenizers.save_model(dir_path, prefix=self.name)
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs) -> PreTrainedTokenizerBase:
+    def load(cls, dir_path: str, **kwargs) -> "TokenizerWrapperBPE":
         tokenizer = cls()
         vocab_file = os.path.join(dir_path, f'{tokenizer.name}-vocab.json')
         merges_file = os.path.join(dir_path, f'{tokenizer.name}-merges.txt')
@@ -112,11 +111,11 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         self.hf_tokenizers = self.ensure_tokenizer()
         return self.hf_tokenizers.get_vocab_size()
 
-    def token_to_id(self, token: str) -> Optional[int]:
+    def token_to_id(self, token: str) -> Union[int, List[int]]:
         self.hf_tokenizers = self.ensure_tokenizer()
         return self.hf_tokenizers.token_to_id(token)
 
-    def get_pad_id(self) -> int:
+    def get_pad_id(self) -> Union[int, List[int]]:
         pad = self.token_to_id('<PAD>')
         if pad is None:
             raise Exception("No <PAD> token in the vocabulary of the tokenizer, please add it")
@@ -133,7 +132,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
     '''
     name = 'bert-tokenizer'
 
-    def __init__(self, hf_tokenizers: Optional[PreTrainedTokenizerBase] = None) -> None:
+    def __init__(self, hf_tokenizers: Optional[BertTokenizerFast] = None) -> None:
         super().__init__(hf_tokenizers)
 
     def __call__(self, text: Union[str, List[str]]) -> Union[Dict, List[Dict]]:
@@ -165,7 +164,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         self.hf_tokenizers.save_pretrained(path)
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs) -> PreTrainedTokenizerBase:
+    def load(cls, dir_path: str, **kwargs) -> "TokenizerWrapperBERT":
         tokenizer = cls()
         path = os.path.join(dir_path, cls.name)
         tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
@@ -176,10 +175,10 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         self.hf_tokenizers = self.ensure_tokenizer()
         return len(self.hf_tokenizers.vocab)
 
-    def token_to_id(self, token: str) -> Optional[int]:
+    def token_to_id(self, token: str) -> Union[int, List[int]]:
         self.hf_tokenizers = self.ensure_tokenizer()
         return self.hf_tokenizers.convert_tokens_to_ids(token)
 
-    def get_pad_id(self) -> int:
+    def get_pad_id(self) -> Optional[int]:
         self.hf_tokenizers = self.ensure_tokenizer()
         return self.hf_tokenizers.pad_token_id

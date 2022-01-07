@@ -1,6 +1,5 @@
 """ Representation class for CDB data
 """
-
 import dill
 import logging
 import aiofiles
