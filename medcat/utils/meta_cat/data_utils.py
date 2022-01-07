@@ -154,11 +154,10 @@ def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
         generator:
             Generator of spacy like documents that can be feed into meta_cat.pipe
     '''
-
     for id_ in data.keys():
         ents = data[id_]['entities'].values()
 
-        doc = Doc(text=id2text[id_], id=id_)
+        doc = Doc(text=id2text[id_], id_=id_)
         doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
 
         yield doc

@@ -1,7 +1,7 @@
 import re
 import os
 import spacy
-from typing import Any, List, Dict
+from typing import Any, List, Dict, cast, Iterable, Union, Pattern
 from spacy.tokenizer import Tokenizer
 from spacy.language import Language
 from spacy.tokens import Doc
@@ -20,8 +20,10 @@ def spacy_extended(nlp: Language) -> Tokenizer:
      '(?<=[[[\\p{Lu}&&\\p{Latin}]||[ЁА-Я]||[ӘӨҮҖҢҺ]||[Α-ΩΆΈΊΌΏΉΎ]||[\\p{Ll}&&\\p{Latin}]||[ёа-я]||[әөүҗңһ]||[α-ωάέίόώήύ]||[\\p{L}&&\\p{Bengali}]||[\\p{L}&&\\p{Hebrew}]||[\\p{L}&&\\p{Arabic}]||[\\p{L}&&\\p{Sinhala}]]])[?";:=,.]*(?:-|–|—|--|---|——|~)(?=[[[\\p{Lu}&&\\p{Latin}]||[ЁА-Я]||[ӘӨҮҖҢҺ]||[Α-ΩΆΈΊΌΏΉΎ]||[\\p{Ll}&&\\p{Latin}]||[ёа-я]||[әөүҗңһ]||[α-ωάέίόώήύ]||[\\p{L}&&\\p{Bengali}]||[\\p{L}&&\\p{Hebrew}]||[\\p{L}&&\\p{Arabic}]||[\\p{L}&&\\p{Sinhala}]]])',
      '(?<=[[[\\p{Lu}&&\\p{Latin}]||[ЁА-Я]||[ӘӨҮҖҢҺ]||[Α-ΩΆΈΊΌΏΉΎ]||[\\p{Ll}&&\\p{Latin}]||[ёа-я]||[әөүҗңһ]||[α-ωάέίόώήύ]||[\\p{L}&&\\p{Bengali}]||[\\p{L}&&\\p{Hebrew}]||[\\p{L}&&\\p{Arabic}]||[\\p{L}&&\\p{Sinhala}]]"])[:<>=/](?=[[[\\p{Lu}&&\\p{Latin}]||[ЁА-Я]||[ӘӨҮҖҢҺ]||[Α-ΩΆΈΊΌΏΉΎ]||[\\p{Ll}&&\\p{Latin}]||[ёа-я]||[әөүҗңһ]||[α-ωάέίόώήύ]||[\\p{L}&&\\p{Bengali}]||[\\p{L}&&\\p{Hebrew}]||[\\p{L}&&\\p{Arabic}]||[\\p{L}&&\\p{Sinhala}]]])')
 
-    prefix_re = spacy.util.compile_prefix_regex(Language.Defaults.prefixes)
-    suffix_re = spacy.util.compile_suffix_regex(Language.Defaults.suffixes)
+    prefix_iter = cast(Iterable[Union[str, Pattern[Any]]], Language.Defaults.prefixes)
+    suffix_iter = cast(Iterable[Union[str, Pattern[Any]]], Language.Defaults.suffixes)
+    prefix_re = spacy.util.compile_prefix_regex(prefix_iter)
+    suffix_re = spacy.util.compile_suffix_regex(suffix_iter)
     infix_re = spacy.util.compile_infix_regex(infix_re_list)
 
 

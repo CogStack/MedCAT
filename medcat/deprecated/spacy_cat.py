@@ -26,7 +26,6 @@ class SpacyCat(object):
             the disambiguation using vectors will be performed. While training is True
             it will not be performed
     """
-
     def __init__(self, cdb, vocab=None, train=False, force_train=False, tokenizer=None):
         self.cdb = cdb
         self.vocab = vocab
@@ -62,7 +61,6 @@ class SpacyCat(object):
             text = token.text.lower()
 
         return [text]
-
 
     def _get_doc_words(self, doc, tkns, span, skip_current=False, skip_words=False):
         """ Get words around a certain token
@@ -151,7 +149,6 @@ class SpacyCat(object):
 
         return words, weights
 
-
     def _calc_acc(self, cui, doc, tkns, name=None):
         """ Calculate the accuracy for an annotation
 
@@ -217,7 +214,6 @@ class SpacyCat(object):
         else:
             return -1
 
-
     def add_ncntx_vec(self, cui, words):
         cntx_vecs = []
         for word in words:
@@ -229,7 +225,6 @@ class SpacyCat(object):
         cntx = np.average(cntx_vecs, axis=0)
 
         self.cdb.add_ncontext_vec(cui, cntx)
-
 
     def _add_cntx_vec(self, cui, doc, tkns, negative=False, lr=None, anneal=None):
         """ Add context vectors for this CUI
@@ -302,7 +297,6 @@ class SpacyCat(object):
                               unitvec(self.cdb.cui2context_vec[cui])))
                     log.debug(":::::::::::::::::::::::::::::::::::\n")
 
-
     def _add_ann(self, cui, doc, tkns, acc=-1, name=None, is_disamb=False):
         """ Add annotation to a document
 
@@ -360,7 +354,6 @@ class SpacyCat(object):
 
                 self._cuis.add(cui)
 
-
     def _create_main_ann(self, doc, tuis=None):
         """ Only used for testing. Creates annotation in the spacy ents list
         from all the annotations for this document.
@@ -383,7 +376,6 @@ class SpacyCat(object):
                     main_anns.append(ent)
 
         doc.ents = list(doc.ents) + main_anns
-
 
     def __call__(self, doc):
         """ Annotate a document
@@ -471,7 +463,6 @@ class SpacyCat(object):
 
         return doc
 
-
     def _train_skip(self, name):
         # Down sampling of frequent terms
         cnt_mult = 1
@@ -491,7 +482,6 @@ class SpacyCat(object):
             return False
         else:
             return True
-
 
     def disambiguate(self, to_disamb):
         # Do vector disambiguation only if not training

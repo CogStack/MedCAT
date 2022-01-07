@@ -32,6 +32,7 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
+    # Override
     def __init__(self,
                  tokenizer: Optional[TokenizerWrapperBase] = None,
                  embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
@@ -303,6 +304,7 @@ class MetaCAT(PipeRunner):
         if len(docs) > 0:
             yield docs
 
+    # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
         r''' Process many documents at once.
 

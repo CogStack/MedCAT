@@ -79,7 +79,7 @@ class LSTM(nn.Module):
 
 class BertForMetaAnnotation(BertPreTrainedModel):
 
-    _keys_to_ignore_on_load_unexpected: List[str] = [r"pooler"]
+    _keys_to_ignore_on_load_unexpected: List[str] = [r"pooler"]  # type: ignore
 
     def __init__(self, config: BertConfig) -> None:
         super().__init__(config)
