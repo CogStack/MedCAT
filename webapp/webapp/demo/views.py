@@ -16,6 +16,7 @@ import json
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
 auth_callback_service = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
+validation_base_url = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 
 # TODO
 #neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
@@ -104,15 +105,15 @@ def train_annotations(request):
 
 def validate_umls_user(request):
     ticket = request.GET.get('ticket', '')
-    validate_url = f'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate?service={auth_callback_service}&ticket={ticket}'
+    validate_url = f'{validation_base_url}?service={auth_callback_service}&ticket={ticket}'
     try:
         is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
         context = {
             'is_valid': is_valid == 'true'
         }
-        return render(request, 'umls_user_validation.html', context=context)
     except HTTPError:
         context = {
             'is_valid': False
         }
+    finally:
         return render(request, 'umls_user_validation.html', context=context)
