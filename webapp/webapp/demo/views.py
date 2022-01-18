@@ -107,8 +107,7 @@ def validate_umls_user(request):
     ticket = request.GET.get('ticket', '')
     validate_url = f'{validation_base_url}?service={auth_callback_service}&ticket={ticket}'
     try:
-        # is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
-        is_valid = 'true'
+        is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
         context = {
             'is_valid': is_valid == 'true'
         }

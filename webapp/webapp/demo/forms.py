@@ -4,7 +4,13 @@ from .models import Downloader
 
 
 class DownloaderForm(forms.ModelForm):
-    consent = forms.BooleanField(required=True, label="I consent to MedCAT collecting and storing my names, email, company or academic institution name and use case description.")
+    consent = forms.BooleanField(required=True, label=(
+        f"I consent to MedCAT collecting and storing my names, email, company"
+        f" or academic institution name and use case description. I am aware"
+        f" that MedCAT has been funded through academic research grants, and"
+        f" therefore funding bodies require its support team to report wider"
+        f" impact and usage of produced works using these information."
+    ))
     class Meta:
         model = Downloader
         fields = [
