@@ -16,11 +16,13 @@ class TokenizerNER(object):
     def __init__(self,
                  hf_tokenizer: Optional[PreTrainedTokenizerBase] = None,
                  max_len: int = 512,
-                 id2type: Optional[Dict] = None) -> None:
+                 id2type: Optional[Dict] = None,
+                 cui2name: Optional[Dict] = None) -> None:
         self.hf_tokenizer = hf_tokenizer
         self.max_len = max_len
         self.label_map = {'O': 0, 'X': 1}
         self.id2type = id2type
+        self.cui2name = cui2name
 
     def calculate_label_map(self, dataset: Dict) -> None:
         for cuis in dataset['ent_cuis']:
