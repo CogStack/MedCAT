@@ -6,7 +6,8 @@ from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
 from medcat.vocab import Vocab
-from urllib.request import urlretrieve
+from urllib.request import urlretrieve, urlopen
+from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
 from .models import *
 import os
@@ -14,6 +15,8 @@ import json
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
+auth_callback_service = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
+validation_base_url = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 
 # TODO
 #neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
@@ -98,3 +101,19 @@ def train_annotations(request):
         context['doc_json'] = doc_json
         context['text'] = request.POST['text']
     return render(request, 'train_annotations.html', context=context)
+
+
+def validate_umls_user(request):
+    ticket = request.GET.get('ticket', '')
+    validate_url = f'{validation_base_url}?service={auth_callback_service}&ticket={ticket}'
+    try:
+        is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
+        context = {
+            'is_valid': is_valid == 'true'
+        }
+    except HTTPError:
+        context = {
+            'is_valid': False
+        }
+    finally:
+        return render(request, 'umls_user_validation.html', context=context)
