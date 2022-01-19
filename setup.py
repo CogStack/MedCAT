@@ -20,7 +20,7 @@ setuptools.setup(
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo'],
     install_requires=[
-        'numpy<1.22.1,>=1.19.0',
+        'numpy<1.3,>=1.22.1',
         'pandas<=1.3.4,>=1.1.5',
         'gensim~=4.1.2',
         'spacy<3.1.4,>=3.1.0',
