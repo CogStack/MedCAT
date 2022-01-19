@@ -591,8 +591,9 @@ class CDB(object):
         self.log.info("Number of names:    {:,}".format(len(self.name2cuis)))
         self.log.info("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
         self.log.info("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
-        self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
-            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
+        # Wrapped in float, because mypy complains
+        self.log.info("Average training examples per concept:     {:.1f}".format(float(np.average(
+            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0]))))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
