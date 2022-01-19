@@ -1,7 +1,5 @@
 import os
-from abc import ABC, abstractmethod
 from typing import Optional
-from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
@@ -23,7 +21,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
     def __call__(self, text):
         if isinstance(text, str):
             result = self.hf_tokenizers.encode_plus(text, return_offsets_mapping=True, return_token_type_ids=True, return_attention_mask=True,
-                    add_special_tokens=False, max_length=self.max_seq_length, padding="longest", truncation_strategy="longest_first")
+                    add_special_tokens=False, max_length=self.max_seq_length, padding="longest", truncation=True)
 
             return {'offset_mapping': result['offset_mapping'],
                     'input_ids': result['input_ids'],
@@ -32,8 +30,8 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
                     'attention_mask' : result['attention_mask']
                     }
         elif isinstance(text, list):
-            results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_token_type_ids=True, return_attention_masks=True,
-                    add_special_tokens=False, max_length=self.max_seq_length, padding="longest", truncation_strategy="longest_first")
+            results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_token_type_ids=True,
+                    add_special_tokens=False, max_length=self.max_seq_length)
             output = []
             for ind in range(len(results['input_ids'])):
                 output.append({
@@ -41,7 +39,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
                     'input_ids': results['input_ids'][ind],
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(results['input_ids'][ind]),
                     'token_type_ids' : results['token_type_ids'][ind],
-                    'attention_masks' : results['attention_masks'][ind]
+                    'attention_mask' : results['attention_mask'][ind]
                     })
             return output
         else:
