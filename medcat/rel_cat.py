@@ -1,6 +1,5 @@
 import json
 import logging
-from multiprocessing import Value
 import os
 import numpy
 import logging
@@ -10,8 +9,8 @@ import torch.nn
 import torch.optim
 import torch
 import torch.nn as nn
+from tqdm import tqdm
 from datetime import date, datetime
-from torch.nn.modules.module import T
 from transformers import BertConfig
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
@@ -19,10 +18,10 @@ from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 
 from spacy.tokens import Doc
-from typing import Any, Dict, Iterable, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import Iterable, Iterator, Optional, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
-from medcat.utils.meta_cat.ml_utils import predict, split_list_train_test
+from medcat.utils.meta_cat.ml_utils import split_list_train_test
 
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
@@ -30,81 +29,90 @@ from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
 from medcat.utils.relation_extraction.utils import create_tokenizer_pretrain,  load_results, load_state, save_results
 
 from medcat.utils.relation_extraction.rel_dataset import RelData
-from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 class RelCAT(PipeRunner):
 
     name: str = "rel"
 
-    def __init__(self, cdb : CDB, config: ConfigRelCAT = ConfigRelCAT(), re_model_path: Optional[str] = "", tokenizer: Optional[TokenizerWrapperBERT] = None, task="train"):
+    def __init__(self, cdb : CDB, config: ConfigRelCAT = ConfigRelCAT(), tokenizer: Optional[TokenizerWrapperBERT] = None, task="train"):
     
-       self.config = config
-       self.tokenizer = tokenizer
-       self.cdb = cdb
+        self.config = config
+        self.tokenizer = tokenizer
+        self.cdb = cdb
       
-       self.learning_rate = config.train["lr"]
-       self.batch_size = config.train["batch_size"]
-       self.n_classes = config.model["nclasses"]
+        self.learning_rate = config.train["lr"]
+        self.batch_size = config.train["batch_size"]
+        self.nclasses = config.model["nclasses"]
 
-       self.is_cuda_available = torch.cuda.is_available()
+        self.is_cuda_available = torch.cuda.is_available()
+        self.device = torch.device("cuda:0" if self.is_cuda_available else "cpu")
+        self.tokenizer = tokenizer
+        self.model_config = BertConfig()
+        self.model = None
 
-       self.device = torch.device("cuda:0" if self.is_cuda_available else "cpu")
-       self.hf_model_name = os.path.join(re_model_path, self.config.general["model_name"]) if re_model_path != "" and os.path.exists(re_model_path) else self.config.general["model_name"]
+        """
+        self.model.resize_token_embeddings(self.model_config.vocab_size)
        
-       self.model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=self.hf_model_name, output_hidden_states=True) 
-
-       if self.is_cuda_available:
-           self.model = self.model.to(self.device)
-
-       if self.tokenizer is None:
-            tokenizer_path = os.path.join("", self.config.general["tokenizer_name"])
-            if os.path.exists(tokenizer_path):
-                print("Loaded tokenizer from path:", tokenizer_path)
-                self.tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
-            else:
-                self.tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=self.hf_model_name ))
-                create_tokenizer_pretrain(self.tokenizer, tokenizer_path)
-    
-       self.model_config.vocab_size = len(self.tokenizer.hf_tokenizers)
-
-       self.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=self.hf_model_name,
-                                                                       model_size=self.hf_model_name,
-                                                                       model_config=self.model_config,
-                                                                       task=task,
-                                                                       n_classes=self.n_classes,
-                                                                       ignore_mismatched_sizes=True)  
-       
-       """
-       self.model.resize_token_embeddings(self.model_config.vocab_size)
-       """
-       unfrozen_layers = ["classifier", "pooler", "encoder.layer.11", \
+        unfrozen_layers = ["classifier", "pooler", "encoder.layer.11", \
                           "classification_layer", "blanks_linear", "lm_linear", "cls"]
 
-       for name, param in self.model.named_parameters():
+        for name, param in self.model.named_parameters():
         if not any([layer in name for layer in unfrozen_layers]):
             param.requires_grad = False
         else:
             param.requires_grad = True
-
-       self.pad_id = self.tokenizer.hf_tokenizers.pad_token_id
-       self.padding_seq = Pad_Sequence(seq_pad_value=self.pad_id,\
+        """
+        self.pad_id = self.tokenizer.hf_tokenizers.pad_token_id
+        self.padding_seq = Pad_Sequence(seq_pad_value=self.pad_id,\
                        label_pad_value=self.pad_id,\
                        label2_pad_value=-1)
 
-    def save(self) -> None:
-        self.model_config.to_json_file("model_config.json")
-        self.config
-
-        pass
+    def save(self, save_path) -> None:
+        self.model_config.to_json_file(os.path.join(save_path, "model_config.json"))
 
     @classmethod
-    def load(cls, re_model_path: str) -> "RelCAT":
+    def load(cls, load_path: str = "./") -> "RelCAT":
         
+        cdb = CDB(config=None)
+        if os.path.exists(os.path.join(load_path, "cdb.dat")):
+            cdb = CDB.load(os.path.join(load_path, "cdb.dat"))
+        else:
+            logging.info("The default CDB file name 'cdb.dat' doesn't exist in the specified path, you will need to load & set \
+                          a CDB manually via rel_cat.cdb = CDB.load('path') ")
+        
+        config = cast(ConfigRelCAT, ConfigRelCAT.load(os.path.join(load_path, "config.json")))
+
         tokenizer = None
-        cdb = CDB() 
-        config = cast(ConfigRelCAT, ConfigRelCAT.load(os.path.join(re_model_path, "config.json")))
+        tokenizer_path = os.path.join(load_path, config.general["tokenizer_name"])
+
+        if os.path.exists(tokenizer_path):
+            tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
+        elif config.general["model_name"]:  
+            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general["model_name"]))
+            create_tokenizer_pretrain(tokenizer, tokenizer_path)
+        else:
+            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"))
         
-        return cls(cdb=cdb, config=config, tokenizer=tokenizer, re_model_path=re_model_path, task=config.general["task"])
+        model_config = BertConfig()
+        model_config_path = os.path.join(load_path, "model_config.json")
+
+        if os.path.exists(model_config_path):
+            model_config = BertConfig.from_json_file(model_config_path)
+        else:
+            model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=config.general["model_name"])
+        
+        model_config.vocab_size = len(tokenizer.hf_tokenizers)
+
+        rel_cat = cls(cdb=cdb, config=config, tokenizer=tokenizer, task=config.general["task"])
+        rel_cat.model_config = model_config
+        rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
+                                                                       model_size=config.general["model_name"],
+                                                                       model_config=model_config,
+                                                                       task=config.general["task"],
+                                                                       nclasses=config.model["nclasses"],
+                                                                       ignore_mismatched_sizes=True)  
+        
+        return rel_cat
 
     def create_test_train_datasets(self, data, split_sets=False):
         train_data, test_data = {}, {}
@@ -115,7 +123,7 @@ class RelCAT(PipeRunner):
         
 
             test_data_label_names = [rec[4] for rec in test_data["output_relations"]]
-            test_data["n_classes"], test_data["unique_labels"], test_data["labels2idx"], test_data["idx2label"] = RelData.get_labels(test_data_label_names)
+            test_data["nclasses"], test_data["unique_labels"], test_data["labels2idx"], test_data["idx2label"] = RelData.get_labels(test_data_label_names)
 
             for idx in range(len(test_data["output_relations"])):
                 test_data["output_relations"][idx][5] = test_data["labels2idx"][test_data["output_relations"][idx][4]]
@@ -128,7 +136,7 @@ class RelCAT(PipeRunner):
                 test_data[k] = []
 
         train_data_label_names = [rec[4] for rec in train_data["output_relations"]]
-        train_data["n_classes"], train_data["unique_labels"], train_data["labels2idx"], train_data["idx2label"] = RelData.get_labels(train_data_label_names)
+        train_data["nclasses"], train_data["unique_labels"], train_data["labels2idx"], train_data["idx2label"] = RelData.get_labels(train_data_label_names)
 
         for idx in range(len(train_data["output_relations"])):
             train_data["output_relations"][idx][5] = train_data["labels2idx"][train_data["output_relations"][idx][4]]
@@ -137,6 +145,11 @@ class RelCAT(PipeRunner):
 
     def train(self, export_data_path = "", train_csv_path = "", test_csv_path = "", checkpoint_path="./"):
         
+        if self.is_cuda_available:
+           self.model = self.model.to(self.device)
+        
+        self.model_config.vocab_size = len(self.tokenizer.hf_tokenizers)
+
         train_rel_data = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
         test_rel_data = RelData(cdb=CDB(self.cdb.config), config=self.config, tokenizer=None)
 
@@ -174,10 +187,11 @@ class RelCAT(PipeRunner):
 
         logging.info("Starting training process...")
         
-        losses_per_epoch, accuracy_per_epoch, test_f1_per_epoch = load_results(path=checkpoint_path)
+        losses_per_epoch, accuracy_per_epoch, f1_per_epoch = load_results(path=checkpoint_path)
 
-        self.model.n_classes = self.config.model["nclasses"] = train_rel_data.dataset["n_classes"]
-        self.config.general["labels2idx"] = train_rel_data.dataset["labels2idx"]
+        self.model.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
+        self.config.general["idx2label"].update(train_rel_data.dataset["idx2label"])
+        self.config.general["labels2idx"].update(train_rel_data.dataset["labels2idx"])
         gradient_acc_steps = self.config.train["gradient_acc_steps"]
         max_grad_norm = self.config.train["max_grad_norm"]
 
@@ -199,7 +213,7 @@ class RelCAT(PipeRunner):
 
                 logging.info("Processing batch %d of epoch %d , batch: %d / %d" % ( i + 1, epoch, (i + 1) * current_batch_size, train_dataset_size ))
                 token_ids, e1_e2_start, labels, _, _, _ = data
-                
+
                 attention_mask = (token_ids != self.pad_id).float()
                 token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long()
                 
@@ -216,7 +230,7 @@ class RelCAT(PipeRunner):
                             e1_e2_start=e1_e2_start
                           )
 
-                batch_loss = criterion(classification_logits.view(-1, self.model.n_classes), labels.squeeze(1))
+                batch_loss = criterion(classification_logits.view(-1, self.model.nclasses), labels.squeeze(1))
                 batch_loss = batch_loss / gradient_acc_steps
                 
                 total_loss += batch_loss.item() / current_batch_size
@@ -254,12 +268,12 @@ class RelCAT(PipeRunner):
 
             results = self.evaluate_results(test_dataloader, self.pad_id)
                  
-            test_f1_per_epoch.append(results['f1'])
+            f1_per_epoch.append(results['f1'])
 
-            print("Test f1 at Epoch %d: %.5f" % (epoch, test_f1_per_epoch[-1]))
+            print("Test f1 at Epoch %d: %.5f" % (epoch, f1_per_epoch[-1]))
             print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
 
-            if len(accuracy_per_epoch) > 0 and accuracy_per_epoch[-1] > best_pred:
+            if len(f1_per_epoch) > 0 and f1_per_epoch[-1] > best_pred:
                 best_pred = accuracy_per_epoch[-1]
                 torch.save({
                         'epoch': epoch,\
@@ -270,7 +284,7 @@ class RelCAT(PipeRunner):
                 }, os.path.join(checkpoint_path, "training_model_best_BERT.dat"))
             
             if (epoch % 1) == 0:
-                save_results({ "losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch, "f1_per_epoch" : test_f1_per_epoch}, file_prefix="train", path=checkpoint_path)
+                save_results({ "losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch, "f1_per_epoch" : f1_per_epoch}, file_prefix="train", path=checkpoint_path)
                 torch.save({ 
                         'epoch': epoch,\
                         'state_dict': self.model.state_dict(),
@@ -361,7 +375,7 @@ class RelCAT(PipeRunner):
                 model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,\
                             e1_e2_start=e1_e2_start)
 
-                batch_loss = criterion(pred_classification_logits.view(-1, self.model.n_classes), labels.squeeze(1))
+                batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses), labels.squeeze(1))
                 total_loss += batch_loss.item()
 
                 pred_logits = pred_classification_logits if pred_logits is None \
@@ -401,42 +415,52 @@ class RelCAT(PipeRunner):
         
         return results
 
-    def predict(self, docs: Iterable[Doc]) -> Any:
+    def pipe(self, docs: Iterable[Doc], *args, **kwargs) -> Iterator[Doc]:
 
         predict_rel_dataset = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
-        #predict_rel_dataset.dataset = DataLoader(predict_rel_dataset.generate_base_relations(docs), shuffle=False, \
-        #                          num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
         
-        output = predict_rel_dataset.generate_base_relations(docs)
-
-        for i, doc_relations in enumerate(output, 0):
-            relation_instances = doc_relations["output_relations"]
+        Doc.set_extension("relations", default=[], force=True)
+        
+        for doc_id, doc in enumerate(docs, 0):
+            predict_rel_dataset.dataset, _ = self.create_test_train_datasets(predict_rel_dataset.create_base_relations_from_doc(doc, doc_id), False)
             
-            for rel_data in relation_instances:
-                token_ids, e1_e2_start, label, label_id, _, _, _, _, _, _, _, _, doc_id = rel_data
-                
-                token_ids = torch.LongTensor(token_ids).unsqueeze(0)
-                e1_e2_start = torch.LongTensor(e1_e2_start).unsqueeze(0)
-    
-                attention_mask = (token_ids != self.pad_id).float()
-                token_type_ids = torch.zeros(token_ids.shape[0], token_ids.shape[1]).long()
+            predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False,  batch_size=10, \
+                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
             
-                if self.is_cuda_available:
-                    token_ids = token_ids.cuda()
-                    attention_mask = attention_mask.cuda()
-                    token_type_ids = token_type_ids.cuda()
-
+            total_rel_found = len(predict_rel_dataset.dataset["output_relations"])
+            rel_idx = -1
+            print("total relations for doc: ", total_rel_found)
+            pbar = tqdm(total=total_rel_found)
+            for i, data in enumerate(predict_dataloader):
                 with torch.no_grad():
-                    classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,\
-                                        e1_e2_start=e1_e2_start)
+                    token_ids, e1_e2_start, labels, _, _, _ = data
+                    
+                    attention_mask = (token_ids != self.pad_id).float()
+                    token_type_ids = torch.zeros(token_ids.shape[0], token_ids.shape[1]).long()
 
-        print("Predicted : ")
-        pass
-
-    def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
+                    if self.is_cuda_available:
+                        token_ids = token_ids.cuda()
+                        attention_mask = attention_mask.cuda()
+                        token_type_ids = token_type_ids.cuda()
+                    
+                    model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
+                                            e1_e2_start=e1_e2_start)
+                    for i, pred_rel_logits in enumerate(pred_classification_logits):
+                        rel_idx += 1
+                      
+                        predicted_label_id = torch.softmax(pred_rel_logits, dim=0).max(0)[1].item()
+                        doc._.relations.append({"relation": self.config.general["idx2label"][str(predicted_label_id)], "label_id" : predicted_label_id,
+                                                "ent1_text" : predict_rel_dataset.dataset["output_relations"][rel_idx][2], 
+                                                "ent2_text" : predict_rel_dataset.dataset["output_relations"][rel_idx][3],
+                                                "start_ent_pos" : "",
+                                                "end_ent_pos" : "",
+                                                "start_entity_id" : predict_rel_dataset.dataset["output_relations"][rel_idx][8],
+                                                "end_entity_id" :  predict_rel_dataset.dataset["output_relations"][rel_idx][9]})
+                    pbar.update(len(token_ids))
+            pbar.close()
         
-        pass
-    
+            yield doc
+
     def __call__(self, doc: Doc) -> Doc:
         doc = next(self.pipe(iter([doc])))
         return doc
