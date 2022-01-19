@@ -8,11 +8,11 @@ from transformers.models.bert.configuration_bert import BertConfig
 from transformers import logging
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
-    def __init__(self, model_config : BertConfig, model_size : str, task : str = "train", n_classes : int = 2, ignore_mismatched_sizes : bool = False):
+    def __init__(self, pretrained_model_name_or_path, model_config : BertConfig, model_size : str, task : str = "train", nclasses : int = 2, ignore_mismatched_sizes : bool = False):
         super(BertModel_RelationExtraction, self).__init__(model_config, ignore_mismatched_sizes)
 
         self.model_config = model_config
-        self.n_classes = n_classes
+        self.nclasses = nclasses
         self.task = task
         self.model_size = model_size
         self.model= BertModel(model_config)
@@ -34,14 +34,14 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             self.cls = BertPreTrainingHeads(self.model_config)
 
         elif self.task == "train":
-            self.classification_layer = nn.Linear(self.model_config.hidden_size, self.n_classes)
+            self.classification_layer = nn.Linear(self.model_config.hidden_size, self.nclasses)
 
             if self.model_size == 'bert-base-uncased':
-                self.classification_layer = nn.Linear(768 * 3, self.n_classes)
+                self.classification_layer = nn.Linear(768 * 3, self.nclasses)
             elif self.model_size == 'bert-large-uncased':
-                self.classification_layer = nn.Linear(1024 * 3, self.n_classes)
+                self.classification_layer = nn.Linear(1024 * 3, self.nclasses)
             elif 'biobert' in self.model_size:
-                self.classification_layer = nn.Linear(self.model_config.hidden_size * 3, self.n_classes)
+                self.classification_layer = nn.Linear(self.model_config.hidden_size * 3, self.nclasses)
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
