@@ -32,5 +32,6 @@ class DownloaderForm(forms.ModelForm):
         }
         widgets = {
             "affiliation": forms.TextInput(attrs={"size": 40}),
+            "funder": forms.TextInput(attrs={"size": 40}),
             "use_case": forms.Textarea(attrs={"rows": 5, "cols": 40}),
         }
