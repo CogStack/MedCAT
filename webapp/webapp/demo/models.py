@@ -12,4 +12,5 @@ class Downloader(models.Model):
     last_name = models.CharField(max_length=20)
     email = models.EmailField(max_length=50)
     affiliation = models.CharField(max_length=100)
+    funder = models.CharField(max_length=100, blank=True, default="")
     use_case = models.TextField(max_length=200)

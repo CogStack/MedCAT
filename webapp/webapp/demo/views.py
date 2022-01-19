@@ -128,11 +128,11 @@ def validate_umls_user(request):
 def download(request):
     if request.method == "POST":
         downloader_form = DownloaderForm(request.POST)
-        if downloader_form.is_valid:
+        if downloader_form.is_valid():
             downloader_form.save()
             message = "Download url will be displayed..."
         else:
-            message = "Form contains invalid fields."
+            message = "Erorr: All non-optional fields must be filled out."
     else:
-        message = "Unknown method"
+        message = "Erorr: Unknown HTTP method."
     return render(request, 'download.html', context={"message": message})
