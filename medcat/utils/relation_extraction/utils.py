@@ -21,10 +21,9 @@ def save_bin_file(file_name, data, path="./"):
 
 def load_state(net, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False):
     """ Loads saved model and optimizer states if exists """
-    base_path = path
 
-    checkpoint_path = os.path.join(base_path, file_prefix + "_checkpoint_%s.pth.tar" % model_name)
-    best_path = os.path.join(base_path, file_prefix + "_model_best_%s.pth.tar" % model_name)
+    checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
+    best_path = os.path.join(path, file_prefix + "_model_best_%s.dat" % model_name)
     start_epoch, best_pred, checkpoint = 0, 0, None
     if (load_best == True) and os.path.isfile(best_path):
         checkpoint = torch.load(best_path)
@@ -43,26 +42,17 @@ def load_state(net, optimizer, scheduler, path="./", model_name="BERT", file_pre
         logging.info("Loaded model and optimizer.")    
     return start_epoch, best_pred
 
-
-def save_results(losses_per_epoch, accuracy_per_epoch, model_name="BERT", path="./", file_prefix="train"):
-    save_bin_file(file_prefix + "_losses_per_epoch_%s.pkl" % model_name, losses_per_epoch, path)
-    save_bin_file(file_prefix + "_accuracy_per_epoch__%s.pkl" % model_name, accuracy_per_epoch, path)
+def save_results(data, model_name="BERT", path="./", file_prefix="train"):
+    save_bin_file(file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" % model_name, data, path)
 
 def load_results(path, model_name="BERT", file_prefix="train"):
-    losses_path = os.path.join(path, file_prefix + "_losses_per_epoch_%s.pkl" % model_name)
-    accuracy_path = os.path.join(path, file_prefix + "_accuracy_per_epoch_%s.pkl" % model_name)
-    f1_path = os.path.join(path, file_prefix + "_f1_per_epoch_%s.pkl" % model_name)
+    data_dict_path = os.path.join(path, file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" % model_name)
 
-    losses_per_epoch, accuracy_per_epoch, f1_per_epoch = [], [], []
+    data_dict = {"losses_per_epoch" : [], "accuracy_per_epoch" : [], "f1_per_epoch" : []}
+    if os.path.isfile(data_dict_path):
+        data_dict = load_bin_file(data_dict_path)
 
-    if os.path.isfile(losses_path):
-        losses_per_epoch = load_bin_file(losses_path)
-    if os.path.isfile(accuracy_path):
-        accuracy_per_epoch = load_bin_file(accuracy_path)
-    if os.path.isfile(f1_path):
-        f1_per_epoch = load_bin_file(f1_path)
-
-    return losses_per_epoch, accuracy_per_epoch, f1_per_epoch
+    return data_dict["losses_per_epoch"], data_dict["accuracy_per_epoch"], data_dict["f1_per_epoch"]
 
 def put_blanks(relation_data : List, blanking_threshold : float = 0.5):
     """
@@ -85,9 +75,9 @@ def put_blanks(relation_data : List, blanking_threshold : float = 0.5):
         
     return blanked_relation
 
-def create_tokenizer_pretrain(tokenizer, tokenizer_name="BERT"):
+def create_tokenizer_pretrain(tokenizer, tokenizer_path):
     tokenizer.hf_tokenizers.add_tokens(["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
-    save_bin_file(file_name=tokenizer_name + "_tokenizer_relation_extraction.dat", data=tokenizer)
+    tokenizer.save(tokenizer_path)
 
 # Used for creating data sets for pretraining
 def tokenize(relations_dataset: Series, tokenizer : TokenizerWrapperBERT, mask_probability : float = 0.5) -> Tuple:
@@ -133,8 +123,3 @@ def tokenize(relations_dataset: Series, tokenizer : TokenizerWrapperBERT, mask_p
     masked_for_pred = tokenizer.hf_tokenizers.convert_tokens_to_ids(masked_for_pred)
 
     return token_ids, masked_for_pred, ent1_ent2_start
-
-
-def batch_split(dataset, chunk_size):
-    n = max(1, chunk_size)
-    return (dataset[i:i+n] for i in range(0, len(dataset), n))
