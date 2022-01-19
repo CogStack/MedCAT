@@ -20,13 +20,12 @@ setuptools.setup(
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
               'medcat.tokenizers', 'medcat.utils.meta_cat','medcat.utils.relation_extraction', 'medcat.pipeline'],
     install_requires=[
-        'numpy<1.21.0,>=1.19.0',
+        'numpy>=1.19.0',
         'pandas<=1.3.4,>=1.1.5',
         'gensim~=4.1.2',
         'spacy<3.1.4,>=3.0.1',
         'scipy<=1.7.1,>=1.5.4',
         'transformers~=4.11.3',
-        'torch<1.10,>=1.0',
         'tqdm>=4.27',
         'sklearn~=0.0',
         'elasticsearch>=7.10',
@@ -34,8 +33,14 @@ setuptools.setup(
         'datasets~=1.14.0',
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
+        'torch==1.10.0',
+        'torchvision==0.11.1',
+        'torchaudio==0.10.0',
         'multiprocess', # seems to work better than standard mp
         ],
+    dependency_links=[
+        'https://download.pytorch.org/whl/cu102/torch_stable.html'
+    ],
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.6",
