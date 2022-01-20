@@ -496,13 +496,7 @@ class CAT(object):
         if not resume_from_checkpoint:
             checkpoint.purge()
 
-        # This will be simplified once moving away from py36
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        loop.run_until_complete(self._train_main(checkpoint, data_iterator, progress_print))
-        loop.close()
+        asyncio.run(self._train_main(checkpoint, data_iterator, progress_print))
 
         self.config.linking['train'] = False
 
@@ -735,12 +729,7 @@ class CAT(object):
             checkpoint.purge()
             checkpoint.save_metadata()
 
-        # This will be simplified once moving away from py36
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        fp, fn, tp, p, r, f1, cui_counts, examples = loop.run_until_complete(self._train_supervised_main(data_path,
+        fp, fn, tp, p, r, f1, cui_counts, examples = asyncio.run(self._train_supervised_main(data_path,
              reset_cui_count,
              nepochs,
              print_stats,
@@ -755,7 +744,6 @@ class CAT(object):
              train_from_false_positives,
              extra_cui_filter,
              checkpoint))
-        loop.close()
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
