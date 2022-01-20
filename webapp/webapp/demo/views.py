@@ -1,8 +1,10 @@
 import sys
-sys.path.insert(0, "/home/ubuntu/projects/MedCAT/")
+sys.path.insert(0, '/home/ubuntu/projects/MedCAT/')
 import os
 import json
 from django.shortcuts import render
+from django.http import StreamingHttpResponse, HttpResponse
+from wsgiref.util import FileWrapper
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
@@ -15,8 +17,10 @@ from .forms import DownloaderForm
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
-auth_callback_service = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
-validation_base_url = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
+umlssm_mp_path = os.getenv('UMLSSM_MP_PATH', '/medcat_data/umls_sm_wstatus_2021_oct.zip.zip')
+snomed_mp_path = os.getenv('SNOMED_MP_PATH', '/medcat_data/snomed_2021_oct.zip.zip')
+AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
+VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 
 # TODO
 #neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
@@ -105,7 +109,7 @@ def train_annotations(request):
 
 def validate_umls_user(request):
     ticket = request.GET.get('ticket', '')
-    validate_url = f'{validation_base_url}?service={auth_callback_service}&ticket={ticket}'
+    validate_url = f'{VALIDATION_BASE_URL}?service={AUTH_CALLBACK_SERVICE}&ticket={ticket}'
     try:
         is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
         context = {
@@ -126,13 +130,23 @@ def validate_umls_user(request):
 
 
 def download(request):
-    if request.method == "POST":
+    if request.method == 'POST':
         downloader_form = DownloaderForm(request.POST)
         if downloader_form.is_valid():
             downloader_form.save()
-            message = "Download url will be displayed..."
+            mp_name = downloader_form.cleaned_data['modelpack']
+            if mp_name == 'umlssm':
+                mp_path = umlssm_mp_path
+            elif mp_name == 'snomed':
+                mp_path = snomed_mp_path
+            else:
+                return HttpResponse(f'Error: Unknown model pack "{downloader_form.modelpack}"')
+            resp = StreamingHttpResponse(FileWrapper(open(mp_path, 'rb')))
+            resp["Content-Type"] = "application/zip"
+            resp["Content-Length"] = os.path.getsize(mp_path)
+            resp["Content-Disposition"] = f"attachment; filename={os.path.basename(mp_path)}"
+            return resp
         else:
-            message = "Erorr: All non-optional fields must be filled out."
+            return HttpResponse('Erorr: All non-optional fields must be filled out.')
     else:
-        message = "Erorr: Unknown HTTP method."
-    return render(request, 'download.html', context={"message": message})
+        return HttpResponse('Erorr: Unknown HTTP method.')

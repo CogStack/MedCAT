@@ -17,15 +17,21 @@
 	<form action="{% url 'download' %}" method="post">
 		{% csrf_token %}
 		{% for field in downloader_form.visible_fields %}
-			{% if field.name != 'consent' %}
+			{% if field.name != 'consent' and field.name != 'modelpack' %}
 				<div class="form-group">
 					<label for="id_{{ field.name }}">{{ field.label }}:</label><br>
 					{{ field }}
 				</div>
 			{% endif %}
 		{% endfor %}
+		<div class="form-group">
+			{{ downloader_form.modelpack.label }}:<br>
+			{% for radio in downloader_form.modelpack %}
+				{{ radio }}<br>
+			{% endfor %}
+		</div>
 		{{ downloader_form.consent }} {{ downloader_form.consent.label }} <br><br>
-		<input type="submit" value="Download model packs">
+		<input type="submit" value="Download">
 	</form>
 {% endif %}
 </div>
