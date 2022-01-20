@@ -10,25 +10,8 @@
 
 {% block body %}
 
-<div class="container-fluid">
-	<h5> {{ message }} </h5>
-{% if is_valid %}
-	<h6> For any update on your previous information, contact <a href="mailto:contact@cogstack.org">contact@cogstack.org</a>. </h6>
-	<form action="{% url 'download' %}" method="post">
-		{% csrf_token %}
-		{% for field in downloader_form.visible_fields %}
-			{% if field.name != 'consent' %}
-				<div class="form-group">
-					<label for="id_{{ field.name }}">{{ field.label }}:</label><br>
-					{{ field }}
-				</div>
-			{% endif %}
-		{% endfor %}
-		{{ downloader_form.consent }} {{ downloader_form.consent.label }} <br><br>
-		<input type="submit" value="Download model packs">
-	</form>
-{% endif %}
-</div>
+<h5>{{ message }}</h5>
+
 
 <!-- external js -->
 <script src="https://cdn.jsdelivr.net/npm/js-cookie@2/src/js.cookie.min.js"></script>
