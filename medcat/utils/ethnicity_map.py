@@ -1,5 +1,4 @@
 # Mapped on top-level of 2001 NHS Data Dictionary; https://datadictionary.nhs.uk/data_elements/ethnic_category.html 
-
 ethnicity_map = {'Algerian': 'Black',
  'Any Other Group': 'Other',
  'Asian and Chinese': 'Asian',
@@ -72,7 +71,6 @@ ethnicity_map = {'Algerian': 'Black',
  'Black and White': 'Mixed'}
 
 # Mapped on bottom-level of 2001 NHS Data Dictionary; https://datadictionary.nhs.uk/data_elements/ethnic_category.html 
-
 ethnicity_map_detail = {'Algerian': 'Black or Black British - African',
  'Any Other Group': 'Other Ethnic Groups - Any other ethnic group',
  'Asian and Chinese': 'Other Ethnic Groups - Chinese',
@@ -143,4 +141,3 @@ ethnicity_map_detail = {'Algerian': 'Black or Black British - African',
  'Croatian': 'White - Any other White background',
  'Black and Asian': 'Mixed - White and Asian',
  'Black and White': 'Mixed - Any other mixed background'}
-
