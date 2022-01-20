@@ -12,6 +12,10 @@ class DownloaderForm(forms.ModelForm):
         f" support team to report wider impact and usage of produced works"
         f" with the above information."
     ))
+    modelpack = forms.ChoiceField(label="Select a model pack for download", choices=[
+        ("umlssm", "UMLS Small"),
+        ("snomed", "SNOMED (coming soon...)"),
+    ], widget=forms.RadioSelect())
     class Meta:
         model = Downloader
         fields = [
