@@ -1,6 +1,7 @@
 import sys
 sys.path.insert(0, "/home/ubuntu/projects/MedCAT/")
-
+import os
+import json
 from django.shortcuts import render
 from medcat.cat import CAT
 from medcat.cdb import CDB
@@ -10,8 +11,7 @@ from urllib.request import urlretrieve, urlopen
 from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
 from .models import *
-import os
-import json
+from .forms import DownloaderForm
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
@@ -111,9 +111,28 @@ def validate_umls_user(request):
         context = {
             'is_valid': is_valid == 'true'
         }
+        if is_valid == 'true':
+            context["message"] = "License verified! Please fill in the following form before downloading model packs."
+            context["downloader_form"] = DownloaderForm()
+        else:
+            context["message"] = "License not found. Please request or renew your UMLS Metathesaurus License."
     except HTTPError:
         context = {
-            'is_valid': False
+            'is_valid': False,
+            'message': 'Something went wrong. Please try again.'
         }
     finally:
         return render(request, 'umls_user_validation.html', context=context)
+
+
+def download(request):
+    if request.method == "POST":
+        downloader_form = DownloaderForm(request.POST)
+        if downloader_form.is_valid():
+            downloader_form.save()
+            message = "Download url will be displayed..."
+        else:
+            message = "Erorr: All non-optional fields must be filled out."
+    else:
+        message = "Erorr: Unknown HTTP method."
+    return render(request, 'download.html', context={"message": message})
