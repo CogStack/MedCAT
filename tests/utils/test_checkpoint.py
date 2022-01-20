@@ -57,12 +57,7 @@ class CheckpointTest(unittest.TestCase):
         dir_path = tempfile.TemporaryDirectory()
         checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
 
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        loop.run_until_complete(checkpoint.save_async(cdb, 1))
-        loop.close()
+        asyncio.run(checkpoint.save_async(cdb, 1))
 
         cdb.save_async.assert_called()
         self.assertEqual(1, checkpoint.steps)
