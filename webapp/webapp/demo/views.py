@@ -21,6 +21,7 @@ umlssm_mp_path = os.getenv('UMLSSM_MP_PATH', '/medcat_data/umls_sm_wstatus_2021_
 snomed_mp_path = os.getenv('SNOMED_MP_PATH', '/medcat_data/snomed_2021_oct.zip.zip')
 AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
 VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
+VALIDATION_LOGIN_URL = f'https://uts.nlm.nih.gov/uts/login?service={AUTH_CALLBACK_SERVICE}'
 
 # TODO
 #neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
@@ -147,6 +148,6 @@ def download(request):
             resp["Content-Disposition"] = f"attachment; filename={os.path.basename(mp_path)}"
             return resp
         else:
-            return HttpResponse('Erorr: All non-optional fields must be filled out.')
+            return HttpResponse(f'Erorr: All non-optional fields must be filled out. Please <a href="{VALIDATION_LOGIN_URL}">try again</a>.')
     else:
         return HttpResponse('Erorr: Unknown HTTP method.')
