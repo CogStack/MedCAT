@@ -6,8 +6,10 @@ services:
         network: host
         context: ./webapp
     command: python /webapp/manage.py runserver 0.0.0.0:8000
+    restart: 'true'
     volumes:
             - ./webapp/db:/webapp/db
+            - /medcat_data:/medcat_data
     ports:
       - "8001:8000"
     env_file:
