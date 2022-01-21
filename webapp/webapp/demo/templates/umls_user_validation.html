@@ -31,7 +31,7 @@
 			{% endfor %}
 		</div>
 		{{ downloader_form.consent }} {{ downloader_form.consent.label }} <br><br>
-		<input type="submit" value="Download">
+		<input type="submit" value="Submit" onClick="this.form.submit(); this.disabled=true; this.value='Downloading'; ">
 	</form>
 {% endif %}
 </div>
