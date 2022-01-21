@@ -1,19 +1,22 @@
 import sys
 sys.path.insert(0, "/home/ubuntu/projects/MedCAT/")
-
+import os
+import json
 from django.shortcuts import render
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
 from medcat.vocab import Vocab
-from urllib.request import urlretrieve
+from urllib.request import urlretrieve, urlopen
+from urllib.error import HTTPError
 #from medcat.meta_cat import MetaCAT
 from .models import *
-import os
-import json
+from .forms import DownloaderForm
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
+auth_callback_service = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
+validation_base_url = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 
 # TODO
 #neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
@@ -98,3 +101,38 @@ def train_annotations(request):
         context['doc_json'] = doc_json
         context['text'] = request.POST['text']
     return render(request, 'train_annotations.html', context=context)
+
+
+def validate_umls_user(request):
+    ticket = request.GET.get('ticket', '')
+    validate_url = f'{validation_base_url}?service={auth_callback_service}&ticket={ticket}'
+    try:
+        is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
+        context = {
+            'is_valid': is_valid == 'true'
+        }
+        if is_valid == 'true':
+            context["message"] = "License verified! Please fill in the following form before downloading model packs."
+            context["downloader_form"] = DownloaderForm()
+        else:
+            context["message"] = "License not found. Please request or renew your UMLS Metathesaurus License."
+    except HTTPError:
+        context = {
+            'is_valid': False,
+            'message': 'Something went wrong. Please try again.'
+        }
+    finally:
+        return render(request, 'umls_user_validation.html', context=context)
+
+
+def download(request):
+    if request.method == "POST":
+        downloader_form = DownloaderForm(request.POST)
+        if downloader_form.is_valid():
+            downloader_form.save()
+            message = "Download url will be displayed..."
+        else:
+            message = "Erorr: All non-optional fields must be filled out."
+    else:
+        message = "Erorr: Unknown HTTP method."
+    return render(request, 'download.html', context={"message": message})

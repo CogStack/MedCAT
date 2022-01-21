@@ -2,12 +2,12 @@ import getpass
 import elasticsearch
 import elasticsearch.helpers
 
-from typing import Dict
+from typing import Dict, Optional
 
 
 class CogStackConn(object):
-    def __init__(self, host, port=9200, username: str=None, password: str=None, scheme: str='https',
-                 timeout: int=360, max_retries: int=10, retry_on_timeout: bool=True, **kwargs):
+    def __init__(self, host, port=9200, username: Optional[str] = None, password: Optional[str] = None, scheme: str='https',
+                 timeout: int = 360, max_retries: int = 10, retry_on_timeout: bool = True, **kwargs):
         username, password = self._check_auth_details(username, password)
 
         self.elastic = elasticsearch.Elasticsearch(hosts=[{'host': host, 'port': port}],
@@ -19,7 +19,7 @@ class CogStackConn(object):
                                          retry_on_timeout=retry_on_timeout,
                                          **kwargs)
 
-    def _check_auth_details(self, username: str=None, password: str=None):
+    def _check_auth_details(self, username: Optional[str] = None, password: Optional[str] = None):
         if username is None:
             username = input("Username:")
         if password is None:

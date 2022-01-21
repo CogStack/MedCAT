@@ -1,7 +1,7 @@
 import logging
 import gc
 from joblib import Parallel, delayed
-from typing import Iterable, Generator, Tuple, Callable
+from typing import Iterable, Generator, Tuple, Callable, Union, Iterator
 from spacy.tokens import Doc, Span
 from spacy.tokens.underscore import Underscore
 from spacy.pipeline import Pipe
@@ -21,10 +21,11 @@ class PipeRunner(Pipe):
     def __call__(self, doc: Doc):
         raise NotImplementedError("Method __call__ has not been implemented.")
 
-    def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Generator[Doc, None, None]:
+    # Override
+    def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Union[Generator[Doc, None, None], Iterator[Doc]]:
         error_handler = self.get_error_handler()
         if kwargs.get("parallel", False):
-            self._lazy_init_pool()
+            PipeRunner._execute, PipeRunner._delayed = self._lazy_init_pool()
             for docs in minibatch(stream, size=self.workers):
                 docs = [PipeRunner.serialize_entities(doc) for doc in docs]
                 try:
@@ -92,8 +93,9 @@ class PipeRunner(Pipe):
         doc = PipeRunner.serialize_entities(doc)
         return doc
 
-    def _lazy_init_pool(self):
+    def _lazy_init_pool(self) -> Tuple:
         if PipeRunner._execute is None or self.workers > PipeRunner._execute.n_jobs:
             PipeRunner._execute = Parallel(n_jobs=self.workers, timeout=PipeRunner._time_out_in_secs)
         if PipeRunner._delayed is None:
             PipeRunner._delayed = delayed(PipeRunner._run_pipe_on_one)
+        return PipeRunner._execute, PipeRunner._delayed

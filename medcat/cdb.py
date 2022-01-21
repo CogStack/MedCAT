@@ -1,8 +1,8 @@
 """ Representation class for CDB data
 """
-
 import dill
 import logging
+import aiofiles
 import numpy as np
 from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
@@ -363,7 +363,7 @@ class CDB(object):
             self.cui2count_train[cui] += 1
 
     def save(self, path: str) -> None:
-        r''' Saves model to file (in fact it saves vairables of this class).
+        r''' Saves model to file (in fact it saves variables of this class).
 
         Args:
             path (`str`):
@@ -375,6 +375,20 @@ class CDB(object):
             to_save['config'] = self.config.__dict__
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
+
+    async def save_async(self, path: str) -> None:
+        r''' Async version of saving model to file (in fact it saves variables of this class).
+
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+        '''
+        async with aiofiles.open(path, 'wb') as f:
+            to_save = {
+                'config': self.config.__dict__,
+                'cdb': {k: v for k, v in self.__dict__.items() if k != 'config'}
+            }
+            await f.write(dill.dumps(to_save))
 
     @classmethod
     def load(cls, path: str, config: Optional[Config] = None) -> "CDB":
@@ -577,8 +591,9 @@ class CDB(object):
         self.log.info("Number of names:    {:,}".format(len(self.name2cuis)))
         self.log.info("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
         self.log.info("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
-        self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
-            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
+        # Wrapped in float, because mypy complains
+        self.log.info("Average training examples per concept:     {:.1f}".format(float(np.average(
+            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0]))))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.

@@ -32,6 +32,7 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
+    # Override
     def __init__(self,
                  tokenizer: Optional[TokenizerWrapperBase] = None,
                  embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
@@ -52,7 +53,7 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
 
-    def get_model(self, embeddings: Tensor) -> nn.Module:
+    def get_model(self, embeddings: Optional[Union[Tensor, numpy.ndarray]]) -> nn.Module:
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -221,6 +222,10 @@ class MetaCAT(PipeRunner):
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
+        if not torch.cuda.is_available() and device.type == 'cuda':
+            MetaCAT.log.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
+            config.general['device'] = 'cpu'
+            device = torch.device('cpu')
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
         return meta_cat
@@ -299,6 +304,7 @@ class MetaCAT(PipeRunner):
         if len(docs) > 0:
             yield docs
 
+    # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
         r''' Process many documents at once.
 
@@ -381,6 +387,7 @@ class MetaCAT(PipeRunner):
                 self.get_error_handler()(self.name, self, docs, e)
                 yield from [None] * len(docs)
 
+    # Override
     def __call__(self, doc: Doc) -> Doc:
         ''' Process one document, used in the spacy pipeline for sequential
         document processing.

@@ -7,6 +7,7 @@
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
 
 ## News
+- **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
 - **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT. 
 - **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs (compatble with MedCAT v1) will work without any changes.
 - **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
@@ -28,7 +29,7 @@ A guide on how to use MedCAT is available in the [tutorial](https://github.com/C
 - [MedCATservice](https://github.com/CogStack/MedCATservice) - implements the MedCAT NLP application as a service behind a REST API.
 - [iCAT](https://github.com/CogStack/iCAT) - A docker container for CogStack/MedCAT/HuggingFace development in isolated environments.
 
-## Install using PIP (Requires Python 3.6+)
+## Install using PIP (Requires Python 3.7+)
 0. Upgrade pip `pip install --upgrade pip`
 1. Install MedCAT 
 - For macOS/linux: `pip install --upgrade medcat`
@@ -87,6 +88,23 @@ cat.train(data_iterator)
 #Once done you can make the current pipeline into a model_pack 
 cat.create_model_pack(<save path>)
 ```
+
+4. Quick start with to create CDB and vocab models using local data and a config file:
+```bash
+# Run model creator with local config file
+python medcat/utils/model_creator.py <path_to_model_creator_config_file>
+
+# Run model creator with example file
+python medcat/utils/model_creator.py tests/model_creator/config_example.yml
+```
+
+| Model creator parameter | Description |
+| -------- | ----------- |
+| concept_csv_file | Path to file containing UMLS concepts, including primary names, synonyms, types and source ontology. See [examples](examples) and [tests/model_creator/umls_sample.csv](tests/model_creator/umls_sample.csv) for format description and examples. |
+| unsupervised_training_data_file | Path to file containing text dataset used for spell checking and unsupervised training.|
+| output_dir | Path to output directory for writing the CDB and vocab models. |
+| medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](configs), [medcat/config.py](medcat/config.py) and [tests/model_creator/medcat.txt](tests/model_creator/medcat.txt)| 
+| unigram_table_size | Optional parameter for setting the initialization size of the unigram table in the vocab model. Default is 100000000, while for testing with a small unsupervised training data file a much smaller size could work. | 
 
 
 ## Models

@@ -45,9 +45,8 @@ tmp.py
 
 # models files
 *.dat
-# others 
-/medcat/config/*
-/medcat/models/*
-/tutorial/version_control/docker_ssh_config
-
 !examples/*.dat
+./checkpoints/
+
+# Test output
+tests/model_creator/output/*

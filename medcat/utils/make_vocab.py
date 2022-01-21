@@ -12,9 +12,11 @@ class MakeVocab(object):
     r'''
     Create a new vocab from a text file. To make a vocab and train word embeddings do:
     Args:
+        config (medcat.config.Config):
+            Global configuration for medcat
         cdb (medcat.cdb.CDB):
             The concept database that will be added ontop of the Vocab built from the text file.
-        vocab (medcat.utils.vocab.Vocab, optional):
+        vocab (medcat.vocab.Vocab, optional):
             Vocabulary to be extended, leave as None if you want to make a new Vocab. Default: None
         word_tokenizer (<function>):
             A custom tokenizer for word spliting - used if embeddings are BERT or similar.
@@ -38,10 +40,10 @@ class MakeVocab(object):
             self.vocab = Vocab()
 
         # Build the required spacy pipeline
-        self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=tag_skip_and_punct,
-                            name='skip_and_punct',
-                            additional_fields=['is_punct'])
+        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
+        self.pipe.add_tagger(tagger=tag_skip_and_punct,
+                             name='skip_and_punct',
+                             additional_fields=['is_punct'])
 
         # Get the tokenizer
         if word_tokenizer is not None:
@@ -83,7 +85,7 @@ class MakeVocab(object):
                 self.log.info("Vocab builder at: %s", str(ind))
                 print(ind)
 
-            doc = self.nlp.nlp.tokenizer(doc)
+            doc = self.pipe.spacy_nlp.tokenizer(doc)
             line = ""
 
             for token in doc:
@@ -122,7 +124,7 @@ class MakeVocab(object):
         Add vectors to an existing vocabulary and save changes to the vocab_path.
 
         Args:
-            in_path (String):
+            in_path (str):
                 Path to the data.txt that was created by the MakeVocab.make() function.
             w2v (Word2Vec, optional):
                 An existing word2vec instance. Default: None
@@ -156,4 +158,4 @@ class MakeVocab(object):
         return w2v
 
     def destroy_pipe(self):
-        self.nlp.destroy()
+        self.pipe.destroy()
