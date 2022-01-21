@@ -17,7 +17,23 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         self.model_size = model_size
         self.model= BertModel(model_config)
         self.drop_out = nn.Dropout(model_config.hidden_dropout_prob)
+
+        self.hidden_size = self.model_config.hidden_size
         
+        if self.task == "pretrain":
+            self.activation = nn.Tanh()
+            self.cls = BertPreTrainingHeads(self.model_config)
+
+        elif self.task == "train":
+            if self.model_size == 'bert-base-uncased':
+                self.hidden_size = 2304
+            elif self.model_size == 'bert-large-uncased':
+                self.hidden_size = 3072
+            elif 'biobert' in self.model_size:
+                self.hidden_size = self.model_config.hidden_size * 3
+        
+        self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
+
         logging.set_verbosity_error()
         
         print("Model config: ", self.model_config)
@@ -29,19 +45,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
                 head_mask=None, inputs_embeds=None, encoder_hidden_states=None, encoder_attention_mask=None, \
                 Q=None, e1_e2_start=None, pooled_output=None):
         
-        if self.task == "pretrain":
-            self.activation = nn.Tanh()
-            self.cls = BertPreTrainingHeads(self.model_config)
-
-        elif self.task == "train":
-            self.classification_layer = nn.Linear(self.model_config.hidden_size, self.nclasses)
-
-            if self.model_size == 'bert-base-uncased':
-                self.classification_layer = nn.Linear(768 * 3, self.nclasses)
-            elif self.model_size == 'bert-large-uncased':
-                self.classification_layer = nn.Linear(1024 * 3, self.nclasses)
-            elif 'biobert' in self.model_size:
-                self.classification_layer = nn.Linear(self.model_config.hidden_size * 3, self.nclasses)
+        self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
 
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
