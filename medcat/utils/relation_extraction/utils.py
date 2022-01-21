@@ -3,8 +3,6 @@ import pickle
 from typing import List, Tuple
 import numpy as np
 
-import logging
-
 from pandas.core.series import Series
 import torch
 
@@ -19,28 +17,49 @@ def save_bin_file(file_name, data, path="./"):
     with open(os.path.join(path, file_name), "wb") as f:
         pickle.dump(data, f)
 
-def load_state(net, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False):
+def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_name="BERT", task="train", is_checkpoint=True):
+    
+    file_name = "%s_checkpoint_%s.dat" % (task, model_name)
+    
+    if not is_checkpoint:
+        file_name =  "%s_best_%s.dat" % (task, model_name)
+    
+    torch.save({ 
+            'epoch': epoch,\
+            'state_dict': model.state_dict(),
+            'best_f1':  best_f1,  
+            'optimizer' : optimizer.state_dict(),
+            'scheduler' : scheduler.state_dict()
+        }, os.path.join(path, file_name))
+
+def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device="cpu"):
     """ Loads saved model and optimizer states if exists """
 
     checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
     best_path = os.path.join(path, file_prefix + "_model_best_%s.dat" % model_name)
-    start_epoch, best_pred, checkpoint = 0, 0, None
+    start_epoch, best_f1, checkpoint = 0, 0, None
+
     if (load_best == True) and os.path.isfile(best_path):
-        checkpoint = torch.load(best_path)
-        logging.info("Loaded best model.")
+        checkpoint = torch.load(best_path, map_location=device)
+        print("Loaded best model.")
     elif os.path.isfile(checkpoint_path):
-        checkpoint = torch.load(checkpoint_path)
-        logging.info("Loaded checkpoint model.")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        print("Loaded checkpoint model.")
+        
     if checkpoint != None:
         start_epoch = checkpoint['epoch']
-        best_pred = checkpoint['best_acc']
-        net.load_state_dict(checkpoint['state_dict'])
+        best_f1 = checkpoint['best_f1']
+
+        model.load_state_dict(checkpoint['state_dict'])
         if optimizer is not None:
+            optimizer.param_groups = []
+            optimizer.add_param_group({"params": model.parameters() })
             optimizer.load_state_dict(checkpoint['optimizer'])
         if scheduler is not None:
             scheduler.load_state_dict(checkpoint['scheduler'])
-        logging.info("Loaded model and optimizer.")    
-    return start_epoch, best_pred
+        print("Loaded model and optimizer.")
+
+    return start_epoch, best_f1
 
 def save_results(data, model_name="BERT", path="./", file_prefix="train"):
     save_bin_file(file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" % model_name, data, path)
