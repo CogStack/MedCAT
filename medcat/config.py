@@ -205,7 +205,7 @@ class Config(ConfigMixin):
                 'check_upper_case_names': False,
                 # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
                 #it will be skipped.
-                'upper_case_limit_len': 3,
+                'upper_case_limit_len': 4,
                 # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
                 'try_reverse_word_order': False,
                 }
@@ -238,7 +238,7 @@ class Config(ConfigMixin):
                 #if the cdb was trained with calculate_dynamic_threshold = True.
                 'calculate_dynamic_threshold': False,
                 'similarity_threshold_type': 'static',
-                'similarity_threshold': 0.2,
+                'similarity_threshold': 0.25,
                 # Probability for the negative context to be added for each positive addition
                 'negative_probability': 0.5,
                 # Do we ignore punct/num when negative sampling
