@@ -43,15 +43,15 @@ class RelData(Dataset):
 
         df = df.drop('sents', 1)
 
-        nclasses, unique_labels, labels2idx, idx2label = RelData.get_labels(df["label"])
+        nclasses, labels2idx, idx2label = RelData.get_labels(df["label"], self.config)
 
         output_relations = df.values.tolist()
         
-        # replace label_id with actual detected label number
+        # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
 
-        return { "output_relations": output_relations, "nclasses": nclasses, "unique_labels": unique_labels, "labels2idx": labels2idx, "idx2label": idx2label}
+        return { "output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
        
 
     def create_base_relations_from_doc(self, doc, doc_id) -> Dict:
@@ -119,16 +119,6 @@ class RelData(Dataset):
                         text = token.text.strip().lower()
                         if text != "" and not any(chr in chars_to_exclude for chr in text):
                             sentence_window_tokens.append(text)
-                    
-                    """
-                        sent_token_span_text = " ".join(sentence_token_span[0]).lower()
-                        ent1_text = re.sub(pattern, " ", ent1.text.lower())
-                        ent2_text = re.sub(pattern, " ", ent2.text.lower())
-                        ent1_new_start = sent_token_span_text.find(ent1_text)
-                        ent2_new_start = sent_token_span_text.find(ent2_text)
-                        
-                        tokenizer_data = self.tokenizer(sent_token_span_text)
-                    """
 
                     tokenizer_data = self.tokenizer(sentence_window_tokens)
                     token_ids = [tokenized_text["input_ids"][0] for tokenized_text in tokenizer_data]
@@ -154,7 +144,7 @@ class RelData(Dataset):
                                                ent1.start, ent1.end, ent2.start, ent2.end])
                     ent_dist_counter += 1
 
-        return {"output_relations": relation_instances, "nclasses": self.blank_label_id, "unique_labels": self.blank_label_id, "labels2idx": {}, "idx2label": {}}
+        return {"output_relations": relation_instances, "nclasses": self.blank_label_id, "labels2idx": {}, "idx2label": {}}
       
     def create_relations_from_export(self, data : Dict):
         """  
@@ -267,30 +257,44 @@ class RelData(Dataset):
 
         all_relation_labels = [relation[4] for relation in output_relations]        
         
-        nclasses, unique_labels, labels2idx, idx2label = self.get_labels(all_relation_labels)
+        nclasses, labels2idx, idx2label = self.get_labels(all_relation_labels, self.config)
 
         # replace label_id with actual detected label number
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
 
-        return { "output_relations": output_relations, "nclasses": nclasses, "unique_labels": unique_labels, "labels2idx": labels2idx, "idx2label": idx2label}
+        return { "output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
     
     @classmethod
-    def get_labels(cls, relation_labels : List[str]):
+    def get_labels(cls, relation_labels : List[str], config : ConfigRelCAT) -> Any:
         labels2idx = {}
         idx2label = {}
-        unique_labels = []
-        nclasses = 0
+        class_ids = 0
+
+        config_labels2idx = config.general["labels2idx"]
+
+        if len(list(config_labels2idx.values())) > 0:
+            class_ids = max(list(config_labels2idx.values())) + 1
 
         for relation_label in relation_labels:
-            if relation_label not in labels2idx.keys():
-                labels2idx[relation_label] = nclasses
-                idx2label[nclasses] = relation_label
-                nclasses += 1
+            if relation_label not in labels2idx.keys() and relation_label not in config_labels2idx.keys():
+                labels2idx[relation_label] = class_ids
+                config_labels2idx[relation_label] = class_ids
+                class_ids += 1
 
-        unique_labels = set(relation_labels)
+            if relation_label not in config_labels2idx.keys():
+                labels2idx[relation_label] = class_ids
+                config_labels2idx[relation_label] = labels2idx[relation_label]
+                class_ids += 1
+            
+            if relation_label in config_labels2idx.keys() and relation_label not in labels2idx.keys():
+                labels2idx[relation_label] = config_labels2idx[relation_label]
+                
+            idx2label[labels2idx[relation_label]] = relation_label
+        
+        config.general["labels2idx"] = config_labels2idx
 
-        return nclasses, unique_labels, labels2idx, idx2label
+        return len(labels2idx.keys()), labels2idx, idx2label, 
 
     def __len__(self):
         return len(self.dataset['output_relations'])

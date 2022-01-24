@@ -45,8 +45,6 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
                 head_mask=None, inputs_embeds=None, encoder_hidden_states=None, encoder_attention_mask=None, \
                 Q=None, e1_e2_start=None, pooled_output=None):
         
-        self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
-
         if input_ids is not None and inputs_embeds is not None:
             raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
         elif input_ids is not None:
@@ -55,8 +53,10 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             input_shape = inputs_embeds.size()[:-1]
         else:
             raise ValueError("You have to specify either input_ids or inputs_embeds")
-
+        
         device = input_ids.device if input_ids is not None else inputs_embeds.device
+
+        self.classification_layer = nn.Linear(self.hidden_size, self.nclasses, device=device)
 
         if attention_mask is None:
             attention_mask = torch.ones(input_shape, device=device)
@@ -64,7 +64,13 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             encoder_attention_mask = torch.ones(input_shape, device=device)
         if token_type_ids is None:
             token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
-        
+
+        input_ids = input_ids.to(device)
+        attention_mask = attention_mask.to(device)
+        encoder_attention_mask = encoder_attention_mask.to(device)
+
+        self.model = self.model.to(device)
+
         model_output = self.model(input_ids=input_ids, attention_mask=attention_mask,
                                   encoder_hidden_states=encoder_hidden_states,
                                   encoder_attention_mask=encoder_attention_mask)
@@ -95,4 +101,4 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         if self.task == "train":
             classification_logits = self.classification_layer(self.drop_out(new_pooled_output))
 
-        return model_output, classification_logits
+        return model_output, classification_logits.to(device)

@@ -32,7 +32,7 @@ def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_nam
             'scheduler' : scheduler.state_dict()
         }, os.path.join(path, file_name))
 
-def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device="cpu"):
+def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu")):
     """ Loads saved model and optimizer states if exists """
 
     checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
@@ -49,8 +49,8 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
     if checkpoint != None:
         start_epoch = checkpoint['epoch']
         best_f1 = checkpoint['best_f1']
-
         model.load_state_dict(checkpoint['state_dict'])
+        model = model.to(device)
         if optimizer is not None:
             optimizer.param_groups = []
             optimizer.add_param_group({"params": model.parameters() })

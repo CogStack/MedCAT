@@ -49,7 +49,7 @@ class RelCAT(PipeRunner):
         self.nclasses = config.model["nclasses"]
 
         self.is_cuda_available = torch.cuda.is_available()
-        self.device = torch.device("cuda" if self.is_cuda_available else "cpu")
+        self.device = torch.device("cuda" if self.is_cuda_available and self.config.general["device"] != "cpu" else "cpu")
         self.tokenizer = tokenizer
         self.model_config = BertConfig()
         self.model = None
@@ -118,6 +118,8 @@ class RelCAT(PipeRunner):
 
         rel_cat = cls(cdb=cdb, config=config, tokenizer=tokenizer, task=config.general["task"])
         rel_cat.model_config = model_config
+
+        device = torch.device("cuda" if  torch.cuda.is_available() and config.general["device"] != "cpu" else "cpu")
         
         try:
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
@@ -134,16 +136,19 @@ class RelCAT(PipeRunner):
                                                                         model_config=model_config,
                                                                         task=config.general["task"],
                                                                         nclasses=config.model["nclasses"],
-                                                                        ignore_mismatched_sizes=True)
-            
+                                                                        ignore_mismatched_sizes=True) 
+
+        rel_cat.model = rel_cat.model.to(device)
+
         rel_cat.optimizer = torch.optim.Adam([{"params": rel_cat.model.parameters(), "lr": config.train["lr"]}]) 
         rel_cat.scheduler = torch.optim.lr_scheduler.MultiStepLR(rel_cat.optimizer,
                                                                 milestones=config.train["multistep_milestones"],
-                                                                gamma=config.train["multistep_lr_gamma"])
+                                                                gamma=config.train["multistep_lr_gamma"]) 
 
         rel_cat.epoch, rel_cat.best_f1 = load_state(rel_cat.model, rel_cat.optimizer, rel_cat.scheduler, path=load_path,
                                                     model_name=config.general["model_name"],
-                                                    file_prefix=config.general["task"])
+                                                    file_prefix=config.general["task"],
+                                                    device=device)
         
         return rel_cat
 
@@ -169,7 +174,7 @@ class RelCAT(PipeRunner):
                 test_data[k] = []
 
         train_data_label_names = [rec[4] for rec in train_data["output_relations"]]
-        train_data["nclasses"], train_data["unique_labels"], train_data["labels2idx"], train_data["idx2label"] = RelData.get_labels(train_data_label_names)
+        train_data["nclasses"], train_data["labels2idx"], train_data["idx2label"] = RelData.get_labels(train_data_label_names, self.config)
 
         for idx in range(len(train_data["output_relations"])):
             train_data["output_relations"][idx][5] = train_data["labels2idx"][train_data["output_relations"][idx][4]]
@@ -180,11 +185,12 @@ class RelCAT(PipeRunner):
         
         if self.is_cuda_available:
            self.model = self.model.to(self.device)
+           print("Training on device:", torch.cuda.get_device_name(0), self.device)
         
         self.model_config.vocab_size = len(self.tokenizer.hf_tokenizers)
 
         train_rel_data = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
-        test_rel_data = RelData(cdb=CDB(self.cdb.config), config=self.config, tokenizer=None)
+        test_rel_data = RelData(cdb=CDB(self.cdb.config), config=self.config, tokenizer=self.tokenizer)
 
         if train_csv_path != "":
             if test_csv_path != "":
@@ -215,10 +221,11 @@ class RelCAT(PipeRunner):
 
         if self.optimizer is None:
             self.optimizer = torch.optim.Adam([{"params": self.model.parameters(), "lr": self.learning_rate}])
-        if self.optimizer is None:
+            
+        if self.scheduler is None:
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.config.train["multistep_milestones"], gamma=self.config.train["multistep_lr_gamma"])
         
-        self.epoch, self.best_f1 = load_state(self.model, self.optimizer, self.scheduler, load_best=False, path=checkpoint_path)  
+        self.epoch, self.best_f1 = load_state(self.model, self.optimizer, self.scheduler, load_best=False, path=checkpoint_path,device=self.device) 
 
         self.log.info("Starting training process...")
         
@@ -248,14 +255,9 @@ class RelCAT(PipeRunner):
                 self.log.info("Processing batch %d of epoch %d , batch: %d / %d" % ( i + 1, epoch, (i + 1) * current_batch_size, train_dataset_size ))
                 token_ids, e1_e2_start, labels, _, _, _ = data
 
-                attention_mask = (token_ids != self.pad_id).float()
-                token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long()
-                
-                if self.is_cuda_available:
-                    token_type_ids = token_type_ids.cuda()
-                    labels = labels.cuda()
-                    attention_mask = attention_mask.cuda()
-                    token_type_ids = token_type_ids.cuda()
+                attention_mask = (token_ids != self.pad_id).float().to(self.device)
+                token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long().to(self.device)
+                labels = labels.to(self.device)
 
                 model_output, classification_logits = self.model(
                             input_ids=token_ids,
@@ -264,7 +266,7 @@ class RelCAT(PipeRunner):
                             e1_e2_start=e1_e2_start
                           )
 
-                batch_loss = criterion(classification_logits.view(-1, self.model.nclasses), labels.squeeze(1))
+                batch_loss = criterion(classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
                 batch_loss = batch_loss / gradient_acc_steps
                 
                 total_loss += batch_loss.item() / current_batch_size
@@ -320,9 +322,9 @@ class RelCAT(PipeRunner):
     def evaluate_(self, output_logits, labels, ignore_idx):
         ### ignore index (padding) when calculating accuracy
         idxs = (labels != ignore_idx).squeeze()
-        labels_ = labels.squeeze()[idxs]
+        labels_ = labels.squeeze()[idxs].to(self.device)
         pred_labels = torch.softmax(output_logits, dim=1).max(1)[1]
-        pred_labels = pred_labels[idxs]
+        pred_labels = pred_labels[idxs].to(self.device)
 
         size_of_batch = len(idxs)
 
@@ -388,18 +390,12 @@ class RelCAT(PipeRunner):
                 attention_mask = (token_ids != pad_id).float()
                 token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long()
 
-                if self.is_cuda_available:
-                    token_ids = token_ids.cuda()
-                    labels = labels.cuda()
-                    attention_mask = attention_mask.cuda()
-                    token_type_ids = token_type_ids.cuda()
-                    all_true_labels = all_true_labels.cuda()
-                    all_pred_labels = all_pred_labels.cuda()
+                labels = labels.to(self.device)
 
                 model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,\
                             e1_e2_start=e1_e2_start)
 
-                batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses), labels.squeeze(1))
+                batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
                 total_loss += batch_loss.item()
 
                 pred_logits = pred_classification_logits if pred_logits is None \
@@ -413,6 +409,9 @@ class RelCAT(PipeRunner):
 
                 all_true_labels = true_labels if all_true_labels is None else torch.cat((all_true_labels, true_labels))
                 all_pred_labels = pred_labels if all_pred_labels is None else torch.cat((all_pred_labels, pred_labels))
+                
+                all_true_labels = all_true_labels.to(self.device)
+                all_pred_labels = all_pred_labels.to(self.device)
 
                 total_acc += batch_accuracy
                 total_recall += batch_recall
@@ -433,7 +432,7 @@ class RelCAT(PipeRunner):
             "f1": total_f1
         }
 
-        self.log.info("***** Eval results *****")
+        self.log.info("============= Evaluation Results =============")
         for key in sorted(results.keys()):
             self.log.info("  %s = %s", key, str(results[key]))
         
@@ -445,7 +444,10 @@ class RelCAT(PipeRunner):
         
         Doc.set_extension("relations", default=[], force=True)
 
-        idx2labels = {v: k for v,k in self.config.general["labels2idx"]}
+        idx2labels = {v : k for k, v in self.config.general["labels2idx"].items()}
+        
+        if self.is_cuda_available:
+            self.model = self.model.to(self.device)
         
         for doc_id, doc in enumerate(docs, 0):
             predict_rel_dataset.dataset, _ = self.create_test_train_datasets(predict_rel_dataset.create_base_relations_from_doc(doc, doc_id), False)
@@ -465,20 +467,18 @@ class RelCAT(PipeRunner):
                     attention_mask = (token_ids != self.pad_id).float()
                     token_type_ids = torch.zeros(token_ids.shape[0], token_ids.shape[1]).long()
 
-                    if self.is_cuda_available:
-                        token_ids = token_ids.cuda()
-                        attention_mask = attention_mask.cuda()
-                        token_type_ids = token_type_ids.cuda()
-                    
                     model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
                                             e1_e2_start=e1_e2_start)
                     for i, pred_rel_logits in enumerate(pred_classification_logits):
                         rel_idx += 1
+
+                        confidence = torch.softmax(pred_rel_logits, dim=0).max(0)
+                        predicted_label_id = confidence[1].item()
                       
-                        predicted_label_id = torch.softmax(pred_rel_logits, dim=0).max(0)[1].item()
-                        doc._.relations.append({"relation": idx2labels[str(predicted_label_id)], "label_id" : predicted_label_id,
+                        doc._.relations.append({"relation": idx2labels[predicted_label_id], "label_id" : predicted_label_id,
                                                 "ent1_text" : predict_rel_dataset.dataset["output_relations"][rel_idx][2], 
                                                 "ent2_text" : predict_rel_dataset.dataset["output_relations"][rel_idx][3],
+                                                "confidence" : float("{:.3f}".format(confidence[0])),
                                                 "start_ent_pos" : "",
                                                 "end_ent_pos" : "",
                                                 "start_entity_id" : predict_rel_dataset.dataset["output_relations"][rel_idx][8],
