@@ -161,7 +161,7 @@ class RelCAT(PipeRunner):
         
 
             test_data_label_names = [rec[4] for rec in test_data["output_relations"]]
-            test_data["nclasses"], test_data["unique_labels"], test_data["labels2idx"], test_data["idx2label"] = RelData.get_labels(test_data_label_names, self.config)
+            test_data["nclasses"], test_data["labels2idx"], test_data["idx2label"] = RelData.get_labels(test_data_label_names, self.config)
 
             for idx in range(len(test_data["output_relations"])):
                 test_data["output_relations"][idx][5] = test_data["labels2idx"][test_data["output_relations"][idx][4]]
