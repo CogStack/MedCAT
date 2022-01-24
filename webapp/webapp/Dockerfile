@@ -15,9 +15,6 @@ ENV VOCAB_PATH=/webapp/models/vocab.dat
 # Create the data directory
 RUN mkdir -p /medcat_data
 
-ENV UMLSSM_MP_PATH=/medcat_data/umls_sm_wstatus_2021_oct.zip.zip
-ENV SNOMED_MP_PATH=/medcat_data/snomed_2021_oct.zip.zip
-
 # Set the pythonpath
 WORKDIR /webapp
 

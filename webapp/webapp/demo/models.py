@@ -14,3 +14,8 @@ class Downloader(models.Model):
     affiliation = models.CharField(max_length=100)
     funder = models.CharField(max_length=100, blank=True, default="")
     use_case = models.TextField(max_length=200)
+
+class MedCATModel(models.Model):
+    model_name = models.CharField(max_length=20, unique=True)
+    model_path = models.CharField(max_length=255)
+    model_display_name = models.CharField(max_length=50)
