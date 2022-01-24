@@ -17,8 +17,6 @@ from .forms import DownloaderForm
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
-umlssm_mp_path = os.getenv('UMLSSM_MP_PATH', '/medcat_data/umls_sm_wstatus_2021_oct.zip.zip')
-snomed_mp_path = os.getenv('SNOMED_MP_PATH', '/medcat_data/snomed_2021_oct.zip.zip')
 AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
 VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 VALIDATION_LOGIN_URL = f'https://uts.nlm.nih.gov/uts/login?service={AUTH_CALLBACK_SERVICE}'
@@ -117,8 +115,9 @@ def validate_umls_user(request):
             'is_valid': is_valid == 'true'
         }
         if is_valid == 'true':
-            context["message"] = "License verified! Please fill in the following form before downloading model packs."
+            context["message"] = "License verified! Please fill in the following form before downloading models."
             context["downloader_form"] = DownloaderForm()
+            context["medcat_models"] = MedCATModel.objects.all()
         else:
             context["message"] = "License not found. Please request or renew your UMLS Metathesaurus License."
     except HTTPError:
@@ -136,12 +135,11 @@ def download(request):
         if downloader_form.is_valid():
             downloader_form.save()
             mp_name = downloader_form.cleaned_data['modelpack']
-            if mp_name == 'umlssm':
-                mp_path = umlssm_mp_path
-            elif mp_name == 'snomed':
-                mp_path = snomed_mp_path
+            model = MedCATModel.objects.get(model_name=mp_name)
+            if model is not None:
+                mp_path = model.model_path
             else:
-                return HttpResponse(f'Error: Unknown model pack "{downloader_form.modelpack}"')
+                return HttpResponse(f'Error: Unknown model "{downloader_form.modelpack}"')
             resp = StreamingHttpResponse(FileWrapper(open(mp_path, 'rb')))
             resp["Content-Type"] = "application/zip"
             resp["Content-Length"] = os.path.getsize(mp_path)

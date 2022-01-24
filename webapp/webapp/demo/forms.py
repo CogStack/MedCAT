@@ -1,6 +1,6 @@
 from email.policy import default
 from django import forms
-from .models import Downloader
+from .models import Downloader, MedCATModel
 
 
 class DownloaderForm(forms.ModelForm):
@@ -12,10 +12,9 @@ class DownloaderForm(forms.ModelForm):
         f" support team to report wider impact and usage of produced works"
         f" with the above information."
     ))
-    modelpack = forms.ChoiceField(label="Select a model pack for download", choices=[
-        ("umlssm", "UMLS Small"),
-        ("snomed", "SNOMED (coming soon...)"),
-    ], widget=forms.RadioSelect())
+    modelpack = forms.ChoiceField(label="Select a model for download",
+                                  choices=[(model.model_name, model.model_display_name) for model in MedCATModel.objects.all()],
+                                  widget=forms.RadioSelect())
     class Meta:
         model = Downloader
         fields = [
