@@ -12,9 +12,13 @@ class DownloaderForm(forms.ModelForm):
         f" support team to report wider impact and usage of produced works"
         f" with the above information."
     ))
-    modelpack = forms.ChoiceField(label="Select a model for download",
-                                  choices=[(model.model_name, model.model_display_name) for model in MedCATModel.objects.all()],
-                                  widget=forms.RadioSelect())
+
+    def __init__(self, models, *args, **kwargs):
+        super().__init__(*args, *kwargs)
+        self.fields["modelpack"] = forms.ChoiceField(label="Select a model for download",
+                                                     choices=[(model.model_name, model.model_display_name) for model in models],
+                                                     widget=forms.RadioSelect())
+
     class Meta:
         model = Downloader
         fields = [
