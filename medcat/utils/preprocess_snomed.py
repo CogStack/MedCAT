@@ -132,11 +132,28 @@ class Snomed:
         all_rela = []
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            concept_snapshot = "sct2_Concept_Snapshot"
+            relationship_snapshot = "sct2_Relationship_Snapshot"
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_Snapshot"
+                    relationship_snapshot = "sct2_Relationship_Snapshot"
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+
             for f in os.listdir(contents_path):
-                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
-            int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{snomed_release}.txt')
+            int_relat = parse_file(f'{contents_path}/{relationship_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_relat = int_relat[int_relat.active == '1']
             del int_relat
 
@@ -166,11 +183,27 @@ class Snomed:
         output_dict = {}
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            concept_snapshot = "sct2_Concept_Snapshot"
+            relationship_snapshot = "sct2_Relationship_Snapshot"
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_Snapshot"
+                    relationship_snapshot = "sct2_Relationship_Snapshot"
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
             for f in os.listdir(contents_path):
-                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
-            int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{snomed_release}.txt')
+            int_relat = parse_file(f'{contents_path}/{relationship_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_relat = int_relat[int_relat.active == '1']
             del int_relat
 
