@@ -284,13 +284,25 @@ class Snomed:
         for i, snomed_release in enumerate(snomed_releases):
             refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
             snomed_v = ''
+            opcs4_ref_set = 'der2_iisssccRefset_ExtendedMapSnapshot'
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    continue
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
             for f in os.listdir(refset_terminology):
-                m = re.search(r'der2_iisssciRefset_ExtendedMapSnapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{opcs4_ref_set}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
             if snomed_v == '':
                 raise FileNotFoundError("This SNOMED release does not contain OPCS mapping files")
-            mappings = parse_file(f'{refset_terminology}/der2_iisssciRefset_ExtendedMapSnapshot_{snomed_v}_{snomed_release}.txt')
+            mappings = parse_file(f'{refset_terminology}/{opcs4_ref_set}_{snomed_v}_{snomed_release}.txt')
             mappings = mappings[mappings.active == '1']
             icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
                 drop=True)
