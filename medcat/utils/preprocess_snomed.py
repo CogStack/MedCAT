@@ -17,14 +17,19 @@ class Snomed:
     Args:
         data_path:
             Path to the unzipped SNOMED CT folder
+        uk_ext:
+            Specification of a SNOMED UK extension after 2021 to process the divergent release format.
     """
 
-    def __init__(self, data_path,):
+    def __init__(self, data_path, uk_ext=False):
         self.data_path = data_path
         self.release = data_path[-16:-8]
+        self.uk_ext = uk_ext
 
-    def to_concept_df(self):
+    def to_concept_df(self, ):
         """
+        Please remember to specify if the version is a SNOMED UK extension released after 2021.
+        This can be done prior to this step: Snomed.uk_ext = True
 
         :return: SNOMED CT concept DataFrame ready for MEDCAT CDB creation
         """
@@ -44,16 +49,32 @@ class Snomed:
         df2merge = []
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            concept_snapshot = "sct2_Concept_Snapshot"
+            description_snapshot = "sct2_Description_Snapshot-en"
+            if self.uk_ext:
+                if "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
+                    description_snapshot = "sct2_Description_UKCLSnapshot-en"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    description_snapshot = "sct2_Description_UKEDSnapshot-en"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCRSnapshot"
+                    description_snapshot = "sct2_Description_UKCRSnapshot-en"
+                else:
+                    raise NotImplementedError("There has been an update to the release format of this UK extension. "
+                                              "Please raise this issue with the MedCAT team.")
+
             for f in os.listdir(contents_path):
-                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
 
-            int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_{snomed_v}_{snomed_release}.txt')
+            int_terms = parse_file(f'{contents_path}/{concept_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_terms = int_terms[int_terms.active == '1']
             del int_terms
 
-            int_desc = parse_file(f'{contents_path}/sct2_Description_Snapshot-en_{snomed_v}_{snomed_release}.txt')
+            int_desc = parse_file(f'{contents_path}/{description_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_descs = int_desc[int_desc.active == '1']
             del int_desc
 
@@ -69,12 +90,12 @@ class Snomed:
             active_snomed_df = active_with_all_desc[['id_x', 'term', 'typeId']]
             del active_with_all_desc
 
-            active_snomed_df.rename(columns={'id_x': 'cui', 'term': 'name', 'typeId': 'name_status'}, inplace=True)
+            active_snomed_df = active_snomed_df.rename(columns={'id_x': 'cui', 'term': 'name', 'typeId': 'name_status'})
             active_snomed_df['ontologies'] = 'SNOMED-CT'
             active_snomed_df['name_status'] = active_snomed_df['name_status'].replace(
                 ['900000000000003001', '900000000000013009'],
                 ['P', 'A'])
-            active_snomed_df.reset_index(drop=True, inplace=True)
+            active_snomed_df = active_snomed_df.reset_index(drop=True)
 
             temp_df = active_snomed_df[active_snomed_df['name_status'] == 'P'][['cui', 'name']]
             temp_df['description_type_ids'] = temp_df['name'].str.extract(r"\((\w+\s?.?\s?\w+.?\w+.?\w+.?)\)$")
@@ -85,7 +106,7 @@ class Snomed:
 
             # Hash semantic tag to get a 8 digit type_id code
             active_snomed_df['type_ids'] = active_snomed_df['description_type_ids'].apply(
-                lambda x: int(hashlib.sha256(x.encode('utf-8')).hexdigest(), 16) % 10 ** 8)
+                lambda x: int(hashlib.sha256(str(x).encode('utf-8')).hexdigest(), 16) % 10 ** 8)
             df2merge.append(active_snomed_df)
 
         return pd.concat(df2merge).reset_index(drop=True)
