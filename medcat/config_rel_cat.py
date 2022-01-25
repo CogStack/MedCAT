@@ -7,7 +7,7 @@ class ConfigRelCAT(ConfigMixin):
     def __init__(self) -> None:
 
         self.general: Dict[str, Any] = {
-                'device': 'cuda',
+                'device': 'cuda', # possible values: 'cuda', 'cpu',
                  # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
                 'relation_type_filter_pairs': [],
                 'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
@@ -20,8 +20,9 @@ class ConfigRelCAT(ConfigMixin):
                 'log_level': 'info',
                 'padding_idx': -1,
                 'task' : 'train',
-                'labels2idx': {}
-                }
+                'labels2idx': {},
+                'idx2labels' : {}
+        },
 
         self.model: Dict[str, Any] = {
                 'input_size': 300,
@@ -32,9 +33,9 @@ class ConfigRelCAT(ConfigMixin):
 
         self.train: Dict[str, Any] = {
                 'batch_size': 100,
-                'nepochs': 1,
+                'nepochs': 2,
                 'lr': 0.0001,
-                'test_size': 0.1,
+                'test_size': 0.2,
                 'gradient_acc_steps': 1,
                 'multistep_milestones': [2,4,6,8,12,15,18,20,22,24,26,30],
                 'multistep_lr_gamma': 0.8,
