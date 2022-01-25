@@ -5,6 +5,7 @@ import numpy as np
 
 from pandas.core.series import Series
 import torch
+from medcat.config_rel_cat import ConfigRelCAT
 
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
 
@@ -32,9 +33,10 @@ def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_nam
             'scheduler' : scheduler.state_dict()
         }, os.path.join(path, file_name))
 
-def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu")):
+def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config : ConfigRelCAT = ConfigRelCAT()):
     """ Loads saved model and optimizer states if exists """
 
+    print("Attempting to load RelCAT model on device: ", device.type)
     checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
     best_path = os.path.join(path, file_prefix + "_model_best_%s.dat" % model_name)
     start_epoch, best_f1, checkpoint = 0, 0, None
@@ -50,13 +52,17 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
         start_epoch = checkpoint['epoch']
         best_f1 = checkpoint['best_f1']
         model.load_state_dict(checkpoint['state_dict'])
-        model = model.to(device)
-        if optimizer is not None:
-            optimizer.param_groups = []
-            optimizer.add_param_group({"params": model.parameters() })
-            optimizer.load_state_dict(checkpoint['optimizer'])
-        if scheduler is not None:
-            scheduler.load_state_dict(checkpoint['scheduler'])
+        model.cuda()
+
+        if optimizer is None:
+            optimizer = torch.optim.Adam([{"params": model.parameters(), "lr": config.train["lr"]}]) 
+        
+        if scheduler is None:
+            scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
+                                                            milestones=config.train["multistep_milestones"],
+                                                            gamma=config.train["multistep_lr_gamma"]) 
+        optimizer.load_state_dict(checkpoint['optimizer'])
+        scheduler.load_state_dict(checkpoint['scheduler'])
         print("Loaded model and optimizer.")
 
     return start_epoch, best_f1
