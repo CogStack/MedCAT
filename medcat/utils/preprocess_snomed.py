@@ -29,7 +29,8 @@ class Snomed:
     def to_concept_df(self, ):
         """
         Please remember to specify if the version is a SNOMED UK extension released after 2021.
-        This can be done prior to this step: Snomed.uk_ext = True
+        This can be done prior to this step: Snomed.uk_ext = True.
+        This step is not required for UK extension releases pre-2021.
 
         :return: SNOMED CT concept DataFrame ready for MEDCAT CDB creation
         """
@@ -59,11 +60,9 @@ class Snomed:
                     concept_snapshot = "sct2_Concept_UKEDSnapshot"
                     description_snapshot = "sct2_Description_UKEDSnapshot-en"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKCRSnapshot"
-                    description_snapshot = "sct2_Description_UKCRSnapshot-en"
+                    continue
                 else:
-                    raise NotImplementedError("There has been an update to the release format of this UK extension. "
-                                              "Please raise this issue with the MedCAT team.")
+                    pass
 
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
