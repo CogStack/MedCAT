@@ -116,8 +116,7 @@ def validate_umls_user(request):
         }
         if is_valid == 'true':
             context["message"] = "License verified! Please fill in the following form before downloading models."
-            context["downloader_form"] = DownloaderForm()
-            context["medcat_models"] = MedCATModel.objects.all()
+            context["downloader_form"] = DownloaderForm(MedCATModel.objects.all())
         else:
             context["message"] = "License not found. Please request or renew your UMLS Metathesaurus License."
     except HTTPError:
@@ -129,9 +128,9 @@ def validate_umls_user(request):
         return render(request, 'umls_user_validation.html', context=context)
 
 
-def download(request):
+def download_model(request):
     if request.method == 'POST':
-        downloader_form = DownloaderForm(request.POST)
+        downloader_form = DownloaderForm(MedCATModel.objects.all(), request.POST)
         if downloader_form.is_valid():
             downloader_form.save()
             mp_name = downloader_form.cleaned_data['modelpack']

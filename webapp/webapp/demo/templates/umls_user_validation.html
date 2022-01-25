@@ -14,7 +14,7 @@
 	<h5> {{ message }} </h5>
 {% if is_valid %}
 	<h6> For any update on your previous information, contact <a href="mailto:contact@cogstack.org">contact@cogstack.org</a>. </h6>
-	<form action="{% url 'download' %}" method="post">
+	<form action="{% url 'download_model' %}" method="post">
 		{% csrf_token %}
 		{% for field in downloader_form.visible_fields %}
 			{% if field.name != 'consent' and field.name != 'modelpack' %}
