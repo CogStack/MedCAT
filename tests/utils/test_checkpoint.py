@@ -21,15 +21,27 @@ class CheckpointTest(unittest.TestCase):
 
     def test_purge(self):
         dir_path = tempfile.TemporaryDirectory()
-        ckpt_file_path = os.path.join(dir_path.name, "checkpoint-1-1")
-        open(os.path.join(dir_path.name, "checkpoint-1-1"), "w").close()
+        ckpt_file_1_path = os.path.join(dir_path.name, "checkpoint-1-1")
+        ckpt_file_2_path = os.path.join(dir_path.name, "checkpoint-1-2")
+        metadata_file_path = os.path.join(dir_path.name, "metadata.json")
+        another_file_path = os.path.join(dir_path.name, "another")
+        open(ckpt_file_1_path, "w").close()
+        open(ckpt_file_2_path, "w").close()
+        open(metadata_file_path, "w").close()
+        open(another_file_path, "w").close()
         checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
-        self.assertTrue(os.path.isfile(ckpt_file_path))
+        self.assertTrue(os.path.isfile(ckpt_file_1_path))
+        self.assertTrue(os.path.isfile(ckpt_file_2_path))
+        self.assertTrue(os.path.isfile(metadata_file_path))
+        self.assertTrue(os.path.isfile(another_file_path))
 
         checkpoint.purge()
 
         checkpoints = [f for f in os.listdir(dir_path.name) if "checkpoint-" in f]
+        metadata_files = [f for f in os.listdir(dir_path.name) if "metadata.json" in f]
         self.assertEqual([], checkpoints)
+        self.assertEqual([], metadata_files)
+        self.assertTrue(os.path.isfile(another_file_path))
 
     @patch("medcat.cdb.CDB")
     def test_populate(self, cdb):
@@ -70,7 +82,7 @@ class CheckpointTest(unittest.TestCase):
 
         checkpoint.save_metadata()
 
-        metadata_files = [f for f in os.listdir(dir_path.name) if "checkpoint-metadata.json" in f]
+        metadata_files = [f for f in os.listdir(dir_path.name) if "metadata.json" in f]
         self.assertEqual(1, len(metadata_files))
         with open(os.path.join(dir_path.name, metadata_files[0])) as f:
             self.assertEqual({"prop": "value"}, json.load(f))

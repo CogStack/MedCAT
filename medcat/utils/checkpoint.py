@@ -1,5 +1,4 @@
 import os
-import shutil
 import logging
 import jsonpickle
 from typing import List, Tuple, Optional, Dict
@@ -8,6 +7,8 @@ from medcat.utils.decorators import check_positive
 
 
 class Checkpoint(object):
+
+    METADATA_FILE_NAME = "metadata.json"
 
     jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
     log = logging.getLogger(__package__)
@@ -79,13 +80,17 @@ class Checkpoint(object):
         return checkpoint
 
     def purge(self) -> None:
-        shutil.rmtree(self._dir_path)
-        os.makedirs(self._dir_path)
+        ckpt_file_paths = self._get_ckpt_file_paths(self._dir_path)
+        metadata_file_path = self._get_metadata_file_path(self._dir_path)
+        paths_to_remove = ckpt_file_paths + [metadata_file_path] if metadata_file_path is not None else ckpt_file_paths
+        for path in paths_to_remove:
+            if os.path.isfile(path):
+                os.remove(path)
         self._file_paths = []
         self._count = 0
 
     def save_metadata(self) -> None:
-        metadata_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-metadata.json")
+        metadata_file_path = os.path.join(os.path.abspath(self._dir_path), Checkpoint.METADATA_FILE_NAME)
         if self._metadata is not None:
             with open(metadata_file_path, "w") as f:
                 f.write(jsonpickle.encode(self._metadata))
@@ -134,10 +139,18 @@ class Checkpoint(object):
 
     @staticmethod
     def _load_metadata(dir_path: str) -> Optional[Dict]:
-        ckpt_file_paths = [os.path.abspath(os.path.join(dir_path, f)) for f in os.listdir(dir_path)]
-        metadata_file_paths = [f for f in ckpt_file_paths if os.path.isfile(f) and f.endswith("checkpoint-meta.json")]
-        if metadata_file_paths:
-            with open(metadata_file_paths[0]) as f:
+        metadata_file_path = Checkpoint._get_metadata_file_path(dir_path)
+        if metadata_file_path is not None:
+            with open(metadata_file_path) as f:
                 return jsonpickle.decode(f.read())
+        else:
+            return None
+
+    @staticmethod
+    def _get_metadata_file_path(dir_path: str) -> Optional[str]:
+        ckpt_file_paths = [os.path.abspath(os.path.join(dir_path, f)) for f in os.listdir(dir_path)]
+        metadata_file_paths = [f for f in ckpt_file_paths if os.path.isfile(f) and f.endswith(Checkpoint.METADATA_FILE_NAME)]
+        if metadata_file_paths:
+            return metadata_file_paths[0]
         else:
             return None
