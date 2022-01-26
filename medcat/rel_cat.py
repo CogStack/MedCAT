@@ -248,11 +248,11 @@ class RelCAT(PipeRunner):
 
             self.log.info("epoch %d" % epoch)
             
+            pbar = tqdm(total=train_dataset_size)
+
             for i, data in enumerate(train_dataloader, 0): 
 
                 current_batch_size = len(data[0])
-
-                self.log.info("Processing batch %d of epoch %d , batch: %d / %d" % ( i + 1, epoch, (i + 1) * current_batch_size, train_dataset_size ))
                 token_ids, e1_e2_start, labels, _, _, _ = data
 
                 attention_mask = (token_ids != self.pad_id).float().to(self.device)
@@ -283,9 +283,14 @@ class RelCAT(PipeRunner):
                 if (i % gradient_acc_steps) == 0:
                     self.optimizer.step()
                     self.optimizer.zero_grad()
+                
+                if ((i + 1) % current_batch_size == 0):
+                    self.log.debug("[Epoch: %d, loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f]" %
+                        (epoch, loss_per_batch[-1], accuracy_per_batch[-1], total_loss / (i + 1), total_loss))
+                
+                pbar.update(current_batch_size)
 
-                self.log.info('[Epoch: %d, %5d/ %d points], loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f' %
-                    (epoch, (i + 1) * current_batch_size, train_dataset_size, loss_per_batch[-1], accuracy_per_batch[-1], total_loss / (i + 1), total_loss))
+            pbar.close()
 
             if len(loss_per_batch) > 0:
                 losses_per_epoch.append(sum(loss_per_batch)/len(loss_per_batch))
@@ -328,7 +333,7 @@ class RelCAT(PipeRunner):
         size_of_batch =  len(idxs.tolist()) if type(idxs.tolist()) != bool else 1
 
         acc = (labels_ == pred_labels).sum().item() / size_of_batch
-
+        
         true_labels = labels_.cpu().numpy().tolist() if labels_.is_cuda else labels_.numpy().tolist()
         pred_labels = pred_labels.cpu().numpy().tolist() if pred_labels.is_cuda else pred_labels.numpy().tolist()
 
@@ -413,10 +418,6 @@ class RelCAT(PipeRunner):
                 total_f1 += batch_f1
         
         final_stats_per_label = {}
-
-        num_of_batches = len(all_batch_stats_per_label)
-
-        print("---------------------:", num_of_batches)
         
         for batch_label_stats in all_batch_stats_per_label:
             for label_id, stat_dict in batch_label_stats.items():
@@ -429,7 +430,7 @@ class RelCAT(PipeRunner):
 
         for label_id, stat_dict in final_stats_per_label.items():
             for stat_name, value in stat_dict.items():
-                final_stats_per_label[label_id][stat_name] = value / num_of_batches
+                final_stats_per_label[label_id][stat_name] = value / (i + 1)
 
         total_loss = total_loss / (i + 1)
         total_acc = total_acc / (i + 1)
@@ -446,6 +447,7 @@ class RelCAT(PipeRunner):
         }
 
         print("==================== Evaluation Results ===================")
+        print(" no. of batches:", (i + 1))
         for key in sorted(results.keys()):
             print(" %s = %0.3f" %( key, results[key]))
         print("----------------------- class stats -----------------------")

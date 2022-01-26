@@ -46,7 +46,9 @@ class RelData(Dataset):
         nclasses, labels2idx, idx2label = RelData.get_labels(df["label"], self.config)
 
         output_relations = df.values.tolist()
-        
+
+        print("No. of relations detected:", len(output_relations) , " from : ", csv_path) 
+
         # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
