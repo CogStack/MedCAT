@@ -17,7 +17,7 @@ class Snomed:
     Args:
         data_path:
             Path to the unzipped SNOMED CT folder
-        uk_ext:
+        uk_ext: bool
             Specification of a SNOMED UK extension after 2021 to process the divergent release format.
     """
 
@@ -261,7 +261,6 @@ class Snomed:
                 drop=True)
             df2merge.append(icd_mappings)
         return pd.concat(df2merge)
-
 
     def map_snomed2opcs4(self):
         """
