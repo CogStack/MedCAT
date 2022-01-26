@@ -6,7 +6,6 @@ import tempfile
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.cat import CAT
-from medcat.utils.checkpoint import Checkpoint
 
 
 class CATTests(unittest.TestCase):
@@ -103,60 +102,19 @@ class CATTests(unittest.TestCase):
         self.assertEqual({'entities': {}, 'tokens': []}, out[3])
 
     def test_train(self):
-        ckpt_steps = 2
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps)
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
+        self.undertest.train(["The dog is not a house"] * 20)
         self.undertest.cdb.print_stats()
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
 
-        self.assertEqual(1, len(checkpoints))
-        self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[0])
-
-    def test_resume_training(self):
-        ckpt_steps = 3
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps, max_to_keep=sys.maxsize)
+    def test_ckpt_unsupervised(self):
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
-        self.undertest.cdb.print_stats()
-        self.undertest.resume_training(["The dog is not a house"] * 40, checkpoint=checkpoint)
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
-        self.assertEqual(15, len(checkpoints))
-        self.assertTrue("checkpoint-%s-3" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-6" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-9" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-12" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-15" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-18" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-21" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-24" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-27" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-30" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-33" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-36" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-39" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-40" % ckpt_steps in checkpoints)
-
-    def test_resume_training_on_absent_checkpoints(self):
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path)
-        with self.assertRaises(Exception) as e:
-            self.undertest.resume_training(["The dog is not a house"] * 40, checkpoint=checkpoint)
-        self.assertEqual("Checkpoints not found. You need to restore or train from scratch.", str(e.exception))
-
-    def test_train_keep_n_checkpoints(self):
-        ckpt_steps = 2
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps, max_to_keep=2)
-        self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
-        self.undertest.cdb.print_stats()
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
-        self.assertEqual(2, len(checkpoints))
-        self.assertTrue("checkpoint-%s-18" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-20" % ckpt_steps in checkpoints)
+        self.undertest.config.linking['output_dir'] = "/tmp/"
+        self.undertest.config.linking['save_steps'] = 10
+        self.undertest.train(["The dog is not a house"] * 20)
+        # We should have 2 ckpts in ./
+        files = [x for x in os.listdir("/tmp/") if x.startswith('cdb-ckpt')]
+        self.assertEqual(2, len(files))
+        self.undertest.config.linking['output_dir'] = None
 
     def test_get_entities(self):
         text = "The dog is sitting outside the house."
@@ -192,14 +150,10 @@ class CATTests(unittest.TestCase):
 
     def test_train_supervised(self):
         nepochs = 3
+        self.undertest.config.linking['output_dir'] = None
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize, metadata={"prop": "value"})
         fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
-                                                                                     checkpoint=checkpoint,
                                                                                      nepochs=nepochs)
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
-        metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("checkpoint-metadata.json")]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
         self.assertEqual({}, tp)
@@ -208,51 +162,6 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, f1)
         self.assertEqual({}, cui_counts)
         self.assertEqual({}, examples)
-        self.assertEqual(nepochs, len(checkpoints))
-        self.assertTrue("checkpoint-1-1" in checkpoints)
-        self.assertTrue("checkpoint-1-2" in checkpoints)
-        self.assertTrue("checkpoint-1-3" in checkpoints)
-        self.assertEqual(1, len(metadata))
-        with open(os.path.join(ckpt_dir_path, metadata[0])) as f:
-            self.assertEqual({"prop": "value"}, json.load(f))
-
-    def test_resume_supervised_training(self):
-        nepochs_train = 1
-        nepochs_retrain = 2
-        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize, metadata={
-                                                  "reset_cui_count": False,
-                                                  "use_filters": False,
-                                                  "terminate_last": False,
-                                                  "use_overlaps": False,
-                                                  "use_cui_doc_limit": False,
-                                                  "test_size": 0,
-                                                  "devalue_others": False,
-                                                  "use_groups": False,
-                                                  "never_terminate": False,
-                                                  "train_from_false_positives": False,
-                                                  "extra_cui_filter": None
-                                              })
-        self.undertest.train_supervised(data_path, checkpoint=checkpoint, nepochs=nepochs_train)
-        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.resume_supervised_training(data_path,
-                                                                                               checkpoint=checkpoint,
-                                                                                               nepochs=nepochs_retrain)
-        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
-        metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("checkpoint-metadata.json")]
-        self.assertEqual({}, fp)
-        self.assertEqual({}, fn)
-        self.assertEqual({}, tp)
-        self.assertEqual({}, p)
-        self.assertEqual({}, r)
-        self.assertEqual({}, f1)
-        self.assertEqual({}, cui_counts)
-        self.assertEqual({}, examples)
-        self.assertEqual(nepochs_train + nepochs_retrain, len(checkpoints))
-        self.assertTrue("checkpoint-1-1" in checkpoints)
-        self.assertTrue("checkpoint-1-2" in checkpoints)
-        self.assertTrue("checkpoint-1-3" in checkpoints)
-        self.assertEqual(1, len(metadata))
 
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)
