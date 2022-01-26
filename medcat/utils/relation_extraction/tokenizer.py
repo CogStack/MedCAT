@@ -4,6 +4,7 @@ from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 
+
 class TokenizerWrapperBERT(TokenizerWrapperBase):
     ''' Wrapper around a huggingface BERT tokenizer so that it works with the
     MetaCAT models.
@@ -14,7 +15,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
     '''
     name = 'bert-tokenizer'
 
-    def __init__(self, hf_tokenizers=None, max_seq_length : Optional[int] = None):
+    def __init__(self, hf_tokenizers=None, max_seq_length: Optional[int] = None):
         self.hf_tokenizers = hf_tokenizers
         self.max_seq_length = max_seq_length
 
@@ -26,8 +27,8 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
             return {'offset_mapping': result['offset_mapping'],
                     'input_ids': result['input_ids'],
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
-                    'token_type_ids' : result['token_type_ids'],
-                    'attention_mask' : result['attention_mask']
+                    'token_type_ids': result['token_type_ids'],
+                    'attention_mask': result['attention_mask']
                     }
         elif isinstance(text, list):
             results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_token_type_ids=True,
@@ -38,8 +39,8 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
                     'offset_mapping': results['offset_mapping'][ind],
                     'input_ids': results['input_ids'][ind],
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(results['input_ids'][ind]),
-                    'token_type_ids' : results['token_type_ids'][ind],
-                    'attention_mask' : results['attention_mask'][ind]
+                    'token_type_ids': results['token_type_ids'][ind],
+                    'attention_mask': results['attention_mask'][ind]
                     })
             return output
         else:

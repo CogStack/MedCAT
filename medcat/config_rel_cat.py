@@ -8,7 +8,7 @@ class ConfigRelCAT(ConfigMixin):
 
         self.general: Dict[str, Any] = {
                 'device': 'cuda', # possible values: 'cuda', 'cpu',
-                 # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
+                # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
                 'relation_type_filter_pairs': [],
                 'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
                 'lowercase': True, # If true all input text will be lowercased
@@ -19,9 +19,9 @@ class ConfigRelCAT(ConfigMixin):
                 'model_name': 'bert-base-uncased', # e.g "dmis-lab/biobert-base-cased-v1.2", "bert-large-uncased", "bert-base-uncased"
                 'log_level': 'info',
                 'padding_idx': -1,
-                'task' : 'train',
+                'task': 'train',
                 'labels2idx': {},
-                'idx2labels' : {}
+                'idx2labels': {}
         },
 
         self.model: Dict[str, Any] = {

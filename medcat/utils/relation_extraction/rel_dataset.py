@@ -9,9 +9,10 @@ from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 
+
 class RelData(Dataset):
 
-    def __init__(self, tokenizer : TokenizerWrapperBERT, config : ConfigRelCAT, cdb : CDB):
+    def __init__(self, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT, cdb: CDB):
         self.cdb = cdb
         self.config = config
         self.tokenizer = tokenizer
@@ -21,7 +22,7 @@ class RelData(Dataset):
         self.ent_context_left = self.config.general["ent_context_left"]
         self.ent_context_right = self.config.general["ent_context_right"]
 
-    def generate_base_relations(self, docs : Iterable[Doc]) -> Iterable[List[Tuple]]:
+    def generate_base_relations(self, docs: Iterable[Doc]) -> Iterable[List[Tuple]]:
         '''
             Generate relations from Spacy CAT docs,
         '''
@@ -29,7 +30,7 @@ class RelData(Dataset):
         for doc_id, doc in enumerate(docs):
             output_relations.append(self.create_base_relations_from_doc(doc,
                                                           doc_id=doc_id,))
-        
+
         return output_relations
 
     def create_base_relations_from_csv(self, csv_path):
@@ -47,14 +48,14 @@ class RelData(Dataset):
 
         output_relations = df.values.tolist()
 
-        print("No. of relations detected:", len(output_relations) , " from : ", csv_path) 
+        print("No. of relations detected:", len(output_relations), " from : ", csv_path) 
 
         # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
 
-        return { "output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
-       
+        return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
+
 
     def create_base_relations_from_doc(self, doc, doc_id) -> Dict:
         """  
@@ -74,7 +75,6 @@ class RelData(Dataset):
         doc_length = len(doc)
 
         chars_to_exclude = ":!@#$%^&*()-+?_=,<>/"
-        pattern = "[^0-9a-zA-Z]+"
 
         tokenizer_data = self.tokenizer(doc.text)
 
@@ -90,14 +90,14 @@ class RelData(Dataset):
             for ent2 in doc.ents[ent1pos:]:
                 ent2pos += 1
                 if ent1.text.lower() != ent2.text.lower() and self.window_size and 1 < ent2.start - ent1.start <= self.window_size and ent_dist_counter < self.ent_context_left:
-                    
+
                     ent2_type_id = list(self.cdb.cui2type_ids.get(ent2._.cui, ''))
                     ent2_types = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ent2_type_id]
 
                     is_char_punctuation = False
                     start_pos = ent1.start
 
-                    while not is_char_punctuation and start_pos >= 0 :
+                    while not is_char_punctuation and start_pos >= 0:
                         is_char_punctuation = doc[start_pos].is_punct
                         start_pos -= 1
 
@@ -109,7 +109,7 @@ class RelData(Dataset):
                     while not is_char_punctuation and start_pos < doc_length:
                         is_char_punctuation = doc[start_pos].is_punct
                         start_pos += 1
-                    
+
                     right_sentence_context= start_pos + 1 if start_pos > 0 else doc_length
 
                     if self.window_size < (right_sentence_context - left_sentence_context):
@@ -133,7 +133,7 @@ class RelData(Dataset):
                         ent2token = ent2token[0]
                     else:
                         continue
- 
+
                     ent1_token_id = self.tokenizer.token_to_id(ent1token)
                     ent2_token_id = self.tokenizer.token_to_id(ent2token)
 
@@ -147,8 +147,8 @@ class RelData(Dataset):
                     ent_dist_counter += 1
 
         return {"output_relations": relation_instances, "nclasses": self.blank_label_id, "labels2idx": {}, "idx2label": {}}
-      
-    def create_relations_from_export(self, data : Dict):
+
+    def create_relations_from_export(self, data: Dict):
         """  
             Args:
                 data (Dict):
@@ -179,14 +179,14 @@ class RelData(Dataset):
                     doc_length = len(text)
 
                     tokenizer_data = self.tokenizer(text)
-                    
+
                     ann_ids_ents = {}
                     for ann in annotations: 
                         ann_id = ann['id']
                         ann_ids_ents[ann_id] = {}
                         ann_ids_ents[ann_id]['cui'] = ann['cui']
                         ann_ids_ents[ann_id]['type_ids'] = list(self.cdb.cui2type_ids.get(ann['cui'], ''))
-                      
+
                         ann_ids_ents[ann_id]['types'] = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ann_ids_ents[ann_id]['type_ids']]
 
                     relation_instances = []
@@ -203,14 +203,14 @@ class RelData(Dataset):
 
                         start_entity_id = relation['start_entity']
                         end_entity_id = relation['end_entity']
-                        
+
                         start_entity_types = ann_ids_ents[start_entity_id]['types']
                         end_entity_types = ann_ids_ents[end_entity_id]['types']
 
                         for ent1type, ent2type in enumerate(relation_type_filter_pairs):
                             if ent1type not in start_entity_types and ent2type not in end_entity_types:
                                 continue
-                
+
                         start_entity_cui = ann_ids_ents[start_entity_id]['cui']
                         end_entity_cui = ann_ids_ents[end_entity_id]['cui']
 
@@ -219,25 +219,25 @@ class RelData(Dataset):
                         relation_label = relation['relation']
 
                         if start_entity_id != end_entity_id and relation.get('validated', True):
-                            
+
                             sent_start_pos = ann_start_start_pos
                             is_char_punctuation = False
-     
-                            while not is_char_punctuation and sent_start_pos >= 0 :
+
+                            while not is_char_punctuation and sent_start_pos >= 0:
                                 is_char_punctuation = text[sent_start_pos] in punct_symbols
                                 sent_start_pos -= 1
-                            
+
                             left_sentence_context  = sent_start_pos + 1 if sent_start_pos > 0 else 0
-                            
+
                             sent_start_pos = ann_end_end_pos
                             is_char_punctuation = False
-                            
+
                             while not is_char_punctuation and sent_start_pos < doc_length:
                                 is_char_punctuation = text[sent_start_pos] in punct_symbols
                                 sent_start_pos += 1
-                            
+
                             right_sentence_context = sent_start_pos + 1 if sent_start_pos > 0 else doc_length
-                            
+
                             start_input_idx = 0
                             end_input_idx = len(tokenizer_data["offset_mapping"]) - 1
 
@@ -248,27 +248,27 @@ class RelData(Dataset):
                                 if right_sentence_context >= pair[0] and right_sentence_context <= pair[1]:
                                     if end_input_idx == len(tokenizer_data["offset_mapping"]):
                                         end_input_idx = idx
-                            
+
                             input_ids = tokenizer_data["input_ids"] # [start_input_idx:end_input_idx]
-                     
-                            relation_instances.append([input_ids, (start_input_idx, end_input_idx), start_entity_value, end_entity_value , relation_label, self.blank_label_id,
+
+                            relation_instances.append([input_ids, (start_input_idx, end_input_idx), start_entity_value, end_entity_value, relation_label, self.blank_label_id,
                                                         start_entity_types, end_entity_types, start_entity_id, end_entity_id, start_entity_cui, end_entity_cui, doc_id, "", 
                                                         ann_start_start_pos, ann_start_end_pos, ann_end_start_pos, ann_end_end_pos])
 
                     output_relations.extend(relation_instances)
 
         all_relation_labels = [relation[4] for relation in output_relations]        
-        
+
         nclasses, labels2idx, idx2label = self.get_labels(all_relation_labels, self.config)
 
         # replace label_id with actual detected label number
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
 
-        return { "output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
-    
+        return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
+
     @classmethod
-    def get_labels(cls, relation_labels : List[str], config : ConfigRelCAT) -> Any:
+    def get_labels(cls, relation_labels: List[str], config: ConfigRelCAT) -> Any:
         labels2idx = {}
         idx2label = {}
         class_ids = 0
@@ -288,12 +288,12 @@ class RelData(Dataset):
                 labels2idx[relation_label] = class_ids
                 config_labels2idx[relation_label] = labels2idx[relation_label]
                 class_ids += 1
-            
+
             if relation_label in config_labels2idx.keys() and relation_label not in labels2idx.keys():
                 labels2idx[relation_label] = config_labels2idx[relation_label]
-                
+
             idx2label[labels2idx[relation_label]] = relation_label
-        
+
         config.general["labels2idx"] = config_labels2idx
 
         return len(labels2idx.keys()), labels2idx, idx2label, 
@@ -312,6 +312,3 @@ class RelData(Dataset):
         return torch.LongTensor(self.dataset['output_relations'][idx][0]),\
                torch.LongTensor(self.dataset['output_relations'][idx][1]),\
                torch.LongTensor([self.dataset['output_relations'][idx][5]])
-
-
-
