@@ -15,6 +15,7 @@ from multiprocess.synchronize import Lock
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
+from tqdm.autonotebook import tqdm
 
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
