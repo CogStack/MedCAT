@@ -284,7 +284,7 @@ class RelCAT(PipeRunner):
                     self.optimizer.step()
                     self.optimizer.zero_grad()
 
-                print('[Epoch: %d, %5d/ %d points], loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f' %
+                self.log.info('[Epoch: %d, %5d/ %d points], loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f' %
                     (epoch, (i + 1) * current_batch_size, train_dataset_size, loss_per_batch[-1], accuracy_per_batch[-1], total_loss / (i + 1), total_loss))
 
             if len(loss_per_batch) > 0:
@@ -304,7 +304,6 @@ class RelCAT(PipeRunner):
                  
             f1_per_epoch.append(results['f1'])
 
-            print("Test f1 at Epoch %d: %.5f" % (epoch, f1_per_epoch[-1]))
             print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time) ) + " seconds")
 
             self.epoch = epoch
@@ -326,12 +325,9 @@ class RelCAT(PipeRunner):
         pred_labels = torch.softmax(output_logits, dim=1).max(1)[1]
         pred_labels = pred_labels[idxs].to(self.device)
 
-        size_of_batch = len(idxs)
+        size_of_batch =  len(idxs.tolist()) if type(idxs.tolist()) != bool else 1
 
-        if len(idxs) > 1:
-            acc = (labels_ == pred_labels).sum().item() / size_of_batch
-        else:
-            acc = (labels_ == pred_labels).sum().item()
+        acc = (labels_ == pred_labels).sum().item() / size_of_batch
 
         true_labels = labels_.cpu().numpy().tolist() if labels_.is_cuda else labels_.numpy().tolist()
         pred_labels = pred_labels.cpu().numpy().tolist() if pred_labels.is_cuda else pred_labels.numpy().tolist()
@@ -364,8 +360,7 @@ class RelCAT(PipeRunner):
             lbl_tp_fp = lbl_tp_fp if lbl_tp_fp > 0.0 else 1.0 
   
             stat_per_label[label]["prec"] = stat_per_label[label]["tp"] / lbl_tp_fp
-            stat_per_label[label]["acc"] = (stat_per_label[label]["tp"] + stat_per_label[label]["tn"]) / \
-                                          (stat_per_label[label]["tp"] + stat_per_label[label]["fp"] + stat_per_label[label]["fn"] + stat_per_label[label]["tn"] )
+            stat_per_label[label]["acc"] = (stat_per_label[label]["tp"] + stat_per_label[label]["tn"]) / (stat_per_label[label]["tp"] + stat_per_label[label]["fp"] + stat_per_label[label]["fn"] + stat_per_label[label]["tn"] )
             stat_per_label[label]["recall"] = stat_per_label[label]["tp"] / lbl_tp_fn
             lbl_re_pr = stat_per_label[label]["recall"] + stat_per_label[label]["prec"] 
             lbl_re_pr = lbl_re_pr if lbl_re_pr > 0.0 else 1.0   
@@ -390,7 +385,6 @@ class RelCAT(PipeRunner):
         criterion = nn.CrossEntropyLoss(ignore_index=-1)
         total_loss, total_acc, total_f1, total_recall, total_precision = 0.0, 0.0, 0.0, 0.0, 0.0
         all_batch_stats_per_label = []
-        pred_logits = None
         
         self.model.eval()
       
@@ -408,11 +402,6 @@ class RelCAT(PipeRunner):
                 batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
                 total_loss += batch_loss.item()
 
-                pred_logits = pred_classification_logits if pred_logits is None \
-                     else numpy.append(pred_logits.cpu().numpy(), pred_classification_logits.cpu().numpy(), axis=0)
-
-                pred_logits = torch.tensor(pred_logits).to(self.device)
-
                 batch_accuracy, batch_recall, batch_precision, batch_f1, pred_labels, true_labels, batch_stats_per_label = \
                     self.evaluate_(pred_classification_logits, labels, ignore_idx=-1)
 
@@ -425,7 +414,9 @@ class RelCAT(PipeRunner):
         
         final_stats_per_label = {}
 
-        num_of_batches = len(batch_stats_per_label)
+        num_of_batches = len(all_batch_stats_per_label)
+
+        print("---------------------:", num_of_batches)
         
         for batch_label_stats in all_batch_stats_per_label:
             for label_id, stat_dict in batch_label_stats.items():
@@ -459,10 +450,11 @@ class RelCAT(PipeRunner):
             print(" %s = %0.3f" %( key, results[key]))
         print("----------------------- class stats -----------------------")
         for label_id, stat_dict in final_stats_per_label.items():
-            print("label: %s | f1: %0.3f | acc: %0.3f | rec: %0.3f " % (self.config.general["idx2labels"][label_id],
+            print("label: %s | f1: %0.3f | prec : %0.3f | acc: %0.3f | recall: %0.3f " % (self.config.general["idx2labels"][label_id],
                 stat_dict["f1"],
                 stat_dict["prec"],
-                stat_dict["acc"]
+                stat_dict["acc"],
+                stat_dict["recall"]
                 ))        
         print("-----------------------------------------------------------")
         print("===========================================================")
