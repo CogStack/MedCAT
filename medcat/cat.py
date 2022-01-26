@@ -496,7 +496,14 @@ class CAT(object):
         if not resume_from_checkpoint:
             checkpoint.purge()
 
-        asyncio.run(self._train_main(checkpoint, data_iterator, progress_print))
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            loop.run_until_complete(self._train_main(checkpoint, data_iterator, progress_print))
+        else:
+            asyncio.run(self._train_main(checkpoint, data_iterator, progress_print))
 
         self.config.linking['train'] = False
 
@@ -729,21 +736,42 @@ class CAT(object):
             checkpoint.purge()
             checkpoint.save_metadata()
 
-        fp, fn, tp, p, r, f1, cui_counts, examples = asyncio.run(self._train_supervised_main(data_path,
-             reset_cui_count,
-             nepochs,
-             print_stats,
-             use_filters,
-             terminate_last,
-             use_overlaps,
-             use_cui_doc_limit,
-             test_size,
-             devalue_others,
-             use_groups,
-             never_terminate,
-             train_from_false_positives,
-             extra_cui_filter,
-             checkpoint))
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        if loop and loop.is_running():
+            fp, fn, tp, p, r, f1, cui_counts, examples = loop.run_until_complete(self._train_supervised_main(data_path,
+                 reset_cui_count,
+                 nepochs,
+                 print_stats,
+                 use_filters,
+                 terminate_last,
+                 use_overlaps,
+                 use_cui_doc_limit,
+                 test_size,
+                 devalue_others,
+                 use_groups,
+                 never_terminate,
+                 train_from_false_positives,
+                 extra_cui_filter,
+                 checkpoint))
+        else:
+            fp, fn, tp, p, r, f1, cui_counts, examples = asyncio.run(self._train_supervised_main(data_path,
+                 reset_cui_count,
+                 nepochs,
+                 print_stats,
+                 use_filters,
+                 terminate_last,
+                 use_overlaps,
+                 use_cui_doc_limit,
+                 test_size,
+                 devalue_others,
+                 use_groups,
+                 never_terminate,
+                 train_from_false_positives,
+                 extra_cui_filter,
+                 checkpoint))
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
