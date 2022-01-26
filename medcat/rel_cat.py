@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from types import UnionType
 import torch
 
 import torch.nn
@@ -12,13 +11,14 @@ from tqdm import tqdm
 from datetime import date, datetime
 from transformers import BertConfig
 from medcat.cdb import CDB
+from medcat.config import Config
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.loggers import add_handlers
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 
 from spacy.tokens import Doc
-from typing import Generator, Iterable, Iterator, cast
+from typing import Iterable, Iterator, Optional, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from medcat.utils.meta_cat.ml_utils import split_list_train_test
@@ -39,7 +39,7 @@ class RelCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
-    def __init__(self, cdb: CDB, config: ConfigRelCAT = ConfigRelCAT(), tokenizer: TokenizerWrapperBERT = None, task="train"):
+    def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train"):
 
         self.config = config
         self.tokenizer = tokenizer
@@ -53,7 +53,7 @@ class RelCAT(PipeRunner):
         self.device = torch.device("cuda" if self.is_cuda_available and self.config.general["device"] != "cpu" else "cpu")
         self.tokenizer = tokenizer
         self.model_config = BertConfig()
-        self.model = None
+        self.model : BertModel_RelationExtraction
         self.task = task
         self.checkpoint_path = "./"
         self.optimizer = None
@@ -79,7 +79,7 @@ class RelCAT(PipeRunner):
     @classmethod
     def load(cls, load_path: str = "./") -> "RelCAT":
 
-        cdb = CDB(config=None)
+        cdb = CDB(config=Config())
         if os.path.exists(os.path.join(load_path, "cdb.dat")):
             cdb = CDB.load(os.path.join(load_path, "cdb.dat"))
         else:
@@ -466,7 +466,7 @@ class RelCAT(PipeRunner):
 
         return results
 
-    def pipe(self, stream: Iterable[Doc],  batch_size: int, **kwargs) -> UnionType[Generator[Doc, None, None], Iterator[Doc]]:
+    def pipe(self, stream: Iterable[Doc], *args, **kwargs) -> Iterator[Doc]:
 
         predict_rel_dataset = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
 

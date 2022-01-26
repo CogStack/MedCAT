@@ -7,9 +7,8 @@ class ConfigRelCAT(ConfigMixin):
     def __init__(self) -> None:
 
         self.general: Dict[str, Any] = {
-                'device': 'cuda', # possible values: 'cuda', 'cpu',
-                # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
-                'relation_type_filter_pairs': [],
+                'device': 'cuda', # possible values: 'cuda', 'cpu'
+                'relation_type_filter_pairs': [], # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
                 'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
                 'lowercase': True, # If true all input text will be lowercased
                 'ent_context_left': 2, # Number of entities to take from the left of the concept
@@ -22,7 +21,7 @@ class ConfigRelCAT(ConfigMixin):
                 'task': 'train',
                 'labels2idx': {},
                 'idx2labels': {}
-        },
+        }
 
         self.model: Dict[str, Any] = {
                 'input_size': 300,

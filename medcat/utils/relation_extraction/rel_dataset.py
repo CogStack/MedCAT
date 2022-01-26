@@ -17,12 +17,12 @@ class RelData(Dataset):
         self.config = config
         self.tokenizer = tokenizer
         self.blank_label_id = self.config.general["padding_idx"]
-        self.dataset = []
+        self.dataset : Dict[Any, Any] = {}
         self.window_size = self.config.general["window_size"]
         self.ent_context_left = self.config.general["ent_context_left"]
         self.ent_context_right = self.config.general["ent_context_right"]
 
-    def generate_base_relations(self, docs: Iterable[Doc]) -> Iterable[List[Tuple]]:
+    def generate_base_relations(self, docs: Iterable[Doc]) -> List[Any]:
         '''
             Generate relations from Spacy CAT docs,
         '''
@@ -180,7 +180,7 @@ class RelData(Dataset):
 
                     tokenizer_data = self.tokenizer(text)
 
-                    ann_ids_ents = {}
+                    ann_ids_ents : Dict[Any, Any] = {}
                     for ann in annotations: 
                         ann_id = ann['id']
                         ann_ids_ents[ann_id] = {}
@@ -269,8 +269,8 @@ class RelData(Dataset):
 
     @classmethod
     def get_labels(cls, relation_labels: List[str], config: ConfigRelCAT) -> Any:
-        labels2idx = {}
-        idx2label = {}
+        labels2idx : Dict[str, int] = {}
+        idx2label : Dict[int, str] = {}
         class_ids = 0
 
         config_labels2idx = config.general["labels2idx"]
