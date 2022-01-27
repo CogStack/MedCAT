@@ -199,7 +199,7 @@ class CATTests(unittest.TestCase):
                                                                                      checkpoint=checkpoint,
                                                                                      nepochs=nepochs)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
-        metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("checkpoint-metadata.json")]
+        metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("metadata.json")]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
         self.assertEqual({}, tp)
@@ -239,7 +239,7 @@ class CATTests(unittest.TestCase):
                                                                                                checkpoint=checkpoint,
                                                                                                nepochs=nepochs_retrain)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
-        metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("checkpoint-metadata.json")]
+        metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("metadata.json")]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
         self.assertEqual({}, tp)
