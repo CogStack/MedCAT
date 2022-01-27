@@ -1,5 +1,8 @@
 from django.db import models
-from django.core.exceptions import ValidationError
+from django.core.files.storage import FileSystemStorage
+
+
+MODEL_FS = FileSystemStorage(location="/medcat_data")
 
 # Create your models here.
 class UploadedText(models.Model):
@@ -15,7 +18,8 @@ class Downloader(models.Model):
     funder = models.CharField(max_length=100, blank=True, default="")
     use_case = models.TextField(max_length=200)
 
-class MedCATModel(models.Model):
+
+class MedcatModel(models.Model):
     model_name = models.CharField(max_length=20, unique=True)
-    model_path = models.CharField(max_length=255)
+    model_file = models.FileField(storage=MODEL_FS)
     model_display_name = models.CharField(max_length=50)
