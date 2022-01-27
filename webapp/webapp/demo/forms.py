@@ -1,6 +1,6 @@
 from email.policy import default
 from django import forms
-from .models import Downloader, MedCATModel
+from .models import Downloader
 
 
 class DownloaderForm(forms.ModelForm):

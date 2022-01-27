@@ -9,9 +9,13 @@ services:
     restart: 'always'
     volumes:
             - ./webapp/db:/webapp/db
-            - /medcat_data:/medcat_data
+            - medcat_data:/medcat_data
     ports:
       - "8001:8000"
     env_file:
             - ./envs/env_medmen
     tty: true
+
+volumes:
+  medcat_data:
+    driver: local
