@@ -18,7 +18,7 @@ from medcat.utils.loggers import add_handlers
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, Optional, cast
+from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from medcat.utils.meta_cat.ml_utils import split_list_train_test
@@ -53,7 +53,7 @@ class RelCAT(PipeRunner):
         self.device = torch.device("cuda" if self.is_cuda_available and self.config.general["device"] != "cpu" else "cpu")
         self.tokenizer = tokenizer
         self.model_config = BertConfig()
-        self.model : BertModel_RelationExtraction
+        self.model: BertModel_RelationExtraction
         self.task = task
         self.checkpoint_path = "./"
         self.optimizer = None
