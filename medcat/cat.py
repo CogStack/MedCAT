@@ -704,29 +704,12 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
-        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR,
-                                              steps=1,
-                                              metadata={
-                                                  "reset_cui_count": reset_cui_count,
-                                                  "use_filters": use_filters,
-                                                  "terminate_last": terminate_last,
-                                                  "use_overlaps": use_overlaps,
-                                                  "use_cui_doc_limit": use_cui_doc_limit,
-                                                  "test_size": test_size,
-                                                  "devalue_others": devalue_others,
-                                                  "use_groups": use_groups,
-                                                  "never_terminate": never_terminate,
-                                                  "train_from_false_positives": train_from_false_positives,
-                                                  "extra_cui_filter": extra_cui_filter
-                                              })
+        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR)
 
         if resume_from_checkpoint:
             checkpoint.populate(self.cdb)
-            if checkpoint.metadata is None:
-                raise Exception("Checkpoints metadata not found.")
         else:
             checkpoint.purge()
-            checkpoint.save_metadata()
 
         # Backup filters
         _filters = deepcopy(self.config.linking['filters'])

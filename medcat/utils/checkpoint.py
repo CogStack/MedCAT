@@ -13,7 +13,7 @@ class Checkpoint(object):
     log = logging.getLogger(__package__)
 
     @check_positive
-    def __init__(self, dir_path: str, *, steps: int = 1000, max_to_keep: int = 1, metadata: Optional[Dict] = None) -> None:
+    def __init__(self, dir_path: str, *, steps: int = 1000, max_to_keep: int = 1) -> None:
         """ Initialise the checkpoint object
         Args:
             dir_path (str):
@@ -24,15 +24,12 @@ class Checkpoint(object):
             max_to_keep (int):
                 The maximum number of checkpoints to keep.
                 N.B.: A large number could result in error "no space left on device".
-            metadata (Optional[Dict]):
-                The extra training metadata need to be persisted.
         """
         self._dir_path = os.path.abspath(dir_path)
         self._steps = steps
         self._max_to_keep = max_to_keep
         self._file_paths: List[str] = []
         self._count = 0
-        self._metadata = metadata
         os.makedirs(self._dir_path, exist_ok=True)
 
     @property
@@ -59,10 +56,6 @@ class Checkpoint(object):
     def count(self) -> int:
         return self._count
 
-    @property
-    def metadata(self) -> Optional[Dict]:
-        return self._metadata
-
     @classmethod
     def restore(cls, dir_path: str) -> "Checkpoint":
         if not os.path.isdir(dir_path):
@@ -70,10 +63,9 @@ class Checkpoint(object):
         ckpt_file_paths = cls._get_ckpt_file_paths(dir_path)
         if not ckpt_file_paths:
             raise Exception("Checkpoints not found. You need to train from scratch.")
-        metadata = cls._load_metadata(dir_path)
         latest_ckpt = ckpt_file_paths[-1]
         steps, count = cls._get_steps_and_count(latest_ckpt)
-        checkpoint = cls(dir_path, steps=steps, metadata=metadata)
+        checkpoint = cls(dir_path, steps=steps)
         checkpoint._file_paths = ckpt_file_paths
         checkpoint._count = count
         return checkpoint
@@ -83,15 +75,6 @@ class Checkpoint(object):
         os.makedirs(self._dir_path)
         self._file_paths = []
         self._count = 0
-
-    def save_metadata(self) -> None:
-        metadata_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-metadata.json")
-        if self._metadata is not None:
-            with open(metadata_file_path, "w") as f:
-                f.write(jsonpickle.encode(self._metadata))
-            self.log.info("Checkpoint metadata saved: %s", metadata_file_path)
-        else:
-            raise Exception("Checkpoints metadata not found.")
 
     def save(self, cdb: CDB, count: int) -> None:
         ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-%s-%s" % (self.steps, count))
@@ -131,13 +114,3 @@ class Checkpoint(object):
     def _get_steps_and_count(file_path) -> Tuple[int, int]:
         file_name_parts = os.path.basename(file_path).split('-')
         return int(file_name_parts[1]), int(file_name_parts[2])
-
-    @staticmethod
-    def _load_metadata(dir_path: str) -> Optional[Dict]:
-        ckpt_file_paths = [os.path.abspath(os.path.join(dir_path, f)) for f in os.listdir(dir_path)]
-        metadata_file_paths = [f for f in ckpt_file_paths if os.path.isfile(f) and f.endswith("checkpoint-meta.json")]
-        if metadata_file_paths:
-            with open(metadata_file_paths[0]) as f:
-                return jsonpickle.decode(f.read())
-        else:
-            return None
