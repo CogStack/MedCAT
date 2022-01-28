@@ -7,7 +7,6 @@ import logging
 import math
 import time
 import psutil
-import asyncio
 from time import sleep
 from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
@@ -467,7 +466,7 @@ class CAT(object):
 
     def train(self,
               data_iterator: Iterable,
-              fine_tune: bool = True,
+              fine_tune: bool = True, # TODO: Should be ignored by resumed training?
               progress_print: int = 1000,
               checkpoint: Optional[Checkpoint] = None,
               resume_from_checkpoint: bool = False) -> None:
@@ -493,37 +492,33 @@ class CAT(object):
             self.cdb.reset_training()
 
         checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_CHECKPOINT_DIR)
-        if not resume_from_checkpoint:
+        if resume_from_checkpoint:
+            checkpoint.populate(self.cdb)
+        else:
             checkpoint.purge()
 
-        asyncio.run(self._train_main(checkpoint, data_iterator, progress_print))
+        cnt = checkpoint.count
+        for line in islice(data_iterator, checkpoint.count, None):
+            if line is not None and line:
+                # Convert to string
+                line = str(line).strip()
+
+                try:
+                    _ = self(line, do_train=True)
+                except Exception as e:
+                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
+                    self.log.warning("BECAUSE OF: %s", str(e))
+                if cnt % progress_print == 0:
+                    self.log.info("DONE: %s", str(cnt))
+                cnt += 1
+                if cnt % checkpoint.steps == 0:
+                    checkpoint.save(cdb=self.cdb, count=cnt)
+
+        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
+        if cnt % checkpoint.steps != 0:
+            checkpoint.save(cdb=self.cdb, count=cnt)
 
         self.config.linking['train'] = False
-
-    def resume_training(self,
-                        data_iterator: Iterable,
-                        progress_print: int = 1000,
-                        checkpoint: Optional[Checkpoint] = None) -> None:
-        """ Resume training on the data from where it was left, note that the maximum length of a line
-        or document is 1M characters. Anything longer will be trimmed.
-
-        Args:
-            data_iterator (Iterable):
-                Simple iterator over sentences/documents, e.g. a open file
-                or an array or anything that we can use in a for loop.
-            progress_print (int):
-                Print progress after N lines.
-            checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
-                The medcat checkpoint object
-        """
-        checkpoint = checkpoint or Checkpoint.restore(dir_path=self.DEFAULT_TRAIN_CHECKPOINT_DIR)
-        checkpoint.populate(self.cdb)
-
-        self.train(data_iterator=data_iterator,
-                   fine_tune=True,
-                   progress_print=progress_print,
-                   checkpoint=checkpoint,
-                   resume_from_checkpoint=True)
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
         r'''
@@ -725,85 +720,135 @@ class CAT(object):
                                                   "extra_cui_filter": extra_cui_filter
                                               })
 
-        if not resume_from_checkpoint:
+        if resume_from_checkpoint:
+            checkpoint.populate(self.cdb)
+            if checkpoint.metadata is None:
+                raise Exception("Checkpoints metadata not found.")
+        else:
             checkpoint.purge()
             checkpoint.save_metadata()
 
-        fp, fn, tp, p, r, f1, cui_counts, examples = asyncio.run(self._train_supervised_main(data_path,
-             reset_cui_count,
-             nepochs,
-             print_stats,
-             use_filters,
-             terminate_last,
-             use_overlaps,
-             use_cui_doc_limit,
-             test_size,
-             devalue_others,
-             use_groups,
-             never_terminate,
-             train_from_false_positives,
-             extra_cui_filter,
-             checkpoint))
+        # Backup filters
+        _filters = deepcopy(self.config.linking['filters'])
+        filters = self.config.linking['filters']
+
+        fp = fn = tp = p = r = f1 = examples = {}
+        with open(data_path) as f:
+            data = json.load(f)
+        cui_counts = {}
+
+        if test_size == 0:
+            self.log.info("Running without a test set, or train==test")
+            test_set = data
+            train_set = data
+        else:
+            train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
+
+        if print_stats > 0:
+            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set,
+                                                                           use_project_filters=use_filters,
+                                                                           use_cui_doc_limit=use_cui_doc_limit,
+                                                                           use_overlaps=use_overlaps,
+                                                                           use_groups=use_groups,
+                                                                           extra_cui_filter=extra_cui_filter)
+        if reset_cui_count:
+            # Get all CUIs
+            cuis = []
+            for project in train_set['projects']:
+                for doc in project['documents']:
+                    doc_annotations = self._get_doc_annotations(doc)
+                    for ann in doc_annotations:
+                        cuis.append(ann['cui'])
+            for cui in set(cuis):
+                if cui in self.cdb.cui2count_train:
+                    self.cdb.cui2count_train[cui] = 10
+
+        # Remove entities that were terminated
+        if not never_terminate:
+            for project in train_set['projects']:
+                for doc in project['documents']:
+                    doc_annotations = self._get_doc_annotations(doc)
+                    for ann in doc_annotations:
+                        if ann.get('killed', False):
+                            self.unlink_concept_name(ann['cui'], ann['value'])
+
+        current = checkpoint.count
+        upper_bound = checkpoint.count + nepochs
+        for epoch in trange(current, upper_bound, initial=current, total=upper_bound, desc='Epoch', leave=False):
+            # Print acc before training
+            for project in tqdm(train_set['projects'], desc='Project', leave=False,
+                                total=len(train_set['projects'])):
+                # Set filters in case we are using the train_from_fp
+                filters['cuis'] = set()
+                if isinstance(extra_cui_filter, set):
+                    filters['cuis'] = extra_cui_filter
+
+                if use_filters:
+                    project_filter = get_project_filters(cuis=project.get('cuis', None),
+                                                         type_ids=project.get('tuis', None),
+                                                         cdb=self.cdb)
+
+                    if project_filter:
+                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+
+                for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False,
+                                   total=len(project['documents'])):
+                    spacy_doc: Doc = self(doc['text'])
+                    # Compatibility with old output where annotations are a list
+                    doc_annotations = self._get_doc_annotations(doc)
+                    for ann in doc_annotations:
+                        if not ann.get('killed', False):
+                            cui = ann['cui']
+                            start = ann['start']
+                            end = ann['end']
+                            spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
+                            deleted = ann.get('deleted', False)
+                            self.add_and_train_concept(cui=cui,
+                                                       name=ann['value'],
+                                                       spacy_doc=spacy_doc,
+                                                       spacy_entity=spacy_entity,
+                                                       negative=deleted,
+                                                       devalue_others=devalue_others)
+                    if train_from_false_positives:
+                        fps: List[Span] = get_false_positives(doc, spacy_doc)
+
+                        for fp in fps:
+                            fp_: Span = fp
+                            self.add_and_train_concept(cui=fp_._.cui,
+                                                       name=fp_.text,
+                                                       spacy_doc=spacy_doc,
+                                                       spacy_entity=fp_,
+                                                       negative=True,
+                                                       do_add_concept=False)
+
+            if terminate_last and not never_terminate:
+                # Remove entities that were terminated, but after all training is done
+                for project in train_set['projects']:
+                    for doc in project['documents']:
+                        doc_annotations = self._get_doc_annotations(doc)
+                        for ann in doc_annotations:
+                            if ann.get('killed', False):
+                                self.unlink_concept_name(ann['cui'], ann['value'])
+
+            if print_stats > 0 and (epoch + 1) % print_stats == 0:
+                fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set,
+                                                                               epoch=epoch + 1,
+                                                                               use_project_filters=use_filters,
+                                                                               use_cui_doc_limit=use_cui_doc_limit,
+                                                                               use_overlaps=use_overlaps,
+                                                                               use_groups=use_groups,
+                                                                               extra_cui_filter=extra_cui_filter)
+            if (epoch + 1) % checkpoint.steps == 0:
+                checkpoint.save(self.cdb, epoch + 1)
+
+        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
+        if (epoch + 1) % checkpoint.steps != 0:
+            checkpoint.save(self.cdb, epoch + 1)
+
+        # Set the filters again
+        self.config.linking['filters'] = _filters
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
-
-    def resume_supervised_training(self,
-                                   data_path: str,
-                                   nepochs: int = 1,
-                                   print_stats: int = 0,
-                                   checkpoint: Optional[Checkpoint] = None) -> Tuple:
-        r''' TODO: Refactor, left from old
-        Resume supervised training on a dataset from MedCATtrainer from where it was left.
-
-        Args:
-            data_path (str):
-                The path to the json file that we get from MedCATtrainer on export.
-            nepochs (int):
-                Number of epochs for which to run the training.
-            print_stats (int):
-                If > 0 it will print stats every print_stats epochs.
-            checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
-                The medcat checkpoint object
-        Returns:
-            fp (dict):
-                False positives for each CUI
-            fn (dict):
-                False negatives for each CUI
-            tp (dict):
-                True positives for each CUI
-            p (dict):
-                Precision for each CUI
-            r (dict):
-                Recall for each CUI
-            f1 (dict):
-                F1 for each CUI
-            cui_counts (dict):
-                Number of occurrence for each CUI
-            examples (dict):
-                FP/FN examples of sentences for each CUI
-        '''
-        checkpoint = checkpoint or Checkpoint.restore(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR)
-        checkpoint.populate(self.cdb)
-
-        if checkpoint.metadata is None:
-            raise Exception("Checkpoints metadata not found.")
-
-        return self.train_supervised(data_path=data_path,
-                                     reset_cui_count=checkpoint.metadata["reset_cui_count"],
-                                     nepochs=nepochs,
-                                     print_stats=print_stats,
-                                     use_filters=checkpoint.metadata["use_filters"],
-                                     terminate_last=checkpoint.metadata["terminate_last"],
-                                     use_overlaps=checkpoint.metadata["use_overlaps"],
-                                     use_cui_doc_limit=checkpoint.metadata["use_cui_doc_limit"],
-                                     test_size=checkpoint.metadata["test_size"],
-                                     devalue_others=checkpoint.metadata["devalue_others"],
-                                     use_groups=checkpoint.metadata["use_groups"],
-                                     never_terminate=checkpoint.metadata["never_terminate"],
-                                     train_from_false_positives=checkpoint.metadata["train_from_false_positives"],
-                                     extra_cui_filter=checkpoint.metadata["extra_cui_filter"],
-                                     checkpoint=checkpoint,
-                                     resume_from_checkpoint=True)
 
     def get_entities(self,
                      text: str,
@@ -1275,172 +1320,6 @@ class CAT(object):
             text_ = text[1] if isinstance(text, tuple) else text
             trimmed.append(self._get_trimmed_text(text_))
         return trimmed
-
-    async def _train_main(self, checkpoint, data_iterator, progress_print):
-        tasks = []
-        loop = asyncio.get_event_loop()
-        cnt = checkpoint.count
-        for line in islice(data_iterator, checkpoint.count, None):
-            if line is not None and line:
-                # Convert to string
-                line = str(line).strip()
-
-                try:
-                    _ = self(line, do_train=True)
-                except Exception as e:
-                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
-                    self.log.warning("BECAUSE OF: %s", str(e))
-                if cnt % progress_print == 0:
-                    self.log.info("DONE: %s", str(cnt))
-                cnt += 1
-                if cnt % checkpoint.steps == 0:
-                    tasks.append(loop.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
-
-        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
-        if cnt % checkpoint.steps != 0:
-            tasks.append(loop.create_task(checkpoint.save_async(cdb=self.cdb, count=cnt)))
-
-        await asyncio.wait(tasks)
-
-    async def _train_supervised_main(self,
-                                     data_path,
-                                     reset_cui_count,
-                                     nepochs,
-                                     print_stats,
-                                     use_filters,
-                                     terminate_last,
-                                     use_overlaps,
-                                     use_cui_doc_limit,
-                                     test_size,
-                                     devalue_others,
-                                     use_groups,
-                                     never_terminate,
-                                     train_from_false_positives,
-                                     extra_cui_filter,
-                                     checkpoint) -> Tuple:
-        # Backup filters
-        _filters = deepcopy(self.config.linking['filters'])
-        filters = self.config.linking['filters']
-
-        fp = fn = tp = p = r = f1 = examples = {}
-        with open(data_path) as f:
-            data = json.load(f)
-        cui_counts = {}
-
-        if test_size == 0:
-            self.log.info("Running without a test set, or train==test")
-            test_set = data
-            train_set = data
-        else:
-            train_set, test_set, _, _ = make_mc_train_test(data, self.cdb, test_size=test_size)
-
-        if print_stats > 0:
-            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set,
-                                                                           use_project_filters=use_filters,
-                                                                           use_cui_doc_limit=use_cui_doc_limit,
-                                                                           use_overlaps=use_overlaps,
-                                                                           use_groups=use_groups,
-                                                                           extra_cui_filter=extra_cui_filter)
-        if reset_cui_count:
-            # Get all CUIs
-            cuis = []
-            for project in train_set['projects']:
-                for doc in project['documents']:
-                    doc_annotations = self._get_doc_annotations(doc)
-                    for ann in doc_annotations:
-                        cuis.append(ann['cui'])
-            for cui in set(cuis):
-                if cui in self.cdb.cui2count_train:
-                    self.cdb.cui2count_train[cui] = 10
-
-        # Remove entities that were terminated
-        if not never_terminate:
-            for project in train_set['projects']:
-                for doc in project['documents']:
-                    doc_annotations = self._get_doc_annotations(doc)
-                    for ann in doc_annotations:
-                        if ann.get('killed', False):
-                            self.unlink_concept_name(ann['cui'], ann['value'])
-
-        tasks = []
-        loop = asyncio.get_event_loop()
-        current = checkpoint.count
-        upper_bound = checkpoint.count + nepochs
-        for epoch in trange(current, upper_bound, initial=current, total=upper_bound, desc='Epoch', leave=False):
-            # Print acc before training
-            for project in tqdm(train_set['projects'], desc='Project', leave=False, total=len(train_set['projects'])):
-                # Set filters in case we are using the train_from_fp
-                filters['cuis'] = set()
-                if isinstance(extra_cui_filter, set):
-                    filters['cuis'] = extra_cui_filter
-
-                if use_filters:
-                    project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                         type_ids=project.get('tuis', None),
-                                                         cdb=self.cdb)
-
-                    if project_filter:
-                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
-
-                for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False,
-                                   total=len(project['documents'])):
-                    spacy_doc: Doc = self(doc['text'])
-                    # Compatibility with old output where annotations are a list
-                    doc_annotations = self._get_doc_annotations(doc)
-                    for ann in doc_annotations:
-                        if not ann.get('killed', False):
-                            cui = ann['cui']
-                            start = ann['start']
-                            end = ann['end']
-                            spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
-                            deleted = ann.get('deleted', False)
-                            self.add_and_train_concept(cui=cui,
-                                                       name=ann['value'],
-                                                       spacy_doc=spacy_doc,
-                                                       spacy_entity=spacy_entity,
-                                                       negative=deleted,
-                                                       devalue_others=devalue_others)
-                    if train_from_false_positives:
-                        fps: List[Span] = get_false_positives(doc, spacy_doc)
-
-                        for fp in fps:
-                            fp_: Span = fp
-                            self.add_and_train_concept(cui=fp_._.cui,
-                                                       name=fp_.text,
-                                                       spacy_doc=spacy_doc,
-                                                       spacy_entity=fp_,
-                                                       negative=True,
-                                                       do_add_concept=False)
-
-            if terminate_last and not never_terminate:
-                # Remove entities that were terminated, but after all training is done
-                for project in train_set['projects']:
-                    for doc in project['documents']:
-                        doc_annotations = self._get_doc_annotations(doc)
-                        for ann in doc_annotations:
-                            if ann.get('killed', False):
-                                self.unlink_concept_name(ann['cui'], ann['value'])
-
-            if print_stats > 0 and (epoch + 1) % print_stats == 0:
-                fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(test_set,
-                                                                               epoch=epoch + 1,
-                                                                               use_project_filters=use_filters,
-                                                                               use_cui_doc_limit=use_cui_doc_limit,
-                                                                               use_overlaps=use_overlaps,
-                                                                               use_groups=use_groups,
-                                                                               extra_cui_filter=extra_cui_filter)
-            if (epoch + 1) % checkpoint.steps == 0:
-                tasks.append(loop.create_task(checkpoint.save_async(self.cdb, epoch + 1)))
-
-        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
-        if (epoch + 1) % checkpoint.steps != 0:
-            tasks.append(loop.create_task(checkpoint.save_async(self.cdb, epoch + 1)))
-
-        # Set the filters again
-        self.config.linking['filters'] = _filters
-
-        await asyncio.wait(tasks)
-        return fp, fn, tp, p, r, f1, cui_counts, examples
 
     @staticmethod
     def _pipe_error_handler(proc_name: str, proc: "Pipe", docs: List[Doc], e: Exception) -> None:

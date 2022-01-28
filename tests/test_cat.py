@@ -119,9 +119,9 @@ class CATTests(unittest.TestCase):
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps, max_to_keep=sys.maxsize)
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
+        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint, resume_from_checkpoint=False)
         self.undertest.cdb.print_stats()
-        self.undertest.resume_training(["The dog is not a house"] * 40, checkpoint=checkpoint)
+        self.undertest.train(["The dog is not a house"] * 40, checkpoint=checkpoint, resume_from_checkpoint=True)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
         self.assertEqual(15, len(checkpoints))
         self.assertTrue("checkpoint-%s-3" % ckpt_steps in checkpoints)
@@ -143,7 +143,7 @@ class CATTests(unittest.TestCase):
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path)
         with self.assertRaises(Exception) as e:
-            self.undertest.resume_training(["The dog is not a house"] * 40, checkpoint=checkpoint)
+            self.undertest.train(["The dog is not a house"] * 40, checkpoint=checkpoint, resume_from_checkpoint=True)
         self.assertEqual("Checkpoints not found. You need to restore or train from scratch.", str(e.exception))
 
     def test_train_keep_n_checkpoints(self):
@@ -235,9 +235,10 @@ class CATTests(unittest.TestCase):
                                                   "extra_cui_filter": None
                                               })
         self.undertest.train_supervised(data_path, checkpoint=checkpoint, nepochs=nepochs_train)
-        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.resume_supervised_training(data_path,
-                                                                                               checkpoint=checkpoint,
-                                                                                               nepochs=nepochs_retrain)
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
+                                                                                     checkpoint=checkpoint,
+                                                                                     nepochs=nepochs_retrain,
+                                                                                     resume_from_checkpoint=True)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f and "metadata" not in f]
         metadata = [f for f in os.listdir(ckpt_dir_path) if f.endswith("checkpoint-metadata.json")]
         self.assertEqual({}, fp)
