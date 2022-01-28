@@ -93,9 +93,9 @@ class CDB(object):
 
         name = cui # In case we do not find anything it will just return the CUI
 
-        if cui in self.cui2preferred_name:
+        if cui in self.cui2preferred_name and self.cui2preferred_name[cui]:
             name = self.cui2preferred_name[cui]
-        elif cui in self.cui2names:
+        elif cui in self.cui2names and self.cui2names[cui]:
             name = " ".join(str(max(self.cui2names[cui], key=len)).split(self.config.general.get('separator', '~'))).title()
 
         return name

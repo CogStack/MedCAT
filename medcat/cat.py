@@ -199,7 +199,7 @@ class CAT(object):
         cdb = CDB.load(cdb_path)
 
         # Modify the config to contain full path to spacy model
-        cdb.config.general['spacy_model'] = os.path.join(model_pack_path, cdb.config.general['spacy_model'])
+        cdb.config.general['spacy_model'] = os.path.join(model_pack_path, os.path.basename(cdb.config.general['spacy_model']))
 
         # Load Vocab
         vocab_path = os.path.join(model_pack_path, "vocab.dat")
