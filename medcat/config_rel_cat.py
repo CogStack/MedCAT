@@ -20,7 +20,8 @@ class ConfigRelCAT(ConfigMixin):
                 'padding_idx': -1,
                 'task': 'train',
                 'labels2idx': {},
-                'idx2labels': {}
+                'idx2labels': {},
+                'pin_memory': True
         }
 
         self.model: Dict[str, Any] = {
@@ -31,9 +32,9 @@ class ConfigRelCAT(ConfigMixin):
                 }
 
         self.train: Dict[str, Any] = {
-                'batch_size': 100,
+                'batch_size': 25,
                 'nepochs': 2,
-                'lr': 0.0001,
+                'lr': 0.001,
                 'test_size': 0.2,
                 'gradient_acc_steps': 1,
                 'multistep_milestones': [2,4,6,8,12,15,18,20,22,24,26,30],

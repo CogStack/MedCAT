@@ -7,6 +7,7 @@ import torch.nn
 import torch.optim
 import torch
 import torch.nn as nn
+
 from tqdm import tqdm
 from datetime import date, datetime
 from transformers import BertConfig
@@ -16,7 +17,6 @@ from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.loggers import add_handlers
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
-
 from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
@@ -33,6 +33,7 @@ from medcat.utils.relation_extraction.rel_dataset import RelData
 
 class RelCAT(PipeRunner):
 
+
     name = "rel_cat"
 
     log = logging.getLogger(__package__)
@@ -40,7 +41,6 @@ class RelCAT(PipeRunner):
     log = add_handlers(log)
 
     def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train"):
-
         self.config = config
         self.tokenizer = tokenizer
         self.cdb = cdb
@@ -140,6 +140,7 @@ class RelCAT(PipeRunner):
                                                                         task=config.general["task"],
                                                                         nclasses=config.model["nclasses"],
                                                                         ignore_mismatched_sizes=True) 
+
         rel_cat.model = torch.nn.DataParallel(rel_cat.model)
         rel_cat.model = rel_cat.model.to(device)
 
@@ -212,17 +213,17 @@ class RelCAT(PipeRunner):
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
         train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=False,
-                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
+                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general["pin_memory"])
 
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=False,
-                                 num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
+                                 num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general["pin_memory"])
 
         criterion = nn.CrossEntropyLoss(ignore_index=-1)    
 
         if self.optimizer is None:
-            self.optimizer = torch.optim.Adam([{"params": self.model.parameters(), "lr": self.learning_rate}])
+            self.optimizer = torch.optim.Adam([{"params": self.model.module.parameters(), "lr": self.learning_rate}])
 
         if self.scheduler is None:
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.config.train["multistep_milestones"], gamma=self.config.train["multistep_lr_gamma"])
@@ -233,7 +234,9 @@ class RelCAT(PipeRunner):
 
         losses_per_epoch, accuracy_per_epoch, f1_per_epoch = load_results(path=checkpoint_path)
 
-        self.model.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
+        if train_rel_data.dataset["nclasses"] > self.model.module.nclasses:
+            self.model.module.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
+
         self.config.general["labels2idx"].update(train_rel_data.dataset["labels2idx"])
         self.config.general["idx2labels"] = {int(v): k for k, v in self.config.general["labels2idx"].items()}
 
@@ -269,7 +272,7 @@ class RelCAT(PipeRunner):
                             e1_e2_start=e1_e2_start
                           )
 
-                batch_loss = criterion(classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss = criterion(classification_logits.view(-1, self.model.module.nclasses).to(self.device), labels.squeeze(1))
                 batch_loss = batch_loss / gradient_acc_steps
 
                 total_loss += batch_loss.item() / current_batch_size
@@ -407,7 +410,7 @@ class RelCAT(PipeRunner):
                 model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,
                             e1_e2_start=e1_e2_start)
 
-                batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss = criterion(pred_classification_logits.view(-1, self.model.module.nclasses).to(self.device), labels.squeeze(1))
                 total_loss += batch_loss.item()
 
                 batch_accuracy, batch_recall, batch_precision, batch_f1, pred_labels, true_labels, batch_stats_per_label = \
@@ -478,7 +481,7 @@ class RelCAT(PipeRunner):
             predict_rel_dataset.dataset, _ = self.create_test_train_datasets(predict_rel_dataset.create_base_relations_from_doc(doc, doc_id), False)
 
             predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False,  batch_size=10,
-                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=False)
+                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general["pin_memory"])
 
             total_rel_found = len(predict_rel_dataset.dataset["output_relations"])
             rel_idx = -1

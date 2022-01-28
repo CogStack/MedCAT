@@ -56,10 +56,10 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
         start_epoch = checkpoint['epoch']
         best_f1 = checkpoint['best_f1']
         model.load_state_dict(checkpoint['state_dict'])
-        model.cuda()
+        model.to(device)
 
         if optimizer is None:
-            optimizer = torch.optim.Adam([{"params": model.parameters(), "lr": config.train["lr"]}]) 
+            optimizer = torch.optim.Adam([{"params": model.module.parameters(), "lr": config.train["lr"]}]) 
 
         if scheduler is None:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
