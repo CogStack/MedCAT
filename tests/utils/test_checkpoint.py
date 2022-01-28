@@ -64,17 +64,6 @@ class CheckpointTest(unittest.TestCase):
         self.assertEqual(1, checkpoint.max_to_keep)
         self.assertEqual(1, checkpoint.count)
 
-    def test_save_metadata(self):
-        dir_path = tempfile.TemporaryDirectory()
-        checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1, metadata={"prop": "value"})
-
-        checkpoint.save_metadata()
-
-        metadata_files = [f for f in os.listdir(dir_path.name) if "checkpoint-metadata.json" in f]
-        self.assertEqual(1, len(metadata_files))
-        with open(os.path.join(dir_path.name, metadata_files[0])) as f:
-            self.assertEqual({"prop": "value"}, json.load(f))
-
     def test_validation_on_steps(self):
         with self.assertRaises(Exception) as e1:
             Checkpoint(dir_path="dir_path", steps=0, max_to_keep=1)
