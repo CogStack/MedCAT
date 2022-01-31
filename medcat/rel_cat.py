@@ -125,7 +125,7 @@ class RelCAT(PipeRunner):
 
         try:
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
-                                                                       model_size=config.general["model_name"],
+                                                                       model_size=config.model["hidden_size"],
                                                                        model_config=model_config,
                                                                        task=config.general["task"],
                                                                        nclasses=config.model["nclasses"],
@@ -135,7 +135,7 @@ class RelCAT(PipeRunner):
             logging.error("%s", str(e))
             print("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
-                                                                        model_size="bert-base-uncased",
+                                                                        model_size=model_config.hidden_size,
                                                                         model_config=model_config,
                                                                         task=config.general["task"],
                                                                         nclasses=config.model["nclasses"],
@@ -245,8 +245,6 @@ class RelCAT(PipeRunner):
 
         for epoch in range(self.epoch, self.config.train["nepochs"]):
             start_time = datetime.now().time()
-            self.model.train()
-
             total_loss = 0.0
 
             loss_per_batch = []
@@ -257,6 +255,8 @@ class RelCAT(PipeRunner):
             pbar = tqdm(total=train_dataset_size)
 
             for i, data in enumerate(train_dataloader, 0): 
+                self.model.train()
+                self.model.zero_grad()
 
                 current_batch_size = len(data[0])
                 token_ids, e1_e2_start, labels, _, _, _ = data
@@ -288,7 +288,7 @@ class RelCAT(PipeRunner):
 
                 if (i % gradient_acc_steps) == 0:
                     self.optimizer.step()
-                    self.optimizer.zero_grad()
+                    self.scheduler.step()
 
                 if ((i + 1) % current_batch_size == 0):
                     self.log.debug("[Epoch: %d, loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f]" %
@@ -309,7 +309,7 @@ class RelCAT(PipeRunner):
             total_loss = total_loss / (i + 1)
 
             end_time = datetime.now().time()
-            self.scheduler.step()
+           
 
             results = self.evaluate_results(test_dataloader, self.pad_id)
 
@@ -355,15 +355,15 @@ class RelCAT(PipeRunner):
                 if label == true_label and label == pred_label:
                     stat_per_label[label]["tp"] += 1
                     total_tp += 1
-                elif label == pred_label and true_label != pred_label:
+                elif label == pred_label and true_label != label:
                     stat_per_label[label]["fp"] += 1
                     total_fp += 1
                 if true_label == label and label != pred_label:
-                    stat_per_label[label]["tn"] += 1
-                    total_tn += 1
-                elif true_label != label and pred_label == label:
                     stat_per_label[label]["fn"] += 1
                     total_fn += 1
+                elif true_label != label and pred_label == label:
+                    stat_per_label[label]["tn"] += 1
+                    total_tn += 1
 
             lbl_tp_fn = stat_per_label[label]["fn"] + stat_per_label[label]["tp"]
             lbl_tp_fn = lbl_tp_fn if lbl_tp_fn > 0.0 else 1.0
@@ -480,7 +480,7 @@ class RelCAT(PipeRunner):
         for doc_id, doc in enumerate(stream, 0):
             predict_rel_dataset.dataset, _ = self.create_test_train_datasets(predict_rel_dataset.create_base_relations_from_doc(doc, doc_id), False)
 
-            predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False,  batch_size=10,
+            predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False, batch_size=self.config.train["batch_size"],
                                   num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general["pin_memory"])
 
             total_rel_found = len(predict_rel_dataset.dataset["output_relations"])
@@ -503,7 +503,7 @@ class RelCAT(PipeRunner):
                         confidence = torch.softmax(pred_rel_logits, dim=0).max(0)
                         predicted_label_id = confidence[1].item()
 
-                        doc._.relations.append({"relation": self.config.general["idx2labels"][predicted_label_id], "label_id": predicted_label_id,
+                        doc._.relations.append({"relation": self.config.general["idx2labels"][str(predicted_label_id)], "label_id": predicted_label_id,
                                                 "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][2], 
                                                 "ent2_text": predict_rel_dataset.dataset["output_relations"][rel_idx][3],
                                                 "confidence": float("{:.3f}".format(confidence[0])),

@@ -2,9 +2,9 @@ import os
 import pickle
 from typing import Any, List, Tuple
 import numpy as np
+import torch
 
 from pandas.core.series import Series
-import torch
 from medcat.config_rel_cat import ConfigRelCAT
 
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
@@ -23,6 +23,7 @@ def save_bin_file(file_name, data, path="./"):
 
 def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_name="BERT", task="train", is_checkpoint=True):
 
+    model_name = model_name.replace("/", "_")
     file_name = "%s_checkpoint_%s.dat" % (task, model_name)
 
     if not is_checkpoint:
@@ -38,8 +39,8 @@ def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_nam
 
 
 def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()):
-    """ Loads saved model and optimizer states if exists """
 
+    model_name = model_name.replace("/", "_")
     print("Attempting to load RelCAT model on device: ", device.type)
     checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
     best_path = os.path.join(path, file_prefix + "_model_best_%s.dat" % model_name)

@@ -13,9 +13,9 @@ class ConfigRelCAT(ConfigMixin):
                 'lowercase': True, # If true all input text will be lowercased
                 'ent_context_left': 2, # Number of entities to take from the left of the concept
                 'ent_context_right': 2, # Number of entities to take from the right of the concept
-                'window_size': 300, # max acceptable dinstance between entities (in characters)
+                'window_size': 300, # max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)
                 'tokenizer_name': 'BERT_tokenizer_relation_extraction', # Tokenizer name used, "BERT_tokenizer_relation_extraction" default
-                'model_name': 'bert-base-uncased', # e.g "dmis-lab/biobert-base-cased-v1.2", "bert-large-uncased", "bert-base-uncased"
+                'model_name': 'bert-base-uncased', # e.g "dmis-lab/biobert-base-cased-v1.2", "bert-large-uncased", "bert-base-uncased", "emilyalsentzer/Bio_ClinicalBERT"
                 'log_level': 'info',
                 'padding_idx': -1,
                 'task': 'train',

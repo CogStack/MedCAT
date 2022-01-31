@@ -9,29 +9,19 @@ from transformers import logging
 
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
-    def __init__(self, pretrained_model_name_or_path, model_config: BertConfig, model_size: str, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):
+    def __init__(self, pretrained_model_name_or_path, model_config: BertConfig, model_size: int, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):
         super(BertModel_RelationExtraction, self).__init__(model_config, ignore_mismatched_sizes)
 
         self.model_config = model_config
         self.nclasses = nclasses
         self.task = task
-        self.model_size = model_size
+        self.hidden_size = model_size
         self.model= BertModel(model_config)
         self.drop_out = nn.Dropout(model_config.hidden_dropout_prob)
-
-        self.hidden_size = self.model_config.hidden_size
 
         if self.task == "pretrain":
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
-
-        elif self.task == "train":
-            if self.model_size == 'bert-base-uncased':
-                self.hidden_size = 2304
-            elif self.model_size == 'bert-large-uncased':
-                self.hidden_size = 3072
-            elif 'biobert' in self.model_size:
-                self.hidden_size = self.model_config.hidden_size * 3
 
         self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
 

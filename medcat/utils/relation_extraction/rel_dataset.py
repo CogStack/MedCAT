@@ -39,10 +39,17 @@ class RelData(Dataset):
         # last column is the actual source text
 
         df = pandas.read_csv(csv_path, index_col=False, sep='\t', encoding='utf-8')
-        df["ent1_ent2_start"] = df["ent1_ent2_start"].apply(lambda x: literal_eval(str(x)))
-        df["relation_token_span_ids"] = df["relation_token_span_ids"].apply(lambda x: literal_eval(str(x)))
 
-        df = df.drop('sents', 1)
+        tmp_col_rel_token_col = df.pop("relation_token_span_ids")
+        df.insert(0, "relation_token_span_ids", tmp_col_rel_token_col)
+
+        text_cols = ["sents", "text"]
+        for col in df.columns:
+            if col in text_cols:
+                df["relation_token_span_ids"] = [self.tokenizer(text)["input_ids"] for text in df[col]] 
+                df = df.drop(columns=col)
+
+        df["ent1_ent2_start"] = df["ent1_ent2_start"].apply(lambda x: literal_eval(str(x)))
 
         nclasses, labels2idx, idx2label = RelData.get_labels(df["label"], self.config)
 
