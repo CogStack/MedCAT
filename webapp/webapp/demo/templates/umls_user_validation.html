@@ -12,6 +12,23 @@
 
 <div class="container-fluid">
 	<h5> {{ message }} </h5>
+	<ul id="errors">
+	  {% if downloader_form.non_field_errors %}
+		<li>{{ downloader_form.non_field_errors }}</li>
+	  {% endif %}
+	  {% for field in downloader_form %}
+		{% if field.errors %}
+		  <li>
+			{{ field.label }}
+			<ul>
+			  {% for error in field.errors %}
+				<li>{{ error }}</li>
+			  {% endfor %}
+			</ul>
+		  </li>
+		{% endif %}
+	  {% endfor %}
+	</ul>
 {% if is_valid %}
 	<h6> For any update on your previous information, contact <a href="mailto:contact@cogstack.org">contact@cogstack.org</a>. </h6>
 	<form action="{% url 'download_model' %}" method="post">
@@ -31,7 +48,7 @@
 			{% endfor %}
 	</div>
 		{{ downloader_form.consent }} {{ downloader_form.consent.label }} <br><br>
-		<input type="submit" value="Submit" onClick="this.form.submit(); this.disabled=true; this.value='Downloading'; ">
+		<input type="submit" value="Submit" class="btn btn-primary" onClick="document.querySelector('#errors').remove(); this.form.submit(); this.disabled=true; this.value='Downloading'; ">
 	</form>
 {% endif %}
 </div>

@@ -115,10 +115,10 @@ def validate_umls_user(request):
             'is_valid': is_valid == 'true'
         }
         if is_valid == 'true':
-            context["message"] = "License verified! Please fill in the following form before downloading models."
-            context["downloader_form"] = DownloaderForm(MedcatModel.objects.all())
+            context['message'] = 'License verified! Please fill in the following form before downloading models.'
+            context['downloader_form'] = DownloaderForm(MedcatModel.objects.all())
         else:
-            context["message"] = "License not found. Please request or renew your UMLS Metathesaurus License."
+            context['message'] = 'License not found. Please request or renew your UMLS Metathesaurus License.'
     except HTTPError:
         context = {
             'is_valid': False,
@@ -140,11 +140,16 @@ def download_model(request):
             else:
                 return HttpResponse(f'Error: Unknown model "{downloader_form.modelpack}"')
             resp = StreamingHttpResponse(FileWrapper(open(mp_path, 'rb')))
-            resp["Content-Type"] = "application/zip"
-            resp["Content-Length"] = os.path.getsize(mp_path)
-            resp["Content-Disposition"] = f"attachment; filename={os.path.basename(mp_path)}"
+            resp['Content-Type'] = 'application/zip'
+            resp['Content-Length'] = os.path.getsize(mp_path)
+            resp['Content-Disposition'] = f'attachment; filename={os.path.basename(mp_path)}'
             return resp
         else:
-            return HttpResponse(f'Erorr: All non-optional fields must be filled out. Please <a href="{VALIDATION_LOGIN_URL}">try again</a>.')
+            context = {
+                'is_valid': True,
+                'downloader_form': downloader_form,
+                'message': 'All non-optional fields must be filled out:'
+            }
+            return render(request, 'umls_user_validation.html', context=context)
     else:
         return HttpResponse('Erorr: Unknown HTTP method.')

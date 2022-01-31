@@ -4,6 +4,7 @@ from django.core.files.storage import FileSystemStorage
 
 MODEL_FS = FileSystemStorage(location="/medcat_data")
 
+
 # Create your models here.
 class UploadedText(models.Model):
     text = models.TextField(default="", blank=True)
