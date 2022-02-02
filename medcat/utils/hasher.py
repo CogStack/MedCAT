@@ -2,6 +2,7 @@ import xxhash
 import dill
 from io import BytesIO as StringIO
 
+
 def dumps(obj, length=False):
     file = StringIO()
     dill.dump(obj, file, recurse=True)
@@ -9,6 +10,7 @@ def dumps(obj, length=False):
         return dumps(len(file.getvalue()), length=False)
     else:
         return file.getvalue()
+
 
 class Hasher(object):
     def __init__(self):
