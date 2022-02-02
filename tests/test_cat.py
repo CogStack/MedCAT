@@ -104,24 +104,33 @@ class CATTests(unittest.TestCase):
 
     def test_train(self):
         ckpt_steps = 2
+        nepochs = 3
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps)
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
+        self.undertest.train(["The dog is not a house"] * 20, nepochs=nepochs, checkpoint=checkpoint)
         self.undertest.cdb.print_stats()
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
 
         self.assertEqual(1, len(checkpoints))
-        self.assertEqual("checkpoint-%s-20" % ckpt_steps, checkpoints[0])
+        self.assertEqual(f"checkpoint-{ckpt_steps}-{nepochs * 20}", checkpoints[0])
 
     def test_resume_training(self):
+        nepochs_train = 1
+        nepochs_retrain = 1
         ckpt_steps = 3
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps, max_to_keep=sys.maxsize)
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint, resume_from_checkpoint=False)
+        self.undertest.train(["The dog is not a house"] * 20,
+                             nepochs=nepochs_train,
+                             checkpoint=checkpoint,
+                             is_resumed=False)
         self.undertest.cdb.print_stats()
-        self.undertest.train(["The dog is not a house"] * 40, checkpoint=checkpoint, resume_from_checkpoint=True)
+        self.undertest.train(["The dog is not a house"] * 20,
+                             nepochs=nepochs_train+nepochs_retrain,
+                             checkpoint=checkpoint,
+                             is_resumed=True)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual(15, len(checkpoints))
         self.assertTrue("checkpoint-%s-3" % ckpt_steps in checkpoints)
@@ -143,8 +152,8 @@ class CATTests(unittest.TestCase):
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path)
         with self.assertRaises(Exception) as e:
-            self.undertest.train(["The dog is not a house"] * 40, checkpoint=checkpoint, resume_from_checkpoint=True)
-        self.assertEqual("Checkpoints not found. You need to restore or train from scratch.", str(e.exception))
+            self.undertest.train(["The dog is not a house"] * 40, checkpoint=checkpoint, is_resumed=True)
+        self.assertEqual("Checkpoints not found. You need to train from scratch.", str(e.exception))
 
     def test_train_keep_n_checkpoints(self):
         ckpt_steps = 2
@@ -192,6 +201,7 @@ class CATTests(unittest.TestCase):
 
     def test_train_supervised(self):
         nepochs = 3
+        num_of_documents = 27
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
@@ -207,22 +217,24 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, f1)
         self.assertEqual({}, cui_counts)
         self.assertEqual({}, examples)
-        self.assertEqual(nepochs, len(checkpoints))
-        self.assertTrue("checkpoint-1-1" in checkpoints)
-        self.assertTrue("checkpoint-1-2" in checkpoints)
-        self.assertTrue("checkpoint-1-3" in checkpoints)
+        self.assertEqual(nepochs * num_of_documents, len(checkpoints))
+        for step in range(1, nepochs * num_of_documents + 1):
+            self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
 
     def test_resume_supervised_training(self):
         nepochs_train = 1
         nepochs_retrain = 2
+        num_of_documents = 27
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
-        self.undertest.train_supervised(data_path, checkpoint=checkpoint, nepochs=nepochs_train)
+        self.undertest.train_supervised(data_path,
+                                        checkpoint=checkpoint,
+                                        nepochs=nepochs_train)
         fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
                                                                                      checkpoint=checkpoint,
-                                                                                     nepochs=nepochs_retrain,
-                                                                                     resume_from_checkpoint=True)
+                                                                                     nepochs=nepochs_train+nepochs_retrain,
+                                                                                     is_resumed=True)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
@@ -232,10 +244,9 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, f1)
         self.assertEqual({}, cui_counts)
         self.assertEqual({}, examples)
-        self.assertEqual(nepochs_train + nepochs_retrain, len(checkpoints))
-        self.assertTrue("checkpoint-1-1" in checkpoints)
-        self.assertTrue("checkpoint-1-2" in checkpoints)
-        self.assertTrue("checkpoint-1-3" in checkpoints)
+        self.assertEqual((nepochs_train + nepochs_retrain) * num_of_documents, len(checkpoints))
+        for step in range(1, (nepochs_train + nepochs_retrain) * num_of_documents):
+            self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
 
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)

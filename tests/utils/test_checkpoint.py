@@ -1,19 +1,39 @@
 import os
 import unittest
 import tempfile
-import asyncio
 import json
 from unittest.mock import patch
 from tests.helper import AsyncMock
 from medcat.utils.checkpoint import Checkpoint
+from medcat.cdb import CDB
 
 
 class CheckpointTest(unittest.TestCase):
 
-    def test_restore(self):
-        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
+    def test_from_last_training(self):
+        ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
 
-        checkpoint = Checkpoint.restore(dir_path)
+        checkpoint = Checkpoint.from_last_training(ckpt_base_dir_path)
+
+        self.assertTrue("1643823460" in checkpoint.dir_path)
+        self.assertEqual(2, checkpoint.steps)
+        self.assertEqual(20, checkpoint.count)
+        self.assertEqual(1, checkpoint.max_to_keep)
+
+    def test_restore(self):
+        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+
+        checkpoint = Checkpoint(dir_path=dir_path, steps=1, max_to_keep=5)
+        checkpoint.restore()
+
+        self.assertEqual(1, checkpoint.steps)
+        self.assertEqual(20, checkpoint.count)
+        self.assertEqual(5, checkpoint.max_to_keep)
+
+    def test_load(self):
+        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+
+        checkpoint = Checkpoint.load(dir_path)
 
         self.assertEqual(2, checkpoint.steps)
         self.assertEqual(20, checkpoint.count)
@@ -21,23 +41,42 @@ class CheckpointTest(unittest.TestCase):
 
     def test_purge(self):
         dir_path = tempfile.TemporaryDirectory()
-        ckpt_file_path = os.path.join(dir_path.name, "checkpoint-1-1")
-        open(os.path.join(dir_path.name, "checkpoint-1-1"), "w").close()
+        ckpt_file_1_path = os.path.join(dir_path.name, "checkpoint-1-1")
+        ckpt_file_2_path = os.path.join(dir_path.name, "checkpoint-1-2")
+        another_file_path = os.path.join(dir_path.name, "another")
+        open(ckpt_file_1_path, "w").close()
+        open(ckpt_file_2_path, "w").close()
+        open(another_file_path, "w").close()
         checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
-        self.assertTrue(os.path.isfile(ckpt_file_path))
+        self.assertTrue(os.path.isfile(ckpt_file_1_path))
+        self.assertTrue(os.path.isfile(ckpt_file_2_path))
+        self.assertTrue(os.path.isfile(another_file_path))
 
-        checkpoint.purge()
+        removed = checkpoint.purge()
 
         checkpoints = [f for f in os.listdir(dir_path.name) if "checkpoint-" in f]
         self.assertEqual([], checkpoints)
+        self.assertTrue(os.path.isfile(another_file_path))
+        self.assertEqual(2, len(removed))
 
     @patch("medcat.cdb.CDB")
     def test_populate(self, cdb):
-        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
-        checkpoint = Checkpoint.restore(dir_path)
+        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+        checkpoint = Checkpoint.load(dir_path)
 
         checkpoint.populate(cdb)
 
+        cdb.load.assert_called_with(os.path.abspath(os.path.join(dir_path, "checkpoint-2-20")))
+
+    @patch("medcat.cdb.CDB")
+    @patch("medcat.utils.checkpoint.Checkpoint.restore")
+    def test_restore_and_populate(self, restore, cdb):
+        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+        checkpoint = Checkpoint.load(dir_path)
+
+        checkpoint.restore_and_populate(cdb)
+
+        restore.assert_called()
         cdb.load.assert_called_with(os.path.abspath(os.path.join(dir_path, "checkpoint-2-20")))
 
     @patch("medcat.cdb.CDB")
@@ -48,18 +87,6 @@ class CheckpointTest(unittest.TestCase):
         checkpoint.save(cdb, 1)
 
         cdb.save.assert_called()
-        self.assertEqual(1, checkpoint.steps)
-        self.assertEqual(1, checkpoint.max_to_keep)
-        self.assertEqual(1, checkpoint.count)
-
-    @patch("medcat.cdb.CDB", new_callable=AsyncMock)
-    def test_save_async(self, cdb):
-        dir_path = tempfile.TemporaryDirectory()
-        checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
-
-        asyncio.run(checkpoint.save_async(cdb, 1))
-
-        cdb.save_async.assert_called()
         self.assertEqual(1, checkpoint.steps)
         self.assertEqual(1, checkpoint.max_to_keep)
         self.assertEqual(1, checkpoint.count)
@@ -83,3 +110,13 @@ class CheckpointTest(unittest.TestCase):
             checkpoint = Checkpoint(dir_path="dir_path", steps=1000, max_to_keep=1)
             checkpoint.max_to_keep = -1
         self.assertEqual("Argument at position 1 is not a positive integer", str(e2.exception))
+
+    def test_populate_with_unrestored_checkpoint(self):
+        cdb = CDB.load(os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916", "checkpoint-2-18"))
+        ckpt_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=5)
+
+        with self.assertRaises(Exception) as e:
+            checkpoint.populate(cdb)
+
+        self.assertEqual("Cannot populate the model. Make sure the checkpoint is restored beforehand.", str(e.exception))
