@@ -3,6 +3,7 @@ import logging
 import jsonpickle
 from functools import partial
 from multiprocessing import cpu_count
+from medcat.utils.hasher import Hasher
 from typing import Optional, Iterable, Tuple, Dict, Any
 
 
@@ -76,6 +77,11 @@ class ConfigMixin(object):
     def rebuild_re(self) -> None:
         pass
 
+    def get_hash(self):
+        hasher = Hasher()
+        for k, v in self.__dict__.items():
+            hasher.update(v)
+
     def __str__(self) -> str:
         json_obj = {}
         for attr, value in self:    # type: ignore
@@ -113,6 +119,15 @@ class ConfigMixin(object):
 class Config(ConfigMixin):
 
     def __init__(self) -> None:
+        self.version: Dict[str, Any] = {
+            'id': None, # Will be: hash of most things 
+            'last_modified': None, # Yep
+            'history': [], # Populated automatically
+            'description': "No description", # General description and what it was trained on
+            'meta_cats': {}, # Populated automatically
+            'cdb_info': {}, # Populated automatically, output from cdb.print_stats
+            'performance': {'ner': {}, 'meta': {}}, # NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}
+        }
 
         # CDB Maker
         self.cdb_maker: Dict[str, Any] = {
@@ -272,3 +287,24 @@ class Config(ConfigMixin):
         self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
         # Very agressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
+
+    def get_hash(self):
+        hasher = Hasher()
+        for k, v in self.__dict__.items():
+            if k not in ['version', 'general', 'linking']:
+                hasher.update(v, length=True)
+            elif k == 'general':
+                for k2, v2 in v.items():
+                    if k2 != 'spacy_model':
+                        hasher.update(v2, length=False)
+                    else:
+                        # Ignore spacy model
+                        pass
+            elif k == 'linking':
+                for k2, v2 in v.items():
+                    if k2 != "filters":
+                        hasher.update(v2, length=False)
+                    else:
+                        hasher.update(v2, length=True)
+
+        return hasher.hexdigest()
