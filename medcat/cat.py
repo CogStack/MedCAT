@@ -13,7 +13,7 @@ from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
-from itertools import islice
+from itertools import islice, chain, repeat
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
@@ -77,8 +77,8 @@ class CAT(object):
     # Add file and console handlers
     log = add_handlers(log)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
-    DEFAULT_TRAIN_CHECKPOINT_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train")
-    DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train_supervised")
+    DEFAULT_TRAIN_CKPT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train")
+    DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train_supervised")
 
     def __init__(self,
                  cdb: CDB,
@@ -466,10 +466,11 @@ class CAT(object):
 
     def train(self,
               data_iterator: Iterable,
-              fine_tune: bool = True, # TODO: Should be ignored by resumed training?
+              nepochs: int = 1,
+              fine_tune: bool = True,
               progress_print: int = 1000,
               checkpoint: Optional[Checkpoint] = None,
-              resume_from_checkpoint: bool = False) -> None:
+              is_resumed: bool = False) -> None:
         """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
@@ -477,28 +478,31 @@ class CAT(object):
             data_iterator (Iterable):
                 Simple iterator over sentences/documents, e.g. a open file
                 or an array or anything that we can use in a for loop.
+            nepochs (int):
+                Number of epochs for which to run the training.
             fine_tune (bool):
                 If False old training will be removed.
             progress_print (int):
                 Print progress after N lines.
             checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
                 The medcat checkpoint object
-            resume_from_checkpoint (bool):
+            is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         """
-
-        if not fine_tune:
-            self.log.info("Removing old training data!")
-            self.cdb.reset_training()
-
-        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_CHECKPOINT_DIR)
-        if resume_from_checkpoint:
-            checkpoint.populate(self.cdb)
+        if is_resumed:
+            checkpoint = checkpoint or Checkpoint.from_last_training(self.DEFAULT_TRAIN_CKPT_BASE_DIR)
+            self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
+            checkpoint.restore_and_populate(self.cdb)
         else:
-            checkpoint.purge()
+            checkpoint = checkpoint or Checkpoint(dir_path=os.path.join(self.DEFAULT_TRAIN_CKPT_BASE_DIR, str(int(time.time()))))
+            if not fine_tune:
+                self.log.info("Removing old training data!")
+                self.cdb.reset_training()
+            self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
 
-        cnt = checkpoint.count
-        for line in islice(data_iterator, checkpoint.count, None):
+        latest_trained_step = checkpoint.count
+        epochal_data_iterator = chain.from_iterable(repeat(data_iterator, nepochs))
+        for line in islice(epochal_data_iterator, checkpoint.count, None):
             if line is not None and line:
                 # Convert to string
                 line = str(line).strip()
@@ -508,15 +512,15 @@ class CAT(object):
                 except Exception as e:
                     self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
                     self.log.warning("BECAUSE OF: %s", str(e))
-                if cnt % progress_print == 0:
-                    self.log.info("DONE: %s", str(cnt))
-                cnt += 1
-                if cnt % checkpoint.steps == 0:
-                    checkpoint.save(cdb=self.cdb, count=cnt)
 
-        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
-        if cnt % checkpoint.steps != 0:
-            checkpoint.save(cdb=self.cdb, count=cnt)
+                latest_trained_step += 1
+                if latest_trained_step % progress_print == 0:
+                    self.log.info("DONE: %s", str(latest_trained_step))
+                if latest_trained_step % checkpoint.steps == 0:
+                    checkpoint.save(cdb=self.cdb, count=latest_trained_step)
+
+        if latest_trained_step % checkpoint.steps != 0:
+            checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
         self.config.linking['train'] = False
 
@@ -641,7 +645,7 @@ class CAT(object):
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
                          checkpoint: Optional[Checkpoint] = None,
-                         resume_from_checkpoint: bool = False) -> Tuple:
+                         is_resumed: bool = False) -> Tuple:
         r''' TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
@@ -684,7 +688,7 @@ class CAT(object):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
             checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
                 The medcat checkpoint object
-            resume_from_checkpoint (bool):
+            is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
             fp (dict):
@@ -704,12 +708,13 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
-        checkpoint = checkpoint or Checkpoint(dir_path=self.DEFAULT_TRAIN_SUPERVISED_CHECKPOINT_DIR)
-
-        if resume_from_checkpoint:
-            checkpoint.populate(self.cdb)
+        if is_resumed:
+            checkpoint = checkpoint or Checkpoint.from_last_training(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR)
+            self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
+            checkpoint.restore_and_populate(self.cdb)
         else:
-            checkpoint.purge()
+            checkpoint = checkpoint or Checkpoint(dir_path=os.path.join(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR, str(int(time.time()))))
+            self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
 
         # Backup filters
         _filters = deepcopy(self.config.linking['filters'])
@@ -755,12 +760,14 @@ class CAT(object):
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
 
-        current = checkpoint.count
-        upper_bound = checkpoint.count + nepochs
-        for epoch in trange(current, upper_bound, initial=current, total=upper_bound, desc='Epoch', leave=False):
+        latest_trained_step = checkpoint.count
+        current_epoch, current_project, current_document = self._get_training_start(train_set, latest_trained_step)
+
+        for epoch in trange(current_epoch, nepochs, initial=current_epoch, total=nepochs, desc='Epoch', leave=False):
             # Print acc before training
-            for project in tqdm(train_set['projects'], desc='Project', leave=False,
-                                total=len(train_set['projects'])):
+            for idx_project in trange(current_project, len(train_set['projects']), initial=current_project, total=len(train_set['projects']), desc='Project', leave=False):
+                project = train_set['projects'][idx_project]
+
                 # Set filters in case we are using the train_from_fp
                 filters['cuis'] = set()
                 if isinstance(extra_cui_filter, set):
@@ -774,9 +781,10 @@ class CAT(object):
                     if project_filter:
                         filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
 
-                for _, doc in tqdm(enumerate(project['documents']), desc='Document', leave=False,
-                                   total=len(project['documents'])):
+                for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
+                    doc = project['documents'][idx_doc]
                     spacy_doc: Doc = self(doc['text'])
+
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
                     for ann in doc_annotations:
@@ -804,6 +812,10 @@ class CAT(object):
                                                        negative=True,
                                                        do_add_concept=False)
 
+                    latest_trained_step += 1
+                    if latest_trained_step % checkpoint.steps == 0:
+                        checkpoint.save(self.cdb, latest_trained_step)
+
             if terminate_last and not never_terminate:
                 # Remove entities that were terminated, but after all training is done
                 for project in train_set['projects']:
@@ -821,12 +833,9 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
-            if (epoch + 1) % checkpoint.steps == 0:
-                checkpoint.save(self.cdb, epoch + 1)
 
-        # The last checkpoint may not be needed in practicality but for the sake of integrity let's save it
-        if (epoch + 1) % checkpoint.steps != 0:
-            checkpoint.save(self.cdb, epoch + 1)
+        if latest_trained_step != checkpoint.count:
+            checkpoint.save(self.cdb, latest_trained_step)
 
         # Set the filters again
         self.config.linking['filters'] = _filters
@@ -897,6 +906,27 @@ class CAT(object):
         out = {'annotations': ents, 'text': text}
 
         return json.dumps(out)
+
+    @staticmethod
+    def _get_training_start(train_set, latest_trained_step):
+        total_steps_per_epoch = sum([1 for project in train_set['projects'] for _ in project['documents']])
+        if total_steps_per_epoch == 0:
+            raise ValueError("MedCATtrainer export contains no documents")
+        current_epoch, last_step_in_epoch = divmod(latest_trained_step, total_steps_per_epoch)
+        document_count = 0
+        current_project = 0
+        current_document = 0
+        for idx_project, project in enumerate(train_set['projects']):
+            for idx_doc, _ in enumerate(project['documents']):
+                document_count += 1
+                if document_count == last_step_in_epoch:
+                    current_project = idx_project
+                    current_document = idx_doc
+                    break
+            if current_project > 0:
+                break
+            current_document = 0
+        return current_epoch, current_project, current_document
 
     def _separate_nn_components(self):
         # Loop though the models and check are there GPU devices
