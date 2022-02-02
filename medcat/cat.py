@@ -179,7 +179,7 @@ class CAT(object):
             version['cdb_info'] = self.cdb._make_stats()
             version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> None:
+    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
         r''' Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
@@ -227,7 +227,7 @@ class CAT(object):
 
         # Add a model card also, why not
         model_card_path = os.path.join(save_dir_path, "model_card.json")
-        mc = json.dump(self.get_model_card(as_dict=True), open(model_card_path, 'w'), indent=2)
+        json.dump(self.get_model_card(as_dict=True), open(model_card_path, 'w'), indent=2)
 
         # Zip everything
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
