@@ -6,7 +6,9 @@ import numpy
 from multiprocessing import Lock
 from torch import nn, Tensor
 from spacy.tokens import Doc
+from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
+from medcat.utils.hasher import Hasher
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
@@ -62,6 +64,17 @@ class MetaCAT(PipeRunner):
             raise ValueError("Unknown model name %s" % config.model['model_name'])
 
         return model
+
+    def get_hash(self):
+        r''' A partial hash trying to catch differences between models
+        '''
+        hasher = Hasher()
+        # Set last_train_on if None
+        if self.config.train['last_train_on'] is None:
+            self.config.train['last_train_on'] = datetime.now().timestamp()
+
+        hasher.update(self.config.get_hash())
+        return hasher.hexdigest()
 
     def train(self, json_path: str, save_dir_path: Optional[str] = None) -> Dict:
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
@@ -132,6 +145,7 @@ class MetaCAT(PipeRunner):
                 # Save everything now
                 self.save(save_dir_path=save_dir_path)
 
+        self.config.train['last_train_on'] = datetime.now().timestamp()
         return report
 
     def eval(self, json_path: str) -> Dict:

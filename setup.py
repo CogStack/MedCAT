@@ -38,6 +38,7 @@ setuptools.setup(
         'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
+        'xxhash==2.0.2',
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
