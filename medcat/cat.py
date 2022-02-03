@@ -150,10 +150,11 @@ class CAT(object):
                 'Model ID': self.config.version['id'],
                 'Last Modifed On': self.config.version['last_modified'],
                 'History (from least to most recent)': self.config.version['history'],
-                'Description (user written)': self.config.version['description'],
+                'Description': self.config.version['description'],
+                'Source Ontology': self.config.version['ontology'],
                 'MetaCAT models': self.config.version['meta_cats'],
                 'Basic CDB Stats': self.config.version['cdb_info'],
-                'Performance (user written)': self.config.version['performance'],
+                'Performance': self.config.version['performance'],
                 'Important Parameters (Partial view, all available in cat.config)': get_important_config_parameters(self.config),
                 }
 
@@ -164,17 +165,17 @@ class CAT(object):
 
     def _versioning(self):
         # Check version info and do not allow without it
-        if self.config.version['description'] is None:
-            raise Exception("Fill in the description in: config.version['description'] and [optional] config.version['performance'].")
-        else:
-            # Fill the stuff automatically that is needed for versioning
-            m = self.get_hash()
-            version = self.config.version
-            if version['id'] is None or m != version['id']:
-                if version['id'] is not None:
-                    version['history'].append(version['id'])
-                version['id'] = m
-                version['last_modified'] = date.today().strftime("%d %B %Y")
+        if self.config.version['description'] == 'No description':
+            self.log.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
+
+        # Fill the stuff automatically that is needed for versioning
+        m = self.get_hash()
+        version = self.config.version
+        if version['id'] is None or m != version['id']:
+            if version['id'] is not None:
+                version['history'].append(version['id'])
+            version['id'] = m
+            version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
             version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
 

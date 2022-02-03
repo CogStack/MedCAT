@@ -82,6 +82,8 @@ class ConfigMixin(object):
         for k, v in self.__dict__.items():
             hasher.update(v)
 
+        return hasher.hexdigest()
+
     def __str__(self) -> str:
         json_obj = {}
         for attr, value in self:    # type: ignore
@@ -122,11 +124,13 @@ class Config(ConfigMixin):
         self.version: Dict[str, Any] = {
             'id': None, # Will be: hash of most things 
             'last_modified': None, # Yep
+            'location': None, # Path/URL/Whatever to where is this CDB located
             'history': [], # Populated automatically
             'description': "No description", # General description and what it was trained on
             'meta_cats': {}, # Populated automatically
             'cdb_info': {}, # Populated automatically, output from cdb.print_stats
             'performance': {'ner': {}, 'meta': {}}, # NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}
+            'ontology': None, # What was used to build the CDB, e.g. SNOMED_202009
         }
 
         # CDB Maker
@@ -154,9 +158,7 @@ class Config(ConfigMixin):
                 }
 
         self.general: Dict[str, Any] = {
-                # What was used to build the CDB, e.g. SNOMED_202009
-                'cdb_source_name': '',
-                # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
+               # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
                 'log_level': logging.INFO,
                 'log_format': '%(levelname)s:%(name)s: %(message)s',
                 'log_path': './medcat.log',
