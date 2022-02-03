@@ -485,14 +485,14 @@ class CAT(object):
             progress_print (int):
                 Print progress after N lines.
             checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
-                The medcat checkpoint object
+                The MedCAT checkpoint object
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         """
         if is_resumed:
-            checkpoint = checkpoint or Checkpoint.from_last_training(self.DEFAULT_TRAIN_CKPT_BASE_DIR)
+            checkpoint = checkpoint or Checkpoint.from_latest_training(self.DEFAULT_TRAIN_CKPT_BASE_DIR)
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
-            checkpoint.restore_and_populate(self.cdb)
+            self.cdb = checkpoint.restore_latest_cdb()
         else:
             checkpoint = checkpoint or Checkpoint(dir_path=os.path.join(self.DEFAULT_TRAIN_CKPT_BASE_DIR, str(int(time.time()))))
             if not fine_tune:
@@ -687,7 +687,7 @@ class CAT(object):
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
             checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
-                The medcat checkpoint object
+                The MedCAT checkpoint object
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
@@ -709,9 +709,9 @@ class CAT(object):
                 FP/FN examples of sentences for each CUI
         '''
         if is_resumed:
-            checkpoint = checkpoint or Checkpoint.from_last_training(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR)
+            checkpoint = checkpoint or Checkpoint.from_latest_training(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR)
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
-            checkpoint.restore_and_populate(self.cdb)
+            self.cdb = checkpoint.restore_latest_cdb()
         else:
             checkpoint = checkpoint or Checkpoint(dir_path=os.path.join(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR, str(int(time.time()))))
             self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
