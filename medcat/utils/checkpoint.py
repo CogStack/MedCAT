@@ -58,21 +58,30 @@ class Checkpoint(object):
         return self._dir_path
 
     @classmethod
-    def from_last_training(cls, parent_dir_path: str) -> "Checkpoint":
-        if not os.path.isdir(parent_dir_path):
-            raise ValueError(f"Checkpoint folder passed in does not exist: {parent_dir_path}")
-        ckpt_parent_folders = os.listdir(parent_dir_path)
-        if not ckpt_parent_folders:
+    def from_latest_training(cls, base_dir_path: str) -> "Checkpoint":
+        r'''
+        Retrieve the latest checkpoint from the train directory.
+
+        Args:
+            base_dir_path (string):
+                The path to the directory containing checkpoint files
+        Returns:
+            A new checkpoint object
+        '''
+        if not os.path.isdir(base_dir_path):
+            raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")
+        ckpt_dir_paths = os.listdir(base_dir_path)
+        if not ckpt_dir_paths:
             raise ValueError("No existing training found")
-        ckpt_parent_folders.sort()
-        ckpt_file_path = os.path.abspath(os.path.join(parent_dir_path, ckpt_parent_folders[-1]))
-        checkpoint = cls.load(ckpt_file_path)
+        ckpt_dir_paths.sort()
+        ckpt_file_path = os.path.abspath(os.path.join(base_dir_path, ckpt_dir_paths[-1]))
+        checkpoint = cls.from_latest(ckpt_file_path)
         return checkpoint
 
     @classmethod
-    def load(cls, dir_path: str) -> "Checkpoint":
+    def from_latest(cls, dir_path: str) -> "Checkpoint":
         r'''
-        Load the latest checkpoint from a directory.
+        Retrieve the latest checkpoint from the checkpoint directory.
 
         Args:
             dir_path (string):
@@ -92,20 +101,6 @@ class Checkpoint(object):
         checkpoint._count = count
         cls.log.info(f"Checkpoint loaded from {latest_ckpt}")
         return checkpoint
-
-    def restore(self) -> None:
-        r'''
-        Restore the latest checkpoint.
-        '''
-        if not os.path.isdir(self._dir_path):
-            raise Exception("Checkpoints not found. You need to train from scratch.")
-        ckpt_file_paths = self._get_ckpt_file_paths(self._dir_path)
-        if not ckpt_file_paths:
-            raise Exception("Checkpoints not found. You need to train from scratch.")
-        latest_ckpt = ckpt_file_paths[-1]
-        _, count = self._get_steps_and_count(latest_ckpt)
-        self._file_paths = ckpt_file_paths
-        self._count = count
 
     def purge(self) -> List[str]:
         r'''
@@ -143,28 +138,24 @@ class Checkpoint(object):
         self._file_paths.append(ckpt_file_path)
         self._count = count
 
-    def populate(self, cdb: CDB) -> None:
+    def restore_latest_cdb(self) -> CDB:
         r'''
-        Populate the latest checkpoint to a CDB.
+        Restore the CDB from the latest checkpoint
 
-        Args:
+        Returns:
             cdb (medcat.CDB):
                 The input MedCAT CDB object
         '''
-        if not self._file_paths:
-            raise Exception("Cannot populate the model. Make sure the checkpoint is restored beforehand.")
-        cdb.load(self._file_paths[-1])
-
-    def restore_and_populate(self, cdb: CDB) -> None:
-        r'''
-        Restore the latest checkpoint and populate it to a CDB
-
-        Args:
-            cdb (medcat.CDB):
-                The input MedCAT CDB object
-        '''
-        self.restore()
-        self.populate(cdb)
+        if not os.path.isdir(self._dir_path):
+            raise Exception("Checkpoints not found. You need to train from scratch.")
+        ckpt_file_paths = self._get_ckpt_file_paths(self._dir_path)
+        if not ckpt_file_paths:
+            raise Exception("Checkpoints not found. You need to train from scratch.")
+        latest_ckpt = ckpt_file_paths[-1]
+        _, count = self._get_steps_and_count(latest_ckpt)
+        self._file_paths = ckpt_file_paths
+        self._count = count
+        return CDB.load(self._file_paths[-1])
 
     @staticmethod
     def _get_ckpt_file_paths(dir_path: str) -> List[str]:

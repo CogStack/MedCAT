@@ -10,30 +10,20 @@ from medcat.cdb import CDB
 
 class CheckpointTest(unittest.TestCase):
 
-    def test_from_last_training(self):
+    def test_from_latest_training(self):
         ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
 
-        checkpoint = Checkpoint.from_last_training(ckpt_base_dir_path)
+        checkpoint = Checkpoint.from_latest_training(ckpt_base_dir_path)
 
         self.assertTrue("1643823460" in checkpoint.dir_path)
         self.assertEqual(2, checkpoint.steps)
         self.assertEqual(20, checkpoint.count)
         self.assertEqual(1, checkpoint.max_to_keep)
 
-    def test_restore(self):
+    def test_from_latest(self):
         dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
 
-        checkpoint = Checkpoint(dir_path=dir_path, steps=1, max_to_keep=5)
-        checkpoint.restore()
-
-        self.assertEqual(1, checkpoint.steps)
-        self.assertEqual(20, checkpoint.count)
-        self.assertEqual(5, checkpoint.max_to_keep)
-
-    def test_load(self):
-        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
-
-        checkpoint = Checkpoint.load(dir_path)
+        checkpoint = Checkpoint.from_latest(dir_path)
 
         self.assertEqual(2, checkpoint.steps)
         self.assertEqual(20, checkpoint.count)
@@ -59,25 +49,18 @@ class CheckpointTest(unittest.TestCase):
         self.assertTrue(os.path.isfile(another_file_path))
         self.assertEqual(2, len(removed))
 
-    @patch("medcat.cdb.CDB")
-    def test_populate(self, cdb):
+    @patch("medcat.cdb.CDB.load", return_value="cdb_object")
+    def test_restore_latest_cdb(self, cdb_load):
         dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
-        checkpoint = Checkpoint.load(dir_path)
+        checkpoint = Checkpoint(dir_path=dir_path, steps=1, max_to_keep=5)
 
-        checkpoint.populate(cdb)
+        cdb = checkpoint.restore_latest_cdb()
 
-        cdb.load.assert_called_with(os.path.abspath(os.path.join(dir_path, "checkpoint-2-20")))
-
-    @patch("medcat.cdb.CDB")
-    @patch("medcat.utils.checkpoint.Checkpoint.restore")
-    def test_restore_and_populate(self, restore, cdb):
-        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
-        checkpoint = Checkpoint.load(dir_path)
-
-        checkpoint.restore_and_populate(cdb)
-
-        restore.assert_called()
-        cdb.load.assert_called_with(os.path.abspath(os.path.join(dir_path, "checkpoint-2-20")))
+        self.assertEqual("cdb_object", cdb)
+        self.assertEqual(1, checkpoint.steps)
+        self.assertEqual(20, checkpoint.count)
+        self.assertEqual(5, checkpoint.max_to_keep)
+        cdb_load.assert_called_with(os.path.abspath(os.path.join(dir_path, "checkpoint-2-20")))
 
     @patch("medcat.cdb.CDB")
     def test_save(self, cdb):
@@ -110,13 +93,3 @@ class CheckpointTest(unittest.TestCase):
             checkpoint = Checkpoint(dir_path="dir_path", steps=1000, max_to_keep=1)
             checkpoint.max_to_keep = -1
         self.assertEqual("Argument at position 1 is not a positive integer", str(e2.exception))
-
-    def test_populate_with_unrestored_checkpoint(self):
-        cdb = CDB.load(os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916", "checkpoint-2-18"))
-        ckpt_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
-        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=5)
-
-        with self.assertRaises(Exception) as e:
-            checkpoint.populate(cdb)
-
-        self.assertEqual("Cannot populate the model. Make sure the checkpoint is restored beforehand.", str(e.exception))
