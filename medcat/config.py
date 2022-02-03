@@ -158,7 +158,7 @@ class Config(ConfigMixin):
                 }
 
         self.general: Dict[str, Any] = {
-               # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
+                # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
                 'log_level': logging.INFO,
                 'log_format': '%(levelname)s:%(name)s: %(message)s',
                 'log_path': './medcat.log',
