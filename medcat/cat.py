@@ -152,6 +152,7 @@ class CAT(object):
                 'History (from least to most recent)': self.config.version['history'],
                 'Description': self.config.version['description'],
                 'Source Ontology': self.config.version['ontology'],
+                'Location': self.config.version['location'],
                 'MetaCAT models': self.config.version['meta_cats'],
                 'Basic CDB Stats': self.config.version['cdb_info'],
                 'Performance': self.config.version['performance'],
