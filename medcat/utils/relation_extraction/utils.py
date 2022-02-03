@@ -113,11 +113,9 @@ def create_tokenizer_pretrain(tokenizer, tokenizer_path):
     tokenizer.hf_tokenizers.add_tokens(["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
     tokenizer.save(tokenizer_path)
 
+
 # Used for creating data sets for pretraining
-
-
 def tokenize(relations_dataset: Series, tokenizer: TokenizerWrapperBERT, mask_probability: float = 0.5) -> Tuple:
-
     (tokens, span_1_pos, span_2_pos), ent1_text, ent2_text, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = relations_dataset
 
     cls_token = tokenizer.hf_tokenizers.cls_token

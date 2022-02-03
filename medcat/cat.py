@@ -34,6 +34,7 @@ from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import get_project_filters, check_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.meta_cat import MetaCAT
+from medcat.rel_cat import RelCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
@@ -85,7 +86,8 @@ class CAT(object):
                  cdb: CDB,
                  vocab: Vocab,
                  config: Optional[Config] = None,
-                 meta_cats: List[MetaCAT] = []) -> None:
+                 meta_cats: List[MetaCAT] = [],
+                 rel_cats: List[RelCAT] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
@@ -120,6 +122,10 @@ class CAT(object):
         # Add meta_annotaiton classes if they exist
         for meta_cat in meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
+
+        self._rel_cats = rel_cats
+        for rel_cat in rel_cats:
+            self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))
 
         # Set max document length
         self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
@@ -165,6 +171,10 @@ class CAT(object):
                 name = comp[0]
                 meta_path = os.path.join(save_dir_path, "meta_" + name)
                 comp[1].save(meta_path)
+            if isinstance(comp[1], RelCAT):
+                name = comp[0]
+                rel_path = os.path.join(save_dir_path, "rel_" + name)
+                comp[1].save(rel_path)
 
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
 
@@ -182,6 +192,7 @@ class CAT(object):
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
         from medcat.meta_cat import MetaCAT
+        from medcat.rel_cat import RelCAT
 
         base_dir = os.path.dirname(zip_path)
         filename = os.path.basename(zip_path)
@@ -211,6 +222,12 @@ class CAT(object):
         for meta_path in meta_paths:
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
                                           config_dict=meta_cat_config_dict))
+
+        # same is done for rel models
+        rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')]
+        rel_cats = []
+        for rel_path in rel_paths:
+            rel_cats.append(RelCAT.load(load_path=rel_path))
 
         return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
 

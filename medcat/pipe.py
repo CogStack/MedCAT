@@ -12,6 +12,7 @@ from tqdm.autonotebook import tqdm
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
+from medcat.rel_cat import RelCAT
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.utils.loggers import add_handlers
 from medcat.config import Config
@@ -125,6 +126,14 @@ class Pipe(object):
         Span.set_extension('meta_anns', default=None, force=True)
         # Used for sharing pre-processed data/tokens
         Doc.set_extension('share_tokens', default=None, force=True)
+
+    def add_rel_cat(self, rel_cat: RelCAT, name: Optional[str] = None) -> None:
+        component_name = spacy.util.get_object_name(rel_cat)
+        name = name if name is not None else component_name
+        Language.component(name=component_name, func=rel_cat)
+        self._nlp.add_pipe(component_name, name=name, last=True)
+        # dictionary containing relations of the form {}
+        Doc.set_extension("relations", default=[], force=True)
 
     def batch_multi_process(self,
                             texts: Iterable[str],

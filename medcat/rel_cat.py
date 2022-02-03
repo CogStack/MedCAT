@@ -309,7 +309,6 @@ class RelCAT(PipeRunner):
             total_loss = total_loss / (i + 1)
 
             end_time = datetime.now().time()
-           
 
             results = self.evaluate_results(test_dataloader, self.pad_id)
 
@@ -336,60 +335,68 @@ class RelCAT(PipeRunner):
         pred_labels = torch.softmax(output_logits, dim=1).max(1)[1]
         pred_labels = pred_labels[idxs].to(self.device)
 
-        size_of_batch = len(idxs.tolist()) if type(idxs.tolist()) != bool else 1
-
-        acc = (labels_ == pred_labels).sum().item() / size_of_batch
-
         true_labels = labels_.cpu().numpy().tolist() if labels_.is_cuda else labels_.numpy().tolist()
         pred_labels = pred_labels.cpu().numpy().tolist() if pred_labels.is_cuda else pred_labels.numpy().tolist()
 
         unique_labels = set(true_labels)
 
+        batch_size = len(true_labels)
+
         stat_per_label = dict()
 
         total_tp, total_fp, total_tn, total_fn = 0, 0, 0, 0
+        acc, micro_recall, micro_precision, micro_f1 = 0, 0, 0, 0
 
         for label in unique_labels:
             stat_per_label[label] = {"tp": 0, "fp": 0, "tn": 0, "fn": 0, "f1": 0.0, "acc": 0.0, "prec": 0.0, "recall": 0.0}
-            for true_label, pred_label in zip(true_labels, pred_labels):
-                if label == true_label and label == pred_label:
-                    stat_per_label[label]["tp"] += 1
-                    total_tp += 1
-                elif label == pred_label and true_label != label:
-                    stat_per_label[label]["fp"] += 1
-                    total_fp += 1
-                if true_label == label and label != pred_label:
+            for true_label_idx in range(len(true_labels)):
+                if true_labels[true_label_idx] == label:
+                    if pred_labels[true_label_idx] == label:
+                        stat_per_label[label]["tp"] += 1
+                        total_tp += 1 
+                    if pred_labels[true_label_idx] != label:
+                        stat_per_label[label]["fp"] += 1
+                        total_fp += 1 
+                elif true_labels[true_label_idx] != label and label == pred_labels[true_label_idx]:
                     stat_per_label[label]["fn"] += 1
-                    total_fn += 1
-                elif true_label != label and pred_label == label:
+                    total_fn += 1 
+                else:
                     stat_per_label[label]["tn"] += 1
-                    total_tn += 1
+                    total_tn += 1 
 
-            lbl_tp_fn = stat_per_label[label]["fn"] + stat_per_label[label]["tp"]
-            lbl_tp_fn = lbl_tp_fn if lbl_tp_fn > 0.0 else 1.0
-            lbl_tp_fp = stat_per_label[label]["fp"] + stat_per_label[label]["tp"]
+            lbl_tp_tn = stat_per_label[label]["tn"] + stat_per_label[label]["tp"]
+
+            lbl_tp_fn = stat_per_label[label]["fn"] + stat_per_label[label]["tp"]   
+            lbl_tp_fn = lbl_tp_fn if lbl_tp_fn > 0.0 else 1.0 
+
+            lbl_tp_fp = stat_per_label[label]["tp"] + stat_per_label[label]["fp"] 
             lbl_tp_fp = lbl_tp_fp if lbl_tp_fp > 0.0 else 1.0 
 
+            stat_per_label[label]["acc"] = lbl_tp_tn / batch_size
             stat_per_label[label]["prec"] = stat_per_label[label]["tp"] / lbl_tp_fp
-            stat_per_label[label]["acc"] = (stat_per_label[label]["tp"] + stat_per_label[label]["tn"]) / (stat_per_label[label]["tp"] + stat_per_label[label]["fp"] + stat_per_label[label]["fn"] + stat_per_label[label]["tn"])
-            stat_per_label[label]["recall"] = stat_per_label[label]["tp"] / lbl_tp_fn
+            stat_per_label[label]["recall"] = stat_per_label[label]["tp"]  / lbl_tp_fn
+
             lbl_re_pr = stat_per_label[label]["recall"] + stat_per_label[label]["prec"] 
             lbl_re_pr = lbl_re_pr if lbl_re_pr > 0.0 else 1.0   
+
             stat_per_label[label]["f1"] = (2 * (stat_per_label[label]["recall"] * stat_per_label[label]["prec"])) / lbl_re_pr
 
         tp_fn = total_fn + total_tp
         tp_fn = tp_fn if tp_fn > 0.0 else 1.0
+
         tp_fp = total_fp + total_tp
         tp_fp = tp_fp if tp_fp > 0.0 else 1.0 
 
-        recall = total_tp / tp_fn
-        precision = total_tp / tp_fp
+        micro_recall = total_tp / tp_fn
+        micro_precision = total_tp / tp_fp
 
-        re_pr = recall + precision 
+        re_pr = micro_recall + micro_precision 
         re_pr = re_pr if re_pr > 0.0 else 1.0
-        f1 = (2 * (recall * precision)) / re_pr
+        micro_f1 = (2 * (micro_recall * micro_precision)) / re_pr
 
-        return acc, recall, precision, f1, pred_labels, true_labels, stat_per_label
+        acc = total_tp / batch_size
+
+        return acc, micro_recall, micro_precision, micro_f1, pred_labels, true_labels, stat_per_label
 
     def evaluate_results(self, data_loader, pad_id):
         self.log.info("Evaluating test samples...")
@@ -473,8 +480,6 @@ class RelCAT(PipeRunner):
 
         predict_rel_dataset = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
 
-        Doc.set_extension("relations", default=[], force=True)
-
         self.model = self.model.to(self.device)
 
         for doc_id, doc in enumerate(stream, 0):
@@ -485,9 +490,12 @@ class RelCAT(PipeRunner):
 
             total_rel_found = len(predict_rel_dataset.dataset["output_relations"])
             rel_idx = -1
+
             print("total relations for doc: ", total_rel_found)
             print("processing...")
+
             pbar = tqdm(total=total_rel_found)
+
             for i, data in enumerate(predict_dataloader):
                 with torch.no_grad():
                     token_ids, e1_e2_start, labels, _, _, _ = data
