@@ -179,6 +179,7 @@ class CAT(object):
             version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
             version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
         r''' Will crete a .zip file containing all the models in the current running instance
