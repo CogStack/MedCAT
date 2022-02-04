@@ -4,11 +4,20 @@ import tempfile
 import json
 from unittest.mock import patch
 from tests.helper import AsyncMock
-from medcat.utils.checkpoint import Checkpoint
+from medcat.utils.checkpoint import Checkpoint, CheckpointUT, CheckpointST
 from medcat.cdb import CDB
 
 
 class CheckpointTest(unittest.TestCase):
+
+    def test_from_latest(self):
+        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+
+        checkpoint = Checkpoint.from_latest(dir_path)
+
+        self.assertEqual(2, checkpoint.steps)
+        self.assertEqual(20, checkpoint.count)
+        self.assertEqual(1, checkpoint.max_to_keep)
 
     def test_from_latest_training(self):
         ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
@@ -20,13 +29,24 @@ class CheckpointTest(unittest.TestCase):
         self.assertEqual(20, checkpoint.count)
         self.assertEqual(1, checkpoint.max_to_keep)
 
-    def test_from_latest(self):
-        dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
+    def test_from_latest_unsupervised_training(self):
+        ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
 
-        checkpoint = Checkpoint.from_latest(dir_path)
+        checkpoint = CheckpointUT.from_latest_training(ckpt_base_dir_path)
 
+        self.assertTrue("1643823460" in checkpoint.dir_path)
         self.assertEqual(2, checkpoint.steps)
         self.assertEqual(20, checkpoint.count)
+        self.assertEqual(1, checkpoint.max_to_keep)
+
+    def test_from_latest_supervised_training(self):
+        ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train_supervised")
+
+        checkpoint = CheckpointST.from_latest_training(ckpt_base_dir_path)
+
+        self.assertTrue("1643823460" in checkpoint.dir_path)
+        self.assertEqual(1, checkpoint.steps)
+        self.assertEqual(1, checkpoint.count)
         self.assertEqual(1, checkpoint.max_to_keep)
 
     def test_purge(self):

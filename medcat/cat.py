@@ -27,7 +27,7 @@ from medcat.utils.loggers import add_handlers
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.helpers import tkns_from_doc
-from medcat.utils.checkpoint import Checkpoint
+from medcat.utils.checkpoint import Checkpoint, CheckpointUT, CheckpointST
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import get_project_filters, check_filters
@@ -77,8 +77,6 @@ class CAT(object):
     # Add file and console handlers
     log = add_handlers(log)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
-    DEFAULT_TRAIN_CKPT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train")
-    DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train_supervised")
 
     def __init__(self,
                  cdb: CDB,
@@ -469,7 +467,7 @@ class CAT(object):
               nepochs: int = 1,
               fine_tune: bool = True,
               progress_print: int = 1000,
-              checkpoint: Optional[Checkpoint] = None,
+              checkpoint: Optional[CheckpointUT] = None,
               is_resumed: bool = False) -> None:
         """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
@@ -484,17 +482,17 @@ class CAT(object):
                 If False old training will be removed.
             progress_print (int):
                 Print progress after N lines.
-            checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
+            checkpoint (Optional[medcat.utils.checkpoint.CheckpointUT]):
                 The MedCAT checkpoint object
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         """
         if is_resumed:
-            checkpoint = checkpoint or Checkpoint.from_latest_training(self.DEFAULT_TRAIN_CKPT_BASE_DIR)
+            checkpoint = checkpoint or CheckpointUT.from_latest_training()
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
         else:
-            checkpoint = checkpoint or Checkpoint(dir_path=os.path.join(self.DEFAULT_TRAIN_CKPT_BASE_DIR, str(int(time.time()))))
+            checkpoint = checkpoint or CheckpointUT()
             if not fine_tune:
                 self.log.info("Removing old training data!")
                 self.cdb.reset_training()
@@ -644,7 +642,7 @@ class CAT(object):
                          never_terminate: bool = False,
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
-                         checkpoint: Optional[Checkpoint] = None,
+                         checkpoint: Optional[Union[Checkpoint, CheckpointST]] = None,
                          is_resumed: bool = False) -> Tuple:
         r''' TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
@@ -686,8 +684,8 @@ class CAT(object):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
-            checkpoint (Optional[medcat.utils.checkpoint.Checkpoint]):
-                The MedCAT checkpoint object
+            checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
+                The MedCAT CheckpointST object
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
@@ -709,11 +707,11 @@ class CAT(object):
                 FP/FN examples of sentences for each CUI
         '''
         if is_resumed:
-            checkpoint = checkpoint or Checkpoint.from_latest_training(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR)
+            checkpoint = checkpoint or CheckpointST.from_latest_training()
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
         else:
-            checkpoint = checkpoint or Checkpoint(dir_path=os.path.join(self.DEFAULT_TRAIN_SUPERVISED_CKPT_BASE_DIR, str(int(time.time()))))
+            checkpoint = checkpoint or CheckpointST()
             self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
 
         # Backup filters
