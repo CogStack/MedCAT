@@ -10,6 +10,7 @@ class ConfigMetaCAT(ConfigMixin):
                 'device': 'cpu',
                 'disable_component_lock': False,
                 'seed': 13,
+                'description': "No description", # Should provide a basic description of this MetaCAT model
                 'category_name': None, # What category is this meta_cat model predicting/training
                 'category_value2id': {}, # Map from category values to ID, if empty it will be autocalculated during training
                 'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
@@ -51,4 +52,5 @@ class ConfigMetaCAT(ConfigMixin):
                 'prerequisites': {},
                 'cui_filter': None, # If set only this CUIs will be used for training
                 'auto_save_model': True, # Should do model be saved during training for best results
+                'last_train_on': None, # When was the last training run
                 }

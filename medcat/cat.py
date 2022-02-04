@@ -14,6 +14,7 @@ from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
 from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
 from itertools import islice, chain, repeat
+from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
@@ -26,8 +27,9 @@ from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.loggers import add_handlers
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
-from medcat.utils.helpers import tkns_from_doc
 from medcat.utils.checkpoint import Checkpoint, CheckpointUT, CheckpointST
+from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
+from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.utils.filters import get_project_filters, check_filters
@@ -92,34 +94,36 @@ class CAT(object):
             # Take the new config and assign it to the CDB also
             self.config = config
             self.cdb.config = config
+        self._meta_cats = meta_cats
+        self._create_pipeline(self.config)
 
+    def _create_pipeline(self, config):
         # Set log level
-        self.log.setLevel(self.config.general['log_level'])
+        self.log.setLevel(config.general['log_level'])
 
         # Build the pipeline
-        self.pipe = Pipe(tokenizer=spacy_split_all, config=self.config)
+        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
         self.pipe.add_tagger(tagger=tag_skip_and_punct,
                              name='skip_and_punct',
                              additional_fields=['is_punct'])
 
-        spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=self.config, data_vocab=vocab)
-        self.pipe.add_token_normalizer(spell_checker=spell_checker, config=self.config)
+        spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)
+        self.pipe.add_token_normalizer(spell_checker=spell_checker, config=config)
 
         # Add NER
-        self.ner = NER(self.cdb, self.config)
+        self.ner = NER(self.cdb, config)
         self.pipe.add_ner(self.ner)
 
         # Add LINKER
-        self.linker = Linker(self.cdb, vocab, self.config)
+        self.linker = Linker(self.cdb, self.vocab, config)
         self.pipe.add_linker(self.linker)
 
-        self._meta_cats = meta_cats
         # Add meta_annotaiton classes if they exist
-        for meta_cat in meta_cats:
+        for meta_cat in self._meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
 
         # Set max document length
-        self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
+        self.pipe.spacy_nlp.max_length = config.preprocessing.get('max_document_length', 1000000)
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
@@ -127,10 +131,69 @@ class CAT(object):
         '''
         return self.pipe.spacy_nlp
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> None:
+    def get_hash(self):
+        r''' Will not be a deep hash but will try to cactch all the changing parts during training.
+        '''
+        hasher = Hasher()
+        hasher.update(self.cdb.get_hash())
+
+        hasher.update(self.config.get_hash())
+
+        for mc in self._meta_cats:
+            hasher.update(mc.get_hash())
+
+        return hasher.hexdigest()
+
+    def get_model_card(self, as_dict=False):
+        card = {
+                'Model ID': self.config.version['id'],
+                'Last Modifed On': self.config.version['last_modified'],
+                'History (from least to most recent)': self.config.version['history'],
+                'Description': self.config.version['description'],
+                'Source Ontology': self.config.version['ontology'],
+                'Location': self.config.version['location'],
+                'MetaCAT models': self.config.version['meta_cats'],
+                'Basic CDB Stats': self.config.version['cdb_info'],
+                'Performance': self.config.version['performance'],
+                'Important Parameters (Partial view, all available in cat.config)': get_important_config_parameters(self.config),
+                }
+
+        if as_dict:
+            return card
+        else:
+            return json.dumps(card, indent=2, sort_keys=False)
+
+    def _versioning(self):
+        # Check version info and do not allow without it
+        if self.config.version['description'] == 'No description':
+            self.log.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
+
+        # Fill the stuff automatically that is needed for versioning
+        m = self.get_hash()
+        version = self.config.version
+        if version['id'] is None or m != version['id']:
+            if version['id'] is not None:
+                version['history'].append(version['id'])
+            version['id'] = m
+            version['last_modified'] = date.today().strftime("%d %B %Y")
+            version['cdb_info'] = self.cdb._make_stats()
+            version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
+
+    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
         r''' Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
+
+        model_pack_name - an id will be appended to this name
+
+        returns:
+            Model pack name
         '''
+        # Spacy model always should be just the name, but during loading it can be reset to path
+        self.config.general['spacy_model'] = os.path.basename(self.config.general['spacy_model'])
+        # Versioning
+        self._versioning()
+        model_pack_name += "_{}".format(self.config.version['id'])
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
@@ -139,7 +202,7 @@ class CAT(object):
         os.makedirs(save_dir_path, exist_ok=True)
 
         # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, os.path.basename(self.config.general['spacy_model']))
+        spacy_path = os.path.join(save_dir_path, self.config.general['spacy_model'])
         if str(self.pipe.spacy_nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
@@ -163,7 +226,16 @@ class CAT(object):
                 meta_path = os.path.join(save_dir_path, "meta_" + name)
                 comp[1].save(meta_path)
 
+        # Add a model card also, why not
+        model_card_path = os.path.join(save_dir_path, "model_card.json")
+        json.dump(self.get_model_card(as_dict=True), open(model_card_path, 'w'), indent=2)
+
+        # Zip everything
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
+
+        # Log model card and return new name
+        self.log.info(self.get_model_card()) # Print the model card
+        return model_pack_name
 
     @classmethod
     def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
@@ -209,7 +281,9 @@ class CAT(object):
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
                                           config_dict=meta_cat_config_dict))
 
-        return cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+        print(cat.get_model_card()) # Print the model card
+        return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         r'''
@@ -491,6 +565,7 @@ class CAT(object):
             checkpoint = checkpoint or CheckpointUT.from_latest_training()
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
+            self._create_pipeline(self.cdb.config)
         else:
             checkpoint = checkpoint or CheckpointUT()
             if not fine_tune:
@@ -712,6 +787,7 @@ class CAT(object):
             checkpoint = checkpoint or CheckpointST.from_latest_training()
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
+            self._create_pipeline(self.cdb.config)
         else:
             checkpoint = checkpoint or CheckpointST()
             self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")

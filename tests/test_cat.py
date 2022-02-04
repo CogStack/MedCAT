@@ -305,19 +305,25 @@ class CATTests(unittest.TestCase):
 
     def test_create_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
-        self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         pack = [f for f in os.listdir(save_dir_path.name)]
-        self.assertTrue("mp_name" in pack)
-        self.assertTrue("mp_name.zip" in pack)
-        contents = [f for f in os.listdir(os.path.join(save_dir_path.name, "mp_name"))]
+        self.assertTrue(full_model_pack_name in pack)
+        self.assertTrue(f'{full_model_pack_name}.zip' in pack)
+        contents = [f for f in os.listdir(os.path.join(save_dir_path.name, full_model_pack_name))]
         self.assertTrue("cdb.dat" in contents)
         self.assertTrue("vocab.dat" in contents)
 
     def test_load_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
-        self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, "mp_name.zip"))
+        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
+
+    def test_hashing(self):
+        save_dir_path = tempfile.TemporaryDirectory()
+        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        self.assertEqual(cat.get_hash(), cat.config.version['id'])
 
 
 if __name__ == '__main__':
