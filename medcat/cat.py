@@ -510,12 +510,14 @@ class CAT(object):
                 except Exception as e:
                     self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
                     self.log.warning("BECAUSE OF: %s", str(e))
+            else:
+                self.log.warning("EMPTY LINE WAS DETECTED AND SKIPPED")
 
-                latest_trained_step += 1
-                if latest_trained_step % progress_print == 0:
-                    self.log.info("DONE: %s", str(latest_trained_step))
-                if latest_trained_step % checkpoint.steps == 0:
-                    checkpoint.save(cdb=self.cdb, count=latest_trained_step)
+            latest_trained_step += 1
+            if latest_trained_step % progress_print == 0:
+                self.log.info("DONE: %s", str(latest_trained_step))
+            if latest_trained_step % checkpoint.steps == 0:
+                checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
         if latest_trained_step % checkpoint.steps != 0:
             checkpoint.save(cdb=self.cdb, count=latest_trained_step)
