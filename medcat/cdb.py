@@ -1,12 +1,14 @@
 """ Representation class for CDB data
 """
 import dill
+import json
 import logging
 import aiofiles
 import numpy as np
 from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
 
+from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
@@ -584,16 +586,21 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
 
+    def _make_stats(self):
+        stats = {}
+        stats["Number of concepts"] = len(self.cui2names)
+        stats["Number of names"] = len(self.name2cuis)
+        stats["Number of concepts that received training"] = len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])
+        stats["Number of seen training examples in total"] = sum(self.cui2count_train.values())
+        stats["Average training examples per concept"] = np.average(
+                [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])
+
+        return stats
+
     def print_stats(self) -> None:
         r'''Print basic statistics for the CDB.
         '''
-        self.log.info("Number of concepts: {:,}".format(len(self.cui2names)))
-        self.log.info("Number of names:    {:,}".format(len(self.name2cuis)))
-        self.log.info("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
-        self.log.info("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
-        # Wrapped in float, because mypy complains
-        self.log.info("Average training examples per concept:     {:.1f}".format(float(np.average(
-            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0]))))
+        self.log.info(json.dumps(self._make_stats(), indent=2))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
@@ -703,3 +710,14 @@ class CDB(object):
         disabled_comps = config.general.get('spacy_disabled_components', [])
         if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
             config.general['spacy_disabled_components'].append('lemmatizer')
+
+    def get_hash(self):
+        hasher = Hasher()
+
+        for k,v in self.__dict__.items():
+            if k in ['cui2countext_vectors', 'name2cuis']:
+                hasher.update(v, length=False)
+            elif k != 'config':
+                hasher.update(v, length=True)
+
+        return hasher.hexdigest()
