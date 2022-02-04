@@ -1,27 +1,31 @@
 import os
 import logging
-from typing import List, Tuple
+import time
+from typing import List, Tuple, Optional, TypeVar, Type
 from medcat.cdb import CDB
 from medcat.utils.decorators import check_positive
 
+T = TypeVar("T", bound="Checkpoint")
+
 
 class Checkpoint(object):
+    r""" The base class of checkpoint objects
+
+    Args:
+        dir_path (str):
+            The path to the checkpoint directory.
+        steps (int):
+            The number of processed sentences/documents before a checkpoint is saved.
+            N.B.: A small number could result in error "no space left on device".
+        max_to_keep (int):
+            The maximum number of checkpoints to keep.
+            N.B.: A large number could result in error "no space left on device".
+    """
 
     log = logging.getLogger(__package__)
 
     @check_positive
     def __init__(self, dir_path: str, *, steps: int = 1000, max_to_keep: int = 1) -> None:
-        """ Initialise the checkpoint object
-        Args:
-            dir_path (str):
-                The path to the checkpoint directory.
-            steps (int):
-                The number of processed sentences/documents before a checkpoint is saved.
-                N.B.: A small number could result in error "no space left on device".
-            max_to_keep (int):
-                The maximum number of checkpoints to keep.
-                N.B.: A large number could result in error "no space left on device".
-        """
         self._dir_path = os.path.abspath(dir_path)
         self._steps = steps
         self._max_to_keep = max_to_keep
@@ -58,7 +62,7 @@ class Checkpoint(object):
         return self._dir_path
 
     @classmethod
-    def from_latest_training(cls, base_dir_path: str) -> "Checkpoint":
+    def from_latest_training(cls: Type[T], base_dir_path: str) -> T:
         r'''
         Retrieve the latest checkpoint from the train directory.
 
@@ -79,7 +83,7 @@ class Checkpoint(object):
         return checkpoint
 
     @classmethod
-    def from_latest(cls, dir_path: str) -> "Checkpoint":
+    def from_latest(cls: Type[T], dir_path: str) -> T:
         r'''
         Retrieve the latest checkpoint from the checkpoint directory.
 
@@ -125,7 +129,7 @@ class Checkpoint(object):
 
         Args:
             cdb (medcat.CDB):
-                The input MedCAT CDB object
+                The MedCAT CDB object to be checkpointed
             count (count):
                 The number of the finished steps
         '''
@@ -144,7 +148,7 @@ class Checkpoint(object):
 
         Returns:
             cdb (medcat.CDB):
-                The input MedCAT CDB object
+                The MedCAT CDB object
         '''
         if not os.path.isdir(self._dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
@@ -169,3 +173,73 @@ class Checkpoint(object):
     def _get_steps_and_count(file_path) -> Tuple[int, int]:
         file_name_parts = os.path.basename(file_path).split('-')
         return int(file_name_parts[1]), int(file_name_parts[2])
+
+
+class CheckpointUT(Checkpoint):
+    r"""
+    The checkpoint class for unsupervised training
+
+    Args:
+        dir_path (str):
+            The path to the checkpoint directory.
+        steps (int):
+            The number of processed sentences/documents before a checkpoint is saved.
+            N.B.: A small number could result in error "no space left on device".
+        max_to_keep (int):
+            The maximum number of checkpoints to keep.
+            N.B.: A large number could result in error "no space left on device".
+    """
+
+    DEFAULT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train")
+
+    def __init__(self, dir_path: Optional[str] = None, *, steps: int = 1000, max_to_keep: int = 1) -> None:
+        dir_path = dir_path or os.path.join(self.DEFAULT_BASE_DIR, str(int(time.time())))
+        super().__init__(dir_path, steps=steps, max_to_keep=max_to_keep)
+
+    @classmethod
+    def from_latest_training(cls, base_dir_path: Optional[str] = None) -> "CheckpointUT":
+        r'''
+        Retrieve the latest checkpoint from the unsupervised train directory.
+
+        Args:
+            base_dir_path (string):
+                The path to the directory containing checkpoint files for unsupervised training
+        Returns:
+            A new checkpoint object
+        '''
+        base_dir_path = base_dir_path or cls.DEFAULT_BASE_DIR
+        return super().from_latest_training(base_dir_path)
+
+
+class CheckpointST(Checkpoint):
+    r""" The checkpoint class for supervised training
+    Args:
+        dir_path (str):
+            The path to the checkpoint directory.
+        steps (int):
+            The number of processed sentences/documents before a checkpoint is saved.
+            N.B.: A small number could result in error "no space left on device".
+        max_to_keep (int):
+            The maximum number of checkpoints to keep.
+            N.B.: A large number could result in error "no space left on device".
+    """
+
+    DEFAULT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train_supervised")
+
+    def __init__(self, dir_path: Optional[str] = None, *, steps: int = 1000, max_to_keep: int = 1) -> None:
+        dir_path = dir_path or os.path.join(self.DEFAULT_BASE_DIR, str(int(time.time())))
+        super().__init__(dir_path, steps=steps, max_to_keep=max_to_keep)
+
+    @classmethod
+    def from_latest_training(cls, base_dir_path: Optional[str] = None) -> "CheckpointST":
+        r'''
+        Retrieve the latest checkpoint from the supervised train directory.
+
+        Args:
+            base_dir_path (string):
+                The path to the directory containing checkpoint files for supervised training
+        Returns:
+            A new checkpoint object
+        '''
+        base_dir_path = base_dir_path or cls.DEFAULT_BASE_DIR
+        return super().from_latest_training(base_dir_path)
