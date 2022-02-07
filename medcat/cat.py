@@ -541,7 +541,7 @@ class CAT(object):
               nepochs: int = 1,
               fine_tune: bool = True,
               progress_print: int = 1000,
-              checkpoint: Optional[CheckpointUT] = None,
+              checkpoint: Optional[Checkpoint] = None,
               is_resumed: bool = False) -> None:
         """ Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
@@ -561,13 +561,15 @@ class CAT(object):
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         """
+        checkpoint_config = self.config.linking.get('checkpoint', {})
         if is_resumed:
-            checkpoint = checkpoint or CheckpointUT.from_latest_training()
+            checkpoint = checkpoint or CheckpointUT.retrieve_latest(**checkpoint_config)
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
-            self._create_pipeline(self.cdb.config)
+            self.config = self.cdb.config
+            self._create_pipeline(self.config)
         else:
-            checkpoint = checkpoint or CheckpointUT()
+            checkpoint = checkpoint or CheckpointUT(**checkpoint_config)
             if not fine_tune:
                 self.log.info("Removing old training data!")
                 self.cdb.reset_training()
@@ -719,7 +721,7 @@ class CAT(object):
                          never_terminate: bool = False,
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
-                         checkpoint: Optional[Union[Checkpoint, CheckpointST]] = None,
+                         checkpoint: Optional[Checkpoint] = None,
                          is_resumed: bool = False) -> Tuple:
         r''' TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
@@ -783,13 +785,15 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
+        checkpoint_config = self.config.linking.get('checkpoint', {})
         if is_resumed:
-            checkpoint = checkpoint or CheckpointST.from_latest_training()
+            checkpoint = checkpoint or CheckpointST.retrieve_latest(**checkpoint_config)
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
-            self._create_pipeline(self.cdb.config)
+            self.config = self.cdb.config
+            self._create_pipeline(self.config)
         else:
-            checkpoint = checkpoint or CheckpointST()
+            checkpoint = checkpoint or CheckpointST(**checkpoint_config)
             self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
 
         # Backup filters

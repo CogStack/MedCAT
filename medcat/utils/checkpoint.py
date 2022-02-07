@@ -78,8 +78,8 @@ class Checkpoint(object):
         if not ckpt_dir_paths:
             raise ValueError("No existing training found")
         ckpt_dir_paths.sort()
-        ckpt_file_path = os.path.abspath(os.path.join(base_dir_path, ckpt_dir_paths[-1]))
-        checkpoint = cls.from_latest(ckpt_file_path)
+        ckpt_dir_path = os.path.abspath(os.path.join(base_dir_path, ckpt_dir_paths[-1]))
+        checkpoint = cls.from_latest(dir_path=ckpt_dir_path)
         return checkpoint
 
     @classmethod
@@ -100,6 +100,7 @@ class Checkpoint(object):
             raise Exception("Checkpoints not found. You need to train from scratch.")
         latest_ckpt = ckpt_file_paths[-1]
         steps, count = cls._get_steps_and_count(latest_ckpt)
+
         checkpoint = cls(dir_path, steps=steps)
         checkpoint._file_paths = ckpt_file_paths
         checkpoint._count = count
@@ -182,33 +183,39 @@ class CheckpointUT(Checkpoint):
     Args:
         dir_path (str):
             The path to the checkpoint directory.
-        steps (int):
-            The number of processed sentences/documents before a checkpoint is saved.
-            N.B.: A small number could result in error "no space left on device".
-        max_to_keep (int):
-            The maximum number of checkpoints to keep.
-            N.B.: A large number could result in error "no space left on device".
+        checkpoint_config (dict):
+            The checkpoint config object (config.linking.checkpoint).
     """
+    steps: int
+    max_to_keep: int
 
-    DEFAULT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train")
-
-    def __init__(self, dir_path: Optional[str] = None, *, steps: int = 1000, max_to_keep: int = 1) -> None:
-        dir_path = dir_path or os.path.join(self.DEFAULT_BASE_DIR, str(int(time.time())))
-        super().__init__(dir_path, steps=steps, max_to_keep=max_to_keep)
+    def __init__(self, dir_path: Optional[str] = None, **checkpoint_config) -> None:
+        if dir_path is None:
+            output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
+            dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train", str(int(time.time())))
+            super().__init__(dir_path,
+                             steps=checkpoint_config.get("steps", 0),
+                             max_to_keep=checkpoint_config.get("max_to_keep", 0))
+        else:
+            super().__init__(dir_path)
 
     @classmethod
-    def from_latest_training(cls, base_dir_path: Optional[str] = None) -> "CheckpointUT":
+    def retrieve_latest(cls, **checkpoint_config) -> "CheckpointUT":
         r'''
-        Retrieve the latest checkpoint from the unsupervised train directory.
+        Retrieve the latest checkpoint based on the checkpoint config.
 
         Args:
-            base_dir_path (string):
-                The path to the directory containing checkpoint files for unsupervised training
+            checkpoint_config (dict):
+                The checkpointing config object.
         Returns:
-            A new checkpoint object
+            A new CheckpointUT object
         '''
-        base_dir_path = base_dir_path or cls.DEFAULT_BASE_DIR
-        return super().from_latest_training(base_dir_path)
+        output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
+        base_dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train")
+        checkpoint = super().from_latest_training(base_dir_path=base_dir_path)
+        checkpoint.steps = checkpoint_config.get("steps", checkpoint.steps)
+        checkpoint.max_to_keep = checkpoint_config.get("max_to_keep", checkpoint.max_to_keep)
+        return checkpoint
 
 
 class CheckpointST(Checkpoint):
@@ -216,30 +223,37 @@ class CheckpointST(Checkpoint):
     Args:
         dir_path (str):
             The path to the checkpoint directory.
-        steps (int):
-            The number of processed sentences/documents before a checkpoint is saved.
-            N.B.: A small number could result in error "no space left on device".
-        max_to_keep (int):
-            The maximum number of checkpoints to keep.
-            N.B.: A large number could result in error "no space left on device".
+        checkpoint_config (dict):
+            The checkpoint config object (config.linking.checkpoint).
     """
+    steps: int
+    max_to_keep: int
 
-    DEFAULT_BASE_DIR = os.path.join(os.path.abspath(os.getcwd()), "checkpoints", "cat_train_supervised")
-
-    def __init__(self, dir_path: Optional[str] = None, *, steps: int = 1000, max_to_keep: int = 1) -> None:
-        dir_path = dir_path or os.path.join(self.DEFAULT_BASE_DIR, str(int(time.time())))
-        super().__init__(dir_path, steps=steps, max_to_keep=max_to_keep)
+    def __init__(self, dir_path: Optional[str] = None, **checkpoint_config) -> None:
+        if dir_path is None:
+            output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
+            dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train_supervised", str(int(time.time())))
+            super().__init__(dir_path,
+                             steps=checkpoint_config.get("steps", 0),
+                             max_to_keep=checkpoint_config.get("max_to_keep", 0))
+        else:
+            super().__init__(dir_path)
 
     @classmethod
-    def from_latest_training(cls, base_dir_path: Optional[str] = None) -> "CheckpointST":
+    def retrieve_latest(cls, **checkpoint_config) -> "CheckpointST":
         r'''
-        Retrieve the latest checkpoint from the supervised train directory.
+        Retrieve the latest checkpoint based on the checkpoint config.
 
         Args:
-            base_dir_path (string):
-                The path to the directory containing checkpoint files for supervised training
+            checkpoint_config (dict):
+                The checkpointing config object.
+
         Returns:
-            A new checkpoint object
+            A new CheckpointST object
         '''
-        base_dir_path = base_dir_path or cls.DEFAULT_BASE_DIR
-        return super().from_latest_training(base_dir_path)
+        output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
+        base_dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train_supervised")
+        checkpoint = super().from_latest_training(base_dir_path=base_dir_path)
+        checkpoint.steps = checkpoint_config.get("steps", checkpoint.steps)
+        checkpoint.max_to_keep = checkpoint_config.get("max_to_keep", checkpoint.max_to_keep)
+        return checkpoint
