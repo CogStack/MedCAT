@@ -228,6 +228,15 @@ class Config(ConfigMixin):
                 }
 
         self.linking: Dict[str, Any] = {
+                # Checkpointing config
+                'checkpoint': {
+                    # When doing training this is where checkpoints will be saved
+                    'output_dir': './checkpoints',
+                    # When training how often to save the checkpoint (one step == one document)
+                    'steps': 1000,
+                    # When training the maximum checkpoints will be kept on the disk
+                    "max_to_keep": 1,
+                },
                 # Should it train or not, this is set automatically ignore in 99% of cases and do not set manually
                 'train': True,
                 # Linear anneal

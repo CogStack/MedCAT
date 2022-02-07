@@ -29,26 +29,6 @@ class CheckpointTest(unittest.TestCase):
         self.assertEqual(20, checkpoint.count)
         self.assertEqual(1, checkpoint.max_to_keep)
 
-    def test_from_latest_unsupervised_training(self):
-        ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
-
-        checkpoint = CheckpointUT.from_latest_training(ckpt_base_dir_path)
-
-        self.assertTrue("1643823460" in checkpoint.dir_path)
-        self.assertEqual(2, checkpoint.steps)
-        self.assertEqual(20, checkpoint.count)
-        self.assertEqual(1, checkpoint.max_to_keep)
-
-    def test_from_latest_supervised_training(self):
-        ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train_supervised")
-
-        checkpoint = CheckpointST.from_latest_training(ckpt_base_dir_path)
-
-        self.assertTrue("1643823460" in checkpoint.dir_path)
-        self.assertEqual(1, checkpoint.steps)
-        self.assertEqual(1, checkpoint.count)
-        self.assertEqual(1, checkpoint.max_to_keep)
-
     def test_purge(self):
         dir_path = tempfile.TemporaryDirectory()
         ckpt_file_1_path = os.path.join(dir_path.name, "checkpoint-1-1")
@@ -113,3 +93,33 @@ class CheckpointTest(unittest.TestCase):
             checkpoint = Checkpoint(dir_path="dir_path", steps=1000, max_to_keep=1)
             checkpoint.max_to_keep = -1
         self.assertEqual("Argument at position 1 is not a positive integer", str(e2.exception))
+
+    def test_retrieve_latest_unsupervised_training(self):
+        ckpt_out_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints")
+        ckpt_config = {
+            'output_dir': ckpt_out_dir_path,
+            'steps': 1000,
+            "max_to_keep": 5,
+        }
+
+        checkpoint = CheckpointUT.retrieve_latest(**ckpt_config)
+
+        self.assertTrue("1643823460" in checkpoint.dir_path)
+        self.assertEqual(1000, checkpoint.steps)
+        self.assertEqual(20, checkpoint.count)
+        self.assertEqual(5, checkpoint.max_to_keep)
+
+    def test_retrieve_latest_supervised_training(self):
+        ckpt_out_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints")
+        ckpt_config = {
+            'output_dir': ckpt_out_dir_path,
+            'steps': 1000,
+            "max_to_keep": 5,
+        }
+
+        checkpoint = CheckpointST.retrieve_latest(**ckpt_config)
+
+        self.assertTrue("1643823460" in checkpoint.dir_path)
+        self.assertEqual(1000, checkpoint.steps)
+        self.assertEqual(1, checkpoint.count)
+        self.assertEqual(5, checkpoint.max_to_keep)
