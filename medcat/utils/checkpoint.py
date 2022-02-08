@@ -1,6 +1,7 @@
 import os
 import logging
 import time
+from dataclasses import dataclass
 from typing import List, Tuple, Optional, TypeVar, Type
 from medcat.cdb import CDB
 from medcat.utils.decorators import check_positive
@@ -13,19 +14,20 @@ class Checkpoint(object):
 
     Args:
         dir_path (str):
-            The path to the checkpoint directory.
+            The path to the checkpoint directory
         steps (int):
-            The number of processed sentences/documents before a checkpoint is saved.
-            N.B.: A small number could result in error "no space left on device".
+            The number of processed sentences/documents before a checkpoint is saved
+            (N.B.: A small number could result in error "no space left on device")
         max_to_keep (int):
-            The maximum number of checkpoints to keep.
-            N.B.: A large number could result in error "no space left on device".
+            The maximum number of checkpoints to keep
+            (N.B.: A large number could result in error "no space left on device")
     """
-
+    DEFAULT_STEP = 1000
+    DEFAULT_MAX_TO_KEEP = 1
     log = logging.getLogger(__package__)
 
     @check_positive
-    def __init__(self, dir_path: str, *, steps: int = 1000, max_to_keep: int = 1) -> None:
+    def __init__(self, dir_path: str, *, steps: int = DEFAULT_STEP, max_to_keep: int = DEFAULT_MAX_TO_KEEP) -> None:
         self._dir_path = os.path.abspath(dir_path)
         self._steps = steps
         self._max_to_keep = max_to_keep
@@ -37,20 +39,18 @@ class Checkpoint(object):
     def steps(self) -> int:
         return self._steps
 
-    @steps.setter  # type: ignore
-    # [https://github.com/python/mypy/issues/1362]
-    @check_positive
+    @steps.setter
     def steps(self, value: int) -> None:
+        check_positive(lambda _: ...)(value)    # [https://github.com/python/mypy/issues/1362]
         self._steps = value
 
     @property
     def max_to_keep(self) -> int:
         return self._max_to_keep
 
-    @max_to_keep.setter  # type: ignore
-    # [https://github.com/python/mypy/issues/1362]
-    @check_positive
+    @max_to_keep.setter
     def max_to_keep(self, value: int) -> None:
+        check_positive(lambda _: ...)(value)    # [https://github.com/python/mypy/issues/1362]
         self._max_to_keep = value
 
     @property
@@ -145,7 +145,7 @@ class Checkpoint(object):
 
     def restore_latest_cdb(self) -> CDB:
         r'''
-        Restore the CDB from the latest checkpoint
+        Restore the CDB from the latest checkpoint.
 
         Returns:
             cdb (medcat.CDB):
@@ -176,84 +176,56 @@ class Checkpoint(object):
         return int(file_name_parts[1]), int(file_name_parts[2])
 
 
-class CheckpointUT(Checkpoint):
+@dataclass
+class CheckpointConfig(object):
+    output_dir: str = "checkpoints"
+    steps: int = Checkpoint.DEFAULT_STEP
+    max_to_keep: int = Checkpoint.DEFAULT_MAX_TO_KEEP
+
+
+class CheckpointManager(object):
     r"""
-    The checkpoint class for unsupervised training
+    The class for managing checkpoints of specific training type and their configuration
 
     Args:
-        dir_path (str):
-            The path to the checkpoint directory.
-        checkpoint_config (dict):
-            The checkpoint config object (config.linking.checkpoint).
+        name (str):
+            The name of the checkpoint manager (also used as the checkpoint base directory name).
+        checkpoint_config (medcat.utils.checkpoint.CheckpointConfig):
+            The checkpoint config object.
     """
-    steps: int
-    max_to_keep: int
+    def __init__(self, name: str, checkpoint_config: CheckpointConfig) -> None:
+        self.name = name
+        self.checkpoint_config = checkpoint_config
 
-    def __init__(self, dir_path: Optional[str] = None, **checkpoint_config) -> None:
-        if dir_path is None:
-            output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
-            dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train", str(int(time.time())))
-            super().__init__(dir_path,
-                             steps=checkpoint_config.get("steps", 0),
-                             max_to_keep=checkpoint_config.get("max_to_keep", 0))
-        else:
-            super().__init__(dir_path)
-
-    @classmethod
-    def retrieve_latest(cls, **checkpoint_config) -> "CheckpointUT":
+    def new_checkpoint(self, dir_path: Optional[str] = None) -> "Checkpoint":
         r'''
-        Retrieve the latest checkpoint based on the checkpoint config.
+        Create a new checkpoint from the checkpoint base directory.
 
         Args:
-            checkpoint_config (dict):
-                The checkpointing config object.
+            dir_path (str):
+                The path to the checkpoint directory
+
         Returns:
-            A new CheckpointUT object
+            A checkpoint object
         '''
-        output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
-        base_dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train")
-        checkpoint = super().from_latest_training(base_dir_path=base_dir_path)
-        checkpoint.steps = checkpoint_config.get("steps", checkpoint.steps)
-        checkpoint.max_to_keep = checkpoint_config.get("max_to_keep", checkpoint.max_to_keep)
-        return checkpoint
+        dir_path = dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name, str(int(time.time())))
+        return Checkpoint(dir_path,
+                          steps=self.checkpoint_config.steps,
+                          max_to_keep=self.checkpoint_config.max_to_keep)
 
-
-class CheckpointST(Checkpoint):
-    r""" The checkpoint class for supervised training
-    Args:
-        dir_path (str):
-            The path to the checkpoint directory.
-        checkpoint_config (dict):
-            The checkpoint config object (config.linking.checkpoint).
-    """
-    steps: int
-    max_to_keep: int
-
-    def __init__(self, dir_path: Optional[str] = None, **checkpoint_config) -> None:
-        if dir_path is None:
-            output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
-            dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train_supervised", str(int(time.time())))
-            super().__init__(dir_path,
-                             steps=checkpoint_config.get("steps", 0),
-                             max_to_keep=checkpoint_config.get("max_to_keep", 0))
-        else:
-            super().__init__(dir_path)
-
-    @classmethod
-    def retrieve_latest(cls, **checkpoint_config) -> "CheckpointST":
+    def get_latest_checkpoint(self, base_dir_path: Optional[str] = None) -> "Checkpoint":
         r'''
-        Retrieve the latest checkpoint based on the checkpoint config.
+        Retrieve the latest checkpoint from the checkpoint base directory.
 
         Args:
-            checkpoint_config (dict):
-                The checkpointing config object.
+            base_dir_path (string):
+                The path to the directory containing checkpoint files
 
         Returns:
-            A new CheckpointST object
+            A checkpoint object
         '''
-        output_dir = checkpoint_config.get("output_dir", None) or "checkpoints"
-        base_dir_path = os.path.join(os.path.abspath(os.getcwd()), output_dir, "cat_train_supervised")
-        checkpoint = super().from_latest_training(base_dir_path=base_dir_path)
-        checkpoint.steps = checkpoint_config.get("steps", checkpoint.steps)
-        checkpoint.max_to_keep = checkpoint_config.get("max_to_keep", checkpoint.max_to_keep)
+        base_dir_path = base_dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name)
+        checkpoint = Checkpoint.from_latest_training(base_dir_path=base_dir_path)
+        checkpoint.steps = self.checkpoint_config.steps
+        checkpoint.max_to_keep = self.checkpoint_config.max_to_keep
         return checkpoint

@@ -27,7 +27,7 @@ from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.loggers import add_handlers
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
-from medcat.utils.checkpoint import Checkpoint, CheckpointUT, CheckpointST
+from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
 from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
@@ -561,15 +561,16 @@ class CAT(object):
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         """
-        checkpoint_config = self.config.linking.get('checkpoint', {})
+        checkpoint_config = CheckpointConfig(**self.config.linking.get('checkpoint', {}))
+        checkpoint_manager = CheckpointManager('cat_train', checkpoint_config)
         if is_resumed:
-            checkpoint = checkpoint or CheckpointUT.retrieve_latest(**checkpoint_config)
+            checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
             self.config = self.cdb.config
             self._create_pipeline(self.config)
         else:
-            checkpoint = checkpoint or CheckpointUT(**checkpoint_config)
+            checkpoint = checkpoint or checkpoint_manager.new_checkpoint()
             if not fine_tune:
                 self.log.info("Removing old training data!")
                 self.cdb.reset_training()
@@ -785,15 +786,16 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI
         '''
-        checkpoint_config = self.config.linking.get('checkpoint', {})
+        checkpoint_config = CheckpointConfig(**self.config.linking.get('checkpoint', {}))
+        checkpoint_manager = CheckpointManager('cat_train_supervised', checkpoint_config)
         if is_resumed:
-            checkpoint = checkpoint or CheckpointST.retrieve_latest(**checkpoint_config)
+            checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
             self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
             self.cdb = checkpoint.restore_latest_cdb()
             self.config = self.cdb.config
             self._create_pipeline(self.config)
         else:
-            checkpoint = checkpoint or CheckpointST(**checkpoint_config)
+            checkpoint = checkpoint or checkpoint_manager.new_checkpoint()
             self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
 
         # Backup filters
