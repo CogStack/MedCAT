@@ -230,8 +230,8 @@ class Config(ConfigMixin):
         self.linking: Dict[str, Any] = {
                 # Checkpointing config
                 'checkpoint': {
-                    # When doing training this is where checkpoints will be saved
-                    'output_dir': './checkpoints',
+                    # When doing training this is the name of the directory where checkpoints will be saved
+                    'output_dir': 'checkpoints',
                     # When training how often to save the checkpoint (one step == one document)
                     'steps': 1000,
                     # When training the maximum checkpoints will be kept on the disk

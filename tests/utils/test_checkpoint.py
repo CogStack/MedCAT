@@ -4,7 +4,7 @@ import tempfile
 import json
 from unittest.mock import patch
 from tests.helper import AsyncMock
-from medcat.utils.checkpoint import Checkpoint, CheckpointUT, CheckpointST
+from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
 from medcat.cdb import CDB
 
 
@@ -82,7 +82,7 @@ class CheckpointTest(unittest.TestCase):
         with self.assertRaises(Exception) as e2:
             checkpoint = Checkpoint(dir_path="dir_path", steps=1000, max_to_keep=1)
             checkpoint.steps = 0
-        self.assertEqual("Argument at position 1 is not a positive integer", str(e2.exception))
+        self.assertEqual("Argument at position 0 is not a positive integer", str(e2.exception))
 
     def test_validation_on_max_to_keep(self):
         with self.assertRaises(Exception) as e1:
@@ -92,34 +92,34 @@ class CheckpointTest(unittest.TestCase):
         with self.assertRaises(Exception) as e2:
             checkpoint = Checkpoint(dir_path="dir_path", steps=1000, max_to_keep=1)
             checkpoint.max_to_keep = -1
-        self.assertEqual("Argument at position 1 is not a positive integer", str(e2.exception))
+        self.assertEqual("Argument at position 0 is not a positive integer", str(e2.exception))
 
-    def test_retrieve_latest_unsupervised_training(self):
-        ckpt_out_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints")
+    def test_new_checkpoint(self):
+        ckpt_out_dir_path = tempfile.TemporaryDirectory().name
         ckpt_config = {
             'output_dir': ckpt_out_dir_path,
             'steps': 1000,
             "max_to_keep": 5,
         }
 
-        checkpoint = CheckpointUT.retrieve_latest(**ckpt_config)
+        checkpoint = CheckpointManager("cat_train", CheckpointConfig(**ckpt_config)).new_checkpoint()
 
-        self.assertTrue("1643823460" in checkpoint.dir_path)
+        self.assertTrue("cat_train" in checkpoint.dir_path)
         self.assertEqual(1000, checkpoint.steps)
-        self.assertEqual(20, checkpoint.count)
+        self.assertEqual(0, checkpoint.count)
         self.assertEqual(5, checkpoint.max_to_keep)
 
-    def test_retrieve_latest_supervised_training(self):
-        ckpt_out_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints")
+    def test_get_latest_checkpoint(self):
+        ckpt_out_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train_supervised")
         ckpt_config = {
             'output_dir': ckpt_out_dir_path,
             'steps': 1000,
             "max_to_keep": 5,
         }
 
-        checkpoint = CheckpointST.retrieve_latest(**ckpt_config)
+        checkpoint = CheckpointManager("cat_train_supervised", CheckpointConfig(**ckpt_config)).get_latest_checkpoint(ckpt_out_dir_path)
 
         self.assertTrue("1643823460" in checkpoint.dir_path)
-        self.assertEqual(1000, checkpoint.steps)
         self.assertEqual(1, checkpoint.count)
+        self.assertEqual(1000, checkpoint.steps)
         self.assertEqual(5, checkpoint.max_to_keep)
