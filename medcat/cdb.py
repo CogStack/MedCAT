@@ -1,13 +1,15 @@
 """ Representation class for CDB data
 """
-
 import dill
+import json
 import logging
+import aiofiles
 import numpy as np
 import os
 from typing import Dict, Set, Optional, List, Union, cast, no_type_check
 from functools import partial
 
+from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
@@ -101,9 +103,9 @@ class CDB(object):
 
         name = cui # In case we do not find anything it will just return the CUI
 
-        if cui in self.cui2preferred_name:
+        if cui in self.cui2preferred_name and self.cui2preferred_name[cui]:
             name = self.cui2preferred_name[cui]
-        elif cui in self.cui2names:
+        elif cui in self.cui2names and self.cui2names[cui]:
             name = " ".join(str(max(self.cui2names[cui], key=len)).split(self.config.general.get('separator', '~'))).title()
 
         return name
@@ -370,7 +372,7 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save(self, path: str, vc_model_tag_data: ModelTagData = None) -> None:
+    def save(self, path: str, vc_model_tag_data: ModelTagData = ModelTagData()) -> None:
         r''' Saves model to file (in fact it saves vairables of this class).
 
         Args:
@@ -380,14 +382,14 @@ class CDB(object):
                 DataClass containing all the info about the model file tag. 
         '''
 
-        if vc_model_tag_data:
+        if vc_model_tag_data.model_name != "":
             self.vc_model_tag_data = vc_model_tag_data
 
         self.cdb_stats.number_of_concepts = len(self.cui2names)
         self.cdb_stats.number_of_names = len(self.name2cuis)
         self.cdb_stats.number_of_concepts_received_training = len(self.cui2context_vectors)
         self.cdb_stats.number_of_seen_training_examples = sum(self.cui2count_train.values())
-        self.cdb_stats.average_training_example_per_concept = np.average(list(self.cui2count_train.values()))
+        self.cdb_stats.average_training_example_per_concept = np.average(list(self.cui2count_train.values())) # type: ignore
 
         with open(path, 'wb') as f:
             # No idea how to this correctly
@@ -395,6 +397,20 @@ class CDB(object):
             to_save['config'] = self.config.__dict__
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
+
+    async def save_async(self, path: str) -> None:
+        r''' Async version of saving model to file (in fact it saves variables of this class).
+
+        Args:
+            path (`str`):
+                Path to a file where the model will be saved
+        '''
+        async with aiofiles.open(path, 'wb') as f:
+            to_save = {
+                'config': self.config.__dict__,
+                'cdb': {k: v for k, v in self.__dict__.items() if k != 'config'}
+            }
+            await f.write(dill.dumps(to_save))
 
     @classmethod
     def load(cls, path: str = "", config: Optional[Config] = None, full_model_tag_name: str="") -> "CDB":
@@ -604,15 +620,21 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
 
+    def _make_stats(self):
+        stats = {}
+        stats["Number of concepts"] = len(self.cui2names)
+        stats["Number of names"] = len(self.name2cuis)
+        stats["Number of concepts that received training"] = len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])
+        stats["Number of seen training examples in total"] = sum(self.cui2count_train.values())
+        stats["Average training examples per concept"] = np.average(
+                [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])
+
+        return stats
+
     def print_stats(self) -> None:
         r'''Print basic statistics for the CDB.
         '''
-        self.log.info("Number of concepts: {:,}".format(len(self.cui2names)))
-        self.log.info("Number of names:    {:,}".format(len(self.name2cuis)))
-        self.log.info("Number of concepts that received training: {:,}".format(len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
-        self.log.info("Number of seen training examples in total: {:,}".format(sum(self.cui2count_train.values())))
-        self.log.info("Average training examples per concept:     {:.1f}".format(np.average(
-            [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])))
+        self.log.info(json.dumps(self._make_stats(), indent=2))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
@@ -722,3 +744,14 @@ class CDB(object):
         disabled_comps = config.general.get('spacy_disabled_components', [])
         if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
             config.general['spacy_disabled_components'].append('lemmatizer')
+
+    def get_hash(self):
+        hasher = Hasher()
+
+        for k,v in self.__dict__.items():
+            if k in ['cui2countext_vectors', 'name2cuis']:
+                hasher.update(v, length=False)
+            elif k != 'config':
+                hasher.update(v, length=True)
+
+        return hasher.hexdigest()

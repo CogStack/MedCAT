@@ -17,14 +17,20 @@ class Snomed:
     Args:
         data_path:
             Path to the unzipped SNOMED CT folder
+        uk_ext: bool
+            Specification of a SNOMED UK extension after 2021 to process the divergent release format.
     """
 
-    def __init__(self, data_path,):
+    def __init__(self, data_path, uk_ext=False):
         self.data_path = data_path
         self.release = data_path[-16:-8]
+        self.uk_ext = uk_ext
 
-    def to_concept_df(self):
+    def to_concept_df(self, ):
         """
+        Please remember to specify if the version is a SNOMED UK extension released after 2021.
+        This can be done prior to this step: Snomed.uk_ext = True.
+        This step is not required for UK extension releases pre-2021.
 
         :return: SNOMED CT concept DataFrame ready for MEDCAT CDB creation
         """
@@ -44,16 +50,30 @@ class Snomed:
         df2merge = []
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            concept_snapshot = "sct2_Concept_Snapshot"
+            description_snapshot = "sct2_Description_Snapshot-en"
+            if self.uk_ext:
+                if "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
+                    description_snapshot = "sct2_Description_UKCLSnapshot-en"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    description_snapshot = "sct2_Description_UKEDSnapshot-en"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+
             for f in os.listdir(contents_path):
-                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
 
-            int_terms = parse_file(f'{contents_path}/sct2_Concept_Snapshot_{snomed_v}_{snomed_release}.txt')
+            int_terms = parse_file(f'{contents_path}/{concept_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_terms = int_terms[int_terms.active == '1']
             del int_terms
 
-            int_desc = parse_file(f'{contents_path}/sct2_Description_Snapshot-en_{snomed_v}_{snomed_release}.txt')
+            int_desc = parse_file(f'{contents_path}/{description_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_descs = int_desc[int_desc.active == '1']
             del int_desc
 
@@ -69,12 +89,12 @@ class Snomed:
             active_snomed_df = active_with_all_desc[['id_x', 'term', 'typeId']]
             del active_with_all_desc
 
-            active_snomed_df.rename(columns={'id_x': 'cui', 'term': 'name', 'typeId': 'name_status'}, inplace=True)
+            active_snomed_df = active_snomed_df.rename(columns={'id_x': 'cui', 'term': 'name', 'typeId': 'name_status'})
             active_snomed_df['ontologies'] = 'SNOMED-CT'
             active_snomed_df['name_status'] = active_snomed_df['name_status'].replace(
                 ['900000000000003001', '900000000000013009'],
                 ['P', 'A'])
-            active_snomed_df.reset_index(drop=True, inplace=True)
+            active_snomed_df = active_snomed_df.reset_index(drop=True)
 
             temp_df = active_snomed_df[active_snomed_df['name_status'] == 'P'][['cui', 'name']]
             temp_df['description_type_ids'] = temp_df['name'].str.extract(r"\((\w+\s?.?\s?\w+.?\w+.?\w+.?)\)$")
@@ -85,7 +105,7 @@ class Snomed:
 
             # Hash semantic tag to get a 8 digit type_id code
             active_snomed_df['type_ids'] = active_snomed_df['description_type_ids'].apply(
-                lambda x: int(hashlib.sha256(x.encode('utf-8')).hexdigest(), 16) % 10 ** 8)
+                lambda x: int(hashlib.sha256(str(x).encode('utf-8')).hexdigest(), 16) % 10 ** 8)
             df2merge.append(active_snomed_df)
 
         return pd.concat(df2merge).reset_index(drop=True)
@@ -112,11 +132,28 @@ class Snomed:
         all_rela = []
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            concept_snapshot = "sct2_Concept_Snapshot"
+            relationship_snapshot = "sct2_Relationship_Snapshot"
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_Snapshot"
+                    relationship_snapshot = "sct2_Relationship_Snapshot"
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+
             for f in os.listdir(contents_path):
-                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
-            int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{snomed_release}.txt')
+            int_relat = parse_file(f'{contents_path}/{relationship_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_relat = int_relat[int_relat.active == '1']
             del int_relat
 
@@ -146,11 +183,27 @@ class Snomed:
         output_dict = {}
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
+            concept_snapshot = "sct2_Concept_Snapshot"
+            relationship_snapshot = "sct2_Relationship_Snapshot"
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_Snapshot"
+                    relationship_snapshot = "sct2_Relationship_Snapshot"
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
             for f in os.listdir(contents_path):
-                m = re.search(r'sct2_Concept_Snapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
-            int_relat = parse_file(f'{contents_path}/sct2_Relationship_Snapshot_{snomed_v}_{snomed_release}.txt')
+            int_relat = parse_file(f'{contents_path}/{relationship_snapshot}_{snomed_v}_{snomed_release}.txt')
             active_relat = int_relat[int_relat.active == '1']
             del int_relat
 
@@ -186,17 +239,28 @@ class Snomed:
         df2merge = []
         for i, snomed_release in enumerate(snomed_releases):
             refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
+            icd10_ref_set = 'der2_iisssccRefset_ExtendedMapSnapshot'
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    icd10_ref_set = "der2_iisssccRefset_ExtendedMapSnapshot"
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    icd10_ref_set = "der2_iisssccRefset_ExtendedMapUKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    icd10_ref_set = "der2_iisssccRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
             for f in os.listdir(refset_terminology):
-                m = re.search(r'der2_iisssccRefset_ExtendedMapSnapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{icd10_ref_set}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
-            mappings = parse_file(f'{refset_terminology}/der2_iisssccRefset_ExtendedMapSnapshot_{snomed_v}_{snomed_release}.txt')
+            mappings = parse_file(f'{refset_terminology}/{icd10_ref_set}_{snomed_v}_{snomed_release}.txt')
             mappings = mappings[mappings.active == '1']
             icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
                 drop=True)
             df2merge.append(icd_mappings)
         return pd.concat(df2merge)
-
 
     def map_snomed2opcs4(self):
         """
@@ -219,13 +283,25 @@ class Snomed:
         for i, snomed_release in enumerate(snomed_releases):
             refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
             snomed_v = ''
+            opcs4_ref_set = 'der2_iisssccRefset_ExtendedMapSnapshot'
+            if self.uk_ext:
+                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
+                    continue
+                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
             for f in os.listdir(refset_terminology):
-                m = re.search(r'der2_iisssciRefset_ExtendedMapSnapshot_(.*)_\d*.txt', f)
+                m = re.search(f'{opcs4_ref_set}'+r'_(.*)_\d*.txt', f)
                 if m:
                     snomed_v = m.group(1)
             if snomed_v == '':
                 raise FileNotFoundError("This SNOMED release does not contain OPCS mapping files")
-            mappings = parse_file(f'{refset_terminology}/der2_iisssciRefset_ExtendedMapSnapshot_{snomed_v}_{snomed_release}.txt')
+            mappings = parse_file(f'{refset_terminology}/{opcs4_ref_set}_{snomed_v}_{snomed_release}.txt')
             mappings = mappings[mappings.active == '1']
             icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
                 drop=True)

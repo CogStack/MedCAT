@@ -12,3 +12,4 @@ services:
       - "8001:8000"
     env_file:
             - ./envs/env_medmen
+    tty: true

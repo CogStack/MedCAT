@@ -10,7 +10,9 @@ from spacy.tokens import Doc
 from medcat.cli.modeltagdata import ModelTagData
 from medcat.cli.system_utils import load_file_from_model_storage
 from medcat.cli.modelstats import MetaCATStats
+from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
+from medcat.utils.hasher import Hasher
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
@@ -36,6 +38,7 @@ class MetaCAT(PipeRunner):
     # Add file and console handlers
     log = add_handlers(log)
 
+    # Override
     def __init__(self,
                  tokenizer: Optional[TokenizerWrapperBase] = None,
                  embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
@@ -58,7 +61,7 @@ class MetaCAT(PipeRunner):
         self.meta_cat_stats = MetaCATStats()
         self.vc_model_tag_data = ModelTagData()
 
-    def get_model(self, embeddings: Tensor) -> nn.Module:
+    def get_model(self, embeddings: Optional[Union[Tensor, numpy.ndarray]]) -> nn.Module:
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -67,6 +70,17 @@ class MetaCAT(PipeRunner):
             raise ValueError("Unknown model name %s" % config.model['model_name'])
 
         return model
+
+    def get_hash(self):
+        r''' A partial hash trying to catch differences between models
+        '''
+        hasher = Hasher()
+        # Set last_train_on if None
+        if self.config.train['last_train_on'] is None:
+            self.config.train['last_train_on'] = datetime.now().timestamp()
+
+        hasher.update(self.config.get_hash())
+        return hasher.hexdigest()
 
     def train(self, json_path: str, save_dir_path: Optional[str] = None) -> Dict:
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
@@ -138,6 +152,7 @@ class MetaCAT(PipeRunner):
 
         self.meta_cat_stats = MetaCATStats(f1=report['f1'], nepochs=report['epoch'], class_report=report['report'])
 
+        self.config.train['last_train_on'] = datetime.now().timestamp()
         return report
 
     def eval(self, json_path: str) -> Dict:
@@ -168,7 +183,7 @@ class MetaCAT(PipeRunner):
 
         return result
 
-    def save(self, save_dir_path: str, model_tag_data: ModelTagData=None) -> None:
+    def save(self, save_dir_path: str, model_tag_data: ModelTagData=ModelTagData()) -> None:
         r''' Save all components of this class to a file
         Args:
             save_dir_path(`str`):
@@ -190,7 +205,7 @@ class MetaCAT(PipeRunner):
         with open(os.path.join(save_dir_path, "meta_stats.json"), "w+") as f:
             json.dump(asdict(self.meta_cat_stats), fp=f)
 
-        if model_tag_data:
+        if model_tag_data.model_name != "":
             with open(os.path.join(save_dir_path, "vc_model_tag_data.json"), "w+") as f:
                 json.dump(asdict(model_tag_data), fp=f)
 
@@ -323,6 +338,7 @@ class MetaCAT(PipeRunner):
         if len(docs) > 0:
             yield docs
 
+    # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
         r''' Process many documents at once.
         Args:
@@ -404,6 +420,7 @@ class MetaCAT(PipeRunner):
                 self.get_error_handler()(self.name, self, docs, e)
                 yield from [None] * len(docs)
 
+    # Override
     def __call__(self, doc: Doc) -> Doc:
         ''' Process one document, used in the spacy pipeline for sequential
         document processing.

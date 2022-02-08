@@ -40,10 +40,10 @@ class MakeVocab(object):
             self.vocab = Vocab()
 
         # Build the required spacy pipeline
-        self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=tag_skip_and_punct,
-                            name='skip_and_punct',
-                            additional_fields=['is_punct'])
+        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
+        self.pipe.add_tagger(tagger=tag_skip_and_punct,
+                             name='skip_and_punct',
+                             additional_fields=['is_punct'])
 
         # Get the tokenizer
         if word_tokenizer is not None:
@@ -85,7 +85,7 @@ class MakeVocab(object):
                 self.log.info("Vocab builder at: %s", str(ind))
                 print(ind)
 
-            doc = self.nlp.nlp.tokenizer(doc)
+            doc = self.pipe.spacy_nlp.tokenizer(doc)
             line = ""
 
             for token in doc:
@@ -158,4 +158,4 @@ class MakeVocab(object):
         return w2v
 
     def destroy_pipe(self):
-        self.nlp.destroy()
+        self.pipe.destroy()

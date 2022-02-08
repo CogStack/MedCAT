@@ -217,9 +217,9 @@ def get_data_from_docs(docs, doc2pt, doc2time=None):
                    ent['context_similarity'],
                    ent['start'], ent['end'],
                    t,
-                   ent['meta_anns']['Subject']['value'],
-                   ent['meta_anns']['Presence']['value'],
-                   ent['meta_anns']['Time']['value']]
+                   ent['meta_anns'].get('Subject', {}).get('value', None),
+                   ent['meta_anns'].get('Presence', {}).get('value', None),
+                   ent['meta_anns'].get('Time', {}).get('value', None)]
             data.append(row)
             row = []
 

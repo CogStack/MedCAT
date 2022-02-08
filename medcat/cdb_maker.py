@@ -45,11 +45,10 @@ class CDBMaker(object):
             self.cdb = cdb
 
         # Build the required spacy pipeline
-        self.nlp = Pipe(tokenizer=spacy_split_all, config=config)
-        self.nlp.add_tagger(tagger=tag_skip_and_punct,
-                            name='skip_and_punct',
-                            additional_fields=['is_punct'])
-
+        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
+        self.pipe.add_tagger(tagger=tag_skip_and_punct,
+                             name='skip_and_punct',
+                             additional_fields=['is_punct'])
 
     def prepare_csvs(self,
                      csv_paths: List[str],
@@ -163,13 +162,13 @@ class CDBMaker(object):
                                  len(raw_name.strip()) > 0]
                     for raw_name in raw_names:
                         raw_name = raw_name.strip()
-                        prepare_name(raw_name, self.nlp, names, self.config)
+                        prepare_name(raw_name, self.pipe.spacy_nlp, names, self.config)
 
                         if self.config.cdb_maker.get('remove_parenthesis', 0) > 0 and name_status == 'P':
                             # Should we remove the content in parenthesis from primary names and add them also
                             raw_name = PH_REMOVE.sub(" ", raw_name).strip()
                             if len(raw_name) >= self.config.cdb_maker['remove_parenthesis']:
-                                prepare_name(raw_name, self.nlp, names, self.config)
+                                prepare_name(raw_name, self.pipe.spacy_nlp, names, self.config)
 
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
@@ -180,4 +179,4 @@ class CDBMaker(object):
         return self.cdb
 
     def destroy_pipe(self) -> None:
-        self.nlp.destroy()
+        self.pipe.destroy()

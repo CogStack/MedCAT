@@ -4,6 +4,32 @@ from medcat.preprocessing.cleaners import clean_name
 from medcat.utils.other import TPL_ENT, TPL_ENTS
 
 
+def get_important_config_parameters(config):
+    cnf = {
+            "config.ner['min_name_len']": {
+                'value': config.ner['min_name_len'],
+                'description': "Minimum detection length (found terms/mentions shorter than this will not be detected)."
+                },
+            "config.ner['upper_case_limit_len']": {
+                'value': config.ner['upper_case_limit_len'],
+                'description': "All detected terms shorter than this value have to be uppercase, otherwise they will be ignored."
+                },
+            "config.linking['similarity_threshold']": {
+                'value': config.linking['similarity_threshold'],
+                'description': "If the confidence of the model is lower than this a detection will be ignore."
+                },
+            "config.general['spell_check']": {
+                'value': config.general['spell_check'],
+                'description': "Is spell checking enabled."
+                },
+            "config.general['spell_check_len_limit']": {
+                'value': config.general['spell_check_len_limit'],
+                'description': "Words shorter than this will not be spell checked."
+                },
+            }
+    return cnf
+
+
 def to_json_simple(docs, cdb):
     """
     output:  [{'text': <text>, 'entities': [<start,end,type>, ]}]

@@ -49,6 +49,7 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
                 {
                     "id": datasets.Value("int32"),
                     "text": datasets.Value("string"),
+                    "name": datasets.Value("string"),
                     "ent_starts": datasets.Sequence(datasets.Value("int32")),
                     "ent_ends": datasets.Sequence(datasets.Value("int32")),
                     "ent_cuis": datasets.Sequence(datasets.Value("string")),
@@ -91,9 +92,11 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
                                 ends.append(entity['end'])
                                 cuis.append(entity['cui'])
                         doc_id = doc.get('id', ind)
+                        doc_name = doc.get('name')
                         yield "{}".format(doc_id), {
                                 'id': int(doc_id),
                                 'text': str(doc['text']),
+                                'name': str(doc_name),
                                 'ent_starts': starts,
                                 'ent_ends': ends,
                                 'ent_cuis': cuis,

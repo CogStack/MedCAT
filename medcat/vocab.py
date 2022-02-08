@@ -244,8 +244,8 @@ class Vocab(object):
 
         return False
 
-    def save(self, path: str, vc_model_tag_data: ModelTagData = None) -> None:
-        if vc_model_tag_data:
+    def save(self, path: str, vc_model_tag_data: ModelTagData = ModelTagData()) -> None:
+        if vc_model_tag_data.model_name != "":
             self.vc_model_tag_data = vc_model_tag_data
 
         with open(path, 'wb') as f:

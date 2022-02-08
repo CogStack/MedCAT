@@ -2,6 +2,7 @@ import os
 import shutil
 import unittest
 import tempfile
+import asyncio
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 
@@ -49,6 +50,11 @@ class CDBTests(unittest.TestCase):
     def test_save_and_load(self):
         with tempfile.NamedTemporaryFile() as f:
             self.undertest.save(f.name)
+            self.undertest.load(f.name)
+
+    def test_save_async_and_load(self):
+        with tempfile.NamedTemporaryFile() as f:
+            asyncio.run(self.undertest.save_async(f.name))
             self.undertest.load(f.name)
 
 

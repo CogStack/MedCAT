@@ -32,7 +32,7 @@ class CdbMakerArchiveTests(unittest.TestCase):
         assert self.cdb.addl_info['cui2description']['C0000039'].startswith("Synthetic")
 
     def test_name_addition(self):
-        self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config), name_status='P', full_build=True)
+        self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.get_spacy_nlp(), {}, self.config), name_status='P', full_build=True)
         assert self.cdb.addl_info['cui2original_names']['C0000239'] == {'MY: new,-_! Name.', 'Second csv'}
         assert 'my:newname.' in self.cdb.name2cuis
         assert 'my:new' in self.cdb.snames
@@ -40,9 +40,9 @@ class CdbMakerArchiveTests(unittest.TestCase):
         assert self.cdb.name2cuis2status['my:newname.'] == {'C0000239': 'P'}
 
     def test_name_removal(self):
-        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config))
+        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.get_spacy_nlp(), {}, self.config))
         # Run again to make sure it does not break anything
-        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.nlp, {}, self.config))
+        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.get_spacy_nlp(), {}, self.config))
         assert len(self.cdb.name2cuis) == 5
         assert 'my:newname.' not in self.cdb.name2cuis2status
 
@@ -108,8 +108,8 @@ class CdbMakerArchiveTests(unittest.TestCase):
         for i in range(500):
             cui = "C" + str(i)
             type_ids = {'T-' + str(i%10)}
-            cdb.add_concept(cui=cui, names=prepare_name('Name: ' + str(i), self.maker.nlp, {}, self.config), ontologies=set(),
-                    name_status='P', type_ids=type_ids, description='', full_build=True)
+            cdb.add_concept(cui=cui, names=prepare_name('Name: ' + str(i), self.maker.pipe.get_spacy_nlp(), {}, self.config), ontologies=set(),
+                            name_status='P', type_ids=type_ids, description='', full_build=True)
 
             vectors = {}
             for cntx_type in self.config.linking['context_vector_sizes']:
