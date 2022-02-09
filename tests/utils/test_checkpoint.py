@@ -19,36 +19,6 @@ class CheckpointTest(unittest.TestCase):
         self.assertEqual(20, checkpoint.count)
         self.assertEqual(1, checkpoint.max_to_keep)
 
-    def test_from_latest_training(self):
-        ckpt_base_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
-
-        checkpoint = Checkpoint.from_latest_training(ckpt_base_dir_path)
-
-        self.assertTrue("1643823460" in checkpoint.dir_path)
-        self.assertEqual(2, checkpoint.steps)
-        self.assertEqual(20, checkpoint.count)
-        self.assertEqual(1, checkpoint.max_to_keep)
-
-    def test_purge(self):
-        dir_path = tempfile.TemporaryDirectory()
-        ckpt_file_1_path = os.path.join(dir_path.name, "checkpoint-1-1")
-        ckpt_file_2_path = os.path.join(dir_path.name, "checkpoint-1-2")
-        another_file_path = os.path.join(dir_path.name, "another")
-        open(ckpt_file_1_path, "w").close()
-        open(ckpt_file_2_path, "w").close()
-        open(another_file_path, "w").close()
-        checkpoint = Checkpoint(dir_path=dir_path.name, steps=1, max_to_keep=1)
-        self.assertTrue(os.path.isfile(ckpt_file_1_path))
-        self.assertTrue(os.path.isfile(ckpt_file_2_path))
-        self.assertTrue(os.path.isfile(another_file_path))
-
-        removed = checkpoint.purge()
-
-        checkpoints = [f for f in os.listdir(dir_path.name) if "checkpoint-" in f]
-        self.assertEqual([], checkpoints)
-        self.assertTrue(os.path.isfile(another_file_path))
-        self.assertEqual(2, len(removed))
-
     @patch("medcat.cdb.CDB.load", return_value="cdb_object")
     def test_restore_latest_cdb(self, cdb_load):
         dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train", "1643822916")
@@ -123,3 +93,10 @@ class CheckpointTest(unittest.TestCase):
         self.assertEqual(1, checkpoint.count)
         self.assertEqual(1000, checkpoint.steps)
         self.assertEqual(5, checkpoint.max_to_keep)
+
+    def test_get_latest_training_dir(self):
+        ckpt_out_dir_path = os.path.join(os.path.dirname(__file__), "..", "resources", "checkpoints", "cat_train")
+
+        ckpt_dir_path = CheckpointManager.get_latest_training_dir(ckpt_out_dir_path)
+
+        self.assertTrue("1643823460" in ckpt_dir_path)

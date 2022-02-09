@@ -62,27 +62,6 @@ class Checkpoint(object):
         return self._dir_path
 
     @classmethod
-    def from_latest_training(cls: Type[T], base_dir_path: str) -> T:
-        r'''
-        Retrieve the latest checkpoint from the train directory.
-
-        Args:
-            base_dir_path (string):
-                The path to the directory containing checkpoint files
-        Returns:
-            A new checkpoint object
-        '''
-        if not os.path.isdir(base_dir_path):
-            raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")
-        ckpt_dir_paths = os.listdir(base_dir_path)
-        if not ckpt_dir_paths:
-            raise ValueError("No existing training found")
-        ckpt_dir_paths.sort()
-        ckpt_dir_path = os.path.abspath(os.path.join(base_dir_path, ckpt_dir_paths[-1]))
-        checkpoint = cls.from_latest(dir_path=ckpt_dir_path)
-        return checkpoint
-
-    @classmethod
     def from_latest(cls: Type[T], dir_path: str) -> T:
         r'''
         Retrieve the latest checkpoint from the checkpoint directory.
@@ -106,23 +85,6 @@ class Checkpoint(object):
         checkpoint._count = count
         cls.log.info(f"Checkpoint loaded from {latest_ckpt}")
         return checkpoint
-
-    def purge(self) -> List[str]:
-        r'''
-        Remove all checkpoint files from the checkpoint directory.
-
-        Returns:
-            A list of paths to the removed files
-        '''
-        ckpt_file_paths = self._get_ckpt_file_paths(self._dir_path)
-        removed = []
-        for path in ckpt_file_paths:
-            if os.path.isfile(path):
-                os.remove(path)
-                removed.append(path)
-        self._file_paths = []
-        self._count = 0
-        return removed
 
     def save(self, cdb: CDB, count: int) -> None:
         r'''
@@ -225,7 +187,28 @@ class CheckpointManager(object):
             A checkpoint object
         '''
         base_dir_path = base_dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name)
-        checkpoint = Checkpoint.from_latest_training(base_dir_path=base_dir_path)
+        ckpt_dir_path = self.get_latest_training_dir(base_dir_path=base_dir_path)
+        checkpoint = Checkpoint.from_latest(dir_path=ckpt_dir_path)
         checkpoint.steps = self.checkpoint_config.steps
         checkpoint.max_to_keep = self.checkpoint_config.max_to_keep
         return checkpoint
+
+    @classmethod
+    def get_latest_training_dir(cls, base_dir_path: str) -> str:
+        r'''
+        Retrieve the latest training directory containing all checkpoints.
+
+        Args:
+            base_dir_path (string):
+                The path to the directory containing all checkpointed trainings
+        Returns:
+            The path to the latest training directory containing all checkpoints.
+        '''
+        if not os.path.isdir(base_dir_path):
+            raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")
+        ckpt_dir_paths = os.listdir(base_dir_path)
+        if not ckpt_dir_paths:
+            raise ValueError("No existing training found")
+        ckpt_dir_paths.sort()
+        ckpt_dir_path = os.path.abspath(os.path.join(base_dir_path, ckpt_dir_paths[-1]))
+        return ckpt_dir_path
