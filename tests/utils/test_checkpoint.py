@@ -64,7 +64,7 @@ class CheckpointTest(unittest.TestCase):
             checkpoint.max_to_keep = -1
         self.assertEqual("Argument at position 0 is not a positive integer", str(e2.exception))
 
-    def test_new_checkpoint(self):
+    def test_create_checkpoint(self):
         ckpt_out_dir_path = tempfile.TemporaryDirectory().name
         ckpt_config = {
             'output_dir': ckpt_out_dir_path,
@@ -72,7 +72,7 @@ class CheckpointTest(unittest.TestCase):
             "max_to_keep": 5,
         }
 
-        checkpoint = CheckpointManager("cat_train", CheckpointConfig(**ckpt_config)).new_checkpoint()
+        checkpoint = CheckpointManager("cat_train", CheckpointConfig(**ckpt_config)).create_checkpoint()
 
         self.assertTrue("cat_train" in checkpoint.dir_path)
         self.assertEqual(1000, checkpoint.steps)
