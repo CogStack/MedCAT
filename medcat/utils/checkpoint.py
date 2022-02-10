@@ -14,7 +14,7 @@ class Checkpoint(object):
 
     Args:
         dir_path (str):
-            The path to the checkpoint directory
+            The path to the parent directory of checkpoint files
         steps (int):
             The number of processed sentences/documents before a checkpoint is saved
             (N.B.: A small number could result in error "no space left on device")
@@ -64,7 +64,7 @@ class Checkpoint(object):
     @classmethod
     def from_latest(cls: Type[T], dir_path: str) -> T:
         r'''
-        Retrieve the latest checkpoint from the checkpoint directory.
+        Retrieve the latest checkpoint from the parent directory.
 
         Args:
             dir_path (string):
@@ -159,9 +159,9 @@ class CheckpointManager(object):
         self.name = name
         self.checkpoint_config = checkpoint_config
 
-    def new_checkpoint(self, dir_path: Optional[str] = None) -> "Checkpoint":
+    def create_checkpoint(self, dir_path: Optional[str] = None) -> "Checkpoint":
         r'''
-        Create a new checkpoint from the checkpoint base directory.
+        Create a new checkpoint inside the checkpoint base directory.
 
         Args:
             dir_path (str):
