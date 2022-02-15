@@ -5,7 +5,7 @@ import json
 import logging
 import aiofiles
 import numpy as np
-from typing import Dict, Set, Optional, List, Union, cast, no_type_check
+from typing import Dict, Set, Optional, List, Union, cast
 from functools import partial
 
 from medcat.utils.hasher import Hasher
@@ -416,56 +416,6 @@ class CDB(object):
                     cdb.__dict__[k] = data['cdb'][k]
 
         return cdb
-
-    @no_type_check
-    def import_old_cdb_vectors(self, cdb: "CDB") -> None:
-        # Import context vectors
-        for cui in self.cui2names: # Loop through all CUIs in the current CDB
-            if cui in cdb.cui2context_vec:
-                self.cui2context_vectors[cui] = {'medium': cdb.cui2context_vec[cui],
-                                                 'long': cdb.cui2context_vec[cui],
-                                                 'xlong': cdb.cui2context_vec[cui]}
-
-                if cui in cdb.cui2context_vec_short:
-                    self.cui2context_vectors[cui]['short'] = cdb.cui2context_vec_short[cui]
-
-                self.cui2count_train[cui] = cdb.cui_count[cui]
-
-    @no_type_check
-    def import_old_cdb(self, cdb: "CDB", import_vectors: bool = True) -> None:
-        r''' Import all data except for cuis and names from an old CDB.
-        '''
-
-        # Import vectors
-        if import_vectors:
-            self.import_old_cdb_vectors(cdb)
-
-        # Import TUIs
-        for cui in cdb.cui2names:
-            self.cui2type_ids[cui] = {cdb.cui2tui.get(cui, 'unk')}
-
-        # Import TUI to CUIs
-        self.addl_info['type_id2cuis'] = cdb.tui2cuis
-
-        # Import type_id to name
-        self.addl_info['type_id2name'] = cdb.tui2name
-
-        # Import description
-        self.addl_info['cui2description'] = cdb.cui2desc
-
-        # Import ICD10 and SNOMED
-        self.addl_info['cui2snomed'] = {}
-        for cui in self.cui2names:
-            if cui in cdb.cui2info and 'icd10' in cdb.cui2info[cui]:
-                self.addl_info['cui2icd10'][cui] = cdb.cui2info[cui]['icd10']
-            if cui in cdb.cui2info and 'snomed' in cdb.cui2info[cui]:
-                self.addl_info['cui2snomed'][cui] = cdb.cui2info[cui]['snomed']
-            if cui in cdb.cui2info and 'opcs4' in cdb.cui2info[cui]:
-                self.addl_info['cui2opcs4'][cui] = cdb.cui2info[cui]['opcs4']
-
-
-        # Import cui 2 ontologies
-        self.addl_info['cui2ontologies'] = cdb.cui2ontos
 
     def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
         r''' This will import vector embeddings from another CDB. No new concepts will be added.
