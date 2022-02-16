@@ -155,9 +155,8 @@ class NeoConnector:
                     MATCH (c:Concept)<-[r:HAS {metaPresence: 'True', metaSubject: 'Patient'}]-(d:Document)<-[q:HAS]-(pt:Patient)
                     WHERE c.conceptId in lineage AND exists(r.timestamp)
                     '''
-                    
 
         q += ' RETURN pt.patientId, pt.sex, c.conceptId, c.name, r.timestamp LIMIT {}'.format(limit)
         data = self.execute(q).data() # Do not like this too much 
 
-        return [n['pt']['patientId'] for n in data], qa
+        return [n['pt']['patientId'] for n in data], q
