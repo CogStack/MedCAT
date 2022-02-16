@@ -142,16 +142,14 @@ class NeoConnector:
 
         q = "WITH [{}] AS ancestor ".format(",".join(["'{}'".format(c) for c in concepts]))
         if not require_time:
-            q += '''WITH ['92814006'] AS ancestor
-                    MATCH (n:Concept)-[:IS_A*0..5]->(m:Concept)
+            q += '''MATCH (n:Concept)-[:IS_A*0..5]->(m:Concept)
                     WHERE m.conceptId IN ancestor ## get the ancestor and the children
                     WITH [n.conceptId] AS lineage ## pass the lineage to patient match
                     MATCH (c:Concept)<-[r:HAS {metaPresence: 'True', metaSubject: 'Patient'}]-(d:Document)<-[q:HAS]-(pt:Patient)
                     WHERE c.conceptId in lineage    
                     '''
         else:
-            q += '''WITH ['92814006'] AS ancestor
-                    MATCH (n:Concept)-[:IS_A*0..5]->(m:Concept)
+            q += '''MATCH (n:Concept)-[:IS_A*0..5]->(m:Concept)
                     WHERE m.conceptId IN ancestor ## get the ancestor and the children
                     WITH [n.conceptId] AS lineage ## pass the lineage to patient match
                     MATCH (c:Concept)<-[r:HAS {metaPresence: 'True', metaSubject: 'Patient'}]-(d:Document)<-[q:HAS]-(pt:Patient)
