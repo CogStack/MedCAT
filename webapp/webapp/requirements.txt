@@ -1,4 +1,4 @@
-Django==3.2.11
+Django==3.2.12
 medcat==1.1.1
 urllib3==1.26.5
 https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
