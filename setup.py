@@ -36,6 +36,10 @@ setuptools.setup(
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==2.0.2',
+        'Sphinx~=4.0',
+        'sphinx-rtd-theme~=1.0',
+        'myst-parser~=0.17',
+        'sphinx-autoapi~=1.8',
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
