@@ -26,7 +26,7 @@ setuptools.setup(
         'torch<1.10,>=1.0',
         'tqdm>=4.27',
         'sklearn~=0.0',
-        'elasticsearch>=7.10',
+        'elasticsearch>=7.10,<8.0.0',
         'dill~=0.3.4',
         'datasets~=1.14.0',
         'jsonpickle~=2.0.0',
