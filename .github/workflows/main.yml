@@ -27,7 +27,7 @@ jobs:
           pip install -r requirements-dev.txt
       - name: Check types
         run: |
-          python -m mypy --follow-imports=skip medcat
+          python -m mypy --follow-imports=normal medcat
       - name: Lint
         run: |
           flake8 medcat

@@ -273,6 +273,7 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         p = id2category_value[p]
         c = data[i][1]
         tkns = data[i][0]
+        assert tokenizer.hf_tokenizers is not None
         text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<"+ tokenizer.hf_tokenizers.decode(tkns[c:c+1]).strip() + ">> " + \
             tokenizer.hf_tokenizers.decode(tkns[c+1:])
         info = "Predicted: {}, True: {}".format(p, y)

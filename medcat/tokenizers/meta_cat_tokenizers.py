@@ -1,14 +1,22 @@
 import os
 from abc import ABC, abstractmethod
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, overload
 from tokenizers import Tokenizer, ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 
 class TokenizerWrapperBase(ABC):
 
+    name: str
+
     def __init__(self, hf_tokenizer: Optional[Tokenizer] = None) -> None:
         self.hf_tokenizers = hf_tokenizer
+
+    @overload
+    def __call__(self, text: str) -> Dict: ...
+
+    @overload
+    def __call__(self, text: List[str]) -> List[Dict]: ...
 
     @abstractmethod
     def __call__(self, text: Union[str, List[str]]) -> Union[Dict, List[Dict]]: ...
@@ -51,6 +59,12 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         if self.hf_tokenizers is not None:
             # For whatever reason added tokens do not persist with this tokenizer, what to do
             self.hf_tokenizers.add_tokens(['<PAD>'])
+
+    @overload
+    def __call__(self, text: str) -> Dict: ...
+
+    @overload
+    def __call__(self, text: List[str]) -> List[Dict]: ...
 
     def __call__(self, text: Union[str, List[str]]) -> Union[Dict, List[Dict]]:
         r''' Tokenize some text
@@ -134,6 +148,12 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
 
     def __init__(self, hf_tokenizers: Optional[BertTokenizerFast] = None) -> None:
         super().__init__(hf_tokenizers)
+
+    @overload
+    def __call__(self, text: str) -> Dict: ...
+
+    @overload
+    def __call__(self, text: List[str]) -> List[Dict]: ...
 
     def __call__(self, text: Union[str, List[str]]) -> Union[Dict, List[Dict]]:
         self.hf_tokenizers = self.ensure_tokenizer()
