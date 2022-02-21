@@ -12,7 +12,7 @@ from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
-from typing import Union, List, Tuple, Optional, Dict, Iterable, Set, cast
+from typing import Union, List, Tuple, Optional, Dict, Iterable, Set
 from itertools import islice, chain, repeat
 from datetime import date
 from tqdm.autonotebook import tqdm, trange
@@ -309,7 +309,6 @@ class CAT(object):
             return None
         else:
             text = self._get_trimmed_text(str(text))
-            text = cast(str, text)
             return self.pipe(text)
 
     def _print_stats(self,

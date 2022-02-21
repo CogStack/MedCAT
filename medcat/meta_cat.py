@@ -55,7 +55,7 @@ class MetaCAT(PipeRunner):
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
         self.model = self.get_model(embeddings=self.embeddings)
 
-    def get_model(self, embeddings: Optional[Union[Tensor, numpy.ndarray]]) -> nn.Module:
+    def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -92,7 +92,7 @@ class MetaCAT(PipeRunner):
 
         # Load the medcattrainer export
         with open(json_path, 'r') as f:
-            data = json.load(f)
+            data_loaded: Dict = json.load(f)
 
         # Create directories if they don't exist
         if t_config['auto_save_model']:
@@ -102,7 +102,8 @@ class MetaCAT(PipeRunner):
                 os.makedirs(save_dir_path, exist_ok=True)
 
         # Prepare the data
-        data = prepare_from_json(data, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
+        assert self.tokenizer is not None
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
                 lowercase=g_config['lowercase'])
 
@@ -153,10 +154,11 @@ class MetaCAT(PipeRunner):
         t_config = self.config.train
 
         with open(json_path, 'r') as f:
-            data = json.load(f)
+            data_loaded: Dict = json.load(f)
 
         # Prepare the data
-        data = prepare_from_json(data, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
+        assert self.tokenizer is not None
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
                 lowercase=g_config['lowercase'])
 
@@ -172,6 +174,7 @@ class MetaCAT(PipeRunner):
         data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
 
         # Run evaluation
+        assert self.tokenizer is not None
         result = eval_model(self.model, data, config=self.config, tokenizer=self.tokenizer)
 
         return result
@@ -187,6 +190,7 @@ class MetaCAT(PipeRunner):
         os.makedirs(save_dir_path, exist_ok=True)
 
         # Save tokenizer
+        assert self.tokenizer is not None
         self.tokenizer.save(save_dir_path)
 
         # Save config
@@ -222,6 +226,7 @@ class MetaCAT(PipeRunner):
         if config_dict is not None:
             config.merge_config(config_dict)
 
+        tokenizer: Optional[TokenizerWrapperBase] = None
         # Load tokenizer (TODO: This should be converted into a factory or something)
         if config.general['tokenizer_name'] == 'bbpe':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBPE
@@ -294,6 +299,7 @@ class MetaCAT(PipeRunner):
                         e_ind = _ind + ind
                         break
                 ln = e_ind - s_ind # Length of the concept in tokens
+                assert self.tokenizer is not None
                 tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
 
             samples.append([tkns, cpos])
@@ -352,7 +358,7 @@ class MetaCAT(PipeRunner):
                         all_text = [doc.text.lower() for doc in docs]
                     else:
                         all_text = [doc.text for doc in docs]
-
+                    assert self.tokenizer is not None
                     all_text_processed = self.tokenizer(all_text)
                     doc_ind2positions = {}
                     data: List = [] # The thing that goes into the model
