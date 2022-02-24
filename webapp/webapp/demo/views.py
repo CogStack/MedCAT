@@ -17,7 +17,7 @@ from .forms import DownloaderForm
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
-AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
+AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth-callback'
 VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 VALIDATION_LOGIN_URL = f'https://uts.nlm.nih.gov/uts/login?service={AUTH_CALLBACK_SERVICE}'
 
