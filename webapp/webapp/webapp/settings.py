@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'dbbackup',
+    'django_cron',
     'demo',
 ]
 
@@ -81,6 +83,26 @@ DATABASES = {
     }
 }
 
+DB_BACKUP_ON_S3 = os.environ.get('DB_BACKUP_ON_S3', 'False')
+DB_BACKUP_LOCATION = os.environ.get('DB_BACKUP_LOCATION', 'False')
+
+if DB_BACKUP_ON_S3 == "False":
+    DBBACKUP_STORAGE = 'django.core.files.storage.FileSystemStorage'
+    DBBACKUP_STORAGE_OPTIONS = {'location': f'/tmp/{DB_BACKUP_LOCATION}'}
+else:
+    DBBACKUP_STORAGE = 'storages.backends.s3boto3.S3Boto3Storage'
+    DBBACKUP_STORAGE_OPTIONS = {
+        'region_name': 'eu-west-2',
+        'access_key': os.environ['ACCESS_KEY'],
+        'secret_key': os.environ['SECRET_KEY'],
+        'bucket_name': os.environ['BUCKET_NAME'],
+        'default_acl': 'private',
+        'location': DB_BACKUP_LOCATION,
+    }
+
+CRON_CLASSES = [
+    "demo.db_backup.DbBackup",
+]
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators

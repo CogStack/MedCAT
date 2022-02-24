@@ -25,3 +25,9 @@ CDB_URL=https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat
 MKL_NUM_THREAD=1
 NUMEXPR_NUM_THREADS=1
 OMP_NUM_THREADS=1
+
+DB_BACKUP_LOCATION=demo-db-backup/
+DB_BACKUP_ON_S3=False
+ACCESS_KEY=
+SECRET_KEY=
+BUCKET_NAME=
