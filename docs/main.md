@@ -1,23 +1,20 @@
-# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
+# Medical  <img src="_static/cat-logo.svg" width=20>oncept Annotation Tool
 
 [![Build Status](https://github.com/CogStack/MedCAT/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
-[![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT)](https://github.com/CogStack/MedCAT/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
-MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165). 
-
-Official Docs [here](https://medcat.readthedocs.io/en/latest/)
+MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
 
 ## News
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
-- **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT. 
+- **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT.
 - **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs (compatble with MedCAT v1) will work without any changes.
 - **New Feature and Tutorial \[8. July 2021\]**: [Integrating 🤗 Transformers with MedCAT for biomedical NER+L](https://towardsdatascience.com/integrating-transformers-with-medcat-for-biomedical-ner-l-8869c76762a)
-- **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4), 
-as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy 
-branch and will still be supported until 1. July 2021 
-(with respect to potential bug fixes), after it will still be available but not updated anymore.
+- **General \[1. April 2021\]**: MedCAT is upgraded to v1, unforunately this introduces breaking changes with older models (MedCAT v0.4),
+  as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy
+  branch and will still be supported until 1. July 2021
+  (with respect to potential bug fixes), after it will still be available but not updated anymore.
 - **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
 - ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md))
 
@@ -34,7 +31,7 @@ A guide on how to use MedCAT is available at [MedCAT Tutorials](https://github.c
 
 ## Install using PIP (Requires Python 3.7+)
 0. Upgrade pip `pip install --upgrade pip`
-1. Install MedCAT 
+1. Install MedCAT
 - For macOS/linux: `pip install --upgrade medcat`
 - For Windows (see [PyTorch documentation](https://pytorch.org/get-started/previous-versions/)): `pip install --upgrade medcat -f https://download.pytorch.org/whl/torch_stable.html`
 
@@ -59,7 +56,7 @@ cat.create_model_pack(<save path>)
 
 
 3. Quick start with separate models:
-New Models (MedCAT v1.2+) need the spacy `en_core_web_md` while older ones use the scispacy models, install the one you need or all if not sure. If using model packs you do not need to download these models: 
+   New Models (MedCAT v1.2+) need the spacy `en_core_web_md` while older ones use the scispacy models, install the one you need or all if not sure. If using model packs you do not need to download these models:
 ```
 python -m spacy download en_core_web_md
 pip install https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz
@@ -111,7 +108,7 @@ python medcat/utils/model_creator.py tests/model_creator/config_example.yml
 
 
 ## Models
-A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`. 
+A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`.
 
 #### ModelPacks
 
@@ -131,7 +128,7 @@ A basic trained model is made public. It contains ~ 35K concepts available in `M
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases.
 
 
 ## Acknowledgements

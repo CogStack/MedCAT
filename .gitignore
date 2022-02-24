@@ -47,3 +47,8 @@ tmp.py
 
 # Test output
 tests/model_creator/output/*
+
+# docs outputs
+docs/auto/
+docs/_build
+
