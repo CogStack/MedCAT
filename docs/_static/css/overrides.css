@@ -1,0 +1,25 @@
+
+.wy-side-nav-search {
+  background: #0072CE; /* NHS Blue */
+}
+
+.wy-side-scroll {
+  background: #E8EDEE; /* NHS Pale Grey */
+}
+
+.wy-menu-vertical a {
+  color: #212B32; /* primary text: NHS Dark Grey */
+}
+
+.wy-menu-vertical a:hover {
+  color: white;
+}
+
+.wy-side-nav-search .wy-dropdown>a img.logo, .wy-side-nav-search>a img.logo {
+  max-width: 50px;
+}
+
+.wy-side-nav-search>a::before {
+  content:url('_static/cat-logo.svg');
+  width: 20;
+}
