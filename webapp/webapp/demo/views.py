@@ -1,8 +1,10 @@
 import sys
-sys.path.insert(0, "/home/ubuntu/projects/MedCAT/")
+sys.path.insert(0, '/home/ubuntu/projects/MedCAT/')
 import os
 import json
 from django.shortcuts import render
+from django.http import StreamingHttpResponse, HttpResponse
+from wsgiref.util import FileWrapper
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.utils.helpers import doc2html
@@ -15,8 +17,9 @@ from .forms import DownloaderForm
 
 vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
 cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
-auth_callback_service = 'https://medcat.rosalind.kcl.ac.uk/auth_callback'
-validation_base_url = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
+AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth-callback'
+VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
+VALIDATION_LOGIN_URL = f'https://uts.nlm.nih.gov/uts/login?service={AUTH_CALLBACK_SERVICE}'
 
 # TODO
 #neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
@@ -105,17 +108,17 @@ def train_annotations(request):
 
 def validate_umls_user(request):
     ticket = request.GET.get('ticket', '')
-    validate_url = f'{validation_base_url}?service={auth_callback_service}&ticket={ticket}'
+    validate_url = f'{VALIDATION_BASE_URL}?service={AUTH_CALLBACK_SERVICE}&ticket={ticket}'
     try:
         is_valid = urlopen(validate_url, timeout=10).read().decode('utf-8')
         context = {
             'is_valid': is_valid == 'true'
         }
         if is_valid == 'true':
-            context["message"] = "License verified! Please fill in the following form before downloading model packs."
-            context["downloader_form"] = DownloaderForm()
+            context['message'] = 'License verified! Please fill in the following form before downloading models.'
+            context['downloader_form'] = DownloaderForm(MedcatModel.objects.all())
         else:
-            context["message"] = "License not found. Please request or renew your UMLS Metathesaurus License."
+            context['message'] = 'License not found. Please request or renew your UMLS Metathesaurus License.'
     except HTTPError:
         context = {
             'is_valid': False,
@@ -125,14 +128,28 @@ def validate_umls_user(request):
         return render(request, 'umls_user_validation.html', context=context)
 
 
-def download(request):
-    if request.method == "POST":
-        downloader_form = DownloaderForm(request.POST)
+def download_model(request):
+    if request.method == 'POST':
+        downloader_form = DownloaderForm(MedcatModel.objects.all(), request.POST)
         if downloader_form.is_valid():
             downloader_form.save()
-            message = "Download url will be displayed..."
+            mp_name = downloader_form.cleaned_data['modelpack']
+            model = MedcatModel.objects.get(model_name=mp_name)
+            if model is not None:
+                mp_path = model.model_file.path
+            else:
+                return HttpResponse(f'Error: Unknown model "{downloader_form.modelpack}"')
+            resp = StreamingHttpResponse(FileWrapper(open(mp_path, 'rb')))
+            resp['Content-Type'] = 'application/zip'
+            resp['Content-Length'] = os.path.getsize(mp_path)
+            resp['Content-Disposition'] = f'attachment; filename={os.path.basename(mp_path)}'
+            return resp
         else:
-            message = "Erorr: All non-optional fields must be filled out."
+            context = {
+                'is_valid': True,
+                'downloader_form': downloader_form,
+                'message': 'All non-optional fields must be filled out:'
+            }
+            return render(request, 'umls_user_validation.html', context=context)
     else:
-        message = "Erorr: Unknown HTTP method."
-    return render(request, 'download.html', context={"message": message})
+        return HttpResponse('Erorr: Unknown HTTP method.')
