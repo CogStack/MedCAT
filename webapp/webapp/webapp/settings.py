@@ -96,7 +96,7 @@ else:
         'access_key': os.environ['ACCESS_KEY'],
         'secret_key': os.environ['SECRET_KEY'],
         'bucket_name': os.environ['BUCKET_NAME'],
-        'default_acl': 'private',
+        'default_acl': 'bucket-owner-full-control',
         'location': DB_BACKUP_LOCATION,
     }
 
