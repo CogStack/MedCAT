@@ -284,8 +284,9 @@ class CATTests(unittest.TestCase):
                                            (1, "The dog is sitting outside the house 1."),
                                            (2, "The dog is sitting outside the house 2."),
                                            (3, "The dog is sitting outside the house 3."),
-                                           (4, None)], n_process=2, batch_size=2)
-        self.assertEqual(4, len(out))
+                                           (4, None),
+                                           (5, None)], n_process=2, batch_size=2)
+        self.assertEqual(5, len(out))
         self.assertEqual({}, out[0]["entities"])
         self.assertEqual([], out[0]["tokens"])
         self.assertTrue("The dog is sitting outside the house 1.", out[0]["text"])
@@ -298,6 +299,9 @@ class CATTests(unittest.TestCase):
         self.assertEqual({}, out[3]["entities"])
         self.assertEqual([], out[3]["tokens"])
         self.assertFalse("text" in out[3])
+        self.assertEqual({}, out[4]["entities"])
+        self.assertEqual([], out[4]["tokens"])
+        self.assertFalse("text" in out[4])
 
     def test_create_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
