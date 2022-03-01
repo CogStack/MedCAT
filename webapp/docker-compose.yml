@@ -5,15 +5,18 @@ services:
     build:
         network: host
         context: ./webapp
-    command: python /webapp/manage.py runserver 0.0.0.0:8000
-    restart: 'always'
+    command: >
+      bash -c "/etc/init.d/cron start &&
+               python /webapp/manage.py runserver 0.0.0.0:8000"
     volumes:
-            - ./webapp/db:/webapp/db
-            - medcat_data:/medcat_data
+      - ./webapp:/webapp
+      - medcat_data:/medcat_data
+      - ./envs/env_backup:/etc/environment
     ports:
-      - "8001:8000"
+      - "80:8000"
     env_file:
-            - ./envs/env_medmen
+      - ./envs/env_medmen
+      - ./envs/env_backup
     tty: true
 
 volumes:
