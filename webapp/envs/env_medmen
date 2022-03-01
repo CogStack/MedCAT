@@ -4,30 +4,26 @@ UPDATE_COO=False
 NESTED_ENTITIES=False
 
 CNTX_SPAN=9
-CNTX_SPAN_SHORT=2
-MIN_CUI_COUNT=200
-MIN_CUI_COUNT_STRICT=2
-MIN_ACC=0.05
+CNTX_SPAN_SHORT=3
+MIN_CUI_COUNT=30000
+MIN_CUI_COUNT_STRICT=-1
+MIN_ACC=0.2
+MIN_ACC_TH=0.2
 MIN_CONCEPT_LENGTH=1
 NEG_PROB=0.5
-LBL_STYLE=long
+LBL_STYLE=LONG
+WEIGHTED_AVG=True
+SKIP_STOPWORDS=False
+MAX_SKIP_TKN=2
 
-LR=1
-ANNEAL=True
+LR=0.1
+NNEAL=False
 KEEP_PUNCT=:|.
 
 SPACY_MODEL=en_core_sci_md
 VOCAB_PATH=/webapp/models/vocab.dat
-CDB_PATH=/webapp/models/cdb.dat
-VOCAB_URL=https://medcat.rosalind.kcl.ac.uk/media/vocab.dat
-CDB_URL=https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1.dat
+CDB_PATH=/webapp/models/snomed_mm_final.dat
 
 MKL_NUM_THREAD=1
 NUMEXPR_NUM_THREADS=1
 OMP_NUM_THREADS=1
-
-DB_BACKUP_LOCATION=demo-db-backup/
-DB_BACKUP_ON_S3=False
-ACCESS_KEY=
-SECRET_KEY=
-BUCKET_NAME=
