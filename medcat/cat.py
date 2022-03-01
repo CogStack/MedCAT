@@ -966,7 +966,7 @@ class CAT(object):
                     for i, text in enumerate(texts_):
                         if i == len(out):
                             out.append(self._doc_to_out(None, only_cui, addl_info))
-                        elif out[i].get('text') != text:
+                        elif out[i].get('text', '') != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))
 
                 cnf_annotation_output = getattr(self.config, 'annotation_output', {})
