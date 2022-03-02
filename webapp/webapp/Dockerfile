@@ -30,7 +30,7 @@ RUN python manage.py makemigrations && \
     python manage.py migrate demo
 
 # Create the db backup cron job
-RUN apt-get update && apt-get install -y cron
+RUN apt-get update && apt-get install -y cron sqlite3 libsqlite3-dev
 COPY etc/cron.d/db-backup-cron /etc/cron.d/db-backup-cron
 RUN chmod 0644 /etc/cron.d/db-backup-cron
 RUN crontab /etc/cron.d/db-backup-cron
