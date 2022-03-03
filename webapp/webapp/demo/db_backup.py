@@ -17,4 +17,4 @@ class DbBackup(CronJobBase):
         os.makedirs(backup_location, exist_ok=True)
 
     def do(self):
-        management.call_command("dbbackup", "--noinput")
+        management.call_command("dbbackup", "--noinput", "-z")

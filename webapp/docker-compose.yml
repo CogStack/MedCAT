@@ -12,13 +12,13 @@ services:
       - ./webapp/data:/webapp/data
       - ./webapp/db:/webapp/db
       - ./webapp/models:/webapp/models
-      - ./envs/env_backup:/etc/environment
+      - ./envs/env_db_backup:/etc/environment
       - medcat_data:/medcat_data
     ports:
       - "80:8000"
     env_file:
       - ./envs/env_medmen
-      - ./envs/env_backup
+      - ./envs/env_db_backup
     tty: true
 
 volumes:

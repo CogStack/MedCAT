@@ -21,8 +21,8 @@ NNEAL=False
 KEEP_PUNCT=:|.
 
 SPACY_MODEL=en_core_sci_md
-VOCAB_PATH=/webapp/models/vocab.dat
-CDB_PATH=/webapp/models/snomed_mm_final.dat
+VOCAB_PATH=/webapp/data/vocab.dat
+CDB_PATH=/webapp/data/cdb-medmen-v1.dat
 
 MKL_NUM_THREAD=1
 NUMEXPR_NUM_THREADS=1
