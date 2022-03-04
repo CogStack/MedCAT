@@ -17,7 +17,7 @@ SKIP_STOPWORDS=False
 MAX_SKIP_TKN=2
 
 LR=0.1
-NNEAL=False
+ANNEAL=False
 KEEP_PUNCT=:|.
 
 SPACY_MODEL=en_core_sci_md
