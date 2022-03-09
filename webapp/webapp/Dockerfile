@@ -27,4 +27,11 @@ RUN python -m spacy download en_core_web_md
 RUN python manage.py makemigrations && \
     python manage.py makemigrations demo && \
     python manage.py migrate && \
-    python manage.py migrate demo 
+    python manage.py migrate demo && \
+    python manage.py collectstatic --noinput
+
+# Create the db backup cron job
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils cron sqlite3 libsqlite3-dev
+COPY etc/cron.d/db-backup-cron /etc/cron.d/db-backup-cron
+RUN chmod 0644 /etc/cron.d/db-backup-cron
+RUN crontab /etc/cron.d/db-backup-cron

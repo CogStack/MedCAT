@@ -118,7 +118,7 @@ def validate_umls_user(request):
             context['message'] = 'License verified! Please fill in the following form before downloading models.'
             context['downloader_form'] = DownloaderForm(MedcatModel.objects.all())
         else:
-            context['message'] = 'License not found. Please request or renew your UMLS Metathesaurus License.'
+            context['message'] = f'License not found. Please request or renew your UMLS Metathesaurus License. If you think you have got the license, try {VALIDATION_LOGIN_URL} again.'
     except HTTPError:
         context = {
             'is_valid': False,

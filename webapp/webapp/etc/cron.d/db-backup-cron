@@ -1,0 +1,1 @@
+* * * * * /usr/local/bin/python /webapp/manage.py runcrons >/dev/null 2>&1
