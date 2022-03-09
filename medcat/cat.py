@@ -373,7 +373,8 @@ class CAT(object):
 
         fp_docs: Set = set()
         fn_docs: Set = set()
-        # Reset and shortcut for filters
+        # reset and back up filters
+        _filters = deepcopy(self.config.linking['filters'])
         filters = self.config.linking['filters']
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             filters['cuis'] = set()
@@ -532,6 +533,9 @@ class CAT(object):
 
         except Exception:
             traceback.print_exc()
+
+        # restore filters to original state
+        self.config.linking['filters'] = _filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
