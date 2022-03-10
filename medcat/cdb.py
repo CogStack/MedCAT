@@ -666,10 +666,15 @@ class CDB(object):
     @staticmethod
     def _check_medcat_version(config_data: Dict, log: logging.Logger) -> None:
         cdb_medcat_version = config_data.get('version', {}).get('medcat_version', 'unknown')
-        if __version__.split(".")[:2] != cdb_medcat_version.split(".")[:2]:
+        if __version__.split(".")[:1] != cdb_medcat_version.split(".")[:1]:
             log.warning(
                 f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
-which would still be fine. If you experience any compatibility issues, please reinstall MedCAT
+Please reinstall MedCAT or download the compatible model."""
+            )
+        elif __version__.split(".")[:2] != cdb_medcat_version.split(".")[:2]:
+            log.warning(
+                f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
+which may or may not work. If you experience any compatibility issues, please reinstall MedCAT
 or download the compatible model."""
             )
 
