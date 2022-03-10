@@ -157,7 +157,7 @@ class CAT(object):
                 'Basic CDB Stats': self.config.version['cdb_info'],
                 'Performance': self.config.version['performance'],
                 'Important Parameters (Partial view, all available in cat.config)': get_important_config_parameters(self.config),
-                'MedCAT version': self.config.version['medcat_version']
+                'MedCAT Version': self.config.version['medcat_version']
                 }
 
         if as_dict:

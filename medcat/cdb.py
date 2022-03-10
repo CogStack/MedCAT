@@ -668,9 +668,9 @@ class CDB(object):
         cdb_medcat_version = config_data.get('version', {}).get('medcat_version', 'unknown')
         if __version__.split(".")[:2] != cdb_medcat_version.split(".")[:2]:
             log.warning(
-                f"""You have got MedCAT version '{__version__}' installed while the model was exported by MedCAT version
-'{cdb_medcat_version}', which would still be fine. If you experience any compatibility issues, please reinstall
-MedCAT or download the compatible model."""
+                f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
+which would still be fine. If you experience any compatibility issues, please reinstall MedCAT
+or download the compatible model."""
             )
 
     def get_hash(self):
