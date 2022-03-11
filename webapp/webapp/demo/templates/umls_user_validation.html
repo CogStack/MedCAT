@@ -12,20 +12,43 @@
 
 <div class="container-fluid">
 	<h5> {{ message }} </h5>
+	<ul id="errors">
+	  {% if downloader_form.non_field_errors %}
+		<li>{{ downloader_form.non_field_errors }}</li>
+	  {% endif %}
+	  {% for field in downloader_form %}
+		{% if field.errors %}
+		  <li>
+			{{ field.label }}
+			<ul>
+			  {% for error in field.errors %}
+				<li>{{ error }}</li>
+			  {% endfor %}
+			</ul>
+		  </li>
+		{% endif %}
+	  {% endfor %}
+	</ul>
 {% if is_valid %}
 	<h6> For any update on your previous information, contact <a href="mailto:contact@cogstack.org">contact@cogstack.org</a>. </h6>
-	<form action="{% url 'download' %}" method="post">
+	<form action="{% url 'download-model' %}" method="post">
 		{% csrf_token %}
 		{% for field in downloader_form.visible_fields %}
-			{% if field.name != 'consent' %}
+			{% if field.name != 'consent' and field.name != 'modelpack' %}
 				<div class="form-group">
 					<label for="id_{{ field.name }}">{{ field.label }}:</label><br>
 					{{ field }}
 				</div>
 			{% endif %}
 		{% endfor %}
+		<div class="form-group">
+			{{ downloader_form.modelpack.label }}:<br>
+            {% for radio in downloader_form.modelpack %}
+				{{ radio }}<br>
+			{% endfor %}
+	</div>
 		{{ downloader_form.consent }} {{ downloader_form.consent.label }} <br><br>
-		<input type="submit" value="Download model packs">
+		<input type="submit" value="Submit" class="btn btn-primary" onClick="document.querySelector('#errors').remove(); this.form.submit(); this.disabled=true; this.value='Downloading'; ">
 	</form>
 {% endif %}
 </div>
