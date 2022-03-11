@@ -92,6 +92,7 @@ class CAT(object):
             self.config = cdb.config
         else:
             # Take the new config and assign it to the CDB also
+
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
@@ -156,6 +157,7 @@ class CAT(object):
                 'Basic CDB Stats': self.config.version['cdb_info'],
                 'Performance': self.config.version['performance'],
                 'Important Parameters (Partial view, all available in cat.config)': get_important_config_parameters(self.config),
+                'MedCAT Version': self.config.version['medcat_version']
                 }
 
         if as_dict:
@@ -258,9 +260,9 @@ class CAT(object):
 
         model_pack_path = os.path.join(base_dir, foldername)
         if os.path.exists(model_pack_path):
-            print("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
+            cls.log.info("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
         else:
-            print("Unziping the model pack and loading models.")
+            cls.log.info("Unziping the model pack and loading models.")
             shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
 
         # Load the CDB
@@ -282,7 +284,7 @@ class CAT(object):
                                           config_dict=meta_cat_config_dict))
 
         cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
-        print(cat.get_model_card()) # Print the model card
+        cls.log.info(cat.get_model_card()) # Print the model card
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:

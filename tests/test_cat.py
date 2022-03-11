@@ -312,6 +312,10 @@ class CATTests(unittest.TestCase):
         contents = [f for f in os.listdir(os.path.join(save_dir_path.name, full_model_pack_name))]
         self.assertTrue("cdb.dat" in contents)
         self.assertTrue("vocab.dat" in contents)
+        self.assertTrue("model_card.json" in contents)
+        with open(os.path.join(save_dir_path.name, full_model_pack_name, "model_card.json")) as file:
+            model_card = json.load(file)
+        self.assertTrue("MedCAT Version" in model_card)
 
     def test_load_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
