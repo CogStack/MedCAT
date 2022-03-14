@@ -394,20 +394,21 @@ class CDB(object):
             await f.write(dill.dumps(to_save))
 
     @classmethod
-    def load(cls, path: str, config: Optional[Config] = None) -> "CDB":
+    def load(cls, path: str, config_dict: Optional[Dict] = None) -> "CDB":
         r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
             path (`str`):
                 Path to a `cdb.dat` from which to load data.
+            config_dict:
+                A dictionary that will be used to overwrite existing fields in the config of this CDB
         '''
         with open(path, 'rb') as f:
             # Again no idea
             data = dill.load(f)
-            if config is None:
-                cls._check_medcat_version(data['config'], cls.log)
-                config = cast(Config, Config.from_dict(data['config']))
-                cls._ensure_backward_compatibility(config)
+            cls._check_medcat_version(data['config'], cls.log)
+            config = cast(Config, Config.from_dict(data['config']))
+            cls._ensure_backward_compatibility(config)
 
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
@@ -416,6 +417,10 @@ class CDB(object):
             for k in cdb.__dict__:
                 if k in data['cdb']:
                     cdb.__dict__[k] = data['cdb'][k]
+
+            # Overwrite the config with new data
+            if config_dict is not None:
+                cdb.config.merge_config(config_dict)
 
         return cdb
 
