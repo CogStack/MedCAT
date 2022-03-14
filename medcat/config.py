@@ -3,7 +3,6 @@ import logging
 import jsonpickle
 from functools import partial
 from multiprocessing import cpu_count
-from medcat import __version__
 from medcat.utils.hasher import Hasher
 from typing import Optional, Iterable, Tuple, Dict, Any
 
@@ -132,7 +131,7 @@ class Config(ConfigMixin):
             'cdb_info': {}, # Populated automatically, output from cdb.print_stats
             'performance': {'ner': {}, 'meta': {}}, # NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}
             'ontology': None, # What was used to build the CDB, e.g. SNOMED_202009
-            'medcat_version': __version__, # Which version of medcat was used to build the CDB
+            'medcat_version': None, # Which version of medcat was used to build the CDB
         }
 
         # CDB Maker
