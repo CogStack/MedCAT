@@ -405,7 +405,7 @@ class CDB(object):
             # Again no idea
             data = dill.load(f)
             if config is None:
-                cls._check_medcat_version(data['config'], cls.log)
+                cls._check_medcat_version(data['config'])
                 config = cast(Config, Config.from_dict(data['config']))
                 cls._ensure_backward_compatibility(config)
 
@@ -663,16 +663,18 @@ class CDB(object):
         if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
             config.general['spacy_disabled_components'].append('lemmatizer')
 
-    @staticmethod
-    def _check_medcat_version(config_data: Dict, log: logging.Logger) -> None:
-        cdb_medcat_version = config_data.get('version', {}).get('medcat_version', 'unknown')
-        if __version__.split(".")[:1] != cdb_medcat_version.split(".")[:1]:
-            log.warning(
-                f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
+    @classmethod
+    def _check_medcat_version(cls, config_data: Dict) -> None:
+        cdb_medcat_version = config_data.get('version', {}).get('medcat_version', None)
+        if cdb_medcat_version is None:
+            cls.log.warning('The CDB was exported by an unknown version of MedCAT.')
+        elif __version__.split(".")[:1] != cdb_medcat_version.split(".")[:1]:
+            cls.log.warning(
+                f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}'.
 Please reinstall MedCAT or download the compatible model."""
             )
         elif __version__.split(".")[:2] != cdb_medcat_version.split(".")[:2]:
-            log.warning(
+            cls.log.warning(
                 f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
 which may or may not work. If you experience any compatibility issues, please reinstall MedCAT
 or download the compatible model."""

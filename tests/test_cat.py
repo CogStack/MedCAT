@@ -322,6 +322,7 @@ class CATTests(unittest.TestCase):
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
+        self.assertIsNotNone(cat.config.version['medcat_version'])
 
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()
