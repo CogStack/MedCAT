@@ -131,7 +131,7 @@ A basic trained model is made public. It contains ~ 35K concepts available in `M
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases. 
+If you have access to UMLS or SNOMED-CT, you can download the pre-built CDB and Vocab for those databases by signing in and filling out [the online form](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback).
 
 
 ## Acknowledgements
