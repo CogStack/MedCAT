@@ -603,9 +603,6 @@ class CAT(object):
             if latest_trained_step % checkpoint.steps == 0:
                 checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
-        if latest_trained_step % checkpoint.steps != 0:
-            checkpoint.save(cdb=self.cdb, count=latest_trained_step)
-
         self.config.linking['train'] = False
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
