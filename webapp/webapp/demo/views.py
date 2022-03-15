@@ -37,7 +37,7 @@ def get_html_and_json(text):
                 new_ent['Pretty Name'] = ent[key]
             if key == 'icd10':
                 icd10 = ent.get('icd10', [])
-                new_ent['ICD-10 Code'] = icd10[-1]['chapter'] if icd10 else '-'
+                new_ent['ICD-10 Code'] = icd10[-1] if icd10 else '-'
             if key == 'cui':
                 new_ent['Identifier'] = ent[key]
             if key == 'types':
