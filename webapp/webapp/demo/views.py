@@ -15,35 +15,14 @@ from urllib.error import HTTPError
 from .models import *
 from .forms import DownloaderForm
 
-vocab_path = os.getenv('VOCAB_PATH', '/tmp/vocab.dat')
-cdb_path = os.getenv('CDB_PATH', '/tmp/cdb.dat')
 AUTH_CALLBACK_SERVICE = 'https://medcat.rosalind.kcl.ac.uk/auth-callback'
 VALIDATION_BASE_URL = 'https://uts-ws.nlm.nih.gov/rest/isValidServiceValidate'
 VALIDATION_LOGIN_URL = f'https://uts.nlm.nih.gov/uts/login?service={AUTH_CALLBACK_SERVICE}'
 
-# TODO
-#neg_path = os.getenv('NEG_PATH', '/tmp/mc_negated')
+model_pack_path = os.getenv('MODEL_PACK_PATH', 'models/medmen_wstatus_2021_oct.zip')
 
 try:
-    if not os.path.exists(vocab_path):
-        vocab_url = os.getenv('VOCAB_URL')
-        urlretrieve(vocab_url, vocab_path)
-
-    if not os.path.exists(cdb_path):
-        cdb_url = os.getenv('CDB_URL')
-        print("*" * 399)
-        print(cdb_url)
-        urlretrieve(cdb_url, cdb_path)
-
-    vocab = Vocab.load(vocab_path)
-    cdb = CDB.load(cdb_path)
-    #    mc_negated = MetaCAT(save_dir=neg_path)
-    #    mc_negated.load()
-    #    cat = CAT(cdb=cdb, vocab=vocab, meta_cats=[mc_negated])
-    cat = CAT(cdb=cdb, vocab=vocab, config=cdb.config)
-    cat.spacy_cat.MIN_ACC = 0.30
-    cat.spacy_cat.MIN_ACC_TH = 0.30
-    cat.spacy_cat.ACC_ALWAYS = True
+    cat = CAT.load_model_pack(model_pack_path)
 except Exception as e:
     print(str(e))
 
@@ -59,10 +38,6 @@ def get_html_and_json(text):
             if key == 'icd10':
                 icd10 = ent.get('icd10', [])
                 new_ent['ICD-10 Code'] = icd10[-1]['chapter'] if icd10 else '-'
-            new_ent['OPCS Code'] = '-'
-            if key == 'opcs':
-                opcs = ent.get('opcs', [])
-                new_ent['OPCS Code'] = opcs[-1]['chapter'] if opcs else '-'
             if key == 'cui':
                 new_ent['Identifier'] = ent[key]
             if key == 'types':
@@ -84,8 +59,6 @@ def get_html_and_json(text):
         a['annotations'][id] = new_ent
 
     doc_json = json.dumps(a)
-
-
     uploaded_text = UploadedText()
     uploaded_text.text = str(text)
     uploaded_text.save()
@@ -93,7 +66,7 @@ def get_html_and_json(text):
     return doc2html(doc), doc_json
 
 
-def train_annotations(request):
+def show_annotations(request):
     context = {}
     context['doc_json'] = '{"msg": "No documents yet"}'
 
