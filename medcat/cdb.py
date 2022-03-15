@@ -406,10 +406,9 @@ class CDB(object):
         with open(path, 'rb') as f:
             # Again no idea
             data = dill.load(f)
-            if config is None:
-                cls._check_medcat_version(data['config'])
-                config = cast(Config, Config.from_dict(data['config']))
-                cls._ensure_backward_compatibility(config)
+            cls._check_medcat_version(data['config'])
+            config = cast(Config, Config.from_dict(data['config']))
+            cls._ensure_backward_compatibility(config)
 
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
