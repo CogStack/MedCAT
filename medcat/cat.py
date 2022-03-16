@@ -896,7 +896,7 @@ class CAT(object):
                                                        do_add_concept=False)
 
                     latest_trained_step += 1
-                    if checkpoint is not None and checkpoint.steps is not and latest_trained_step % checkpoint.steps == 0:
+                    if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
 
             if terminate_last and not never_terminate:
