@@ -1282,17 +1282,24 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        if self._meta_cats:
-            # Hack for torch using multithreading, which is not good here
-            import torch
-            torch.set_num_threads(1)
-
         in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
-        entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
-                                     n_process=n_process, batch_size=batch_size)
+        start_method = None
+        try:
+            if self._meta_cats:
+                import torch
+                if torch.multiprocessing.get_start_method() != "spawn":
+                    start_method = torch.multiprocessing.get_start_method()
+                    torch.multiprocessing.set_start_method("spawn", force=True)
+
+            entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
+                                                     n_process=n_process, batch_size=batch_size)
+        finally:
+            if start_method is not None:
+                import torch
+                torch.multiprocessing.set_start_method(start_method, force=True)
 
         if return_dict:
             out = {}
