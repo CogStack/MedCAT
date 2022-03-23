@@ -19,6 +19,7 @@ from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
 
+from medcat import __version__
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -180,6 +181,7 @@ class CAT(object):
             version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
             version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            version['medcat_version'] = __version__
             self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
@@ -1271,17 +1273,24 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        if self._meta_cats:
-            # Hack for torch using multithreading, which is not good here
-            import torch
-            torch.set_num_threads(1)
-
         in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
-        entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
-                                     n_process=n_process, batch_size=batch_size)
+        start_method = None
+        try:
+            if self._meta_cats:
+                import torch
+                if torch.multiprocessing.get_start_method() != "spawn":
+                    start_method = torch.multiprocessing.get_start_method()
+                    torch.multiprocessing.set_start_method("spawn", force=True)
+
+            entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
+                                                     n_process=n_process, batch_size=batch_size)
+        finally:
+            if start_method is not None:
+                import torch
+                torch.multiprocessing.set_start_method(start_method, force=True)
 
         if return_dict:
             out = {}

@@ -100,9 +100,9 @@ else:
     }
 
 CRON_CLASSES = [
-    "demo.db_backup.DbBackup",
+    'demo.db_backup.DbBackup',
 ]
-DJANGO_CRON_DELETE_LOGS_OLDER_THAN = os.environ.get('DELETE_LOGS_OLDER_THAN', 7)
+DJANGO_CRON_DELETE_LOGS_OLDER_THAN = int(os.environ.get('DELETE_LOGS_OLDER_THAN', '7'))
 
 # Password validation
 # https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
