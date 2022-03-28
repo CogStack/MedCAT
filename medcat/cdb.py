@@ -5,9 +5,10 @@ import json
 import logging
 import aiofiles
 import numpy as np
-from typing import Dict, Set, Optional, List, Union, cast, no_type_check
+from typing import Dict, Set, Optional, List, Union, cast
 from functools import partial
 
+from medcat import __version__
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
@@ -393,19 +394,21 @@ class CDB(object):
             await f.write(dill.dumps(to_save))
 
     @classmethod
-    def load(cls, path: str, config: Optional[Config] = None) -> "CDB":
+    def load(cls, path: str, config_dict: Optional[Dict] = None) -> "CDB":
         r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
             path (`str`):
                 Path to a `cdb.dat` from which to load data.
+            config_dict:
+                A dictionary that will be used to overwrite existing fields in the config of this CDB
         '''
         with open(path, 'rb') as f:
             # Again no idea
             data = dill.load(f)
-            if config is None:
-                config = cast(Config, Config.from_dict(data['config']))
-                cls._ensure_backward_compatibility(config)
+            cls._check_medcat_version(data['config'])
+            config = cast(Config, Config.from_dict(data['config']))
+            cls._ensure_backward_compatibility(config)
 
             # Create an instance of the CDB (empty)
             cdb = cls(config=config)
@@ -415,57 +418,11 @@ class CDB(object):
                 if k in data['cdb']:
                     cdb.__dict__[k] = data['cdb'][k]
 
+            # Overwrite the config with new data
+            if config_dict is not None:
+                cdb.config.merge_config(config_dict)
+
         return cdb
-
-    @no_type_check
-    def import_old_cdb_vectors(self, cdb: "CDB") -> None:
-        # Import context vectors
-        for cui in self.cui2names: # Loop through all CUIs in the current CDB
-            if cui in cdb.cui2context_vec:
-                self.cui2context_vectors[cui] = {'medium': cdb.cui2context_vec[cui],
-                                                 'long': cdb.cui2context_vec[cui],
-                                                 'xlong': cdb.cui2context_vec[cui]}
-
-                if cui in cdb.cui2context_vec_short:
-                    self.cui2context_vectors[cui]['short'] = cdb.cui2context_vec_short[cui]
-
-                self.cui2count_train[cui] = cdb.cui_count[cui]
-
-    @no_type_check
-    def import_old_cdb(self, cdb: "CDB", import_vectors: bool = True) -> None:
-        r''' Import all data except for cuis and names from an old CDB.
-        '''
-
-        # Import vectors
-        if import_vectors:
-            self.import_old_cdb_vectors(cdb)
-
-        # Import TUIs
-        for cui in cdb.cui2names:
-            self.cui2type_ids[cui] = {cdb.cui2tui.get(cui, 'unk')}
-
-        # Import TUI to CUIs
-        self.addl_info['type_id2cuis'] = cdb.tui2cuis
-
-        # Import type_id to name
-        self.addl_info['type_id2name'] = cdb.tui2name
-
-        # Import description
-        self.addl_info['cui2description'] = cdb.cui2desc
-
-        # Import ICD10 and SNOMED
-        self.addl_info['cui2snomed'] = {}
-        for cui in self.cui2names:
-            if cui in cdb.cui2info and 'icd10' in cdb.cui2info[cui]:
-                self.addl_info['cui2icd10'][cui] = cdb.cui2info[cui]['icd10']
-            if cui in cdb.cui2info and 'snomed' in cdb.cui2info[cui]:
-                self.addl_info['cui2snomed'][cui] = cdb.cui2info[cui]['snomed']
-            if cui in cdb.cui2info and 'opcs4' in cdb.cui2info[cui]:
-                self.addl_info['cui2opcs4'][cui] = cdb.cui2info[cui]['opcs4']
-
-
-        # Import cui 2 ontologies
-        self.addl_info['cui2ontologies'] = cdb.cui2ontos
 
     def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
         r''' This will import vector embeddings from another CDB. No new concepts will be added.
@@ -710,6 +667,23 @@ class CDB(object):
         disabled_comps = config.general.get('spacy_disabled_components', [])
         if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
             config.general['spacy_disabled_components'].append('lemmatizer')
+
+    @classmethod
+    def _check_medcat_version(cls, config_data: Dict) -> None:
+        cdb_medcat_version = config_data.get('version', {}).get('medcat_version', None)
+        if cdb_medcat_version is None:
+            cls.log.warning('The CDB was exported by an unknown version of MedCAT.')
+        elif __version__.split(".")[:1] != cdb_medcat_version.split(".")[:1]:
+            cls.log.warning(
+                f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}'.
+Please reinstall MedCAT or download the compatible model."""
+            )
+        elif __version__.split(".")[:2] != cdb_medcat_version.split(".")[:2]:
+            cls.log.warning(
+                f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
+which may or may not work. If you experience any compatibility issues, please reinstall MedCAT
+or download the compatible model."""
+            )
 
     def get_hash(self):
         hasher = Hasher()

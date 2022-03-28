@@ -1,7 +1,4 @@
 import setuptools
-from setuptools.command.install import install
-from setuptools.command.develop import develop
-from setuptools.command.egg_info import egg_info
 
 with open("./README.md", "r") as fh:
     long_description = fh.read()
@@ -17,8 +14,8 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
-    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets', 'medcat.deprecated',
-              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.relation_extraction'],
+    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo' 'medcat.utils.relation_extraction'],
     install_requires=[
         'numpy<1.22.9,>=1.21.4',
         'pandas<=1.3.4,>=1.1.5',
@@ -29,7 +26,7 @@ setuptools.setup(
         'torch<1.10,>=1.0',
         'tqdm>=4.27',
         'sklearn~=0.0',
-        'elasticsearch>=7.10',
+        'elasticsearch>=7.10,<8.0.0',
         'dill~=0.3.4',
         'datasets~=1.14.0',
         'jsonpickle~=2.0.0',
@@ -39,6 +36,7 @@ setuptools.setup(
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==2.0.2',
+        'blis<=0.7.5',
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

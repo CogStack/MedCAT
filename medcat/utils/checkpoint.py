@@ -1,58 +1,56 @@
 import os
-import shutil
 import logging
-import jsonpickle
-from typing import List, Tuple, Optional, Dict
+import time
+from dataclasses import dataclass
+from typing import List, Tuple, Optional, TypeVar, Type
 from medcat.cdb import CDB
 from medcat.utils.decorators import check_positive
 
+T = TypeVar("T", bound="Checkpoint")
+
 
 class Checkpoint(object):
+    r""" The base class of checkpoint objects
 
-    jsonpickle.set_encoder_options('json', sort_keys=True, indent=2)
+    Args:
+        dir_path (str):
+            The path to the parent directory of checkpoint files
+        steps (int):
+            The number of processed sentences/documents before a checkpoint is saved
+            (N.B.: A small number could result in error "no space left on device")
+        max_to_keep (int):
+            The maximum number of checkpoints to keep
+            (N.B.: A large number could result in error "no space left on device")
+    """
+    DEFAULT_STEP = 1000
+    DEFAULT_MAX_TO_KEEP = 1
     log = logging.getLogger(__package__)
 
     @check_positive
-    def __init__(self, dir_path: str, *, steps: int = 1000, max_to_keep: int = 1, metadata: Optional[Dict] = None) -> None:
-        """ Initialise the checkpoint object
-        Args:
-            dir_path (str):
-                The path to the checkpoint directory.
-            steps (int):
-                The number of processed sentences/documents before a checkpoint is saved.
-                N.B.: A small number could result in error "no space left on device".
-            max_to_keep (int):
-                The maximum number of checkpoints to keep.
-                N.B.: A large number could result in error "no space left on device".
-            metadata (Optional[Dict]):
-                The extra training metadata need to be persisted.
-        """
+    def __init__(self, dir_path: str, *, steps: int = DEFAULT_STEP, max_to_keep: int = DEFAULT_MAX_TO_KEEP) -> None:
         self._dir_path = os.path.abspath(dir_path)
         self._steps = steps
         self._max_to_keep = max_to_keep
         self._file_paths: List[str] = []
         self._count = 0
-        self._metadata = metadata
         os.makedirs(self._dir_path, exist_ok=True)
 
     @property
     def steps(self) -> int:
         return self._steps
 
-    @steps.setter  # type: ignore
-    # [https://github.com/python/mypy/issues/1362]
-    @check_positive
+    @steps.setter
     def steps(self, value: int) -> None:
+        check_positive(lambda _: ...)(value)    # [https://github.com/python/mypy/issues/1362]
         self._steps = value
 
     @property
     def max_to_keep(self) -> int:
         return self._max_to_keep
 
-    @max_to_keep.setter  # type: ignore
-    # [https://github.com/python/mypy/issues/1362]
-    @check_positive
+    @max_to_keep.setter
     def max_to_keep(self, value: int) -> None:
+        check_positive(lambda _: ...)(value)    # [https://github.com/python/mypy/issues/1362]
         self._max_to_keep = value
 
     @property
@@ -60,64 +58,71 @@ class Checkpoint(object):
         return self._count
 
     @property
-    def metadata(self) -> Optional[Dict]:
-        return self._metadata
+    def dir_path(self) -> str:
+        return self._dir_path
 
     @classmethod
-    def restore(cls, dir_path: str) -> "Checkpoint":
+    def from_latest(cls: Type[T], dir_path: str) -> T:
+        r'''
+        Retrieve the latest checkpoint from the parent directory.
+
+        Args:
+            dir_path (string):
+                The path to the directory containing checkpoint files
+        Returns:
+            A new checkpoint object
+        '''
         if not os.path.isdir(dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
         ckpt_file_paths = cls._get_ckpt_file_paths(dir_path)
         if not ckpt_file_paths:
             raise Exception("Checkpoints not found. You need to train from scratch.")
-        metadata = cls._load_metadata(dir_path)
         latest_ckpt = ckpt_file_paths[-1]
         steps, count = cls._get_steps_and_count(latest_ckpt)
-        checkpoint = cls(dir_path, steps=steps, metadata=metadata)
+
+        checkpoint = cls(dir_path, steps=steps)
         checkpoint._file_paths = ckpt_file_paths
         checkpoint._count = count
+        cls.log.info(f"Checkpoint loaded from {latest_ckpt}")
         return checkpoint
 
-    def purge(self) -> None:
-        shutil.rmtree(self._dir_path)
-        os.makedirs(self._dir_path)
-        self._file_paths = []
-        self._count = 0
-
-    def save_metadata(self) -> None:
-        metadata_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-metadata.json")
-        if self._metadata is not None:
-            with open(metadata_file_path, "w") as f:
-                f.write(jsonpickle.encode(self._metadata))
-            self.log.info("Checkpoint metadata saved: %s", metadata_file_path)
-        else:
-            raise Exception("Checkpoints metadata not found.")
-
     def save(self, cdb: CDB, count: int) -> None:
+        r'''
+        Save the CDB as the latest checkpoint.
+
+        Args:
+            cdb (medcat.CDB):
+                The MedCAT CDB object to be checkpointed
+            count (count):
+                The number of the finished steps
+        '''
         ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-%s-%s" % (self.steps, count))
         while len(self._file_paths) >= self._max_to_keep:
             to_remove = self._file_paths.pop(0)
             os.remove(to_remove)
         cdb.save(ckpt_file_path)
-        self.log.info("Checkpoint saved: %s", ckpt_file_path)
+        self.log.debug("Checkpoint saved: %s", ckpt_file_path)
         self._file_paths.append(ckpt_file_path)
         self._count = count
 
-    async def save_async(self, cdb: CDB, count: int) -> None:
-        ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-%s-%s" % (self.steps, count))
-        await cdb.save_async(ckpt_file_path)
-        self.log.info("Checkpoint saved: %s", ckpt_file_path)
-        self._file_paths.append(ckpt_file_path)
-        self._file_paths.sort(key=lambda f: self._get_steps_and_count(f)[1])
-        self._count = count
-        while len(self._file_paths) > self._max_to_keep:
-            to_remove = self._file_paths.pop(0)
-            os.remove(to_remove)
+    def restore_latest_cdb(self) -> CDB:
+        r'''
+        Restore the CDB from the latest checkpoint.
 
-    def populate(self, cdb: CDB) -> None:
-        if not self._file_paths:
-            raise Exception("Checkpoints not found. You need to restore or train from scratch.")
-        cdb.load(self._file_paths[-1])
+        Returns:
+            cdb (medcat.CDB):
+                The MedCAT CDB object
+        '''
+        if not os.path.isdir(self._dir_path):
+            raise Exception("Checkpoints not found. You need to train from scratch.")
+        ckpt_file_paths = self._get_ckpt_file_paths(self._dir_path)
+        if not ckpt_file_paths:
+            raise Exception("Checkpoints not found. You need to train from scratch.")
+        latest_ckpt = ckpt_file_paths[-1]
+        _, count = self._get_steps_and_count(latest_ckpt)
+        self._file_paths = ckpt_file_paths
+        self._count = count
+        return CDB.load(self._file_paths[-1])
 
     @staticmethod
     def _get_ckpt_file_paths(dir_path: str) -> List[str]:
@@ -132,12 +137,78 @@ class Checkpoint(object):
         file_name_parts = os.path.basename(file_path).split('-')
         return int(file_name_parts[1]), int(file_name_parts[2])
 
-    @staticmethod
-    def _load_metadata(dir_path: str) -> Optional[Dict]:
-        ckpt_file_paths = [os.path.abspath(os.path.join(dir_path, f)) for f in os.listdir(dir_path)]
-        metadata_file_paths = [f for f in ckpt_file_paths if os.path.isfile(f) and f.endswith("checkpoint-meta.json")]
-        if metadata_file_paths:
-            with open(metadata_file_paths[0]) as f:
-                return jsonpickle.decode(f.read())
-        else:
-            return None
+
+@dataclass
+class CheckpointConfig(object):
+    output_dir: str = "checkpoints"
+    steps: int = Checkpoint.DEFAULT_STEP
+    max_to_keep: int = Checkpoint.DEFAULT_MAX_TO_KEEP
+
+
+class CheckpointManager(object):
+    r"""
+    The class for managing checkpoints of specific training type and their configuration
+
+    Args:
+        name (str):
+            The name of the checkpoint manager (also used as the checkpoint base directory name).
+        checkpoint_config (medcat.utils.checkpoint.CheckpointConfig):
+            The checkpoint config object.
+    """
+    def __init__(self, name: str, checkpoint_config: CheckpointConfig) -> None:
+        self.name = name
+        self.checkpoint_config = checkpoint_config
+
+    def create_checkpoint(self, dir_path: Optional[str] = None) -> "Checkpoint":
+        r'''
+        Create a new checkpoint inside the checkpoint base directory.
+
+        Args:
+            dir_path (str):
+                The path to the checkpoint directory
+
+        Returns:
+            A checkpoint object
+        '''
+        dir_path = dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name, str(int(time.time())))
+        return Checkpoint(dir_path,
+                          steps=self.checkpoint_config.steps,
+                          max_to_keep=self.checkpoint_config.max_to_keep)
+
+    def get_latest_checkpoint(self, base_dir_path: Optional[str] = None) -> "Checkpoint":
+        r'''
+        Retrieve the latest checkpoint from the checkpoint base directory.
+
+        Args:
+            base_dir_path (string):
+                The path to the directory containing checkpoint files
+
+        Returns:
+            A checkpoint object
+        '''
+        base_dir_path = base_dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name)
+        ckpt_dir_path = self.get_latest_training_dir(base_dir_path=base_dir_path)
+        checkpoint = Checkpoint.from_latest(dir_path=ckpt_dir_path)
+        checkpoint.steps = self.checkpoint_config.steps
+        checkpoint.max_to_keep = self.checkpoint_config.max_to_keep
+        return checkpoint
+
+    @classmethod
+    def get_latest_training_dir(cls, base_dir_path: str) -> str:
+        r'''
+        Retrieve the latest training directory containing all checkpoints.
+
+        Args:
+            base_dir_path (string):
+                The path to the directory containing all checkpointed trainings
+        Returns:
+            The path to the latest training directory containing all checkpoints.
+        '''
+        if not os.path.isdir(base_dir_path):
+            raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")
+        ckpt_dir_paths = os.listdir(base_dir_path)
+        if not ckpt_dir_paths:
+            raise ValueError("No existing training found")
+        ckpt_dir_paths.sort()
+        ckpt_dir_path = os.path.abspath(os.path.join(base_dir_path, ckpt_dir_paths[-1]))
+        return ckpt_dir_path

@@ -131,6 +131,7 @@ class Config(ConfigMixin):
             'cdb_info': {}, # Populated automatically, output from cdb.print_stats
             'performance': {'ner': {}, 'meta': {}}, # NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}
             'ontology': None, # What was used to build the CDB, e.g. SNOMED_202009
+            'medcat_version': None, # Which version of medcat was used to build the CDB
         }
 
         # CDB Maker
@@ -193,6 +194,15 @@ class Config(ConfigMixin):
                 'make_pretty_labels': None,
                 # If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group
                 'map_cui_to_group': False,
+                # Checkpointing config
+                'checkpoint': {
+                    # When doing training this is the name of the directory where checkpoints will be saved
+                    'output_dir': 'checkpoints',
+                    # When training how often to save the checkpoint (one step represents one document), if None no ckpts will be created
+                    'steps': None,
+                    # When training the maximum checkpoints will be kept on the disk
+                    "max_to_keep": 1,
+                },
                 }
 
         self.preprocessing: Dict[str, Any] = {
