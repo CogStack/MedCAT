@@ -277,7 +277,7 @@ class Config(ConfigMixin):
                 'prefer_primary_name': 0.35,
                 # If >0 concepts that are more frequent will be prefered by a multiply of this amount
                 'prefer_frequent_concepts': 0.35,
-                # Subsample during unsupervised training if a concept has received more than
+                # DISABLED in code permanetly: Subsample during unsupervised training if a concept has received more than
                 'subsample_after': 30000,
                 # When adding a positive example, should it also be treated as Negative for concepts
                 #which link to the postive one via names (ambigous names).
