@@ -19,6 +19,9 @@ class Downloader(models.Model):
     funder = models.CharField(max_length=100, blank=True, default="")
     use_case = models.TextField(max_length=200)
 
+    def __str__(self):
+        return f'{self.first_name} - {self.last_name}'
+
 
 class MedcatModel(models.Model):
     model_name = models.CharField(max_length=20, unique=True)
