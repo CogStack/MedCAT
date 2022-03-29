@@ -7,6 +7,7 @@ from medcat.utils.filters import check_filters
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config import Config
+import random
 
 
 class ContextModel(object):
@@ -46,7 +47,7 @@ class ContextModel(object):
 
         return tokens_left, tokens_center, tokens_right
 
-    def get_context_vectors(self, entity: Span, doc: Doc) -> Dict:
+    def get_context_vectors(self, entity: Span, doc: Doc, cui=None) -> Dict:
         r''' Given an entity and the document it will return the context representation for the
         given entity.
 
@@ -67,7 +68,11 @@ class ContextModel(object):
 
             if not self.config.linking['context_ignore_center_tokens']:
                 # Add center
-                values.extend([self.vocab.vec(tkn.lower_) for tkn in tokens_center if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
+                if cui is not None and random.random() > self.config.linking['random_replacement_unsupervised']:
+                    new_tokens_center = random.choice(list(self.cdb.cui2names[cui])).split(self.config.general['separator'])
+                    values.extend([self.vocab.vec(tkn) for tkn in new_tokens_center if tkn in self.vocab and self.vocab.vec(tkn) is not None])
+                else:
+                    values.extend([self.vocab.vec(tkn.lower_) for tkn in tokens_center if tkn.lower_ in self.vocab and self.vocab.vec(tkn.lower_) is not None])
 
             # Add right
             values.extend([self.config.linking['weighted_average_function'](step) * self.vocab.vec(tkn.lower_)
@@ -175,7 +180,7 @@ class ContextModel(object):
         '''
         # Context vectors to be calculated
         if len(entity) > 0: # Make sure there is something
-            vectors = self.get_context_vectors(entity, doc)
+            vectors = self.get_context_vectors(entity, doc, cui=cui)
             self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
             # Debug
             self.log.debug("Updating CUI: %s with negative=%s", cui, negative)
