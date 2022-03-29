@@ -1,6 +1,5 @@
 import random
 import logging
-import math
 
 from enum import Enum, auto
 from spacy.tokens import Span, Doc
