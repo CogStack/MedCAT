@@ -242,6 +242,9 @@ class Config(ConfigMixin):
                 'train': True,
                 # Linear anneal
                 'optim': {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005},
+                # If <1 during unsupervised training the detected term will be randomly replaced with a probability of 1 - random_replacement_unsupervised
+                #Replaced with a synonym used for that term
+                'random_replacement_unsupervised': 0.80,
                 # 'optim': {'type': 'standard', 'lr': 1},
                 # 'optim': {'type': 'moving_avg', 'alpha': 0.99, 'e': 1e-4, 'size': 100},
                 # All concepts below this will always be disambiguated
@@ -274,7 +277,7 @@ class Config(ConfigMixin):
                 'prefer_primary_name': 0.35,
                 # If >0 concepts that are more frequent will be prefered by a multiply of this amount
                 'prefer_frequent_concepts': 0.35,
-                # Subsample during unsupervised training if a concept has received more than
+                # DISABLED in code permanetly: Subsample during unsupervised training if a concept has received more than
                 'subsample_after': 30000,
                 # When adding a positive example, should it also be treated as Negative for concepts
                 #which link to the postive one via names (ambigous names).
