@@ -390,7 +390,8 @@ class CAT(object):
             if use_project_filters:
                 project_filter = get_project_filters(cuis=project.get('cuis', None),
                                                       type_ids=project.get('tuis', None),
-                                                      cdb=self.cdb)
+                                                      cdb=self.cdb,
+                                                      project=project)
                 # Intersect project filter with existing if it has something
                 if project_filter:
                     filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
@@ -861,7 +862,8 @@ class CAT(object):
                 if use_filters:
                     project_filter = get_project_filters(cuis=project.get('cuis', None),
                                                          type_ids=project.get('tuis', None),
-                                                         cdb=self.cdb)
+                                                         cdb=self.cdb,
+                                                         project=project)
 
                     if project_filter:
                         filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
