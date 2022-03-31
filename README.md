@@ -9,7 +9,7 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 
 **Official Docs [here](https://medcat.readthedocs.io/en/latest/)**
 
-**Discussion Forum [here](https://discourse.cogstack.org/)**
+**Discussion Forum [discourse](https://discourse.cogstack.org/)**
 
 ## News
 - **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
