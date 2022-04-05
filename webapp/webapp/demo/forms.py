@@ -21,6 +21,7 @@ class DownloaderForm(forms.ModelForm):
 
     class Meta:
         model = Downloader
+        exclude = ['downloaded_file']
         fields = [
             "first_name",
             "last_name",
