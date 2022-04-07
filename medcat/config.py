@@ -54,10 +54,10 @@ class ConfigMixin(object):
         Parses a configuration file in text format. Must be like:
                 cat.<variable>.<key> = <value>
                 ...
-            Where:
-                variable: linking, general, ner, ...
-                key: a key in the config dict e.g. subsample_after for linking
-                value: the value for the key, will be parsed with `eval`
+
+            - variable: linking, general, ner, ...
+            - key: a key in the config dict e.g. subsample_after for linking
+            - value: the value for the key, will be parsed with `eval`
         '''
         with open(path, 'r') as f:
             for line in f:
