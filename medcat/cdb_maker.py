@@ -28,8 +28,7 @@ class CDBMaker(object):
         name_max_words (`int`, defaults to `20`):
             Names with more words will be skipped during the build of a CDB
     '''
-    log = logging.getLogger(__package__)
-    log = add_handlers(log)
+    log = add_handlers(logging.getLogger(__package__))
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
@@ -83,7 +82,7 @@ class CDBMaker(object):
             `medcat.cdb.CDB` with the new concepts added.
 
         Note:
-            **kwargs:
+            \*\*kwargs:
                 Will be passed to pandas for CSV reading
             csv:
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)

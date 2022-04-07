@@ -1,4 +1,4 @@
-# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png" width=45> oncept Annotation Tool
+# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool
 
 [![Build Status](https://github.com/CogStack/MedCAT/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
 [![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat.readthedocs.io/en/latest/?badge=latest)
@@ -104,10 +104,10 @@ python medcat/utils/model_creator.py tests/model_creator/config_example.yml
 
 | Model creator parameter | Description |
 | -------- | ----------- |
-| concept_csv_file | Path to file containing UMLS concepts, including primary names, synonyms, types and source ontology. See [examples](examples) and [tests/model_creator/umls_sample.csv](tests/model_creator/umls_sample.csv) for format description and examples. |
+| concept_csv_file | Path to file containing UMLS concepts, including primary names, synonyms, types and source ontology. See [examples](https://github.com/CogStack/MedCAT/tree/master/examples) and [tests/model_creator/umls_sample.csv](https://github.com/CogStack/MedCAT/tree/master/tests/model_creator/umls_sample.csv) for format description and examples. |
 | unsupervised_training_data_file | Path to file containing text dataset used for spell checking and unsupervised training.|
 | output_dir | Path to output directory for writing the CDB and vocab models. |
-| medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](configs), [medcat/config.py](medcat/config.py) and [tests/model_creator/medcat.txt](tests/model_creator/medcat.txt)| 
+| medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](https://github.com/CogStack/MedCAT/tree/master/configs), [medcat/config.py](https://github.com/CogStack/MedCAT/tree/master/medcat/config.py) and [tests/model_creator/medcat.txt](https://github.com/CogStack/MedCAT/tree/master/tests/model_creator/medcat.txt)| 
 | unigram_table_size | Optional parameter for setting the initialization size of the unigram table in the vocab model. Default is 100000000, while for testing with a small unsupervised training data file a much smaller size could work. | 
 
 

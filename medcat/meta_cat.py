@@ -30,9 +30,8 @@ class MetaCAT(PipeRunner):
     name = 'meta_cat'
     _component_lock = Lock()
 
-    log = logging.getLogger(__package__)
     # Add file and console handlers
-    log = add_handlers(log)
+    log = add_handlers(logging.getLogger(__package__))
 
     # Override
     def __init__(self,
