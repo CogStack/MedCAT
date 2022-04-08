@@ -23,7 +23,7 @@ copyright = '2022, CogStack Org'
 author = 'CogStack Org'
 
 # The full version, including alpha/beta/rc tags
-release = ':latest' # where is the version retrievable from?
+release = ':latest'  # where is the version retrievable from?
 
 
 # -- General configuration ---------------------------------------------------
@@ -35,6 +35,7 @@ extensions = [
     'sphinx_rtd_theme',
     'sphinx.ext.autodoc',
     'myst_parser',
+    'sphinx.ext.napoleon',
     'autoapi.extension',
     'sphinx.ext.inheritance_diagram',
 ]
@@ -80,3 +81,20 @@ html_theme_options = {
     'display_version': True,
     'logo_only': True,
 }
+
+# Render multi-type Returns blocks correctly
+napoleon_custom_sections = [('Returns', 'params_style')]
+
+
+def autoapi_skip_member(app, what, name, obj, skip, options):
+    # skip:
+    #   log class attributes
+    #   'private' methods, attributes, functions
+    exclude = (what == 'attribute' and name == 'log') or \
+        (name.startswith('_') and not name.startswith('__'))
+    return exclude
+
+
+def setup(app):
+    """Add autoapi-skip-member."""
+    app.connect('autoapi-skip-member', autoapi_skip_member)
