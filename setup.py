@@ -36,7 +36,8 @@ setuptools.setup(
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==2.0.2',
-        'blis==0.7.5',
+        'blis<=0.7.5',
+        'click<=8.0.4', # Spacy breaks without this
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

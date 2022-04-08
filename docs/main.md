@@ -1,12 +1,18 @@
-# Medical  <img src="_static/cat-logo.svg" width=20>oncept Annotation Tool
+# Medical  <img src="https://github.com/CogStack/MedCAT/blob/master/media/cat-logo.png?raw=true" width=45>oncept Annotation Tool
 
 [![Build Status](https://github.com/CogStack/MedCAT/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
+[![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT)](https://github.com/CogStack/MedCAT/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
 
 MedCAT can be used to extract information from Electronic Health Records (EHRs) and link it to biomedical ontologies like SNOMED-CT and UMLS. Paper on [arXiv](https://arxiv.org/abs/2010.01165).
 
+**Official Docs [here](https://medcat.readthedocs.io/en/latest/)**
+
+**Discussion Forum [here](https://discourse.cogstack.org/)**
+
 ## News
+- **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
 - **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT.
 - **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs (compatble with MedCAT v1) will work without any changes.
@@ -100,10 +106,10 @@ python medcat/utils/model_creator.py tests/model_creator/config_example.yml
 
 | Model creator parameter | Description |
 | -------- | ----------- |
-| concept_csv_file | Path to file containing UMLS concepts, including primary names, synonyms, types and source ontology. See [examples](examples) and [tests/model_creator/umls_sample.csv](tests/model_creator/umls_sample.csv) for format description and examples. |
+| concept_csv_file | Path to file containing UMLS concepts, including primary names, synonyms, types and source ontology. See [examples](https://github.com/CogStack/MedCAT/tree/master/examples) and [tests/model_creator/umls_sample.csv](https://github.com/CogStack/MedCAT/tree/master/tests/model_creator/umls_sample.csv) for format description and examples. |
 | unsupervised_training_data_file | Path to file containing text dataset used for spell checking and unsupervised training.|
 | output_dir | Path to output directory for writing the CDB and vocab models. |
-| medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](configs), [medcat/config.py](medcat/config.py) and [tests/model_creator/medcat.txt](tests/model_creator/medcat.txt)| 
+| medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](https://github.com/CogStack/MedCAT/tree/master/configs), [medcat/config.py](https://github.com/CogStack/MedCAT/tree/master/medcat/config.py) and [tests/model_creator/medcat.txt](https://github.com/CogStack/MedCAT/tree/master/tests/model_creator/medcat.txt)| 
 | unigram_table_size | Optional parameter for setting the initialization size of the unigram table in the vocab model. Default is 100000000, while for testing with a small unsupervised training data file a much smaller size could work. | 
 
 
@@ -128,8 +134,8 @@ A basic trained model is made public. It contains ~ 35K concepts available in `M
 that data is not publicaly available.)
 
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT and can provide some proof (a screenshot of the [UMLS profile page](https://uts.nlm.nih.gov//uts.html#profile) is perfect, feel free to redact all information you do not want to share), contact us - we are happy to share the pre-built CDB and Vocab for those databases.
-
+If you have access to UMLS or SNOMED-CT, you can download the pre-built CDB and Vocab for those databases by signing in and filling out [the online form](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback).
+This link first requires you to authenticate your ontology access via the NIH portal.
 
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS

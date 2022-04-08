@@ -19,6 +19,7 @@ from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
 
+from medcat import __version__
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -65,20 +66,18 @@ class CAT(object):
             this value directly.
         config (medcat.config.Config):
             The global configuration for medcat. Usually cdb.config will be used for this
-            field.
+            field. WILL BE REMOVED - TEMPORARY PLACEHOLDER
         vocab (medcat.utils.vocab.Vocab):
             The vocabulary object used with this instance, please do not assign
             this value directly.
-        config - WILL BE REMOVED - TEMPORARY PLACEHOLDER
 
     Examples:
         >>>cat = CAT(cdb, vocab)
         >>>spacy_doc = cat("Put some text here")
         >>>print(spacy_doc.ents) # Detected entites
     '''
-    log = logging.getLogger(__package__)
     # Add file and console handlers
-    log = add_handlers(log)
+    log = add_handlers(logging.getLogger(__package__))
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
     def __init__(self,
@@ -186,6 +185,7 @@ class CAT(object):
             version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
             version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            version['medcat_version'] = __version__
             self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
@@ -251,15 +251,16 @@ class CAT(object):
 
     @classmethod
     def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
-        r''' Load everything
+        r"""Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
+        (if present)
 
         Args:
-            zip_path
+            zip_path:
+                path to model pack zip.
             meta_cat_config_dict:
                 A config dict that will overwrite existing configs in meta_cat.
-                Can be something like:
-                    meta_cat_config_dict = {'general': {'device': 'cpu'}}
-        '''
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}
+        """
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
         from medcat.meta_cat import MetaCAT
@@ -405,7 +406,8 @@ class CAT(object):
             if use_project_filters:
                 project_filter = get_project_filters(cuis=project.get('cuis', None),
                                                       type_ids=project.get('tuis', None),
-                                                      cdb=self.cdb)
+                                                      cdb=self.cdb,
+                                                      project=project)
                 # Intersect project filter with existing if it has something
                 if project_filter:
                     filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
@@ -558,6 +560,25 @@ class CAT(object):
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
+    def _init_ckpts(self, is_resumed, checkpoint):
+        if self.config.general['checkpoint']['steps'] is not None or checkpoint is not None:
+            checkpoint_config = CheckpointConfig(**self.config.general.get('checkpoint', {}))
+            checkpoint_manager = CheckpointManager('cat_train', checkpoint_config)
+            if is_resumed:
+                # TODO: probably remove is_resumed mark and always resume if a checkpoint is provided,
+                #but I'll leave it for now
+                checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
+                self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
+                self.cdb = checkpoint.restore_latest_cdb()
+                self.cdb.config.merge_config(self.config.__dict__)
+                self.config = self.cdb.config
+                self._create_pipeline(self.config)
+            else:
+                checkpoint = checkpoint or checkpoint_manager.create_checkpoint()
+                self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
+
+        return checkpoint
+
     def train(self,
               data_iterator: Iterable,
               nepochs: int = 1,
@@ -583,25 +604,14 @@ class CAT(object):
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         """
-        checkpoint_config = CheckpointConfig(**self.config.linking.get('checkpoint', {}))
-        checkpoint_manager = CheckpointManager('cat_train', checkpoint_config)
-        if is_resumed:
-            checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
-            self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
-            self.cdb = checkpoint.restore_latest_cdb()
-            self.cdb.config.merge_config(self.config.__dict__)
-            self.config = self.cdb.config
-            self._create_pipeline(self.config)
-        else:
-            checkpoint = checkpoint or checkpoint_manager.create_checkpoint()
-            if not fine_tune:
-                self.log.info("Removing old training data!")
-                self.cdb.reset_training()
-            self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
+        if not fine_tune:
+            self.log.info("Removing old training data!")
+            self.cdb.reset_training()
+        checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
-        latest_trained_step = checkpoint.count
+        latest_trained_step = checkpoint.count if checkpoint is not None else 0
         epochal_data_iterator = chain.from_iterable(repeat(data_iterator, nepochs))
-        for line in islice(epochal_data_iterator, checkpoint.count, None):
+        for line in islice(epochal_data_iterator, latest_trained_step, None):
             if line is not None and line:
                 # Convert to string
                 line = str(line).strip()
@@ -617,16 +627,13 @@ class CAT(object):
             latest_trained_step += 1
             if latest_trained_step % progress_print == 0:
                 self.log.info("DONE: %s", str(latest_trained_step))
-            if latest_trained_step % checkpoint.steps == 0:
+            if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                 checkpoint.save(cdb=self.cdb, count=latest_trained_step)
-
-        if latest_trained_step % checkpoint.steps != 0:
-            checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
         self.config.linking['train'] = False
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
-        r'''
+        r"""
         Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
 
         Args:
@@ -637,13 +644,13 @@ class CAT(object):
 
         Examples:
             >>> cat.add_cui_to_group("S-17", 'pain')
-        '''
+        """
 
         # Add group_name
         self.cdb.addl_info['cui2group'][cui] = group_name
 
     def unlink_concept_name(self, cui: str, name: str, preprocessed_name: bool = False) -> None:
-        r'''
+        r"""
         Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
         the Concept Database (CDB). As a consequence medcat will never again link the `name`
         to this CUI - meaning the name will not be detected as a concept in the future.
@@ -656,7 +663,7 @@ class CAT(object):
         Examples:
             >>> # To never again link C0020538 to HTN
             >>> cat.unlink_concept_name('C0020538', 'htn', False)
-        '''
+        """
 
         cuis = [cui]
         if preprocessed_name:
@@ -686,7 +693,7 @@ class CAT(object):
                               negative: bool = False,
                               devalue_others: bool = False,
                               do_add_concept: bool = True) -> None:
-        r''' Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
+        r""" Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
         training if spacy_entity and spacy_doc are set.
 
         Args:
@@ -705,9 +712,9 @@ class CAT(object):
                 If set, cuis to which this name is assigned and are not `cui` will receive negative training given
                 that negative=False.
 
-            **other:
-                Refer to CDB.add_concept
-        '''
+            \*\*other:
+                Refer to medcat.cat.cdb.CDB.add_concept
+        """
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
@@ -747,7 +754,7 @@ class CAT(object):
                          extra_cui_filter: Optional[Set] = None,
                          checkpoint: Optional[Checkpoint] = None,
                          is_resumed: bool = False) -> Tuple:
-        r''' TODO: Refactor, left from old
+        r""" TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
 
@@ -808,19 +815,8 @@ class CAT(object):
                 Number of occurrence for each CUI
             examples (dict):
                 FP/FN examples of sentences for each CUI
-        '''
-        checkpoint_config = CheckpointConfig(**self.config.linking.get('checkpoint', {}))
-        checkpoint_manager = CheckpointManager('cat_train_supervised', checkpoint_config)
-        if is_resumed:
-            checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
-            self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
-            self.cdb = checkpoint.restore_latest_cdb()
-            self.cdb.config.merge_config(self.config.__dict__)
-            self.config = self.cdb.config
-            self._create_pipeline(self.config)
-        else:
-            checkpoint = checkpoint or checkpoint_manager.create_checkpoint()
-            self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
+        """
+        checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
         # Backup filters
         _filters = deepcopy(self.config.linking['filters'])
@@ -866,7 +862,7 @@ class CAT(object):
                         if ann.get('killed', False):
                             self.unlink_concept_name(ann['cui'], ann['value'])
 
-        latest_trained_step = checkpoint.count
+        latest_trained_step = checkpoint.count if checkpoint is not None else 0
         current_epoch, current_project, current_document = self._get_training_start(train_set, latest_trained_step)
 
         for epoch in trange(current_epoch, nepochs, initial=current_epoch, total=nepochs, desc='Epoch', leave=False):
@@ -882,7 +878,8 @@ class CAT(object):
                 if use_filters:
                     project_filter = get_project_filters(cuis=project.get('cuis', None),
                                                          type_ids=project.get('tuis', None),
-                                                         cdb=self.cdb)
+                                                         cdb=self.cdb,
+                                                         project=project)
 
                     if project_filter:
                         filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
@@ -919,7 +916,7 @@ class CAT(object):
                                                        do_add_concept=False)
 
                     latest_trained_step += 1
-                    if latest_trained_step % checkpoint.steps == 0:
+                    if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
 
             if terminate_last and not never_terminate:
@@ -940,9 +937,6 @@ class CAT(object):
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
 
-        if latest_trained_step != checkpoint.count:
-            checkpoint.save(self.cdb, latest_trained_step)
-
         # Set the filters again
         self.config.linking['filters'] = _filters
 
@@ -962,10 +956,10 @@ class CAT(object):
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
                      batch_size: Optional[int] = None) -> List[Dict]:
-        r''' Get entities
+        r""" Get entities
         text:  text to be annotated
         return:  entities
-        '''
+        """
         out: List[Dict] = []
 
         if n_process is None:
@@ -1045,8 +1039,8 @@ class CAT(object):
         return nn_components
 
     def _run_nn_components(self, docs: Dict, nn_components: List, id2text: Dict) -> None:
-        r''' This will add meta_anns in-place to the docs dict.
-        '''
+        r""" This will add meta_anns in-place to the docs dict.
+        """
         self.log.debug("Running GPU components separately")
 
         # First convert the docs into the fake spacy doc format
@@ -1097,11 +1091,11 @@ class CAT(object):
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
-        r''' Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
+        r""" Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
         Args:
-            data(``):
+            data:
                 Iterator or array with format: [(id, text), (id, text), ...]
             nproc (`int`, defaults to 8):
                 Number of processors
@@ -1127,7 +1121,7 @@ class CAT(object):
             A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
-        '''
+        """
         # Set max document length
         self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 
@@ -1213,10 +1207,10 @@ class CAT(object):
                                addl_info: List[str] = [],
                                nn_components: List = [],
                                min_free_memory: int = 0) -> Dict:
-        r''' Run multiprocessing on one batch
+        r""" Run multiprocessing on one batch
 
         Args:
-            data(``):
+            data:
                 Iterator or array with format: [(id, text), (id, text), ...]
             nproc (`int`, defaults to 8):
                 Number of processors
@@ -1225,7 +1219,7 @@ class CAT(object):
 
         Returns:
             A dictionary: {id: doc_json, id2: doc_json2, ...}
-        '''
+        """
         # Create the input output for MP
         with Manager() as manager:
             out_list = manager.list()
@@ -1283,7 +1277,7 @@ class CAT(object):
                              addl_info: List[str] = [],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        r''' Run multiprocessing NOT FOR TRAINING
+        r""" Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
         nproc:  the number of processors
@@ -1291,23 +1285,30 @@ class CAT(object):
         return_dict: a flag for returning either a dict or a list of tuples
 
         return:  a dict: {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
-        '''
+        """
         out: Union[Dict, List[Tuple]]
 
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        if self._meta_cats:
-            # Hack for torch using multithreading, which is not good here
-            import torch
-            torch.set_num_threads(1)
-
         in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
-        entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
-                                     n_process=n_process, batch_size=batch_size)
+        start_method = None
+        try:
+            if self._meta_cats:
+                import torch
+                if torch.multiprocessing.get_start_method() != "spawn":
+                    start_method = torch.multiprocessing.get_start_method()
+                    torch.multiprocessing.set_start_method("spawn", force=True)
+
+            entities = self.get_entities_multi_texts(texts=in_data, only_cui=only_cui, addl_info=addl_info,
+                                                     n_process=n_process, batch_size=batch_size)
+        finally:
+            if start_method is not None:
+                import torch
+                torch.multiprocessing.set_start_method(start_method, force=True)
 
         if return_dict:
             out = {}

@@ -132,7 +132,7 @@ class CATTests(unittest.TestCase):
                              checkpoint=checkpoint,
                              is_resumed=True)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
-        self.assertEqual(15, len(checkpoints))
+        self.assertEqual(13, len(checkpoints))
         self.assertTrue("checkpoint-%s-3" % ckpt_steps in checkpoints)
         self.assertTrue("checkpoint-%s-6" % ckpt_steps in checkpoints)
         self.assertTrue("checkpoint-%s-9" % ckpt_steps in checkpoints)
@@ -146,7 +146,6 @@ class CATTests(unittest.TestCase):
         self.assertTrue("checkpoint-%s-33" % ckpt_steps in checkpoints)
         self.assertTrue("checkpoint-%s-36" % ckpt_steps in checkpoints)
         self.assertTrue("checkpoint-%s-39" % ckpt_steps in checkpoints)
-        self.assertTrue("checkpoint-%s-40" % ckpt_steps in checkpoints)
 
     def test_resume_training_on_absent_checkpoints(self):
         ckpt_dir_path = tempfile.TemporaryDirectory().name
@@ -322,6 +321,7 @@ class CATTests(unittest.TestCase):
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
+        self.assertIsNotNone(cat.config.version['medcat_version'])
 
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()

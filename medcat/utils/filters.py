@@ -15,7 +15,16 @@ def check_filters(cui, filters):
         return False
 
 
-def get_project_filters(cuis, type_ids, cdb):
+def get_all_irrelevant_cuis(project, cdb):
+    i_cuis = set()
+    for d in project['documents']:
+        for a in d['annotations']:
+            if 'irrelevant' in a and a['irrelevant']:
+                i_cuis.add(a['cui'])
+    return i_cuis
+
+
+def get_project_filters(cuis, type_ids, cdb, project=None):
     cui_filter = set()
     if isinstance(cuis, str):
         if cuis is not None and cuis:
@@ -34,5 +43,11 @@ def get_project_filters(cuis, type_ids, cdb):
                 raise Exception("Impossible to create filters, disable them.")
     elif isinstance(cuis, list):
         cui_filter = set(cuis)
+
+    if project is not None:
+        i_cuis = get_all_irrelevant_cuis(project, cdb)
+        print(i_cuis)
+        for i_cui in i_cuis:
+            cui_filter.remove(i_cui)
 
     return cui_filter

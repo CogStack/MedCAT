@@ -42,18 +42,20 @@ class Linker(PipeRunner):
 
     def _train(self, cui: str, entity: Span, doc: Doc, add_negative: bool = True) -> None:
         name = "{} - {}".format(entity._.detected_name, cui)
+        """ TODO: Disable for now
         if self.train_counter.get(name, 0) > self.config.linking['subsample_after']:
-            if random.random() < 1 / (self.train_counter.get(name) - self.config.linking['subsample_after']):
+            if random.random() < 1 / math.sqrt(self.train_counter.get(name) - self.config.linking['subsample_after']):
                 self.context_model.train(cui, entity, doc, negative=False)
                 if add_negative and self.config.linking['negative_probability'] >= random.random():
                     self.context_model.train_using_negative_sampling(cui)
                 self.train_counter[name] = self.train_counter.get(name, 0) + 1
         else:
-            # Always train
-            self.context_model.train(cui, entity, doc, negative=False)
-            if add_negative and self.config.linking['negative_probability'] >= random.random():
-                self.context_model.train_using_negative_sampling(cui)
-            self.train_counter[name] = self.train_counter.get(name, 0) + 1
+        """
+        # Always train
+        self.context_model.train(cui, entity, doc, negative=False)
+        if add_negative and self.config.linking['negative_probability'] >= random.random():
+            self.context_model.train_using_negative_sampling(cui)
+        self.train_counter[name] = self.train_counter.get(name, 0) + 1
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
