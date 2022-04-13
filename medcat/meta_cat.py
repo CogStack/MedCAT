@@ -23,8 +23,8 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 class MetaCAT(PipeRunner):
-    r''' TODO: Add documentation
-    '''
+    r""" TODO: Add documentation
+    """
 
     # Custom pipeline component name
     name = 'meta_cat'
@@ -65,8 +65,8 @@ class MetaCAT(PipeRunner):
         return model
 
     def get_hash(self):
-        r''' A partial hash trying to catch differences between models
-        '''
+        r""" A partial hash trying to catch differences between models
+        """
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.train['last_train_on'] is None:
@@ -76,7 +76,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
-        r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        r""" Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
@@ -85,7 +85,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (`str`, optional, defaults to `None`):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path.
-        '''
+        """
         g_config = self.config.general
         t_config = self.config.train
 
@@ -195,12 +195,12 @@ class MetaCAT(PipeRunner):
         return result
 
     def save(self, save_dir_path: str) -> None:
-        r''' Save all components of this class to a file
+        r""" Save all components of this class to a file
 
         Args:
             save_dir_path(`str`):
                 Path to the directory where everything will be saved.
-        '''
+        """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
 
@@ -220,7 +220,7 @@ class MetaCAT(PipeRunner):
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
-        r''' Load a meta_cat object.
+        r""" Load a meta_cat object.
 
         Args:
             save_dir_path (`str`):
@@ -232,7 +232,7 @@ class MetaCAT(PipeRunner):
         Returns:
             meta_cat (`medcat.MetaCAT`):
                 You don't say
-        '''
+        """
 
         # Load config
         config = cast(ConfigMetaCAT, ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json')))
@@ -265,13 +265,13 @@ class MetaCAT(PipeRunner):
         return meta_cat
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
-        r'''
+        r"""
 
         Args:
             doc - spacy
             input_ids
             offset_mapping
-        '''
+        """
         config = self.config
         cntx_left = config.general['cntx_left']
         cntx_right = config.general['cntx_right']
@@ -341,12 +341,12 @@ class MetaCAT(PipeRunner):
 
     # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
-        r''' Process many documents at once.
+        r""" Process many documents at once.
 
         Args:
             stream (Iterable[spacy.tokens.Doc]):
                 List of spacy documents.
-        '''
+        """
         # Just in case
         if stream is None or not stream:
             return stream
@@ -424,15 +424,43 @@ class MetaCAT(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        ''' Process one document, used in the spacy pipeline for sequential
+        """ Process one document, used in the spacy pipeline for sequential
         document processing.
 
         Args:
             doc (spacy.tokens.Doc):
                 A spacy document
-        '''
+        """
 
         # Just call the pipe method
         doc = next(self.pipe(iter([doc])))
 
         return doc
+
+    def get_model_card(self, as_dict=False):
+        """A minimal model card.
+
+        Args:
+            as_dict: return the model card as a dictionary instead of a str.
+
+        Returns:
+            By default a str - indented JSON object.
+        """
+        card = {
+            'Category Name': self.config.general['category_name'],
+            'Description': self.config.general['description'],
+            'Classes': self.config.general['category_value2id'],
+            'Model': self.config.model['model_name']
+        }
+        if as_dict:
+            return card
+        else:
+            return json.dumps(card, indent=2, sort_keys=False)
+
+    def __repr__(self):
+        """
+        Prints the model_card for this MetaCAT instance.
+        Returns:
+            the 'Model Card' for this MetaCAT instance. This includes NER+L config and any MetaCATs
+        """
+        return self.get_model_card(as_dict=False)
