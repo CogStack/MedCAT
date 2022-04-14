@@ -436,6 +436,7 @@ class CDB(object):
                 the average between the two training vectors will be taken.
 
         Examples:
+
             >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
         '''
         # Import vectors and counts
@@ -459,6 +460,7 @@ class CDB(object):
                 This will be set as the CUI count for all cuis in this CDB.
 
         Examples:
+
             >>> cdb.reset_cui_count()
         '''
         for cui in self.cui2count_train.keys():

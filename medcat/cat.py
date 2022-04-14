@@ -71,9 +71,10 @@ class CAT(object):
             this value directly.
 
     Examples:
-        >>>cat = CAT(cdb, vocab)
-        >>>spacy_doc = cat("Put some text here")
-        >>>print(spacy_doc.ents) # Detected entites
+
+        >>> cat = CAT(cdb, vocab)
+        >>> spacy_doc = cat("Put some text here")
+        >>> print(spacy_doc.ents) # Detected entites
     """
     # Add file and console handlers
     log = add_handlers(logging.getLogger(__package__))
@@ -643,6 +644,7 @@ class CAT(object):
                 The group to whcih the concept will be added
 
         Examples:
+
             >>> cat.add_cui_to_group("S-17", 'pain')
         """
 
@@ -661,6 +663,7 @@ class CAT(object):
             name (str):
                 The span of text to be removed from the linking dictionary
         Examples:
+
             >>> # To never again link C0020538 to HTN
             >>> cat.unlink_concept_name('C0020538', 'htn', False)
         """
