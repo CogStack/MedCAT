@@ -71,7 +71,7 @@ class WordpieceTokenizer(object):
           output = ["un", "##aff", "##able"]
         Args:
           text: A single token or whitespace separated tokens. This should have
-            already been passed through `BasicTokenizer.
+          already been passed through `BasicTokenizer.
         Returns:
           A list of wordpiece tokens.
         """

@@ -20,7 +20,7 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 
 
 class Pipe(object):
-    r''' A wrapper around the standard spacy pipeline.
+    r""" A wrapper around the standard spacy pipeline.
 
     Args:
         tokenizer (`spacy.tokenizer.Tokenizer`):
@@ -31,10 +31,9 @@ class Pipe(object):
     Properties:
         nlp (spacy.language.<lng>):
             The base spacy NLP pipeline.
-    '''
-    log = logging.getLogger(__package__)
+    """
     # Add file and console handlers
-    log = add_handlers(log)
+    log = add_handlers(logging.getLogger(__package__))
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         self._nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
@@ -48,7 +47,7 @@ class Pipe(object):
         self.log.setLevel(self.config.general['log_level'])
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
-        r''' Add any kind of a tagger for tokens.
+        r""" Add any kind of a tagger for tokens.
 
         Args:
             tagger (`object/function`):
@@ -58,7 +57,7 @@ class Pipe(object):
                 Name for this component in the pipeline.
             additional_fields (`List[str]`):
                 Fields to be added to the `_` properties of a token.
-        '''
+        """
         component_factory_name = spacy.util.get_object_name(tagger)
         name = name if name is not None else component_factory_name
         Language.factory(name=component_factory_name, default_config={"config": self.config}, func=tagger)
@@ -82,10 +81,10 @@ class Pipe(object):
         Token.set_extension('norm', default=None, force=True)
 
     def add_ner(self, ner: NER, name: Optional[str] = None) -> None:
-        r''' Add NER from CAT to the pipeline, will also add the necessary fields
+        r""" Add NER from CAT to the pipeline, will also add the necessary fields
         to the document and Span objects.
 
-        '''
+        """
         component_name = spacy.util.get_object_name(ner)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=ner)
@@ -101,13 +100,13 @@ class Pipe(object):
         Span.set_extension('link_candidates', default=None, force=True)
 
     def add_linker(self, linker: Linker, name: Optional[str] = None) -> None:
-        r''' Add entity linker to the pipeline, will also add the necessary fields
+        r""" Add entity linker to the pipeline, will also add the necessary fields
         to Span object.
 
         linker (object/function):
             Any object/function created based on the requirements for a spaCy pipeline components. Have
             a look at https://spacy.io/usage/processing-pipelines#custom-components
-        '''
+        """
         component_name = spacy.util.get_object_name(linker)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=linker)
@@ -130,7 +129,7 @@ class Pipe(object):
                             texts: Iterable[str],
                             n_process: Optional[int] = None,
                             batch_size: Optional[int] = None) -> Iterable[Doc]:
-        r''' Batch process a list of texts in parallel.
+        r""" Batch process a list of texts in parallel.
 
         Args:
             texts (`Iterable[str]`):
@@ -145,7 +144,7 @@ class Pipe(object):
         Return:
             Generator[Doc]:
                 The output sequence of spacy documents with the extracted entities
-        '''
+        """
         instance_name = "ensure_serializable"
         try:
             self._nlp.get_pipe(instance_name)
