@@ -105,7 +105,6 @@ def download_model(request):
     if request.method == 'POST':
         downloader_form = DownloaderForm(MedcatModel.objects.all(), request.POST)
         if downloader_form.is_valid():
-            downloader_form.save()
             mp_name = downloader_form.cleaned_data['modelpack']
             model = MedcatModel.objects.get(model_name=mp_name)
             if model is not None:
@@ -116,6 +115,8 @@ def download_model(request):
             resp['Content-Type'] = 'application/zip'
             resp['Content-Length'] = os.path.getsize(mp_path)
             resp['Content-Disposition'] = f'attachment; filename={os.path.basename(mp_path)}'
+            downloader_form.instance.downloaded_file = os.path.basename(mp_path)
+            downloader_form.save()
             return resp
         else:
             context = {
