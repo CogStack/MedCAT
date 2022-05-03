@@ -204,8 +204,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         score_average = config.train['score_average']
         f1 = f1_score(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), average=score_average)
         _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
-        if _report[config.train['metric']['base']][config.train['metric']['score']] > \
-                winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
+        if not winner_report['report'] or (_report[config.train['metric']['base']][config.train['metric']['score']] >
+                winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]):
 
             report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
             winner_report['report'] = report
