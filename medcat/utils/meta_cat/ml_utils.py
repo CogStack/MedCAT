@@ -202,7 +202,6 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
 
         score_average = config.train['score_average']
-        f1 = f1_score(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), average=score_average)
         _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
         if not winner_report['report'] or (_report[config.train['metric']['base']][config.train['metric']['score']] >
                 winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]):
@@ -219,7 +218,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                 else:
                     path = os.path.join(save_dir_path, 'model.dat')
                     torch.save(model.state_dict(), path)
-                    print("\n##### Model saved to {} at epoch: {} and f1: {} #####\n".format(path, epoch, f1))
+                    print("\n##### Model saved to {} at epoch: {} and {}/{}: {} #####\n".format(path, epoch, config.train['metric']['base'],
+                          config.train['metric']['score'], winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]))
 
     return winner_report
 
