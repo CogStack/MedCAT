@@ -1,4 +1,4 @@
-import os 
+import os
 import random
 import math
 import torch
@@ -9,7 +9,7 @@ from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from sklearn.metrics import classification_report, f1_score, precision_recall_fscore_support
+from sklearn.metrics import classification_report, precision_recall_fscore_support
 
 
 def set_all_seeds(seed: int) -> None:
@@ -201,7 +201,6 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         print_report(epoch, running_loss, all_logits, y=y_train, name='Train')
         print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
 
-        score_average = config.train['score_average']
         _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
         if not winner_report or _report[config.train['metric']['base']][config.train['metric']['score']] > \
                 winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
