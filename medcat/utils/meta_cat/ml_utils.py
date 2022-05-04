@@ -9,7 +9,7 @@ from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from sklearn.metrics import classification_report, f1_score, precision_recall_fscore_support
+from sklearn.metrics import classification_report, precision_recall_fscore_support
 
 
 def set_all_seeds(seed: int) -> None:
@@ -167,7 +167,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     y_test = [x[2] for x in test_data]
     y_train = [x[2] for x in train_data]
 
-    winner_report= {'f1': 0, 'report': '', 'epoch': 0}
+    winner_report: Dict = {}
     for epoch in range(nepochs):
         running_loss = []
         all_logits = []
@@ -201,11 +201,11 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         print_report(epoch, running_loss, all_logits, y=y_train, name='Train')
         print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
 
-        score_average = config.train['score_average']
-        f1 = f1_score(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), average=score_average)
-        if f1 > winner_report['f1']:
+        _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
+        if not winner_report or _report[config.train['metric']['base']][config.train['metric']['score']] > \
+                winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
+
             report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
-            winner_report['f1'] = f1
             winner_report['report'] = report
             winner_report['epoch'] = epoch
 
@@ -217,7 +217,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                 else:
                     path = os.path.join(save_dir_path, 'model.dat')
                     torch.save(model.state_dict(), path)
-                    print("\n##### Model saved to {} at epoch: {} and f1: {} #####\n".format(path, epoch, f1))
+                    print("\n##### Model saved to {} at epoch: {} and {}/{}: {} #####\n".format(path, epoch, config.train['metric']['base'],
+                          config.train['metric']['score'], winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]))
 
     return winner_report
 

@@ -68,7 +68,7 @@ class ContextModel(object):
 
             if not self.config.linking['context_ignore_center_tokens']:
                 # Add center
-                if cui is not None and random.random() > self.config.linking['random_replacement_unsupervised']:
+                if cui is not None and random.random() > self.config.linking['random_replacement_unsupervised'] and self.cdb.cui2names.get(cui, []):
                     new_tokens_center = random.choice(list(self.cdb.cui2names[cui])).split(self.config.general['separator'])
                     values.extend([self.vocab.vec(tkn) for tkn in new_tokens_center if tkn in self.vocab and self.vocab.vec(tkn) is not None])
                 else:
