@@ -167,7 +167,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     y_test = [x[2] for x in test_data]
     y_train = [x[2] for x in train_data]
 
-    winner_report= {'f1': 0, 'report': None, 'epoch': 0}
+    winner_report: Dict = {}
     for epoch in range(nepochs):
         running_loss = []
         all_logits = []
@@ -203,7 +203,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
         score_average = config.train['score_average']
         _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
-        if winner_report['report'] is not None and _report[config.train['metric']['base']][config.train['metric']['score']] > \
+        if not winner_report or _report[config.train['metric']['base']][config.train['metric']['score']] > \
                 winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
 
             report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)

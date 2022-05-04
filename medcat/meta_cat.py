@@ -105,7 +105,7 @@ class MetaCAT(PipeRunner):
             return base
 
         # Merge data from all different data paths
-        data_loaded = None
+        data_loaded: Dict = {}
         for path in json_path:
             with open(path, 'r') as f:
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
