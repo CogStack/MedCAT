@@ -834,7 +834,7 @@ class CAT(object):
                         cuis.append(ann['cui'])
             for cui in set(cuis):
                 if cui in self.cdb.cui2count_train:
-                    self.cdb.cui2count_train[cui] = 10
+                    self.cdb.cui2count_train[cui] = 100
 
         # Remove entities that were terminated
         if not never_terminate:

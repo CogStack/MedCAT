@@ -46,7 +46,6 @@ def get_project_filters(cuis, type_ids, cdb, project=None):
 
     if project is not None:
         i_cuis = get_all_irrelevant_cuis(project, cdb)
-        print(i_cuis)
         for i_cui in i_cuis:
             cui_filter.remove(i_cui)
 
