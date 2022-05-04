@@ -95,7 +95,7 @@ class MetaCAT(PipeRunner):
             json_path = [json_path]
 
         def merge_data_loaded(base, other):
-            if base is None:
+            if not base:
                 return other
             elif other is None:
                 return base
