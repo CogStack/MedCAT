@@ -97,6 +97,7 @@ class CAT(object):
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
+        self._rel_cats = rel_cats
         self._create_pipeline(self.config)
 
     def _create_pipeline(self, config):
@@ -124,8 +125,7 @@ class CAT(object):
         for meta_cat in self._meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
 
-        self._rel_cats = rel_cats
-        for rel_cat in rel_cats:
+        for rel_cat in self._rel_cats:
             self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))
 
         # Set max document length
