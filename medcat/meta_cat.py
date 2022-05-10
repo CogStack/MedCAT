@@ -75,13 +75,13 @@ class MetaCAT(PipeRunner):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
-    def train(self, json_path: str, save_dir_path: Optional[str] = None) -> Dict:
+    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
-            json_path (`str`):
-                Path to a MedCATtrainer export containing the meta_annotations we want to train for.
+            json_path (`str` or `list`):
+                Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
             save_dir_path (`str`, optional, defaults to `None`):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path.
@@ -90,8 +90,24 @@ class MetaCAT(PipeRunner):
         t_config = self.config.train
 
         # Load the medcattrainer export
-        with open(json_path, 'r') as f:
-            data_loaded: Dict = json.load(f)
+        if isinstance(json_path, str):
+            json_path = [json_path]
+
+        def merge_data_loaded(base, other):
+            if not base:
+                return other
+            elif other is None:
+                return base
+            else:
+                for p in other['projects']:
+                    base['projects'].append(p)
+            return base
+
+        # Merge data from all different data paths
+        data_loaded: Dict = {}
+        for path in json_path:
+            with open(path, 'r') as f:
+                data_loaded = merge_data_loaded(data_loaded, json.load(f))
 
         # Create directories if they don't exist
         if t_config['auto_save_model']:

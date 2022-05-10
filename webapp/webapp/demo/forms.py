@@ -16,11 +16,15 @@ class DownloaderForm(forms.ModelForm):
     def __init__(self, models, *args, **kwargs):
         super().__init__(*args, *kwargs)
         self.fields["modelpack"] = forms.ChoiceField(label="Select a model for download",
-                                                     choices=[(model.model_name, model.model_display_name) for model in models],
+                                                     choices=[(
+                                                         model.model_name,
+                                                         f"{model.model_display_name}{' (' + model.model_description + ')' if model.model_description else ''}"
+                                                     ) for model in models],
                                                      widget=forms.RadioSelect())
 
     class Meta:
         model = Downloader
+        exclude = ['downloaded_file']
         fields = [
             "first_name",
             "last_name",

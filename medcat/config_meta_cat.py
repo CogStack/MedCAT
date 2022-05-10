@@ -53,4 +53,5 @@ class ConfigMetaCAT(ConfigMixin):
                 'cui_filter': None, # If set only this CUIs will be used for training
                 'auto_save_model': True, # Should do model be saved during training for best results
                 'last_train_on': None, # When was the last training run
+                'metric': {'base': 'weighted avg', 'score': 'f1-score'}, # What metric should be used for choosing the best model
                 }
