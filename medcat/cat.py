@@ -1135,10 +1135,6 @@ class CAT(object):
         _start_time = time.time()
         _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
         for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
-            self.log.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
-                          len(annotated_ids),
-                          len(batch),
-                          (time.time() - _start_time)/60)
             try:
                 _docs = self._multiprocessing_batch(data=batch,
                                                     nproc=nproc,
@@ -1164,6 +1160,11 @@ class CAT(object):
             except Exception as e:
                 self.log.warning("Failed an outer batch in the multiprocessing script")
                 self.log.warning(e, exc_info=True, stack_info=True)
+            finally:
+                self.log.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
+                            len(annotated_ids),
+                            len(batch),
+                            (time.time() - _start_time)/60)
 
         # Save the last batch
         if out_split_size_chars is not None and len(docs) > 0:
