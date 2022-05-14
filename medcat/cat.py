@@ -201,7 +201,8 @@ class CAT(object):
         _save_dir_path = save_dir_path
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
-        os.makedirs(save_dir_path, exist_ok=True)
+        # expand user path to make this work with '~'
+        os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
 
         # Save the used spacy model
         spacy_path = os.path.join(save_dir_path, self.config.general['spacy_model'])
