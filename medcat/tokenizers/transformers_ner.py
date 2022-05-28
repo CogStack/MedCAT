@@ -35,6 +35,17 @@ class TransformersTokenizerNER(object):
                 if cui not in self.label_map:
                     self.label_map[cui] = len(self.label_map)
 
+    def encode_eval(self, text):
+        results = self.hf_tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
+
+        for result in results:
+            output.append({'offset_mapping': result.offsets,
+                'input_ids': result.ids,
+                'tokens': result.tokens,
+            })
+
+        return output
+
     def encode(self, examples: Dict, ignore_subwords: bool = False) -> Dict:
         r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
         appropriate form for NER with BERT. It will split long text segments into max_len sequences.

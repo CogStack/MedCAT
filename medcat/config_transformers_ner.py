@@ -12,6 +12,7 @@ class ConfigTransformersNER(ConfigMixin):
                 'seed': 13,
                 'description': "No description", # Should provide a basic description of this MetaCAT model
                 'pipe_batch_size_in_chars': 20000000, # How many characters are piped at once into the meta_cat class
+                'ner_aggregation_strategy': 'average', # Agg strategy for HF pipeline for NER
                 }
 
         self.train = TrainingArguments(
@@ -28,12 +29,12 @@ class ConfigTransformersNER(ConfigMixin):
                 do_eval=True,
                 evaluation_strategy='epoch',
                 save_strategy='epoch',
-                metric_for_best_model='eval_recall', # Can be changed if our preference is not recall but something else
+                metric_for_best_model='eval_recall', # Can be changed if our preference is not recall but precision or f1
                 load_best_model_at_end=True,
                 remove_unused_columns=False)
 
         # Add a couple of more things to training_arguments
-        self.train.test_size = 0.1
+        self.train.test_size = 0.2
         self.train.shuffle_data = True
         self.train.last_train_on = None
 

@@ -49,11 +49,9 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
                                 ">> " + tokenizer.hf_tokenizer.decode(_d[j+1:j+csize])
                             value = str(tokenizer.hf_tokenizer.decode(_d[_j:j+1])).strip()
                             examples['fp'][ilbl[_p]].append(({'id': id, 'name': name, 'value': value,
-                                                              'label': tokenizer.cui2name.get(ilbl[_l], ilbl[_l]), 'text': t,
-                                                              'start': st, '_j': _j, 'j': j}))
+                                                              'label': tokenizer.cui2name.get(ilbl[_l], ilbl[_l]), 'text': t}))
                             examples['fn'][ilbl[_l]].append(({'id': id, 'name': name, 'value': value,
-                                                              'prediction': tokenizer.cui2name.get(ilbl[_p], ilbl[_p]), 'text': t,
-                                                              'start': st, '_j': _j, 'j': j}))
+                                                              'prediction': tokenizer.cui2name.get(ilbl[_p], ilbl[_p]), 'text': t}))
 
                             st = None
 
@@ -107,7 +105,6 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
 
 
     df = pd.DataFrame(data[1:], columns=data[0])
-    print(df.head(n=20))
 
     if not return_df:
         return {'recall': np.average(df.r.values), 'precision': np.average(df.p.values), 'f1': np.average(df.f1.values)}

@@ -83,7 +83,8 @@ class CAT(object):
                  cdb: CDB,
                  vocab: Vocab = None,
                  config: Optional[Config] = None,
-                 meta_cats: List[MetaCAT] = []) -> None:
+                 meta_cats: List[MetaCAT] = [],
+                 addl_ner = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
@@ -94,6 +95,7 @@ class CAT(object):
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
+        self._addl_ner = addl_ner
         self._create_pipeline(self.config)
 
     def _create_pipeline(self, config):
@@ -119,7 +121,7 @@ class CAT(object):
             self.pipe.add_linker(self.linker)
 
         # Add addl_ner if they exist
-        for ner in self.addl_ner:
+        for ner in self._addl_ner:
             self.pipe.add_ner(ner, ner.config.general['name'])
 
         # Add meta_annotaiton classes if they exist
