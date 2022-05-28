@@ -30,7 +30,7 @@ class MedCATAnnotationsConfig(datasets.BuilderConfig):
     pass
 
 
-class MedCATNER(datasets.GeneratorBasedBuilder):
+class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
     """MedCATNER: Output of MedCATtrainer"""
 
     BUILDER_CONFIGS = [

@@ -81,7 +81,7 @@ class CAT(object):
 
     def __init__(self,
                  cdb: CDB,
-                 vocab: Vocab,
+                 vocab: Vocab = None,
                  config: Optional[Config] = None,
                  meta_cats: List[MetaCAT] = []) -> None:
         self.cdb = cdb
@@ -91,7 +91,6 @@ class CAT(object):
             self.config = cdb.config
         else:
             # Take the new config and assign it to the CDB also
-
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
@@ -107,16 +106,21 @@ class CAT(object):
                              name='skip_and_punct',
                              additional_fields=['is_punct'])
 
-        spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)
-        self.pipe.add_token_normalizer(spell_checker=spell_checker, config=config)
+        if self.vocab is not None:
+            spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)
+            self.pipe.add_token_normalizer(spell_checker=spell_checker, config=config)
 
-        # Add NER
-        self.ner = NER(self.cdb, config)
-        self.pipe.add_ner(self.ner)
+            # Add NER
+            self.ner = NER(self.cdb, config)
+            self.pipe.add_ner(self.ner)
 
-        # Add LINKER
-        self.linker = Linker(self.cdb, self.vocab, config)
-        self.pipe.add_linker(self.linker)
+            # Add LINKER
+            self.linker = Linker(self.cdb, self.vocab, config)
+            self.pipe.add_linker(self.linker)
+
+        # Add addl_ner if they exist
+        for ner in self.addl_ner:
+            self.pipe.add_ner(ner, ner.config.general['name'])
 
         # Add meta_annotaiton classes if they exist
         for meta_cat in self._meta_cats:
@@ -217,10 +221,11 @@ class CAT(object):
 
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
-        if self.vocab is None:
-            raise ValueError("Model pack creation is failed due to the missing 'vocab'")
-        else:
+        if self.vocab is not None:
+            # We will allow creation of modelpacks without vocabs
             self.vocab.save(vocab_path)
+
+        # TODO save addl_ner
 
         # Save all meta_cats
         for comp in self.pipe.spacy_nlp.components:
@@ -270,6 +275,8 @@ class CAT(object):
         # Load the CDB
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
         cdb = CDB.load(cdb_path)
+
+        # TODO load addl_ner
 
         # Modify the config to contain full path to spacy model
         cdb.config.general['spacy_model'] = os.path.join(model_pack_path, os.path.basename(cdb.config.general['spacy_model']))

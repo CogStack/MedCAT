@@ -6,22 +6,28 @@ from sklearn.metrics import cohen_kappa_score
 from typing import Dict, List, Optional, Union, Tuple, Any, Set
 from spacy.tokens.doc import Doc
 from spacy.tokens.span import Span
-from medcat.cat import CDB
+from medcat.cdb import CDB
+from collections import defaultdict
+import random
 
 
 def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
+    random.seed(seed)
 
 
-def count_annotations_project(project: Dict) -> int:
+def count_annotations_project(project: Dict, cnt_per_cui=None) -> int:
     cnt = 0
+    if cnt_per_cui is None:
+        cnt_per_cui = defaultdict(int)
     for doc in project['documents']:
         for ann in doc['annotations']:
             # Only validated
-            if ann['validated']:
+            if ann.get('validated', True):
                 cnt += 1
-    return cnt
+                cnt_per_cui[ann['cui']] += 1
+    return cnt, cnt_per_cui
 
 
 def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann: bool = True) -> Dict:
@@ -44,10 +50,10 @@ def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann
     cnts = []
     if order_by_num_ann:
         for project in data['projects']:
-            cnt = count_annotations_project(project)
+            cnt, _ = count_annotations_project(project)
             cnts.append(cnt)
-    srt = np.argsort(-np.array(cnts))
-    data['projects'] = [data['projects'][i] for i in srt]
+        srt = np.argsort(-np.array(cnts))
+        data['projects'] = [data['projects'][i] for i in srt]
 
     return data
 
@@ -56,12 +62,20 @@ def count_annotations(data_path: str) -> None:
     data = load_data(data_path, require_annotations=True)
 
     g_cnt = 0
+    cnt_per_cui = defaultdict(int)
     for project in data['projects']:
-        cnt = count_annotations_project(project)
+        cnt, cnt_per_cui = count_annotations_project(project, cnt_per_cui)
         g_cnt += cnt
-        print("Number of annotations in '{}' is: {}".format(project['name'], cnt))
+        print("Number of annotations in project '{}' is: {}".format(project['name'], cnt))
 
+    # Count annotates per entity
     print("Total number of annotations is: {}".format(g_cnt))
+
+    # Annotates per CUI
+    cnt_per_cui = dict(cnt_per_cui)
+    print("Annotates per CUI: ")
+    for row in sorted(cnt_per_cui.items(), key=lambda x: x[1], reverse=True):
+        print(row)
 
 
 def get_doc_from_project(project: Dict, doc_id: str) -> Optional[Dict]:
