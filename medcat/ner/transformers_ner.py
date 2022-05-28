@@ -143,7 +143,7 @@ class TransformersNER(object):
 
         # Run an eval step and return metrics
         p = trainer.predict(encoded_dataset['test'])
-        df, examples = metrics(p, return_df=True, tokenizer=tokenizer, dataset=encoded_dataset['test'])
+        df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer, dataset=encoded_dataset['test'])
 
         return df, examples
 

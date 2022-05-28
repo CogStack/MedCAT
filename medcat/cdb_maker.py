@@ -94,6 +94,7 @@ class CDBMaker(object):
         for csv_path in csv_paths:
             # Read CSV, everything is converted to strings
             if isinstance(csv_path, str):
+                self.log.info("Started importing concepts from: {}".format(csv_path))
                 df = pd.pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=index_col, dtype=str, **kwargs)
             else:
                 # Not very clear, but csv_path can be a pre-loaded csv
@@ -108,7 +109,6 @@ class CDBMaker(object):
                     col2ind[str(col).lower().strip()] = len(cols)
                     cols.append(col)
 
-            self.log.info("Started importing concepts from: {}".format(csv_path))
             _time = None # Used to check speed
             _logging_freq = np.ceil(len(df[cols]) / 100)
             for row_id, row in enumerate(df[cols].values):

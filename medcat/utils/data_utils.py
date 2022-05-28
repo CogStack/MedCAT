@@ -31,6 +31,12 @@ def count_annotations_project(project: Dict, cnt_per_cui=None) -> int:
 
 
 def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann: bool = True) -> Dict:
+    r'''
+
+    Args:
+        require_annotations:
+            This will require anns but on project level, any doc in a project needs anns.
+    '''
     data_candidates = json.load(open(data_path))
     if require_annotations:
         data: Dict = {'projects': []}
