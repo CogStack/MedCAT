@@ -45,10 +45,16 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
 
                         if not (_l2 is not None and _l2 == _l and _l2 != _p2 and _p2 == _p):
                             # We want to merge tokens if it is the same label and same prediction when recording the examples, that is why we have the if
-                            t = tokenizer.hf_tokenizer.decode(_d[st:_j]) + " <<" + tokenizer.hf_tokenizer.decode(_d[_j:j+1]) + \
+                            t = tokenizer.hf_tokenizer.decode(_d[st:_j]) + " <<" + str(tokenizer.hf_tokenizer.decode(_d[_j:j+1])).strip() + \
                                 ">> " + tokenizer.hf_tokenizer.decode(_d[j+1:j+csize])
-                            examples['fp'][ilbl[_p]].append(({'id': id, 'name': name, 'label': tokenizer.cui2name.get(ilbl[_l], ilbl[_l]), 'text': t}))
-                            examples['fn'][ilbl[_l]].append(({'id': id, 'name': name, 'label': tokenizer.cui2name.get(ilbl[_p], ilbl[_p]), 'text': t}))
+                            value = str(tokenizer.hf_tokenizer.decode(_d[_j:j+1])).strip()
+                            examples['fp'][ilbl[_p]].append(({'id': id, 'name': name, 'value': value,
+                                                              'label': tokenizer.cui2name.get(ilbl[_l], ilbl[_l]), 'text': t,
+                                                              'start': st, '_j': _j, 'j': j}))
+                            examples['fn'][ilbl[_l]].append(({'id': id, 'name': name, 'value': value,
+                                                              'prediction': tokenizer.cui2name.get(ilbl[_p], ilbl[_p]), 'text': t,
+                                                              'start': st, '_j': _j, 'j': j}))
+
                             st = None
 
     _labels = np.reshape(p.label_ids, -1)
