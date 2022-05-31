@@ -70,7 +70,7 @@ class TransformersNER(object):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
-    def train(self, json_path: Union[str, list], ignore_extra_labels=False):
+    def train(self, json_path: Union[str, list, None]=None, ignore_extra_labels=False, dataset=None):
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -83,51 +83,53 @@ class TransformersNER(object):
                 Makes only sense when an existing deid model was loaded and from the new data we want to ignore
                  labels that did not exist in the old model.
         '''
+        if dataset is None and json_path is not None:
+            # Load the medcattrainer export
+            if isinstance(json_path, str):
+                json_path = [json_path]
 
-        # Load the medcattrainer export
-        if isinstance(json_path, str):
-            json_path = [json_path]
-
-        def merge_data_loaded(base, other):
-            if not base:
-                return other
-            elif other is None:
+            def merge_data_loaded(base, other):
+                if not base:
+                    return other
+                elif other is None:
+                    return base
+                else:
+                    for p in other['projects']:
+                        base['projects'].append(p)
                 return base
-            else:
-                for p in other['projects']:
-                    base['projects'].append(p)
-            return base
 
-        # Merge data from all different data paths
-        data_loaded: Dict = {}
-        for path in json_path:
-            with open(path, 'r') as f:
-                data_loaded = merge_data_loaded(data_loaded, json.load(f))
+            # Merge data from all different data paths
+            data_loaded: Dict = {}
+            for path in json_path:
+                with open(path, 'r') as f:
+                    data_loaded = merge_data_loaded(data_loaded, json.load(f))
 
-        # Remove labels that did not exist in old dataset
-        if ignore_extra_labels and self.tokenizer.label_map:
-            self.log.info("Ignoring extra labels from the data")
-            for p in data_loaded['projects']:
-                for d in p['documents']:
-                    new_anns = []
-                    for a in d['annotations']:
-                        if a['cui'] in self.tokenizer.label_map:
-                            new_anns.append(a)
-                    d['annotations'] = new_anns
+            # Remove labels that did not exist in old dataset
+            if ignore_extra_labels and self.tokenizer.label_map:
+                self.log.info("Ignoring extra labels from the data")
+                for p in data_loaded['projects']:
+                    for d in p['documents']:
+                        new_anns = []
+                        for a in d['annotations']:
+                            if a['cui'] in self.tokenizer.label_map:
+                                new_anns.append(a)
+                        d['annotations'] = new_anns
 
-        # Here we have to save the data because of the data loader
-        os.makedirs('results', exist_ok=True)
-        json.dump(data_loaded, open("./results/data.json", 'w'))
+            # Here we have to save the data because of the data loader
+            os.makedirs('results', exist_ok=True)
+            json.dump(data_loaded, open("./results/data.json", 'w'))
 
-        # Load dataset
-        data_abs_path = os.path.join(os.getcwd(), 'results', 'data.json')
-        dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
-                                        data_files={'train': data_abs_path},
-                                        split='train',
-                                        cache_dir='/tmp/')
+            # Load dataset
+            data_abs_path = os.path.join(os.getcwd(), 'results', 'data.json')
+            dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
+                                            data_files={'train': data_abs_path},
+                                            split='train',
+                                            cache_dir='/tmp/')
+            dataset = dataset.train_test_split(test_size=self.config.train.test_size) # type: ignore
 
         # Update labelmap in case the current dataset has more labels than what we had before
-        self.tokenizer.calculate_label_map(dataset)
+        self.tokenizer.calculate_label_map(dataset['train'])
+        self.tokenizer.calculate_label_map(dataset['test'])
 
         if self.model.num_labels != len(self.tokenizer.label_map):
             self.log.warning("The dataset contains labels we've not seen before, model is being reinitialized")
@@ -135,18 +137,15 @@ class TransformersNER(object):
             self.model = AutoModelForTokenClassification.from_pretrained(self.config.general['model_name'], num_labels=len(self.tokenizer.label_map))
             self.tokenizer.cui2name = {k:self.cdb.get_name(k) for k in self.tokenizer.label_map.keys()}
 
-            self.model.config
-
         self.model.config.id2label = {v:k for k,v in self.tokenizer.label_map.items()}
         self.model.config.label2id = self.tokenizer.label_map
+
 
         # Encode dataset
         encoded_dataset = dataset.map(
                 lambda examples: self.tokenizer.encode(examples, ignore_subwords=False),
                 batched=True,
                 remove_columns=['ent_cuis', 'ent_ends', 'ent_starts', 'text'])
-        # Split to train/test
-        encoded_dataset = encoded_dataset.train_test_split(test_size=self.config.train.test_size) # type: ignore
 
         data_collator = CollateAndPadNER(self.tokenizer.hf_tokenizer.pad_token_id) # type: ignore
         trainer = Trainer(
@@ -160,6 +159,10 @@ class TransformersNER(object):
 
         trainer.train()
 
+        # Something happens with logging strategy during training
+        self.config.train.logging_strategy = 'epoch' # type: ignore
+        self.config.train.save_strategy = 'epoch' # type: ignore
+
         # Save the training time
         self.config.train.last_train_on = datetime.now().timestamp() # type: ignore
 
@@ -170,17 +173,19 @@ class TransformersNER(object):
         p = trainer.predict(encoded_dataset['test'])
         df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer, dataset=encoded_dataset['test'])
 
+
         # Create the pipeline for eval
         self.create_eval_pipeline()
 
-        return df, examples
+        return df, examples, dataset
 
-    def eval(self, json_path: str):
-        # Load dataset
-        dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
-                                        data_files={'train': json_path},
-                                        split='train',
-                                        cache_dir='/tmp/')
+    def eval(self, json_path: Union[str, None] = None, dataset=None):
+        if dataset is None:
+            # Load dataset
+            dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
+                                            data_files={'train': json_path}, # type: ignore
+                                            split='train',
+                                            cache_dir='/tmp/')
 
         # Encode dataset
         encoded_dataset = dataset.map(

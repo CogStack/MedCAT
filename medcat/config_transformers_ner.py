@@ -1,6 +1,6 @@
 from typing import Dict, Any
 from medcat.config import ConfigMixin
-from transformers import TrainingArguments, IntervalStrategy
+from transformers import TrainingArguments 
 
 
 class ConfigTransformersNER(ConfigMixin):
@@ -28,9 +28,9 @@ class ConfigTransformersNER(ConfigMixin):
                 eval_accumulation_steps=1,
                 gradient_accumulation_steps=4, # We want to get to bs=4
                 do_eval=True,
-                evaluation_strategy=IntervalStrategy.EPOCH,
-                logging_strategy=IntervalStrategy.EPOCH,
-                save_strategy=IntervalStrategy.EPOCH,
+                evaluation_strategy='epoch', # type: ignore
+                logging_strategy='epoch', # type: ignore
+                save_strategy='epoch', # type: ignore
                 metric_for_best_model='eval_recall', # Can be changed if our preference is not recall but precision or f1
                 load_best_model_at_end=True,
                 remove_unused_columns=False)
