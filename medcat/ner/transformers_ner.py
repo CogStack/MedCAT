@@ -1,28 +1,25 @@
 import os
 import json
 import logging
-import torch
-import numpy
-from multiprocessing import Lock
-from torch import nn, Tensor
 from spacy.tokens import Doc
 from datetime import datetime
-from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
+from typing import Iterable, Iterator, Optional, Dict, List, cast, Union
+from spacy.tokens import Span
+
+from medcat.cdb import CDB
+from medcat.utils.meta_cat.ml_utils import set_all_seeds
+from medcat.datasets import transformers_ner
+from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 from medcat.utils.hasher import Hasher
 from medcat.config_transformers_ner import ConfigTransformersNER
-from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
-from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
 from medcat.utils.loggers import add_handlers
 from medcat.tokenizers.transformers_ner import TransformersTokenizerNER
 from medcat.utils.deid.metrics import metrics
 from medcat.datasets.data_collator import CollateAndPadNER
-from transformers import pipeline
-from spacy.tokens import Span
-import datasets
 
-from medcat.cdb import CDB
-from medcat.datasets import transformers_ner
-from transformers import Trainer, TrainingArguments, AutoModelForTokenClassification, AutoTokenizer
+from transformers import Trainer, AutoModelForTokenClassification, AutoTokenizer
+from transformers import pipeline
+import datasets
 
 # It should be safe to do this always, as all other multiprocessing
 #will be finished before data comes to meta_cat
@@ -33,6 +30,7 @@ os.environ['WANDB_DISABLED'] = 'true'
 class TransformersNER(object):
     r''' TODO: Add documentation
     '''
+
 
     # Custom pipeline component name
     name = 'transformers_ner'
@@ -72,7 +70,7 @@ class TransformersNER(object):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
-    def train(self, json_path: Union[str, list]) -> Dict:
+    def train(self, json_path: Union[str, list], ignore_extra_labels=False):
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -81,6 +79,9 @@ class TransformersNER(object):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
             train_arguments(`str`, optional, defaults to `None`):
                 HF TrainingArguments. If None the default will be used
+            ignore_extra_labels:
+                Makes only sense when an existing deid model was loaded and from the new data we want to ignore
+                 labels that did not exist in the old model.
         '''
 
         # Load the medcattrainer export
@@ -103,6 +104,17 @@ class TransformersNER(object):
             with open(path, 'r') as f:
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
 
+        # Remove labels that did not exist in old dataset
+        if ignore_extra_labels and self.tokenizer.label_map:
+            self.log.info("Ignoring extra labels from the data")
+            for p in data_loaded['projects']:
+                for d in p['documents']:
+                    new_anns = []
+                    for a in d['annotations']:
+                        if a['cui'] in self.tokenizer.label_map:
+                            new_anns.append(a)
+                    d['annotations'] = new_anns
+
         # Here we have to save the data because of the data loader
         os.makedirs('results', exist_ok=True)
         json.dump(data_loaded, open("./results/data.json", 'w'))
@@ -111,13 +123,11 @@ class TransformersNER(object):
         data_abs_path = os.path.join(os.getcwd(), 'results', 'data.json')
         dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
                                         data_files={'train': data_abs_path},
-                                        split=datasets.Split.TRAIN,
+                                        split='train',
                                         cache_dir='/tmp/')
 
         # Update labelmap in case the current dataset has more labels than what we had before
         self.tokenizer.calculate_label_map(dataset)
-        self.model.config.id2label = {v:k for k,v in self.tokenizer.label_map.items()}
-        self.model.config.label2id = self.tokenizer.label_map
 
         if self.model.num_labels != len(self.tokenizer.label_map):
             self.log.warning("The dataset contains labels we've not seen before, model is being reinitialized")
@@ -127,31 +137,34 @@ class TransformersNER(object):
 
             self.model.config
 
+        self.model.config.id2label = {v:k for k,v in self.tokenizer.label_map.items()}
+        self.model.config.label2id = self.tokenizer.label_map
+
         # Encode dataset
         encoded_dataset = dataset.map(
                 lambda examples: self.tokenizer.encode(examples, ignore_subwords=False),
                 batched=True,
                 remove_columns=['ent_cuis', 'ent_ends', 'ent_starts', 'text'])
         # Split to train/test
-        encoded_dataset = encoded_dataset.train_test_split(test_size=self.config.train.test_size)
+        encoded_dataset = encoded_dataset.train_test_split(test_size=self.config.train.test_size) # type: ignore
 
-        data_collator = CollateAndPadNER(self.tokenizer.hf_tokenizer.pad_token_id)
+        data_collator = CollateAndPadNER(self.tokenizer.hf_tokenizer.pad_token_id) # type: ignore
         trainer = Trainer(
-                model = self.model,
+                model=self.model,
                 args=self.config.train,
                 train_dataset=encoded_dataset['train'],
                 eval_dataset=encoded_dataset['test'],
                 compute_metrics=lambda p: metrics(p, tokenizer=self.tokenizer, dataset=encoded_dataset['test']),
-                data_collator=data_collator,
+                data_collator=data_collator, # type: ignore
                 tokenizer=None)
 
         trainer.train()
 
         # Save the training time
-        self.config.train.last_train_on = datetime.now().timestamp()
+        self.config.train.last_train_on = datetime.now().timestamp() # type: ignore
 
         # Save everything
-        #self.save(save_dir_path=self.train.output_dir)
+        self.save(save_dir_path=os.path.join(self.config.train.output_dir, 'final_model'))
 
         # Run an eval step and return metrics
         p = trainer.predict(encoded_dataset['test'])
@@ -162,8 +175,35 @@ class TransformersNER(object):
 
         return df, examples
 
-    def eval(self, json_path: str) -> Dict:
-        raise Exception("Not Implemented!")
+    def eval(self, json_path: str):
+        # Load dataset
+        dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
+                                        data_files={'train': json_path},
+                                        split='train',
+                                        cache_dir='/tmp/')
+
+        # Encode dataset
+        encoded_dataset = dataset.map(
+                lambda examples: self.tokenizer.encode(examples, ignore_subwords=False),
+                batched=True,
+                remove_columns=['ent_cuis', 'ent_ends', 'ent_starts', 'text'])
+
+        data_collator = CollateAndPadNER(self.tokenizer.hf_tokenizer.pad_token_id) # type: ignore
+        # TODO: switch from trainer to model prediction
+        trainer = Trainer(
+                model=self.model,
+                args=self.config.train,
+                train_dataset=None,
+                eval_dataset=encoded_dataset, # type: ignore
+                compute_metrics=None,
+                data_collator=data_collator, # type: ignore
+                tokenizer=None)
+
+        # Run an eval step and return metrics
+        p = trainer.predict(encoded_dataset) # type: ignore
+        df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer, dataset=encoded_dataset)
+
+        return df, examples
 
     def save(self, save_dir_path: str) -> None:
         r''' Save all components of this class to a file
@@ -191,7 +231,7 @@ class TransformersNER(object):
         #save the class itself.
 
     @classmethod
-    def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
+    def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "TransformersNER":
         r''' Load a meta_cat object.
 
         Args:
@@ -263,7 +303,7 @@ class TransformersNER(object):
                 # For now we will process the documents one by one, should be improved in the future to use batching
                 for doc in docs:
                     res = self.ner_pipe(doc.text, aggregation_strategy=self.config.general['ner_aggregation_strategy'])
-                    print(res)
+                    doc.ents = []
                     for r in res:
                         inds = []
                         for ind, word in enumerate(doc):
@@ -282,6 +322,11 @@ class TransformersNER(object):
                         entity._.confidence = r['score']
 
                         doc._.ents.append(entity)
+                    create_main_ann(self.cdb, doc)
+                    if self.cdb.config.general['make_pretty_labels'] is not None:
+                        make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
+                    if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
+                        map_ents_to_groups(self.cdb, doc)
 
                 yield from docs
             except Exception as e:

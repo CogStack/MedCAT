@@ -17,7 +17,7 @@ def set_all_seeds(seed: int) -> None:
     random.seed(seed)
 
 
-def count_annotations_project(project: Dict, cnt_per_cui=None) -> int:
+def count_annotations_project(project: Dict, cnt_per_cui=None) -> Tuple[int, Any]:
     cnt = 0
     if cnt_per_cui is None:
         cnt_per_cui = defaultdict(int)
@@ -68,7 +68,7 @@ def count_annotations(data_path: str) -> None:
     data = load_data(data_path, require_annotations=True)
 
     g_cnt = 0
-    cnt_per_cui = defaultdict(int)
+    cnt_per_cui: Dict = defaultdict(int)
     for project in data['projects']:
         cnt, cnt_per_cui = count_annotations_project(project, cnt_per_cui)
         g_cnt += cnt

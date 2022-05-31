@@ -17,6 +17,7 @@ from medcat.utils.loggers import add_handlers
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.ner.transformers_ner import TransformersNER
 
 
 class Pipe(object):
@@ -125,6 +126,21 @@ class Pipe(object):
         Span.set_extension('meta_anns', default=None, force=True)
         # Used for sharing pre-processed data/tokens
         Doc.set_extension('share_tokens', default=None, force=True)
+
+
+    def add_addl_ner(self, addl_ner: TransformersNER, name: Optional[str] = None) -> None:
+        component_name = spacy.util.get_object_name(addl_ner)
+        name = name if name is not None else component_name
+        Language.component(name=component_name, func=addl_ner)
+        self._nlp.add_pipe(component_name, name=name, last=True)
+
+        Doc.set_extension('ents', default=[], force=True)
+        Span.set_extension('confidence', default=-1, force=True)
+        Span.set_extension('id', default=0, force=True)
+        Span.set_extension('cui', default=-1, force=True)
+        Span.set_extension('context_similarity', default=-1, force=True)
+        Span.set_extension('detected_name', default=None, force=True)
+
 
     def batch_multi_process(self,
                             texts: Iterable[str],

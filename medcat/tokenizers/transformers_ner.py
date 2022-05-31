@@ -29,22 +29,11 @@ class TransformersTokenizerNER(object):
         self.id2type = id2type
         self.cui2name = cui2name
 
-    def calculate_label_map(self, dataset: Dict) -> None:
+    def calculate_label_map(self, dataset) -> None:
         for cuis in dataset['ent_cuis']:
             for cui in cuis:
                 if cui not in self.label_map:
                     self.label_map[cui] = len(self.label_map)
-
-    def encode_eval(self, text):
-        results = self.hf_tokenizer(text, return_offsets_mapping=True, add_special_tokens=False)
-
-        for result in results:
-            output.append({'offset_mapping': result.offsets,
-                'input_ids': result.ids,
-                'tokens': result.tokens,
-            })
-
-        return output
 
     def encode(self, examples: Dict, ignore_subwords: bool = False) -> Dict:
         r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
@@ -129,7 +118,7 @@ class TransformersTokenizerNER(object):
         return self.hf_tokenizer
 
     @classmethod
-    def load(cls, path: str) -> 'TokenizerNER':
+    def load(cls, path: str) -> 'TransformersTokenizerNER':
         tokenizer = cls()
         with open(path, 'rb') as f:
             d = dill.load(f)

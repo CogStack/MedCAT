@@ -40,6 +40,7 @@ from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
+from medcat.ner.transformers_ner import TransformersNER
 
 
 class CAT(object):
@@ -81,10 +82,10 @@ class CAT(object):
 
     def __init__(self,
                  cdb: CDB,
-                 vocab: Vocab = None,
+                 vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  meta_cats: List[MetaCAT] = [],
-                 addl_ner = []) -> None:
+                 addl_ner: List[TransformersNER] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
@@ -122,7 +123,7 @@ class CAT(object):
 
         # Add addl_ner if they exist
         for ner in self._addl_ner:
-            self.pipe.add_ner(ner, ner.config.general['name'])
+            self.pipe.add_addl_ner(ner, ner.config.general['name'])
 
         # Add meta_annotaiton classes if they exist
         for meta_cat in self._meta_cats:
@@ -147,6 +148,9 @@ class CAT(object):
 
         for mc in self._meta_cats:
             hasher.update(mc.get_hash())
+
+        for trf in self._addl_ner:
+            hasher.update(trf.get_hash())
 
         return hasher.hexdigest()
 
@@ -227,7 +231,11 @@ class CAT(object):
             # We will allow creation of modelpacks without vocabs
             self.vocab.save(vocab_path)
 
-        # TODO save addl_ner
+        # Save addl_ner
+        for comp in self.pipe.spacy_nlp.components:
+            if isinstance(comp[1], TransformersNER):
+                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.general['name'])
+                comp[1].save(trf_path)
 
         # Save all meta_cats
         for comp in self.pipe.spacy_nlp.components:
@@ -285,7 +293,18 @@ class CAT(object):
 
         # Load Vocab
         vocab_path = os.path.join(model_pack_path, "vocab.dat")
-        vocab = Vocab.load(vocab_path)
+        if os.path.exists(vocab_path):
+            vocab = Vocab.load(vocab_path)
+        else:
+            vocab = None
+
+        # Find meta models in the model_pack
+        trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')]
+        addl_ner = []
+        for trf_path in trf_paths:
+            trf = TransformersNER.load(save_dir_path=trf_path)
+            trf.cdb = cdb # Set the cat.cdb to be the CDB of the TRF model
+            addl_ner.append(trf)
 
         # Find meta models in the model_pack
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
@@ -294,7 +313,7 @@ class CAT(object):
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
                                           config_dict=meta_cat_config_dict))
 
-        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
         cls.log.info(cat.get_model_card()) # Print the model card
         return cat
 
@@ -1025,7 +1044,7 @@ class CAT(object):
         # Loop though the models and check are there GPU devices
         nn_components = []
         for component in self.pipe.spacy_nlp.components:
-            if isinstance(component[1], MetaCAT):
+            if isinstance(component[1], MetaCAT) or isinstance(component[1], TransformersNER):
                 self.pipe.spacy_nlp.disable_pipe(component[0])
                 nn_components.append(component)
 
@@ -1042,9 +1061,9 @@ class CAT(object):
         for name, component in nn_components:
             component.config.general['disable_component_lock'] = True
 
-        for name, component in nn_components:
+        # For meta_cat compoments 
+        for name, component in [c for c in nn_components if isinstance(c[1], MetaCAT)]:
             spacy_docs = component.pipe(spacy_docs)
-
         for spacy_doc in spacy_docs:
             for ent in spacy_doc.ents:
                 docs[spacy_doc.id]['entities'][ent._.id]['meta_anns'].update(ent._.meta_anns)
@@ -1115,6 +1134,10 @@ class CAT(object):
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         """
+        for comp in self.pipe.spacy_nlp.components:
+            if isinstance(comp[1], TransformersNER):
+                raise Exception("Please do not use multiprocessing when running a transformer model for NER, run sequentially.")
+
         # Set max document length
         self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 

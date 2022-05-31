@@ -92,7 +92,7 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
                                 ends.append(entity['end'])
                                 cuis.append(entity['cui'])
                         doc_id = doc.get('id', ind)
-                        doc_name = doc.get('name')
+                        doc_name = doc.get('name', 'unknown')
                         yield "{}".format(doc_id), {
                                 'id': int(doc_id),
                                 'text': str(doc['text']),
