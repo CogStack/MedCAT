@@ -166,7 +166,7 @@ class TransformersNER(object):
                 data_collator=data_collator, # type: ignore
                 tokenizer=None)
 
-        trainer.train()
+        trainer.train() # type: ignore
 
         # Something happens with logging strategy during training
         self.config.train.logging_strategy = 'epoch' # type: ignore
@@ -179,7 +179,7 @@ class TransformersNER(object):
         self.save(save_dir_path=os.path.join(self.config.train.output_dir, 'final_model'))
 
         # Run an eval step and return metrics
-        p = trainer.predict(encoded_dataset['test'])
+        p = trainer.predict(encoded_dataset['test']) # type: ignore
         df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer, dataset=encoded_dataset['test'])
 
 
