@@ -70,7 +70,7 @@ class TransformersNER(object):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
-    def train(self, json_path: Union[str, list, None]=None, ignore_extra_labels=False, dataset=None):
+    def train(self, json_path: Union[str, list, None]=None, ignore_extra_labels=False, dataset=None, meta_requirements=None):
         r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -112,6 +112,15 @@ class TransformersNER(object):
                         new_anns = []
                         for a in d['annotations']:
                             if a['cui'] in self.tokenizer.label_map:
+                                new_anns.append(a)
+                        d['annotations'] = new_anns
+            if meta_requirements is not None:
+                self.log.info("Removing anns that do not meet meta requirements")
+                for p in data_loaded['projects']:
+                    for d in p['documents']:
+                        new_anns = []
+                        for a in d['annotations']:
+                            if all([a['meta_anns'][name]['value'] == value for name, value in meta_requirements.items()]):
                                 new_anns.append(a)
                         d['annotations'] = new_anns
 
