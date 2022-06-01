@@ -311,11 +311,11 @@ class TransformersNER(object):
                  stream: Iterable[Union[Doc, None]],
                  batch_size_chars: int) -> Iterator[Optional[Doc]]:
         for docs in self.batch_generator(stream, batch_size_chars):
-            try:
-                #all_text = [doc.text for doc in docs]
-                #all_text_processed = self.tokenizer.encode_eval(all_text)
-                # For now we will process the documents one by one, should be improved in the future to use batching
-                for doc in docs:
+            #all_text = [doc.text for doc in docs]
+            #all_text_processed = self.tokenizer.encode_eval(all_text)
+            # For now we will process the documents one by one, should be improved in the future to use batching
+            for doc in docs:
+                try:
                     res = self.ner_pipe(doc.text, aggregation_strategy=self.config.general['ner_aggregation_strategy'])
                     doc.ents = []
                     for r in res:
@@ -341,12 +341,9 @@ class TransformersNER(object):
                         make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
                     if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
                         map_ents_to_groups(self.cdb, doc)
-
-                yield from docs
-            except Exception as e:
-                # TODO: Make nice
-                self.log.warning("Error in pipe: " + str(e))
-                yield from [None] * len(docs)
+                except:
+                    self.log.warning("Error in processing a doc", exc_info=True)
+            yield from docs
 
     # Override
     def __call__(self, doc: Doc) -> Doc:

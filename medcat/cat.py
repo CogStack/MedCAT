@@ -85,7 +85,7 @@ class CAT(object):
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  meta_cats: List[MetaCAT] = [],
-                 addl_ner: List[TransformersNER] = []) -> None:
+                 addl_ner: Union[TransformersNER, List[TransformersNER]] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
@@ -96,7 +96,7 @@ class CAT(object):
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
-        self._addl_ner = addl_ner
+        self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
 
     def _create_pipeline(self, config):
