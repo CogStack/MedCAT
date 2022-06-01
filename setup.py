@@ -15,7 +15,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
-              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo'],
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.deid'],
     install_requires=[
         'numpy>=1.21.4',
         'pandas<=1.4.2,>=1.1.5',
@@ -26,7 +26,7 @@ setuptools.setup(
         'torch>=1.0',
         'tqdm>=4.27',
         'sklearn~=0.0',
-        'elasticsearch>=7.10,<8.0.0',
+        'elasticsearch>=7.10,<9.0.0',
         'dill~=0.3.4',
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
@@ -35,7 +35,7 @@ setuptools.setup(
         'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
-        'xxhash==2.0.2',
+        'xxhash==3.0.0',
         'blis<=0.7.5',
         'click<=8.0.4', # Spacy breaks without this
         ],
