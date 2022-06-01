@@ -18,7 +18,7 @@ from medcat.utils.deid.metrics import metrics
 from medcat.datasets.data_collator import CollateAndPadNER
 
 from transformers import Trainer, AutoModelForTokenClassification, AutoTokenizer
-from transformers import pipeline
+from transformers import pipeline, TrainingArguments
 import datasets
 
 # It should be safe to do this always, as all other multiprocessing
@@ -38,7 +38,8 @@ class TransformersNER(object):
     # Add file and console handlers
     log = add_handlers(logging.getLogger(__package__))
 
-    def __init__(self, cdb, config: Optional[ConfigTransformersNER] = None) -> None:
+    def __init__(self, cdb, config: Optional[ConfigTransformersNER] = None,
+                 training_arguments=None) -> None:
         self.cdb = cdb
         if config is None:
             config = ConfigTransformersNER()
@@ -55,8 +56,31 @@ class TransformersNER(object):
             hf_tokenizer = AutoTokenizer.from_pretrained(self.config.general['model_name'])
             self.tokenizer = TransformersTokenizerNER(hf_tokenizer)
 
+        if training_arguments is None:
+            self.training_arguments = TrainingArguments(
+                output_dir='./results',
+                logging_dir='./logs',            # directory for storing logs
+                num_train_epochs=10,              # total number of training epochs
+                per_device_train_batch_size=1,  # batch size per device during training
+                per_device_eval_batch_size=1,   # batch size for evaluation
+                weight_decay=0.14,               # strength of weight decay
+                warmup_ratio=0.01,
+                learning_rate=4.47e-05, # Should be smaller when finetuning an existing deid model
+                eval_accumulation_steps=1,
+                gradient_accumulation_steps=4, # We want to get to bs=4
+                do_eval=True,
+                evaluation_strategy='epoch', # type: ignore
+                logging_strategy='epoch', # type: ignore
+                save_strategy='epoch', # type: ignore
+                metric_for_best_model='eval_recall', # Can be changed if our preference is not recall but precision or f1
+                load_best_model_at_end=True,
+                remove_unused_columns=False)
+        else:
+            self.training_arguments = training_arguments
+
+
     def create_eval_pipeline(self):
-        self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer, config=self.config.train)
+        self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer)
         self.ner_pipe.device = self.model.device
 
     def get_hash(self):
@@ -64,8 +88,8 @@ class TransformersNER(object):
         '''
         hasher = Hasher()
         # Set last_train_on if None
-        if self.config.train.last_train_on is None:
-            self.config.train.last_train_on = datetime.now().timestamp()
+        if self.config.general['last_train_on'] is None:
+            self.config.general['last_train_on'] = datetime.now().timestamp()
 
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
@@ -83,6 +107,7 @@ class TransformersNER(object):
                 Makes only sense when an existing deid model was loaded and from the new data we want to ignore
                  labels that did not exist in the old model.
         '''
+
         if dataset is None and json_path is not None:
             # Load the medcattrainer export
             if isinstance(json_path, str):
@@ -134,7 +159,7 @@ class TransformersNER(object):
                                             data_files={'train': data_abs_path},
                                             split='train',
                                             cache_dir='/tmp/')
-            dataset = dataset.train_test_split(test_size=self.config.train.test_size) # type: ignore
+            dataset = dataset.train_test_split(test_size=self.config.general['test_size']) # type: ignore
 
         # Update labelmap in case the current dataset has more labels than what we had before
         self.tokenizer.calculate_label_map(dataset['train'])
@@ -159,7 +184,7 @@ class TransformersNER(object):
         data_collator = CollateAndPadNER(self.tokenizer.hf_tokenizer.pad_token_id) # type: ignore
         trainer = Trainer(
                 model=self.model,
-                args=self.config.train,
+                args=self.training_arguments,
                 train_dataset=encoded_dataset['train'],
                 eval_dataset=encoded_dataset['test'],
                 compute_metrics=lambda p: metrics(p, tokenizer=self.tokenizer, dataset=encoded_dataset['test']),
@@ -168,15 +193,11 @@ class TransformersNER(object):
 
         trainer.train() # type: ignore
 
-        # Something happens with logging strategy during training
-        self.config.train.logging_strategy = 'epoch' # type: ignore
-        self.config.train.save_strategy = 'epoch' # type: ignore
-
         # Save the training time
-        self.config.train.last_train_on = datetime.now().timestamp() # type: ignore
+        self.config.general['last_train_on'] = datetime.now().timestamp() # type: ignore
 
         # Save everything
-        self.save(save_dir_path=os.path.join(self.config.train.output_dir, 'final_model'))
+        self.save(save_dir_path=os.path.join(self.training_arguments.output_dir, 'final_model'))
 
         # Run an eval step and return metrics
         p = trainer.predict(encoded_dataset['test']) # type: ignore
@@ -206,7 +227,7 @@ class TransformersNER(object):
         # TODO: switch from trainer to model prediction
         trainer = Trainer(
                 model=self.model,
-                args=self.config.train,
+                args=self.training_arguments,
                 train_dataset=None,
                 eval_dataset=encoded_dataset, # type: ignore
                 compute_metrics=None,
@@ -341,8 +362,8 @@ class TransformersNER(object):
                         make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
                     if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
                         map_ents_to_groups(self.cdb, doc)
-                except:
-                    self.log.warning("Error in processing a doc", exc_info=True)
+                except Exception as e:
+                    self.log.warning(e, exc_info=True)
             yield from docs
 
     # Override
