@@ -108,6 +108,7 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
     df = pd.DataFrame(data[1:], columns=data[0])
 
     if not return_df:
-        return {'recall': np.average(df.r.values), 'precision': np.average(df.p.values), 'f1': np.average(df.f1.values)}
+        return {'recall': np.average(df.r.values), 'precision': np.average(df.p.values), 'f1': np.average(df.f1.values),
+                'recall_merged': np.average(df.r_merged.values), 'precison_merged': np.average(df.p_merged.values)}
     else:
         return df, examples
