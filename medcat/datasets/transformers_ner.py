@@ -86,7 +86,7 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
                         for entity in doc['annotations']:
                             if (entity.get('correct', True) or
                                entity.get('manually_created', False) or
-                               entity.get('alternative', False) and not (
+                               entity.get('alternative', False)) and not (
                                entity.get('incorrect', False) or
                                entity.get('terminated', False)):
 
