@@ -110,49 +110,8 @@ class TransformersNER(object):
 
         if dataset is None and json_path is not None:
             # Load the medcattrainer export
-            if isinstance(json_path, str):
-                json_path = [json_path]
-
-            def merge_data_loaded(base, other):
-                if not base:
-                    return other
-                elif other is None:
-                    return base
-                else:
-                    for p in other['projects']:
-                        base['projects'].append(p)
-                return base
-
-            # Merge data from all different data paths
-            data_loaded: Dict = {}
-            for path in json_path:
-                with open(path, 'r') as f:
-                    data_loaded = merge_data_loaded(data_loaded, json.load(f))
-
-            # Remove labels that did not exist in old dataset
-            if ignore_extra_labels and self.tokenizer.label_map:
-                self.log.info("Ignoring extra labels from the data")
-                for p in data_loaded['projects']:
-                    for d in p['documents']:
-                        new_anns = []
-                        for a in d['annotations']:
-                            if a['cui'] in self.tokenizer.label_map:
-                                new_anns.append(a)
-                        d['annotations'] = new_anns
-            if meta_requirements is not None:
-                self.log.info("Removing anns that do not meet meta requirements")
-                for p in data_loaded['projects']:
-                    for d in p['documents']:
-                        new_anns = []
-                        for a in d['annotations']:
-                            if all([a['meta_anns'][name]['value'] == value for name, value in meta_requirements.items()]):
-                                new_anns.append(a)
-                        d['annotations'] = new_anns
-
-            # Here we have to save the data because of the data loader
-            os.makedirs('results', exist_ok=True)
-            json.dump(data_loaded, open("./results/data.json", 'w'))
-
+            json_path = self._prepare_dataset(json_path, ignore_extra_labels=ignore_extra_labels,
+                                              meta_requirements=meta_requirements, file_name='data_eval.json')
             # Load dataset
             data_abs_path = os.path.join(os.getcwd(), 'results', 'data.json')
             dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
@@ -209,8 +168,58 @@ class TransformersNER(object):
 
         return df, examples, dataset
 
-    def eval(self, json_path: Union[str, None] = None, dataset=None):
+    def _prepare_dataset(self, json_path, ignore_extra_labels, meta_requirements, file_name='data.json'):
+        def merge_data_loaded(base, other):
+            if not base:
+                return other
+            elif other is None:
+                return base
+            else:
+                for p in other['projects']:
+                    base['projects'].append(p)
+            return base
+
+        if isinstance(json_path, str):
+            json_path = [json_path]
+
+       # Merge data from all different data paths
+        data_loaded: Dict = {}
+        for path in json_path:
+            with open(path, 'r') as f:
+                data_loaded = merge_data_loaded(data_loaded, json.load(f))
+
+        # Remove labels that did not exist in old dataset
+        if ignore_extra_labels and self.tokenizer.label_map:
+            self.log.info("Ignoring extra labels from the data")
+            for p in data_loaded['projects']:
+                for d in p['documents']:
+                    new_anns = []
+                    for a in d['annotations']:
+                        if a['cui'] in self.tokenizer.label_map:
+                            new_anns.append(a)
+                    d['annotations'] = new_anns
+        if meta_requirements is not None:
+            self.log.info("Removing anns that do not meet meta requirements")
+            for p in data_loaded['projects']:
+                for d in p['documents']:
+                    new_anns = []
+                    for a in d['annotations']:
+                        if all([a['meta_anns'][name]['value'] == value for name, value in meta_requirements.items()]):
+                            new_anns.append(a)
+                    d['annotations'] = new_anns
+
+        # Here we have to save the data because of the data loader
+        os.makedirs('results', exist_ok=True)
+        out_path = os.path.join(os.getcwd(), 'results', file_name)
+        json.dump(data_loaded, open(out_path, 'w'))
+
+        return out_path
+
+
+    def eval(self, json_path: Union[str, list, None] = None, dataset=None, ignore_extra_labels=False, meta_requirements=None):
         if dataset is None:
+            json_path = self._prepare_dataset(json_path, ignore_extra_labels=ignore_extra_labels,
+                                              meta_requirements=meta_requirements, file_name='data_eval.json')
             # Load dataset
             dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
                                             data_files={'train': json_path}, # type: ignore
