@@ -74,12 +74,13 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
         ]
 
     def _generate_examples(self, filepaths):
+        cnt = 0
         for filepath in filepaths:
             logging.info("generating examples from = %s", filepath)
             with open(filepath, 'r') as f:
                 projects = json.load(f)['projects']
                 for project in projects:
-                    for ind, doc in enumerate(project['documents']):
+                    for doc in project['documents']:
                         starts = []
                         ends = []
                         cuis = []
@@ -94,7 +95,8 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
                                 starts.append(entity['start'])
                                 ends.append(entity['end'])
                                 cuis.append(entity['cui'])
-                        doc_id = doc.get('id', ind)
+                        doc_id = doc.get('id', cnt)
+                        cnt += 1
                         doc_name = doc.get('name', 'unknown')
                         yield "{}".format(doc_id), {
                                 'id': int(doc_id),
