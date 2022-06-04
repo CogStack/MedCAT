@@ -5,7 +5,8 @@ from collections import defaultdict
 from scipy.special import softmax
 
 
-def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, merged_negative={0, 1, -100}, padding_label=-100, csize=15, subword_label=1):
+def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, merged_negative={0, 1, -100}, padding_label=-100, csize=15, subword_label=1,
+            verbose=False):
     r''' TODO: This could be done better, for sure. But it works.
     '''
     predictions = np.array(p.predictions)
@@ -106,6 +107,8 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
 
 
     df = pd.DataFrame(data[1:], columns=data[0])
+    if verbose:
+        print(df)
 
     if not return_df:
         return {'recall': np.average(df.r.values), 'precision': np.average(df.p.values), 'f1': np.average(df.f1.values),

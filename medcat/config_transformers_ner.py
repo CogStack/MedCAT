@@ -15,4 +15,5 @@ class ConfigTransformersNER(ConfigMixin):
                 'ner_aggregation_strategy': 'simple', # Agg strategy for HF pipeline for NER
                 'test_size': 0.2,
                 'last_train_on': None,
+                'verbose_metrics': False,
                 }

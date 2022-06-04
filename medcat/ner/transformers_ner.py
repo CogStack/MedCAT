@@ -192,7 +192,7 @@ class TransformersNER(object):
                 args=self.training_arguments,
                 train_dataset=encoded_dataset['train'],
                 eval_dataset=encoded_dataset['test'],
-                compute_metrics=lambda p: metrics(p, tokenizer=self.tokenizer, dataset=encoded_dataset['test']),
+                compute_metrics=lambda p: metrics(p, tokenizer=self.tokenizer, dataset=encoded_dataset['test'], verbose=self.config.general['verbose_metrics']),
                 data_collator=data_collator, # type: ignore
                 tokenizer=None)
 
