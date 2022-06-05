@@ -108,7 +108,7 @@ class TransformersNER(object):
         if isinstance(json_path, str):
             json_path = [json_path]
 
-       # Merge data from all different data paths
+        # Merge data from all different data paths
         data_loaded: Dict = {}
         for path in json_path:
             with open(path, 'r') as f:
@@ -161,7 +161,7 @@ class TransformersNER(object):
                                               meta_requirements=meta_requirements, file_name='data_eval.json')
             # Load dataset
             dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
-                                            data_files={'train': json_path},
+                                            data_files={'train': json_path}, # type: ignore
                                             split='train',
                                             cache_dir='/tmp/')
             # We split before encoding so the split is document level, as encoding
