@@ -164,6 +164,8 @@ class TransformersNER(object):
                                             data_files={'train': json_path},
                                             split='train',
                                             cache_dir='/tmp/')
+            # We split before encoding so the split is document level, as encoding
+            #does the document spliting into max_seq_len
             dataset = dataset.train_test_split(test_size=self.config.general['test_size']) # type: ignore
 
         # Update labelmap in case the current dataset has more labels than what we had before
