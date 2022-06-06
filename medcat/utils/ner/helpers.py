@@ -1,4 +1,4 @@
-from medcat.utils.data_utils import load_data, count_annotations
+from medcat.utils.data_utils import count_annotations
 from medcat.cdb import CDB
 
 
