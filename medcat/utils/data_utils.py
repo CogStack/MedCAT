@@ -64,7 +64,7 @@ def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann
     return data
 
 
-def count_annotations(data_path: str) -> None:
+def count_annotations(data_path: str) -> Dict:
     data = load_data(data_path, require_annotations=True)
 
     g_cnt = 0
@@ -79,9 +79,11 @@ def count_annotations(data_path: str) -> None:
 
     # Annotates per CUI
     cnt_per_cui = dict(cnt_per_cui)
-    print("Annotates per CUI: ")
+    print("Annotations per CUI: ")
     for row in sorted(cnt_per_cui.items(), key=lambda x: x[1], reverse=True):
         print(row)
+
+    return cnt_per_cui
 
 
 def get_doc_from_project(project: Dict, doc_id: str) -> Optional[Dict]:

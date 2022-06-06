@@ -14,7 +14,7 @@ from medcat.utils.hasher import Hasher
 from medcat.config_transformers_ner import ConfigTransformersNER
 from medcat.utils.loggers import add_handlers
 from medcat.tokenizers.transformers_ner import TransformersTokenizerNER
-from medcat.utils.deid.metrics import metrics
+from medcat.utils.ner.metrics import metrics
 from medcat.datasets.data_collator import CollateAndPadNER
 
 from transformers import Trainer, AutoModelForTokenClassification, AutoTokenizer
