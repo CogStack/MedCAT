@@ -1,6 +1,6 @@
 import os
 import json
-#import logging
+import logging
 from spacy.tokens import Doc
 from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, cast, Union
@@ -37,6 +37,7 @@ class TransformersNER(object):
 
     # Add file and console handlers. TODO: get's messed up because of transformer loggers
     #log = add_handlers(logging.getLogger(__package__))
+    log = logging.getLogger(__package__)
 
     def __init__(self, cdb, config: Optional[ConfigTransformersNER] = None,
                  training_arguments=None) -> None:
