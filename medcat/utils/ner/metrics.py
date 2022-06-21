@@ -104,15 +104,13 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
         data.append([cui, tokenizer.cui2name.get(cui, cui), _cr[key]['precision'], 
                      _cr[key]['recall'], _cr[key]['f1-score'], _cr[key]['support'], _cr[key]['r_merged'], p_merged])
 
-
-
     df = pd.DataFrame(data[1:], columns=data[0])
     if verbose:
         print(df)
 
     if not return_df:
         return {'recall': np.average(df.r.values), 'precision': np.average(df.p.values), 'f1': np.average(df.f1.values),
-                'recall_merged': np.average([x for x in df.r_merged.values if x is not None]),
-                'precison_merged': np.average([x for x in df.p_merged.values if x is not None])}
+                'recall_merged': np.average([x for x in df.r_merged.values if pd.notna(x)]),
+                'precison_merged': np.average([x for x in df.p_merged.values if pd.notna(x)])}
     else:
         return df, examples

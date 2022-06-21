@@ -1,6 +1,6 @@
 import os
 import json
-import logging
+#import logging
 from spacy.tokens import Doc
 from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, cast, Union
@@ -12,7 +12,7 @@ from medcat.datasets import transformers_ner
 from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 from medcat.utils.hasher import Hasher
 from medcat.config_transformers_ner import ConfigTransformersNER
-from medcat.utils.loggers import add_handlers
+#from medcat.utils.loggers import add_handlers
 from medcat.tokenizers.transformers_ner import TransformersTokenizerNER
 from medcat.utils.ner.metrics import metrics
 from medcat.datasets.data_collator import CollateAndPadNER
@@ -35,8 +35,8 @@ class TransformersNER(object):
     # Custom pipeline component name
     name = 'transformers_ner'
 
-    # Add file and console handlers
-    log = add_handlers(logging.getLogger(__package__))
+    # Add file and console handlers. TODO: get's messed up because of transformer loggers
+    #log = add_handlers(logging.getLogger(__package__))
 
     def __init__(self, cdb, config: Optional[ConfigTransformersNER] = None,
                  training_arguments=None) -> None:
