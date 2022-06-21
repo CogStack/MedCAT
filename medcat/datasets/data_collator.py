@@ -10,6 +10,8 @@ class CollateAndPadNER(object):
         batch = {}
 
         max_len = max([len(f['input_ids']) for f in features])
+        if max_len > 512:
+            print(max_len)
         batch['input_ids'] = torch.tensor([f['input_ids'][0:max_len] + [self.pad_id] *
             max(0, max_len - len(f['input_ids'])) for f in features], dtype=torch.long)
         batch['labels'] = torch.tensor([f['labels'][0:max_len] + [-100] *

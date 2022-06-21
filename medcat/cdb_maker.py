@@ -1,9 +1,9 @@
-import pandas
+import pandas as pd
 import numpy as np
 import datetime
 import logging
 import re
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
@@ -50,7 +50,7 @@ class CDBMaker(object):
                              additional_fields=['is_punct'])
 
     def prepare_csvs(self,
-                     csv_paths: List[str],
+                     csv_paths: Union[pd.DataFrame, List[str]],
                      sep: str = ',',
                      encoding: Optional[str] = None,
                      escapechar: Optional[str] = None,
@@ -60,8 +60,8 @@ class CDBMaker(object):
         r''' Compile one or multiple CSVs into a CDB.
 
         Args:
-            csv_paths (`List[str]`):
-                An array of paths to the csv files that should be processed
+            csv_paths (`Union[pd.DataFrame, List[str]]`):
+                An array of paths to the csv files that should be processed. Can also be an array of pd.DataFrames
             full_build (`bool`, defaults to `True`):
                 If False only the core portions of the CDB will be built (the ones required for
                 the functioning of MedCAT). If True, everything will be added to the CDB - this
@@ -93,7 +93,12 @@ class CDBMaker(object):
 
         for csv_path in csv_paths:
             # Read CSV, everything is converted to strings
-            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=index_col, dtype=str, **kwargs)
+            if isinstance(csv_path, str):
+                self.log.info("Started importing concepts from: {}".format(csv_path))
+                df = pd.pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=index_col, dtype=str, **kwargs)
+            else:
+                # Not very clear, but csv_path can be a pre-loaded csv
+                df = csv_path
             df = df.fillna('')
 
             # Find which columns to use from the CSV
@@ -104,7 +109,6 @@ class CDBMaker(object):
                     col2ind[str(col).lower().strip()] = len(cols)
                     cols.append(col)
 
-            self.log.info("Started importing concepts from: {}".format(csv_path))
             _time = None # Used to check speed
             _logging_freq = np.ceil(len(df[cols]) / 100)
             for row_id, row in enumerate(df[cols].values):

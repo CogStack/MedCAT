@@ -1,20 +1,15 @@
 import random
 import logging
 
-from enum import Enum, auto
 from spacy.tokens import Span, Doc
-from typing import Optional, List, Dict
+from typing import Dict
 from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config import Config
-
-
-class LabelStyle(Enum):
-    short = auto()
-    long = auto()
+from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 
 
 class Linker(PipeRunner):
@@ -61,6 +56,7 @@ class Linker(PipeRunner):
     def __call__(self, doc: Doc) -> Doc:
         r'''
         '''
+        doc.ents = [] # Reset main entities, will be recreated later
         cnf_l = self.config.linking
         linked_entities = []
 
@@ -131,59 +127,12 @@ class Linker(PipeRunner):
                             linked_entities.append(entity)
 
         doc._.ents = linked_entities
-        self._create_main_ann(doc)
+        create_main_ann(self.cdb, doc)
 
         if self.config.general['make_pretty_labels'] is not None:
-            self._make_pretty_labels(doc, LabelStyle[self.config.general['make_pretty_labels']])
+            make_pretty_labels(self.cdb, doc, LabelStyle[self.config.general['make_pretty_labels']])
 
         if self.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
-            self._map_ents_to_groups(doc)
+            map_ents_to_groups(self.cdb, doc)
 
         return doc
-
-    def _map_ents_to_groups(self, doc: Doc) -> None:
-        for ent in doc.ents:
-            ent._.cui = self.cdb.addl_info['cui2group'].get(ent._.cui, ent._.cui)
-
-    def _make_pretty_labels(self, doc: Doc, style: Optional[LabelStyle] = None) -> None:
-        ents = list(doc.ents)
-
-        n_ents = []
-        for ent in ents:
-            if style == LabelStyle.short:
-                label = ent._.cui
-            elif style == LabelStyle.long:
-                label = "{} | {} | {:.2f}".format(ent._.cui, self.cdb.get_name(ent._.cui), ent._.context_similarity)
-            else:
-                label = 'concept'
-
-            n_ent = Span(doc, ent.start, ent.end, label)
-            for attr in ent._.__dict__['_extensions'].keys():
-                setattr(n_ent._, attr, getattr(ent._, attr))
-            n_ents.append(n_ent)
-
-        doc.ents = n_ents
-
-    def _create_main_ann(self, doc: Doc, tuis: Optional[List] = None) -> None:
-        # TODO: Separate into another piece of the pipeline
-        """ Creates annotation in the spacy ents list
-        from all the annotations for this document.
-
-        doc:  spacy document
-        """
-        doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
-
-        tkns_in = set()
-        main_anns = []
-        for ent in doc._.ents:
-            if tuis is None or ent._.tui in tuis:
-                to_add = True
-                for tkn in ent:
-                    if tkn in tkns_in:
-                        to_add = False
-                if to_add:
-                    for tkn in ent:
-                        tkns_in.add(tkn)
-                    main_anns.append(ent)
-
-        doc.ents = list(doc.ents) + main_anns

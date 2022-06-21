@@ -89,7 +89,7 @@ class BertForMetaAnnotation(BertPreTrainedModel):
         self.dropout = nn.Dropout(config.hidden_dropout_prob)
         self.classifier = nn.Linear(config.hidden_size, config.num_labels)
 
-        self.init_weights()
+        self.init_weights() # type: ignore
 
     def forward(
         self,
@@ -110,9 +110,9 @@ class BertForMetaAnnotation(BertPreTrainedModel):
             Labels for computing the token classification loss. Indices should be in ``[0, ..., config.num_labels -
             1]``.
         """
-        return_dict = return_dict if return_dict is not None else self.config.use_return_dict
+        return_dict = return_dict if return_dict is not None else self.config.use_return_dict # type: ignore
 
-        outputs = self.bert(
+        outputs = self.bert( # type: ignore
             input_ids,
             attention_mask=attention_mask,
             token_type_ids=token_type_ids,
