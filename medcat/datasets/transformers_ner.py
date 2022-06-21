@@ -30,7 +30,7 @@ class MedCATAnnotationsConfig(datasets.BuilderConfig):
     pass
 
 
-class MedCATNER(datasets.GeneratorBasedBuilder):
+class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
     """MedCATNER: Output of MedCATtrainer"""
 
     BUILDER_CONFIGS = [
@@ -74,25 +74,30 @@ class MedCATNER(datasets.GeneratorBasedBuilder):
         ]
 
     def _generate_examples(self, filepaths):
+        cnt = 0
         for filepath in filepaths:
             logging.info("generating examples from = %s", filepath)
             with open(filepath, 'r') as f:
                 projects = json.load(f)['projects']
                 for project in projects:
-                    for ind, doc in enumerate(project['documents']):
+                    for doc in project['documents']:
                         starts = []
                         ends = []
                         cuis = []
                         for entity in doc['annotations']:
-                            if entity.get('correct', True) or \
-                               entity.get('manually_created', False) or \
-                               entity.get('alternative', False):
+                            if (entity.get('correct', True) or
+                               entity.get('manually_created', False) or
+                               entity.get('alternative', False)) and not (
+                               entity.get('deleted', False) or
+                               entity.get('irrelevant', False) or
+                               entity.get('killed', False)):
 
                                 starts.append(entity['start'])
                                 ends.append(entity['end'])
                                 cuis.append(entity['cui'])
-                        doc_id = doc.get('id', ind)
-                        doc_name = doc.get('name')
+                        doc_id = doc.get('id', cnt)
+                        cnt += 1
+                        doc_name = doc.get('name', 'unknown')
                         yield "{}".format(doc_id), {
                                 'id': int(doc_id),
                                 'text': str(doc['text']),

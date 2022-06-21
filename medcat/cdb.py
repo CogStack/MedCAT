@@ -53,8 +53,11 @@ class CDB(object):
     """
     log = logging.getLogger(__name__)
 
-    def __init__(self, config: Config) -> None:
-        self.config = config
+    def __init__(self, config: Union[Config, None] = None) -> None:
+        if config is None:
+            self.config = Config()
+        else:
+            self.config = config
         self.name2cuis: Dict = {}
         self.name2cuis2status: Dict = {}
 
