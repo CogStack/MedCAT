@@ -18,7 +18,7 @@ from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 # It should be safe to do this always, as all other multiprocessing
-#will be finished before data comes to meta_cat
+# will be finished before data comes to meta_cat
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
@@ -118,15 +118,17 @@ class MetaCAT(PipeRunner):
 
         # Prepare the data
         assert self.tokenizer is not None
-        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                lowercase=g_config['lowercase'])
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer,
+                                 cui_filter=t_config['cui_filter'],
+                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
+                                 lowercase=g_config['lowercase'])
 
         # Check is the name there
         category_name = g_config['category_name']
         if category_name not in data:
-            raise Exception("The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
-                category_name, " | ".join(list(data.keys()))))
+            raise Exception(
+                "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
+                    category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
 
@@ -141,8 +143,9 @@ class MetaCAT(PipeRunner):
 
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
-            self.log.warning("The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                             self.config.model['nclasses'], len(category_value2id)))
+            self.log.warning(
+                "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
+                    self.config.model['nclasses'], len(category_value2id)))
             self.log.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
             self.model = self.get_model(embeddings=self.embeddings)
@@ -173,9 +176,10 @@ class MetaCAT(PipeRunner):
 
         # Prepare the data
         assert self.tokenizer is not None
-        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                lowercase=g_config['lowercase'])
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer,
+                                 cui_filter=t_config['cui_filter'],
+                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
+                                 lowercase=g_config['lowercase'])
 
         # Check is the name there
         category_name = g_config['category_name']
@@ -216,7 +220,7 @@ class MetaCAT(PipeRunner):
         torch.save(self.model.state_dict(), model_save_path)
 
         # This is everything we need to save from the class, we do not
-        #save the class itself.
+        # save the class itself.
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
@@ -285,7 +289,7 @@ class MetaCAT(PipeRunner):
 
         samples = []
         last_ind = 0
-        ent_id2ind = {} # Map form entitiy ID to where is it in the samples array
+        ent_id2ind = {}  # Map form entitiy ID to where is it in the samples array
         for ent in sorted(ents, key=lambda ent: ent.start_char):
             start = ent.start_char
             end = ent.end_char
@@ -301,7 +305,7 @@ class MetaCAT(PipeRunner):
             _start = max(0, ind - cntx_left)
             _end = min(len(input_ids), ind + 1 + cntx_right)
             tkns = input_ids[_start:_end]
-            cpos = cntx_left + min(0, ind-cntx_left)
+            cpos = cntx_left + min(0, ind - cntx_left)
 
             if replace_center is not None:
                 if lowercase:
@@ -313,9 +317,9 @@ class MetaCAT(PipeRunner):
                     if end > pair[0] and end <= pair[1]:
                         e_ind = _ind + ind
                         break
-                ln = e_ind - s_ind # Length of the concept in tokens
+                ln = e_ind - s_ind  # Length of the concept in tokens
                 assert self.tokenizer is not None
-                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
+                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
 
             samples.append([tkns, cpos])
             ent_id2ind[ent._.id] = len(samples) - 1
@@ -376,7 +380,7 @@ class MetaCAT(PipeRunner):
                     assert self.tokenizer is not None
                     all_text_processed = self.tokenizer(all_text)
                     doc_ind2positions = {}
-                    data: List = [] # The thing that goes into the model
+                    data: List = []  # The thing that goes into the model
                     for i, doc in enumerate(docs):
                         ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
                                                                     offset_mapping=all_text_processed[i]['offset_mapping'],
@@ -387,7 +391,7 @@ class MetaCAT(PipeRunner):
                             doc._.share_tokens = (samples, doc_ind2positions[i])
                 else:
                     # This means another model has already processed the data and we can just use it. This is a
-                    #dangerous option - as it assumes the other model has the same tokenizer and context size.
+                    # dangerous option - as it assumes the other model has the same tokenizer and context size.
                     data = []
                     doc_ind2positions = {}
                     for i, doc in enumerate(docs):
@@ -437,11 +441,11 @@ class MetaCAT(PipeRunner):
 
         return doc
 
-    def get_model_card(self, as_dict=False):
+    def get_model_card(self, as_dict: bool = False):
         """A minimal model card.
 
         Args:
-            as_dict: return the model card as a dictionary instead of a str.
+            as_dict (bool): return the model card as a dictionary instead of a str.
 
         Returns:
             By default a str - indented JSON object.

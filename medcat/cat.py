@@ -147,7 +147,8 @@ class CAT(object):
 
     def get_model_card(self, as_dict=False):
         """
-        A 'lightweight' model card whilst the MedCAT VCS system is being built...
+        A minimal model card for MedCAT model packs.
+
         Args:
             as_dict: return the model card as a dictionary instead of a str.
 
@@ -156,7 +157,7 @@ class CAT(object):
         """
         card = {
                 'Model ID': self.config.version['id'],
-                'Last Modifed On': self.config.version['last_modified'],
+                'Last Modified On': self.config.version['last_modified'],
                 'History (from least to most recent)': self.config.version['history'],
                 'Description': self.config.version['description'],
                 'Source Ontology': self.config.version['ontology'],
@@ -187,7 +188,7 @@ class CAT(object):
             version['id'] = m
             version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
-            version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            version['meta_cats'] = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version['medcat_version'] = __version__
             self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
