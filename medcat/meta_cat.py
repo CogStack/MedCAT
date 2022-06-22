@@ -18,13 +18,13 @@ from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 # It should be safe to do this always, as all other multiprocessing
-#will be finished before data comes to meta_cat
+# will be finished before data comes to meta_cat
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 class MetaCAT(PipeRunner):
-    r''' TODO: Add documentation
-    '''
+    r""" TODO: Add documentation
+    """
 
     # Custom pipeline component name
     name = 'meta_cat'
@@ -65,8 +65,8 @@ class MetaCAT(PipeRunner):
         return model
 
     def get_hash(self):
-        r''' A partial hash trying to catch differences between models
-        '''
+        r""" A partial hash trying to catch differences between models
+        """
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.train['last_train_on'] is None:
@@ -76,7 +76,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
-        r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        r""" Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
@@ -85,7 +85,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (`str`, optional, defaults to `None`):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path.
-        '''
+        """
         g_config = self.config.general
         t_config = self.config.train
 
@@ -118,15 +118,17 @@ class MetaCAT(PipeRunner):
 
         # Prepare the data
         assert self.tokenizer is not None
-        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                lowercase=g_config['lowercase'])
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer,
+                                 cui_filter=t_config['cui_filter'],
+                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
+                                 lowercase=g_config['lowercase'])
 
         # Check is the name there
         category_name = g_config['category_name']
         if category_name not in data:
-            raise Exception("The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
-                category_name, " | ".join(list(data.keys()))))
+            raise Exception(
+                "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
+                    category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
 
@@ -141,8 +143,9 @@ class MetaCAT(PipeRunner):
 
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
-            self.log.warning("The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                             self.config.model['nclasses'], len(category_value2id)))
+            self.log.warning(
+                "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
+                    self.config.model['nclasses'], len(category_value2id)))
             self.log.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
             self.model = self.get_model(embeddings=self.embeddings)
@@ -173,9 +176,10 @@ class MetaCAT(PipeRunner):
 
         # Prepare the data
         assert self.tokenizer is not None
-        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                lowercase=g_config['lowercase'])
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer,
+                                 cui_filter=t_config['cui_filter'],
+                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
+                                 lowercase=g_config['lowercase'])
 
         # Check is the name there
         category_name = g_config['category_name']
@@ -195,12 +199,12 @@ class MetaCAT(PipeRunner):
         return result
 
     def save(self, save_dir_path: str) -> None:
-        r''' Save all components of this class to a file
+        r""" Save all components of this class to a file
 
         Args:
             save_dir_path(`str`):
                 Path to the directory where everything will be saved.
-        '''
+        """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
 
@@ -216,11 +220,11 @@ class MetaCAT(PipeRunner):
         torch.save(self.model.state_dict(), model_save_path)
 
         # This is everything we need to save from the class, we do not
-        #save the class itself.
+        # save the class itself.
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
-        r''' Load a meta_cat object.
+        r""" Load a meta_cat object.
 
         Args:
             save_dir_path (`str`):
@@ -232,7 +236,7 @@ class MetaCAT(PipeRunner):
         Returns:
             meta_cat (`medcat.MetaCAT`):
                 You don't say
-        '''
+        """
 
         # Load config
         config = cast(ConfigMetaCAT, ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json')))
@@ -265,13 +269,13 @@ class MetaCAT(PipeRunner):
         return meta_cat
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
-        r'''
+        r"""
 
         Args:
             doc - spacy
             input_ids
             offset_mapping
-        '''
+        """
         config = self.config
         cntx_left = config.general['cntx_left']
         cntx_right = config.general['cntx_right']
@@ -285,7 +289,7 @@ class MetaCAT(PipeRunner):
 
         samples = []
         last_ind = 0
-        ent_id2ind = {} # Map form entitiy ID to where is it in the samples array
+        ent_id2ind = {}  # Map form entitiy ID to where is it in the samples array
         for ent in sorted(ents, key=lambda ent: ent.start_char):
             start = ent.start_char
             end = ent.end_char
@@ -301,7 +305,7 @@ class MetaCAT(PipeRunner):
             _start = max(0, ind - cntx_left)
             _end = min(len(input_ids), ind + 1 + cntx_right)
             tkns = input_ids[_start:_end]
-            cpos = cntx_left + min(0, ind-cntx_left)
+            cpos = cntx_left + min(0, ind - cntx_left)
 
             if replace_center is not None:
                 if lowercase:
@@ -313,9 +317,9 @@ class MetaCAT(PipeRunner):
                     if end > pair[0] and end <= pair[1]:
                         e_ind = _ind + ind
                         break
-                ln = e_ind - s_ind # Length of the concept in tokens
+                ln = e_ind - s_ind  # Length of the concept in tokens
                 assert self.tokenizer is not None
-                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
+                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
 
             samples.append([tkns, cpos])
             ent_id2ind[ent._.id] = len(samples) - 1
@@ -341,12 +345,12 @@ class MetaCAT(PipeRunner):
 
     # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
-        r''' Process many documents at once.
+        r""" Process many documents at once.
 
         Args:
             stream (Iterable[spacy.tokens.Doc]):
                 List of spacy documents.
-        '''
+        """
         # Just in case
         if stream is None or not stream:
             return stream
@@ -376,7 +380,7 @@ class MetaCAT(PipeRunner):
                     assert self.tokenizer is not None
                     all_text_processed = self.tokenizer(all_text)
                     doc_ind2positions = {}
-                    data: List = [] # The thing that goes into the model
+                    data: List = []  # The thing that goes into the model
                     for i, doc in enumerate(docs):
                         ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
                                                                     offset_mapping=all_text_processed[i]['offset_mapping'],
@@ -387,7 +391,7 @@ class MetaCAT(PipeRunner):
                             doc._.share_tokens = (samples, doc_ind2positions[i])
                 else:
                     # This means another model has already processed the data and we can just use it. This is a
-                    #dangerous option - as it assumes the other model has the same tokenizer and context size.
+                    # dangerous option - as it assumes the other model has the same tokenizer and context size.
                     data = []
                     doc_ind2positions = {}
                     for i, doc in enumerate(docs):
@@ -424,15 +428,43 @@ class MetaCAT(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        ''' Process one document, used in the spacy pipeline for sequential
+        """ Process one document, used in the spacy pipeline for sequential
         document processing.
 
         Args:
             doc (spacy.tokens.Doc):
                 A spacy document
-        '''
+        """
 
         # Just call the pipe method
         doc = next(self.pipe(iter([doc])))
 
         return doc
+
+    def get_model_card(self, as_dict: bool = False):
+        """A minimal model card.
+
+        Args:
+            as_dict (bool): return the model card as a dictionary instead of a str.
+
+        Returns:
+            By default a str - indented JSON object.
+        """
+        card = {
+            'Category Name': self.config.general['category_name'],
+            'Description': self.config.general['description'],
+            'Classes': self.config.general['category_value2id'],
+            'Model': self.config.model['model_name']
+        }
+        if as_dict:
+            return card
+        else:
+            return json.dumps(card, indent=2, sort_keys=False)
+
+    def __repr__(self):
+        """
+        Prints the model_card for this MetaCAT instance.
+        Returns:
+            the 'Model Card' for this MetaCAT instance. This includes NER+L config and any MetaCATs
+        """
+        return self.get_model_card(as_dict=False)

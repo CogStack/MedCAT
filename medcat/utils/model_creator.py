@@ -10,8 +10,7 @@ from medcat.utils.loggers import add_handlers
 from pathlib import Path
 
 # Create Logger
-logger = logging.getLogger('__package__')
-logger = add_handlers(logger)
+logger = add_handlers(logging.getLogger('__package__'))
 logger.setLevel(logging.INFO)
 
 

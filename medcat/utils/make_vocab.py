@@ -10,7 +10,8 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 
 class MakeVocab(object):
     r'''
-    Create a new vocab from a text file. To make a vocab and train word embeddings do:
+    Create a new vocab from a text file.
+
     Args:
         config (medcat.config.Config):
             Global configuration for medcat
@@ -21,12 +22,13 @@ class MakeVocab(object):
         word_tokenizer (<function>):
             A custom tokenizer for word spliting - used if embeddings are BERT or similar.
             Default: None
+    Examples:
+        To make a vocab and train word embeddings.
 
-    >>>cdb = <your existing cdb>
-    >>>maker = MakeVocab(cdb=cdb, config=config)
-    >>>maker.make(data_iterator, out_folder="./output/")
-    >>>maker.add_vectors(in_path="./output/data.txt")
-    >>>
+        >>> cdb = <your existing cdb>
+        >>> maker = MakeVocab(cdb=cdb, config=config)
+        >>> maker.make(data_iterator, out_folder="./output/")
+        >>> maker.add_vectors(in_path="./output/data.txt")
     '''
     log = logging.getLogger(__name__)
 
