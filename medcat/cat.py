@@ -44,7 +44,7 @@ from medcat.ner.transformers_ner import TransformersNER
 
 
 class CAT(object):
-    r'''
+    r"""
     The main MedCAT class used to annotate documents, it is built on top of spaCy
     and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
     be used as a spacy nlp model.
@@ -72,10 +72,11 @@ class CAT(object):
             this value directly.
 
     Examples:
-        >>>cat = CAT(cdb, vocab)
-        >>>spacy_doc = cat("Put some text here")
-        >>>print(spacy_doc.ents) # Detected entites
-    '''
+
+        >>> cat = CAT(cdb, vocab)
+        >>> spacy_doc = cat("Put some text here")
+        >>> print(spacy_doc.ents) # Detected entites
+    """
     # Add file and console handlers
     log = add_handlers(logging.getLogger(__package__))
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
@@ -134,13 +135,13 @@ class CAT(object):
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
-        ''' Returns the spacy pipeline with MedCAT
-        '''
+        """ Returns the spacy pipeline with MedCAT
+        """
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        r''' Will not be a deep hash but will try to cactch all the changing parts during training.
-        '''
+        r""" Will not be a deep hash but will try to cactch all the changing parts during training.
+        """
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
 
@@ -155,9 +156,18 @@ class CAT(object):
         return hasher.hexdigest()
 
     def get_model_card(self, as_dict=False):
+        """
+        A minimal model card for MedCAT model packs.
+
+        Args:
+            as_dict: return the model card as a dictionary instead of a str.
+
+        Returns:
+            By default a str - indented JSON object.
+        """
         card = {
                 'Model ID': self.config.version['id'],
-                'Last Modifed On': self.config.version['last_modified'],
+                'Last Modified On': self.config.version['last_modified'],
                 'History (from least to most recent)': self.config.version['history'],
                 'Description': self.config.version['description'],
                 'Source Ontology': self.config.version['ontology'],
@@ -188,19 +198,19 @@ class CAT(object):
             version['id'] = m
             version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
-            version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            version['meta_cats'] = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version['medcat_version'] = __version__
             self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
-        r''' Will crete a .zip file containing all the models in the current running instance
+        r""" Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
         model_pack_name - an id will be appended to this name
 
         returns:
             Model pack name
-        '''
+        """
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general['spacy_model'] = os.path.basename(self.config.general['spacy_model'])
         # Versioning
@@ -318,7 +328,7 @@ class CAT(object):
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
-        r'''
+        r"""
         Push the text through the pipeline.
 
         Args:
@@ -331,7 +341,7 @@ class CAT(object):
                 but for some special cases I'm leaving it here also.
         Returns:
             A single spacy document or multiple spacy documents with the extracted entities
-        '''
+        """
         # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
         self.config.linking['train'] = do_train
@@ -343,6 +353,14 @@ class CAT(object):
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)
 
+    def __repr__(self):
+        """
+        Prints the model_card for this CAT instance.
+        Returns:
+            the 'Model Card' for this CAT instance. This includes NER+L config and any MetaCATs
+        """
+        return self.get_model_card(as_dict=False)
+
     def _print_stats(self,
                      data: Dict,
                      epoch: int = 0,
@@ -351,7 +369,7 @@ class CAT(object):
                      use_cui_doc_limit: bool = False,
                      use_groups: bool = False,
                      extra_cui_filter: Optional[Set] = None) -> Tuple:
-        r''' TODO: Refactor and make nice
+        r""" TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
         Args:
@@ -390,7 +408,7 @@ class CAT(object):
                 Number of occurrence for each CUI
             examples (dict):
                 Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>]
-        '''
+        """
         tp = 0
         fp = 0
         fn = 0
@@ -655,6 +673,7 @@ class CAT(object):
                 The group to whcih the concept will be added
 
         Examples:
+
             >>> cat.add_cui_to_group("S-17", 'pain')
         """
 
@@ -673,6 +692,7 @@ class CAT(object):
             name (str):
                 The span of text to be removed from the linking dictionary
         Examples:
+
             >>> # To never again link C0020538 to HTN
             >>> cat.unlink_concept_name('C0020538', 'htn', False)
         """
