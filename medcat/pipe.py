@@ -13,7 +13,6 @@ from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
-from medcat.utils.loggers import add_handlers
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
@@ -34,7 +33,7 @@ class Pipe(object):
             The base spacy NLP pipeline.
     """
     # Add file and console handlers
-    log = add_handlers(logging.getLogger(__package__))
+    log = logging.getLogger(__package__)
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         self._nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])

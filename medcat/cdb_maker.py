@@ -11,7 +11,6 @@ from medcat.config import Config
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
-from medcat.utils.loggers import add_handlers
 
 PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
 
@@ -28,7 +27,7 @@ class CDBMaker(object):
         name_max_words (`int`, defaults to `20`):
             Names with more words will be skipped during the build of a CDB
     '''
-    log = add_handlers(logging.getLogger(__package__))
+    log = logging.getLogger(__package__)
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config

@@ -12,7 +12,6 @@ from medcat.utils.hasher import Hasher
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
-from medcat.utils.loggers import add_handlers
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
@@ -31,7 +30,7 @@ class MetaCAT(PipeRunner):
     _component_lock = Lock()
 
     # Add file and console handlers
-    log = add_handlers(logging.getLogger(__package__))
+    log = logging.getLogger(__package__)
 
     # Override
     def __init__(self,
