@@ -9,7 +9,7 @@ from medcat.config import Config
 from pathlib import Path
 
 # Create Logger
-logger = logging.getLogger('__package__')
+logger = logging.getLogger(__package__)
 logger.setLevel(logging.INFO)
 
 
