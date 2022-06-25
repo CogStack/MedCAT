@@ -6,11 +6,10 @@ from medcat.cdb_maker import CDBMaker
 from medcat.utils.make_vocab import MakeVocab
 from medcat.cat import CAT
 from medcat.config import Config
-from medcat.utils.loggers import add_handlers
 from pathlib import Path
 
 # Create Logger
-logger = add_handlers(logging.getLogger('__package__'))
+logger = logging.getLogger(__package__)
 logger.setLevel(logging.INFO)
 
 
