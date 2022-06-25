@@ -25,7 +25,6 @@ from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.cdb import CDB
 from medcat.utils.matutils import intersect_nonempty_set
-from medcat.utils.loggers import add_handlers
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
@@ -78,7 +77,7 @@ class CAT(object):
         >>> print(spacy_doc.ents) # Detected entites
     """
     # Add file and console handlers
-    log = add_handlers(logging.getLogger(__package__))
+    log = logging.getLogger(__package__)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
     def __init__(self,
