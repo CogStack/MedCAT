@@ -18,6 +18,10 @@ def get_important_config_parameters(config):
                 'value': config.linking['similarity_threshold'],
                 'description': "If the confidence of the model is lower than this a detection will be ignore."
                 },
+            "config.linking['filters']['cuis']": {
+                'value': len(config.linking['filters']['cuis']),
+                'description': "Length of the CUIs filter to be included in outputs. If this is not 0 (i.e. not empty) its best to check what is included before using the model"
+            },
             "config.general['spell_check']": {
                 'value': config.general['spell_check'],
                 'description': "Is spell checking enabled."
