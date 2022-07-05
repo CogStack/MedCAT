@@ -22,7 +22,23 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
 class MetaCAT(PipeRunner):
-    r""" TODO: Add documentation
+    r"""
+    The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
+    concept annotations. These are also known as properties or attributes of recognise entities
+    in similar tools such as MetaMap and cTakes.
+
+    This is a flexible model agnostic class that can learns any meta-annotation task, i.e. any
+    multi-class classification task for recognised terms.
+
+    Args:
+        tokenizer (TokenizerWrapperBase):
+            The Huggingface tokenizer instance. This can be a pre-trained tokenzier instance from
+            a BERT-style model, or trained from scratch for the Bi-LSTM (w. attention) model that
+            is currently used in most deployments.
+        embeddings (Tensor, numpy.ndarray):
+            embedding mapping (sub)word input id n-dim (sub)word embedding.
+        config (ConfigMetaCAT):
+            the configuration for MetaCAT. Param descriptions available in ConfigMetaCAT docs.
     """
 
     # Custom pipeline component name
