@@ -129,6 +129,13 @@ def create_models(config_file):
     cdb = train_unsupervised(cdb, vocab, medcat_config, output_dir, training_data_list)
 
     return cdb, vocab
+def main(config_file):
+    # Setup logging
+    handler = logging.StreamHandler()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    return create_models(config_file)
 
 
 if __name__ == '__main__':
@@ -140,3 +147,4 @@ if __name__ == '__main__':
 
     # Run pipeline
     create_models(args.config_file)
+    main(args.config_file)
