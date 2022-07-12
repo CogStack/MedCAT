@@ -188,7 +188,7 @@ class Vocab(object):
 
         freqs = np.array(freqs)
         freqs = np.power(freqs, 3/4)
-        sm = np.sum(freqs)
+        sm: np.ndarray = np.sum(freqs)
 
         for ind in self.vec_index2word.keys():
             word = self.vec_index2word[ind]
