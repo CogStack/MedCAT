@@ -139,7 +139,7 @@ class CAT(object):
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        r""" Will not be a deep hash but will try to cactch all the changing parts during training.
+        r""" Will not be a deep hash but will try to catch all the changing parts during training.
         """
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
