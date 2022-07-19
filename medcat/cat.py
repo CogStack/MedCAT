@@ -428,7 +428,7 @@ class CAT(object):
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             filters['cuis'] = set()
 
-            # Add extrafilter if set
+            # Add extra filter if set
             if isinstance(extra_cui_filter, set):
                 filters['cuis'] = extra_cui_filter
 
@@ -480,8 +480,8 @@ class CAT(object):
                                                   "cui": cui,
                                                   "source value": ann['value'],
                                                   "acc": 1,
-                                                  "project index": pind,
-                                                  "document inedex": dind})
+                                                  "project name": project.get('name'),
+                                                  "document name": doc.get('name')})
                         elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
                             anns_norm_neg.append((ann['start'], cui))
 
@@ -500,12 +500,11 @@ class CAT(object):
 
                     p_anns_norm.append((ann.start_char, cui))
                     p_anns_examples.append({"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
-                                          "cui": cui,
-                                          "source value": ann.text,
-                                          "acc": float(ann._.context_similarity),
-                                          "project index": pind,
-                                          "document inedex": dind})
-
+                                            "cui": cui,
+                                            "source value": ann.text,
+                                            "acc": float(ann._.context_similarity),
+                                            "project name": project.get('name'),
+                                            "document name": doc.get('name')})
 
                 for iann, ann in enumerate(p_anns_norm):
                     cui = ann[1]
@@ -1206,10 +1205,10 @@ class CAT(object):
                 if out_split_size_chars is not None and (_batch_counter * batch_size_chars) > out_split_size_chars:
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
-                                           annotated_ids=annotated_ids,
-                                           save_dir_path=save_dir_path,
-                                           annotated_ids_path=annotated_ids_path,
-                                           part_counter=part_counter)
+                                                           annotated_ids=annotated_ids,
+                                                           save_dir_path=save_dir_path,
+                                                           annotated_ids_path=annotated_ids_path,
+                                                           part_counter=part_counter)
                     del docs
                     docs = {}
                     _batch_counter = 0
@@ -1221,10 +1220,10 @@ class CAT(object):
         if out_split_size_chars is not None and len(docs) > 0:
             # Save to file and reset the docs 
             self._save_docs_to_file(docs=docs,
-                                   annotated_ids=annotated_ids,
-                                   save_dir_path=save_dir_path,
-                                   annotated_ids_path=annotated_ids_path,
-                                   part_counter=part_counter)
+                                    annotated_ids=annotated_ids,
+                                    save_dir_path=save_dir_path,
+                                    annotated_ids_path=annotated_ids_path,
+                                    part_counter=part_counter)
 
         # Enable the GPU Components again
         if separate_nn_components:
@@ -1265,7 +1264,7 @@ class CAT(object):
             for batch in self._batch_generator(data, batch_size_chars):
                 if nn_components:
                     # We need this for the json_to_fake_spacy
-                    id2text.update({k:v for k,v in batch})
+                    id2text.update({k: v for k, v in batch})
                 in_q.put(batch)
 
             # Final data point for workers
@@ -1292,8 +1291,8 @@ class CAT(object):
                 p.join()
 
             docs = {}
-            # Covnerts a touple into a dict
-            docs.update({k:v for k,v in out_list})
+            # Converts a tuple into a dict
+            docs.update({k: v for k, v in out_list})
 
         # If we have separate GPU components now we pipe that
         if nn_components:
