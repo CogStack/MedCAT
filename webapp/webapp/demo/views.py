@@ -60,7 +60,7 @@ def get_html_and_json(text):
 
     doc_json = json.dumps(a)
     uploaded_text = UploadedText()
-    uploaded_text.text = str(text)
+    uploaded_text.text = len(str(text))#str(text) no saving of text anymore
     uploaded_text.save()
 
     return doc2html(doc), doc_json

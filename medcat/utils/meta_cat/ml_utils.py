@@ -15,6 +15,7 @@ from sklearn.metrics import classification_report, precision_recall_fscore_suppo
 def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
+    random.seed(seed)
 
 
 def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: torch.device, pad_id: int) -> Tuple:

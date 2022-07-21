@@ -53,8 +53,11 @@ class CDB(object):
     """
     log = logging.getLogger(__name__)
 
-    def __init__(self, config: Config) -> None:
-        self.config = config
+    def __init__(self, config: Union[Config, None] = None) -> None:
+        if config is None:
+            self.config = Config()
+        else:
+            self.config = config
         self.name2cuis: Dict = {}
         self.name2cuis2status: Dict = {}
 
@@ -436,6 +439,7 @@ class CDB(object):
                 the average between the two training vectors will be taken.
 
         Examples:
+
             >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
         '''
         # Import vectors and counts
@@ -459,6 +463,7 @@ class CDB(object):
                 This will be set as the CUI count for all cuis in this CDB.
 
         Examples:
+
             >>> cdb.reset_cui_count()
         '''
         for cui in self.cui2count_train.keys():

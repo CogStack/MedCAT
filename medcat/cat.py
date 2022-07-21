@@ -25,7 +25,6 @@ from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.cdb import CDB
 from medcat.utils.matutils import intersect_nonempty_set
-from medcat.utils.loggers import add_handlers
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
@@ -41,10 +40,11 @@ from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
+from medcat.ner.transformers_ner import TransformersNER
 
 
 class CAT(object):
-    r'''
+    r"""
     The main MedCAT class used to annotate documents, it is built on top of spaCy
     and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
     be used as a spacy nlp model.
@@ -72,20 +72,22 @@ class CAT(object):
             this value directly.
 
     Examples:
-        >>>cat = CAT(cdb, vocab)
-        >>>spacy_doc = cat("Put some text here")
-        >>>print(spacy_doc.ents) # Detected entites
-    '''
+
+        >>> cat = CAT(cdb, vocab)
+        >>> spacy_doc = cat("Put some text here")
+        >>> print(spacy_doc.ents) # Detected entites
+    """
     # Add file and console handlers
-    log = add_handlers(logging.getLogger(__package__))
+    log = logging.getLogger(__package__)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
     def __init__(self,
                  cdb: CDB,
-                 vocab: Vocab,
+                 vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  meta_cats: List[MetaCAT] = [],
-                 rel_cats: List[RelCAT] = []) -> None:
+                 rel_cats: List[RelCAT] = [],
+                 addl_ner: Union[TransformersNER, List[TransformersNER]] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
@@ -93,11 +95,11 @@ class CAT(object):
             self.config = cdb.config
         else:
             # Take the new config and assign it to the CDB also
-
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
         self._rel_cats = rel_cats
+        self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
 
     def _create_pipeline(self, config):
@@ -110,16 +112,21 @@ class CAT(object):
                              name='skip_and_punct',
                              additional_fields=['is_punct'])
 
-        spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)
-        self.pipe.add_token_normalizer(spell_checker=spell_checker, config=config)
+        if self.vocab is not None:
+            spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)
+            self.pipe.add_token_normalizer(spell_checker=spell_checker, config=config)
 
-        # Add NER
-        self.ner = NER(self.cdb, config)
-        self.pipe.add_ner(self.ner)
+            # Add NER
+            self.ner = NER(self.cdb, config)
+            self.pipe.add_ner(self.ner)
 
-        # Add LINKER
-        self.linker = Linker(self.cdb, self.vocab, config)
-        self.pipe.add_linker(self.linker)
+            # Add LINKER
+            self.linker = Linker(self.cdb, self.vocab, config)
+            self.pipe.add_linker(self.linker)
+
+        # Add addl_ner if they exist
+        for ner in self._addl_ner:
+            self.pipe.add_addl_ner(ner, ner.config.general['name'])
 
         # Add meta_annotaiton classes if they exist
         for meta_cat in self._meta_cats:
@@ -133,13 +140,13 @@ class CAT(object):
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
-        ''' Returns the spacy pipeline with MedCAT
-        '''
+        """ Returns the spacy pipeline with MedCAT
+        """
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        r''' Will not be a deep hash but will try to cactch all the changing parts during training.
-        '''
+        r""" Will not be a deep hash but will try to cactch all the changing parts during training.
+        """
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
 
@@ -148,12 +155,24 @@ class CAT(object):
         for mc in self._meta_cats:
             hasher.update(mc.get_hash())
 
+        for trf in self._addl_ner:
+            hasher.update(trf.get_hash())
+
         return hasher.hexdigest()
 
     def get_model_card(self, as_dict=False):
+        """
+        A minimal model card for MedCAT model packs.
+
+        Args:
+            as_dict: return the model card as a dictionary instead of a str.
+
+        Returns:
+            By default a str - indented JSON object.
+        """
         card = {
                 'Model ID': self.config.version['id'],
-                'Last Modifed On': self.config.version['last_modified'],
+                'Last Modified On': self.config.version['last_modified'],
                 'History (from least to most recent)': self.config.version['history'],
                 'Description': self.config.version['description'],
                 'Source Ontology': self.config.version['ontology'],
@@ -184,19 +203,19 @@ class CAT(object):
             version['id'] = m
             version['last_modified'] = date.today().strftime("%d %B %Y")
             version['cdb_info'] = self.cdb._make_stats()
-            version['meta_cats'] = {meta_cat.config.general['category_name']: meta_cat.config.general['description'] for meta_cat in self._meta_cats}
+            version['meta_cats'] = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version['medcat_version'] = __version__
             self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
-        r''' Will crete a .zip file containing all the models in the current running instance
+        r""" Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
         model_pack_name - an id will be appended to this name
 
         returns:
             Model pack name
-        '''
+        """
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general['spacy_model'] = os.path.basename(self.config.general['spacy_model'])
         # Versioning
@@ -207,7 +226,8 @@ class CAT(object):
         _save_dir_path = save_dir_path
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
-        os.makedirs(save_dir_path, exist_ok=True)
+        # expand user path to make this work with '~'
+        os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
 
         # Save the used spacy model
         spacy_path = os.path.join(save_dir_path, self.config.general['spacy_model'])
@@ -222,10 +242,15 @@ class CAT(object):
 
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
-        if self.vocab is None:
-            raise ValueError("Model pack creation is failed due to the missing 'vocab'")
-        else:
+        if self.vocab is not None:
+            # We will allow creation of modelpacks without vocabs
             self.vocab.save(vocab_path)
+
+        # Save addl_ner
+        for comp in self.pipe.spacy_nlp.components:
+            if isinstance(comp[1], TransformersNER):
+                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.general['name'])
+                comp[1].save(trf_path)
 
         # Save all meta_cats
         for comp in self.pipe.spacy_nlp.components:
@@ -281,12 +306,25 @@ class CAT(object):
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
         cdb = CDB.load(cdb_path)
 
+        # TODO load addl_ner
+
         # Modify the config to contain full path to spacy model
         cdb.config.general['spacy_model'] = os.path.join(model_pack_path, os.path.basename(cdb.config.general['spacy_model']))
 
         # Load Vocab
         vocab_path = os.path.join(model_pack_path, "vocab.dat")
-        vocab = Vocab.load(vocab_path)
+        if os.path.exists(vocab_path):
+            vocab = Vocab.load(vocab_path)
+        else:
+            vocab = None
+
+        # Find meta models in the model_pack
+        trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')]
+        addl_ner = []
+        for trf_path in trf_paths:
+            trf = TransformersNER.load(save_dir_path=trf_path)
+            trf.cdb = cdb # Set the cat.cdb to be the CDB of the TRF model
+            addl_ner.append(trf)
 
         # Find meta models in the model_pack
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
@@ -302,11 +340,12 @@ class CAT(object):
             rel_cats.append(RelCAT.load(load_path=rel_path))
 
         cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats)
+        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
         cls.log.info(cat.get_model_card()) # Print the model card
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
-        r'''
+        r"""
         Push the text through the pipeline.
 
         Args:
@@ -319,7 +358,7 @@ class CAT(object):
                 but for some special cases I'm leaving it here also.
         Returns:
             A single spacy document or multiple spacy documents with the extracted entities
-        '''
+        """
         # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
         self.config.linking['train'] = do_train
@@ -331,6 +370,14 @@ class CAT(object):
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)
 
+    def __repr__(self):
+        """
+        Prints the model_card for this CAT instance.
+        Returns:
+            the 'Model Card' for this CAT instance. This includes NER+L config and any MetaCATs
+        """
+        return self.get_model_card(as_dict=False)
+
     def _print_stats(self,
                      data: Dict,
                      epoch: int = 0,
@@ -339,7 +386,7 @@ class CAT(object):
                      use_cui_doc_limit: bool = False,
                      use_groups: bool = False,
                      extra_cui_filter: Optional[Set] = None) -> Tuple:
-        r''' TODO: Refactor and make nice
+        r""" TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
         Args:
@@ -378,7 +425,7 @@ class CAT(object):
                 Number of occurrence for each CUI
             examples (dict):
                 Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>]
-        '''
+        """
         tp = 0
         fp = 0
         fn = 0
@@ -643,6 +690,7 @@ class CAT(object):
                 The group to whcih the concept will be added
 
         Examples:
+
             >>> cat.add_cui_to_group("S-17", 'pain')
         """
 
@@ -661,6 +709,7 @@ class CAT(object):
             name (str):
                 The span of text to be removed from the linking dictionary
         Examples:
+
             >>> # To never again link C0020538 to HTN
             >>> cat.unlink_concept_name('C0020538', 'htn', False)
         """
@@ -1032,7 +1081,7 @@ class CAT(object):
         # Loop though the models and check are there GPU devices
         nn_components = []
         for component in self.pipe.spacy_nlp.components:
-            if isinstance(component[1], MetaCAT):
+            if isinstance(component[1], MetaCAT) or isinstance(component[1], TransformersNER):
                 self.pipe.spacy_nlp.disable_pipe(component[0])
                 nn_components.append(component)
 
@@ -1049,9 +1098,9 @@ class CAT(object):
         for name, component in nn_components:
             component.config.general['disable_component_lock'] = True
 
-        for name, component in nn_components:
+        # For meta_cat compoments 
+        for name, component in [c for c in nn_components if isinstance(c[1], MetaCAT)]:
             spacy_docs = component.pipe(spacy_docs)
-
         for spacy_doc in spacy_docs:
             for ent in spacy_doc.ents:
                 docs[spacy_doc.id]['entities'][ent._.id]['meta_anns'].update(ent._.meta_anns)
@@ -1122,6 +1171,10 @@ class CAT(object):
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         """
+        for comp in self.pipe.spacy_nlp.components:
+            if isinstance(comp[1], TransformersNER):
+                raise Exception("Please do not use multiprocessing when running a transformer model for NER, run sequentially.")
+
         # Set max document length
         self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
 

@@ -26,7 +26,7 @@ class Snomed:
         self.release = data_path[-16:-8]
         self.uk_ext = uk_ext
 
-    def to_concept_df(self, ):
+    def to_concept_df(self):
         """
         Please remember to specify if the version is a SNOMED UK extension released after 2021.
         This can be done prior to this step: Snomed.uk_ext = True.
