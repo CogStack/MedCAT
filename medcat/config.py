@@ -219,6 +219,9 @@ class Config(ConfigMixin):
                 # Documents longer  than this will be trimmed
                 'max_document_length': 1000000,
                 # Should specific word types be normalized: e.g. running -> run
+                # Values are detailed part-of-speech tags. See:
+                # - https://spacy.io/usage/linguistic-features#pos-tagging
+                # - Label scheme section per model at https://spacy.io/models/en
                 'do_not_normalize': {'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'},
                 }
 
