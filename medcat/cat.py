@@ -74,7 +74,7 @@ class CAT(object):
 
         >>> cat = CAT(cdb, vocab)
         >>> spacy_doc = cat("Put some text here")
-        >>> print(spacy_doc.ents) # Detected entites
+        >>> print(spacy_doc.ents) # Detected entities
     """
     # Add file and console handlers
     log = logging.getLogger(__package__)
@@ -139,7 +139,7 @@ class CAT(object):
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        r""" Will not be a deep hash but will try to cactch all the changing parts during training.
+        r""" Will not be a deep hash but will try to catch all the changing parts during training.
         """
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
@@ -377,10 +377,10 @@ class CAT(object):
             epoch (int):
                 Used during training, so we know what epoch is it.
             use_project_filters (boolean):
-                Each project in medcattrainer can have filters, do we want to respect those filters
+                Each project in MedCATtrainer can have filters, do we want to respect those filters
                 when calculating metrics.
             use_overlaps (boolean):
-                Allow overlapping entites, nearly always False as it is very difficult to annotate overlapping entites.
+                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entites.
             use_cui_doc_limit (boolean):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
@@ -428,15 +428,15 @@ class CAT(object):
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             filters['cuis'] = set()
 
-            # Add extrafilter if set
+            # Add extra filter if set
             if isinstance(extra_cui_filter, set):
                 filters['cuis'] = extra_cui_filter
 
             if use_project_filters:
                 project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                      type_ids=project.get('tuis', None),
-                                                      cdb=self.cdb,
-                                                      project=project)
+                                                     type_ids=project.get('tuis', None),
+                                                     cdb=self.cdb,
+                                                     project=project)
                 # Intersect project filter with existing if it has something
                 if project_filter:
                     filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
@@ -480,11 +480,10 @@ class CAT(object):
                                                   "cui": cui,
                                                   "source value": ann['value'],
                                                   "acc": 1,
-                                                  "project index": pind,
-                                                  "document inedex": dind})
+                                                  "project name": project.get('name'),
+                                                  "document name": doc.get('name')})
                         elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
                             anns_norm_neg.append((ann['start'], cui))
-
 
                         if ann.get("validated", True):
                             # This is used to test was someone annotating for this CUI in this document
@@ -500,12 +499,11 @@ class CAT(object):
 
                     p_anns_norm.append((ann.start_char, cui))
                     p_anns_examples.append({"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
-                                          "cui": cui,
-                                          "source value": ann.text,
-                                          "acc": float(ann._.context_similarity),
-                                          "project index": pind,
-                                          "document inedex": dind})
-
+                                            "cui": cui,
+                                            "source value": ann.text,
+                                            "acc": float(ann._.context_similarity),
+                                            "project name": project.get('name'),
+                                            "document name": doc.get('name')})
 
                 for iann, ann in enumerate(p_anns_norm):
                     cui = ann[1]
@@ -734,7 +732,7 @@ class CAT(object):
                 Name to be linked to the concept (in the case of MedCATtrainer this is simply the
                 selected value in text, no preprocessing or anything needed).
             spacy_doc (spacy.tokens.Doc):
-                Spacy represenation of the document that was manually annotated.
+                Spacy representation of the document that was manually annotated.
             spacy_entity (Optional[Union[List[Token], Span]]):
                 Given the spacy document, this is the annotated span of text - list of annotated tokens that are marked with this CUI.
             negative (bool):
@@ -1206,10 +1204,10 @@ class CAT(object):
                 if out_split_size_chars is not None and (_batch_counter * batch_size_chars) > out_split_size_chars:
                     # Save to file and reset the docs 
                     part_counter = self._save_docs_to_file(docs=docs,
-                                           annotated_ids=annotated_ids,
-                                           save_dir_path=save_dir_path,
-                                           annotated_ids_path=annotated_ids_path,
-                                           part_counter=part_counter)
+                                                           annotated_ids=annotated_ids,
+                                                           save_dir_path=save_dir_path,
+                                                           annotated_ids_path=annotated_ids_path,
+                                                           part_counter=part_counter)
                     del docs
                     docs = {}
                     _batch_counter = 0
@@ -1221,10 +1219,10 @@ class CAT(object):
         if out_split_size_chars is not None and len(docs) > 0:
             # Save to file and reset the docs 
             self._save_docs_to_file(docs=docs,
-                                   annotated_ids=annotated_ids,
-                                   save_dir_path=save_dir_path,
-                                   annotated_ids_path=annotated_ids_path,
-                                   part_counter=part_counter)
+                                    annotated_ids=annotated_ids,
+                                    save_dir_path=save_dir_path,
+                                    annotated_ids_path=annotated_ids_path,
+                                    part_counter=part_counter)
 
         # Enable the GPU Components again
         if separate_nn_components:
@@ -1265,7 +1263,7 @@ class CAT(object):
             for batch in self._batch_generator(data, batch_size_chars):
                 if nn_components:
                     # We need this for the json_to_fake_spacy
-                    id2text.update({k:v for k,v in batch})
+                    id2text.update({k: v for k, v in batch})
                 in_q.put(batch)
 
             # Final data point for workers
@@ -1292,8 +1290,8 @@ class CAT(object):
                 p.join()
 
             docs = {}
-            # Covnerts a touple into a dict
-            docs.update({k:v for k,v in out_list})
+            # Converts a tuple into a dict
+            docs.update({k: v for k, v in out_list})
 
         # If we have separate GPU components now we pipe that
         if nn_components:
