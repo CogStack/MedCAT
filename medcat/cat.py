@@ -125,7 +125,7 @@ class CAT(object):
         for ner in self._addl_ner:
             self.pipe.add_addl_ner(ner, ner.config.general['name'])
 
-        # Add meta_annotaiton classes if they exist
+        # Add meta_annotation classes if they exist
         for meta_cat in self._meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
 
@@ -323,7 +323,7 @@ class CAT(object):
                                           config_dict=meta_cat_config_dict))
 
         cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
-        cls.log.info(cat.get_model_card()) # Print the model card
+        cls.log.info(cat.get_model_card())  # Print the model card
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
