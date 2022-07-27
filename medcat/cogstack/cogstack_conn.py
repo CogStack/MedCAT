@@ -104,7 +104,8 @@ class CogStackConn(object):
 
     def DataFrame(self, index: Union[str, List[str], None]):
         """
-        Fast method to return a pandas DataFrame from a CogStack search.
+        Special function to return a pandas-like DataFrame that remains in CogStack and not in memory, this allows to
+        access large data sets stored in CogStack search.
         :param index: List of indices
         :return: A DataFrame object
         """
