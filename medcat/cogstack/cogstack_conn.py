@@ -22,7 +22,7 @@ class CogStackConn(object):
                                                        timeout=timeout,
                                                        max_retries=max_retries,
                                                        retry_on_timeout=retry_on_timeout,
-                                                       ** kwargs
+                                                       **kwargs
                                                        )
         else:
             username, password = self._check_auth_details(username, password)
@@ -104,8 +104,8 @@ class CogStackConn(object):
 
     def DataFrame(self, index: Union[str, List[str], None]):
         """
-        Special function to return a pandas-like DataFrame that remains in CogStack and not in memory, this allows to
-        access large data sets stored in CogStack search.
+        Special function to return a pandas-like DataFrame that remains in CogStack and not in memory. See cogstack2df func
+         to retrieve data to memory.
         :param index: List of indices
         :return: A DataFrame object
         """
