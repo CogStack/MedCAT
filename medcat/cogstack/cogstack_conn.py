@@ -8,27 +8,45 @@ from typing import Dict, Optional
 
 
 class CogStackConn(object):
-    def __init__(self, host, port=9200, username: Optional[str] = None, password: Optional[str] = None, scheme: str='https',
+    def __init__(self, hosts, username: Optional[str] = None, password: Optional[str] = None,
+                 api_username: Optional[str] = None, api_password: Optional[str] = None, api=False,
                  timeout: int = 360, max_retries: int = 10, retry_on_timeout: bool = True, **kwargs):
-        username, password = self._check_auth_details(username, password)
+        if api:
+            api_username, api_password = self._check_api_auth_details(api_username, api_password)
+            self.elastic = elasticsearch.Elasticsearch(hosts=hosts,
+                                                       api_key=(api_username, api_password),
+                                                       verify_certs=False,
+                                                       timeout=timeout,
+                                                       max_retries=max_retries,
+                                                       retry_on_timeout=retry_on_timeout,
+                                                       ** kwargs
+                                                       )
+        else:
+            username, password = self._check_auth_details(username, password)
+            self.elastic = elasticsearch.Elasticsearch(hosts=hosts,
+                                                       basic_auth=(username, password),
+                                                       verify_certs=False,
+                                                       timeout=timeout,
+                                                       max_retries=max_retries,
+                                                       retry_on_timeout=retry_on_timeout,
+                                                       **kwargs
+                                                       )
 
-        self.elastic = elasticsearch.Elasticsearch(hosts=[{'host': host, 'port': port}],
-                                         http_auth=(username, password),
-                                         scheme=scheme,
-                                         verify_certs=False,
-                                         timeout=timeout,
-                                         max_retries=max_retries,
-                                         retry_on_timeout=retry_on_timeout,
-                                         **kwargs)
+    # TODO: Check if both api and basic_auth works
+    def _check_api_auth_details(self, api_username: Optional[str] = None, api_password: Optional[str] = None):
+        if api_username is None:
+            api_username = input("API Username: ")
+        if api_password is None:
+            api_password = getpass.getpass("API Password: ")
+        return api_username, api_password
 
     def _check_auth_details(self, username: Optional[str] = None, password: Optional[str] = None):
         if username is None:
             username = input("Username:")
         if password is None:
             password = getpass.getpass("Password:")
-
-        # TODO: Implement auth check, for now I assume all is fine
         return username, password
+
 
     def get_docs_generator(self, query: Dict, index: str, es_gen_size: int=800, request_timeout: int=840000, **kwargs):
         docs_generator = elasticsearch.helpers.scan(self.elastic,
