@@ -47,17 +47,23 @@ class CogStackConn(object):
             password = getpass.getpass("Password:")
         return username, password
 
+    def get_docs_generator(self, query: Dict, index: Optional[Any], es_gen_size: int = 800, request_timeout: int = 300, **kwargs):
+        """
 
-    def get_docs_generator(self, query: Dict, index: str, es_gen_size: int=800, request_timeout: int=840000, **kwargs):
+        :param query: search query body
+        :param index: Can be a single index name str or List of ES indices to search.
+        :param es_gen_size: Size of the generator object
+        :param request_timeout: set to 840000 for large searches
+        :return: search generator object
+        """
         docs_generator = elasticsearch.helpers.scan(self.elastic,
-            query=query,
-            index=index,
-            size=es_gen_size,
-            request_timeout=request_timeout,
-            **kwargs)
-
+                                                    query=query,
+                                                    index=index,
+                                                    size=es_gen_size,
+                                                    request_timeout=request_timeout)
         return docs_generator
 
+    # TODO These below functions are legacy and make not work with new ES version
     def get_text_for_doc(self, doc_id, index='epr_documents', text_field='body_analysed'):
         r = self.elastic.get(index=index, id=doc_id)
         text = r['_source'][text_field]
@@ -88,7 +94,7 @@ class CogStackConn(object):
         display(HTML(ent_cntx))
 
         if len(text) < start:
-            print("Text of the clincal note corrupted: " + text[0:100])
+            print("Text of the clinical note corrupted: " + text[0:100])
 
 
     def bulk_to_cogstack(self):
