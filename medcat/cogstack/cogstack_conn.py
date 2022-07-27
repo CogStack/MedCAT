@@ -1,10 +1,13 @@
 import getpass
 import elasticsearch
 import elasticsearch.helpers
+import eland as ed
+import pandas as pd
+from tqdm.autonotebook import tqdm
 from IPython.display import display, HTML
 from datetime import datetime
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Union
 
 
 class CogStackConn(object):
@@ -47,7 +50,8 @@ class CogStackConn(object):
             password = getpass.getpass("Password:")
         return username, password
 
-    def get_docs_generator(self, query: Dict, index: Optional[Any], es_gen_size: int = 800, request_timeout: int = 300, **kwargs):
+    def get_docs_generator(self, query: Dict, index: Union[str, List[str]],
+                           es_gen_size: int = 800, request_timeout: int = 300, **kwargs):
         """
 
         :param query: search query body
@@ -62,6 +66,49 @@ class CogStackConn(object):
                                                     size=es_gen_size,
                                                     request_timeout=request_timeout)
         return docs_generator
+
+    def cogstack2df(self, query: Dict, index: Union[str, List[str]], column_headers=None,
+                    es_gen_size: int = 800, request_timeout: int = 300):
+        """
+        Returns DataFrame from a CogStack search
+
+        :param query: search query body
+        :param index: str index name or list of indices
+        :param column_headers: specify column headers to only retrieve those columns
+        :param es_gen_size: Size of the generator to construct df
+        :param request_timeout: set to 840000 for large searches
+        :return: DataFrame
+        """
+        docs_generator = elasticsearch.helpers.scan(self.elastic,
+                                                    query=query,
+                                                    index=index,
+                                                    size=es_gen_size,
+                                                    request_timeout=request_timeout)
+        temp_results = []
+        results = self.elastic.count(index=index, query=query['query'], request_timeout=300)
+        for hit in tqdm(docs_generator, total=results['count'], desc="CogStack retrieved... "):
+            row = dict()
+            row['_index'] = hit['_index']
+            row['_type'] = hit['_type']
+            row['_id'] = hit['_id']
+            row['_score'] = hit['_score']
+            row.update(hit['_source'])
+            temp_results.append(row)
+        if column_headers:
+            df_headers = ['_index', '_type', '_id', '_score']
+            df_headers.extend(column_headers)
+            df = pd.DataFrame(temp_results, columns=df_headers)
+        else:
+            df = pd.DataFrame(temp_results)
+        return df
+
+    def DataFrame(self, index: Union[str, List[str], None]):
+        """
+        Fast method to return a pandas DataFrame from a CogStack search.
+        :param index: List of indices
+        :return: A DataFrame object
+        """
+        return ed.DataFrame(es_client=self.elastic, es_index_pattern=index)
 
     # TODO These below functions are legacy and make not work with new ES version
     def get_text_for_doc(self, doc_id, index='epr_documents', text_field='body_analysed'):
