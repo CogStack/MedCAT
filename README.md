@@ -11,6 +11,8 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 
 **Discussion Forum [discourse](https://discourse.cogstack.org/)**
 
+**Available Models (requires UMLS license) [here](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback)**
+
 ## News
 - **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
@@ -29,9 +31,6 @@ A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). 
 
 ## Tutorials
 A guide on how to use MedCAT is available at [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials). Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
-
-## Available Models
-Available models [here](https://medcat.readthedocs.io/en/latest/main.html#models)
 
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
