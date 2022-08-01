@@ -21,6 +21,7 @@ from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
+from torch.nn.modules import Module
 from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
 
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
@@ -116,14 +117,14 @@ class RelCAT(PipeRunner):
 
         if os.path.exists(model_config_path):
             print("Loaded config from : ", model_config_path)
-            model_config = BertConfig.from_json_file(model_config_path)
+            model_config = BertConfig.from_json_file(model_config_path) # type: ignore
         else:
             try:
-                model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=config.general["model_name"])
+                model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=config.general["model_name"]) # type: ignore
             except Exception as e:
                 logging.error("%s", str(e))
                 print("Config for HF model not found: ", config.general["model_name"], ". Using bert-base-uncased.")
-                model_config = BertConfig.from_pretrained(pretrained_model_name_or_path="bert-base-uncased")
+                model_config = BertConfig.from_pretrained(pretrained_model_name_or_path="bert-base-uncased") # type: ignore
 
         model_config.vocab_size = len(tokenizer.hf_tokenizers)
 
@@ -152,8 +153,8 @@ class RelCAT(PipeRunner):
                                                                         nclasses=config.model["nclasses"],
                                                                         ignore_mismatched_sizes=True) 
 
-        rel_cat.model = torch.nn.DataParallel(rel_cat.model)
-        rel_cat.model = rel_cat.model.to(device)
+        rel_cat.model = torch.nn.DataParallel(rel_cat.model) # type: ignore
+        rel_cat.model = rel_cat.model.to(device) # type: ignore
 
         rel_cat.optimizer = None
         rel_cat.scheduler = None
@@ -493,7 +494,7 @@ class RelCAT(PipeRunner):
 
         predict_rel_dataset = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
 
-        self.model = self.model.to(self.device)
+        self.model = self.model.to(self.device) # type: ignore
 
         for doc_id, doc in enumerate(stream, 0):
             predict_rel_dataset.dataset, _ = self.create_test_train_datasets(predict_rel_dataset.create_base_relations_from_doc(doc, doc_id), False)
@@ -517,7 +518,8 @@ class RelCAT(PipeRunner):
                     token_type_ids = torch.zeros(token_ids.shape[0], token_ids.shape[1]).long()
 
                     model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
-                                            e1_e2_start=e1_e2_start)
+                                            e1_e2_start=e1_e2_start) # type: ignore
+
                     for i, pred_rel_logits in enumerate(pred_classification_logits):
                         rel_idx += 1
 

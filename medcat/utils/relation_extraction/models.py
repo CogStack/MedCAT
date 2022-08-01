@@ -32,7 +32,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         print("Model config: ", self.model_config)
 
-        self.init_weights()
+        self.init_weights() # type: ignore
 
     def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
         spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)   
