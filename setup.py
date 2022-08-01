@@ -27,7 +27,7 @@ setuptools.setup(
         'tqdm>=4.27',
         'sklearn~=0.0',
         'elasticsearch>=8.3,<9',  # Check if this is compatible with opensearch otherwise: 'elasticsearch>=7.10,<8.0.0',
-        'eland>8.3.0,<9',
+        'eland>=8.3.0,<9',
         'dill~=0.3.4',
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
