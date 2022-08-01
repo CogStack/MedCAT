@@ -11,8 +11,8 @@ from typing import Dict, List, Optional, Union
 
 
 class CogStackConn(object):
-    def __init__(self, hosts, username: str = None, password: str = None,
-                 api_username: str = None, api_password: str = None, api=False,
+    def __init__(self, hosts, username: Optional[str], password: Optional[str],
+                 api_username: Optional[str], api_password: Optional[str], api=False,
                  timeout: int = 360, max_retries: int = 10, retry_on_timeout: bool = True, **kwargs):
         if api:
             api_username, api_password = self._check_api_auth_details(api_username, api_password)
@@ -36,14 +36,14 @@ class CogStackConn(object):
                                                        )
 
     # TODO: Check if both api and basic_auth works
-    def _check_api_auth_details(self, api_username: str = None, api_password: str = None):
+    def _check_api_auth_details(self, api_username: Optional[str], api_password: Optional[str]):
         if api_username is None:
             api_username = input("API Username: ")
         if api_password is None:
             api_password = getpass.getpass("API Password: ")
         return api_username, api_password
 
-    def _check_auth_details(self, username: str = None, password: str = None):
+    def _check_auth_details(self, username: Optional[str], password: Optional[str]):
         if username is None:
             username = input("Username:")
         if password is None:
