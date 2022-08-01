@@ -21,7 +21,7 @@ from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
-from medcat.utils.meta_cat.ml_utils import split_list_train_test
+from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
 
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
@@ -42,8 +42,10 @@ class RelCAT(PipeRunner):
 
     def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train"):
         self.config = config
-        self.tokenizer = tokenizer
+        self.tokenizer: TokenizerWrapperBERT = tokenizer
         self.cdb = cdb
+
+        self.log.setLevel(self.config.general['log_level'])
 
         self.learning_rate = config.train["lr"]
         self.batch_size = config.train["batch_size"]
@@ -51,7 +53,6 @@ class RelCAT(PipeRunner):
 
         self.is_cuda_available = torch.cuda.is_available()
         self.device = torch.device("cuda" if self.is_cuda_available and self.config.general["device"] != "cpu" else "cpu")
-        self.tokenizer = tokenizer
         self.model_config = BertConfig()
         self.model: BertModel_RelationExtraction
         self.task = task
@@ -65,6 +66,8 @@ class RelCAT(PipeRunner):
         self.padding_seq = Pad_Sequence(seq_pad_value=self.pad_id,
                        label_pad_value=self.pad_id,
                        label2_pad_value=-1)
+
+        set_all_seeds(config.general['seed'])
 
     def save(self, save_path) -> None:
         self.config.save(os.path.join(save_path, "config.json"))
@@ -97,10 +100,16 @@ class RelCAT(PipeRunner):
         if os.path.exists(tokenizer_path):
             tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
         elif config.general["model_name"]:  
-            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general["model_name"]))
+            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general["model_name"]), 
+                                            max_seq_length=config.general["max_seq_length"],
+                                            add_special_tokens=config.general["tokenizer_special_tokens"]
+                                            )
             create_tokenizer_pretrain(tokenizer, tokenizer_path)
         else:
-            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"))
+            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"),
+                                            max_seq_length=config.general["max_seq_length"],
+                                            add_special_tokens=config.general["tokenizer_special_tokens"]
+                                            )
 
         model_config = BertConfig()
         model_config_path = os.path.join(load_path, "model_config.json")
@@ -126,6 +135,7 @@ class RelCAT(PipeRunner):
         try:
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
                                                                        model_size=config.model["hidden_size"],
+                                                                       relcat_config=config,
                                                                        model_config=model_config,
                                                                        task=config.general["task"],
                                                                        nclasses=config.model["nclasses"],
@@ -136,6 +146,7 @@ class RelCAT(PipeRunner):
             print("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
                                                                         model_size=model_config.hidden_size,
+                                                                        relcat_config=config,
                                                                         model_config=model_config,
                                                                         task=config.general["task"],
                                                                         nclasses=config.model["nclasses"],
@@ -223,7 +234,7 @@ class RelCAT(PipeRunner):
         criterion = nn.CrossEntropyLoss(ignore_index=-1)    
 
         if self.optimizer is None:
-            self.optimizer = torch.optim.Adam([{"params": self.model.module.parameters(), "lr": self.learning_rate}])
+            self.optimizer = torch.optim.Adam([{"params": self.model.module.parameters(), "lr": self.config.train["adam_epsilon"]}])
 
         if self.scheduler is None:
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.config.train["multistep_milestones"], gamma=self.config.train["multistep_lr_gamma"])
@@ -243,14 +254,16 @@ class RelCAT(PipeRunner):
         gradient_acc_steps = self.config.train["gradient_acc_steps"]
         max_grad_norm = self.config.train["max_grad_norm"]
 
-        for epoch in range(self.epoch, self.config.train["nepochs"]):
+        _epochs = self.epoch + self.config.train["nepochs"]
+
+        for epoch in range(0, _epochs):
             start_time = datetime.now().time()
             total_loss = 0.0
 
             loss_per_batch = []
             accuracy_per_batch = []
 
-            self.log.info("epoch %d" % epoch)
+            self.log.info("Total epochs on this model: %d | currently training epoch %d" % (_epochs, epoch))
 
             pbar = tqdm(total=train_dataset_size)
 
@@ -316,16 +329,16 @@ class RelCAT(PipeRunner):
 
             print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)) + " seconds")
 
-            self.epoch = epoch
+            self.epoch += 1
 
             if len(f1_per_epoch) > 0 and f1_per_epoch[-1] > self.best_f1:
                 self.best_f1 = f1_per_epoch[-1]
-                save_state(self.model, self.optimizer, self.scheduler, epoch, self.best_f1, checkpoint_path,
+                save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1, checkpoint_path,
                             model_name=self.config.general["model_name"], task=self.task, is_checkpoint=False)
 
             if (epoch % 1) == 0:
-                save_results({"losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch, "f1_per_epoch": f1_per_epoch}, file_prefix="train", path=checkpoint_path)
-                save_state(self.model, self.optimizer, self.scheduler, epoch, self.best_f1, checkpoint_path,
+                save_results({"losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch, "f1_per_epoch": f1_per_epoch, "epoch": epoch}, file_prefix="train", path=checkpoint_path)
+                save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1, checkpoint_path,
                             model_name=self.config.general["model_name"], task=self.task)
 
     def evaluate_(self, output_logits, labels, ignore_idx):
