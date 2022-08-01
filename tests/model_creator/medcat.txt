@@ -3,3 +3,6 @@ cat.preprocessing.do_not_normalize = {}
 cat.general.diacritics = True
 cat.general.spell_check_deep = False
 cat.ner.check_upper_case_names = True
+cat.version.description = 'Small set of sample data for testing purposes'
+cat.version.ontology = 'UMLS'
+cat.version.location = 'https://github.com/CogStack/MedCAT'
