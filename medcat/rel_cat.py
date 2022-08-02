@@ -21,7 +21,6 @@ from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
-from torch.nn.modules import Module
 from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
 
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
@@ -517,8 +516,7 @@ class RelCAT(PipeRunner):
                     attention_mask = (token_ids != self.pad_id).float()
                     token_type_ids = torch.zeros(token_ids.shape[0], token_ids.shape[1]).long()
 
-                    model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
-                                            e1_e2_start=e1_e2_start) # type: ignore
+                    model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, e1_e2_start=e1_e2_start) # type: ignore
 
                     for i, pred_rel_logits in enumerate(pred_classification_logits):
                         rel_idx += 1
