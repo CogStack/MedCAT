@@ -26,18 +26,19 @@ setuptools.setup(
         'torch>=1.0',
         'tqdm>=4.27',
         'sklearn~=0.0',
-        'elasticsearch>=7.10,<8.0.0',
+        'elasticsearch>=8.3,<9',  # Check if this is compatible with opensearch otherwise: 'elasticsearch>=7.10,<8.0.0',
+        'eland>=8.3.0,<9',
         'dill~=0.3.4',
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
-        'multiprocess', # seems to work better than standard mp
+        'multiprocess',  # seems to work better than standard mp
         'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==3.0.0',
         'blis<=0.7.5',
-        'click<=8.0.4', # Spacy breaks without this
+        'click<=8.0.4',  # Spacy breaks without this
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
