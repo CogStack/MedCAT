@@ -255,9 +255,9 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
         cui_filter = None
         tui_filter = None
         if 'cuis' in project and len(project['cuis'].strip()) > 0:
-            cui_filter = set([x.strip() for x in project['cuis'].split(",")])
+            cui_filter = {x.strip() for x in project['cuis'].split(",")}
         if 'tuis' in project and len(project['tuis'].strip()) > 0:
-            tui_filter = set([x.strip().upper() for x in project['tuis'].split(",")])
+            tui_filter = {x.strip().upper() for x in project['tuis'].split(",")}
         cat.spacy_cat.TUI_FILTER = tui_filter
         cat.spacy_cat.CUI_FILTER = cui_filter
 
@@ -919,9 +919,9 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
 
 def get_false_positives(doc: Dict, spacy_doc: Doc) -> List[Span]:
     if type(doc['annotations']) == list:
-        truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
+        truth = {(ent['start'], ent['cui']) for ent in doc['annotations']}
     elif type(doc['annotations']) == dict:
-        truth = set([(ent['start'], ent['cui']) for ent in doc['annotations'].values()])
+        truth = {(ent['start'], ent['cui']) for ent in doc['annotations'].values()}
 
     fps = []
     for ent in spacy_doc._.ents:

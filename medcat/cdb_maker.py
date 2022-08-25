@@ -130,8 +130,8 @@ class CDBMaker(object):
 
                 if not only_existing_cuis or (only_existing_cuis and cui in self.cdb.cui2names):
                     if 'ontologies' in col2ind:
-                        ontologies = set([ontology.strip() for ontology in row[col2ind['ontologies']].upper().split(self.cnf_cm['multi_separator']) if
-                                         len(ontology.strip()) > 0])
+                        ontologies = {ontology.strip() for ontology in row[col2ind['ontologies']].upper().split(self.cnf_cm['multi_separator']) if
+                                         len(ontology.strip()) > 0}
                     else:
                         ontologies = set()
 
@@ -146,8 +146,8 @@ class CDBMaker(object):
                         name_status = 'A'
 
                     if 'type_ids' in col2ind:
-                        type_ids = set([type_id.strip() for type_id in row[col2ind['type_ids']].upper().split(self.cnf_cm['multi_separator']) if
-                                        len(type_id.strip()) > 0])
+                        type_ids = {type_id.strip() for type_id in row[col2ind['type_ids']].upper().split(self.cnf_cm['multi_separator']) if
+                                        len(type_id.strip()) > 0}
                     else:
                         type_ids = set()
 
