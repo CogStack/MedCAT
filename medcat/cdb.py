@@ -271,7 +271,7 @@ class CDB(object):
                     self.addl_info['cui2ontologies'][cui] = ontologies
                 if description:
                     self.addl_info['cui2description'][cui] = description
-                self.addl_info['cui2original_names'][cui] = set([v['raw_name'] for k, v in names.items()])
+                self.addl_info['cui2original_names'][cui] = {v['raw_name'] for k, v in names.items()}
             else:
                 # Update existing ones
                 if ontologies:

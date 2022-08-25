@@ -452,7 +452,7 @@ class CAT(object):
 
                 # Apply document level filtering, in this case project_filter is ignored while the extra_cui_filter is respected still
                 if use_cui_doc_limit:
-                    _cuis = set([ann['cui'] for ann in anns])
+                    _cuis = {ann['cui'] for ann in anns}
                     if _cuis:
                         filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
