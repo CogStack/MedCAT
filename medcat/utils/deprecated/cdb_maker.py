@@ -68,7 +68,7 @@ class CDBMaker(object):
                             isupper = True
                     name = SEPARATOR.join(tokens)
                     _name = "".join(tokens)
-                    length_one = [True if len(x) < 2 else False for x in tokens]
+                    length_one = [len(x) < 2 for x in tokens]
 
                     # Skip concepts are digits or each token is a single letter
                     if _name.isdigit() or all(length_one):
