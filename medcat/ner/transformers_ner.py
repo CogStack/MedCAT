@@ -131,7 +131,7 @@ class TransformersNER(object):
                 for d in p['documents']:
                     new_anns = []
                     for a in d['annotations']:
-                        if all([a['meta_anns'][name]['value'] == value for name, value in meta_requirements.items()]):
+                        if all(a['meta_anns'][name]['value'] == value for name, value in meta_requirements.items()):
                             new_anns.append(a)
                     d['annotations'] = new_anns
 

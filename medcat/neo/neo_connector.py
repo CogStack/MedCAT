@@ -106,7 +106,7 @@ class NeoConnector:
             cnt = defaultdict(int)
             for row in data:
                 if meta_requirements is None or \
-                   all([row['has'][meta] == value for meta,value in meta_requirements.items()]):
+                   all(row['has'][meta] == value for meta,value in meta_requirements.items()):
                     if not require_time or 'timestamp' in row['has']:
                         ent = dict(row['concept']) # Take everything from concept
                         ent['documentId'] = row['document']['documentId']

@@ -36,7 +36,7 @@ def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config
         # Check whether name is completely uppercase in CDB.
         if cdb.name_isupper.get(name, False):
             # Check whether tokens are also in uppercase. If tokens are not in uppercase, there is a mismatch.
-            if not all([x.is_upper for x in tkns]):
+            if not all(x.is_upper for x in tkns):
                 return None
 
     if len(name) >= config.ner['min_name_len']:
