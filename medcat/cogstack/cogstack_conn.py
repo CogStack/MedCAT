@@ -86,7 +86,12 @@ class CogStackConn(object):
         temp_results = []
         results = self.elastic.count(index=index, query=query['query'])
         for hit in tqdm(docs_generator, total=results['count'], desc="CogStack retrieved... "):
-            row = {'_index': hit['_index'], '_type': hit['_type'], '_id': hit['_id'], '_score': hit['_score']}
+            row = {
+                '_index': hit['_index'],
+                '_type': hit['_type'],
+                '_id': hit['_id'],
+                '_score': hit['_score']
+                }
             row.update(hit['_source'])
             temp_results.append(row)
         if column_headers:
