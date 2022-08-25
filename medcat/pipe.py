@@ -46,7 +46,7 @@ class Pipe(object):
         # Set log level
         self.log.setLevel(self.config.general['log_level'])
 
-    def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
+    def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = None) -> None:
         r""" Add any kind of a tagger for tokens.
 
         Args:
@@ -58,6 +58,8 @@ class Pipe(object):
             additional_fields (`List[str]`):
                 Fields to be added to the `_` properties of a token.
         """
+        if additional_fields is None:
+            additional_fields = []
         component_factory_name = spacy.util.get_object_name(tagger)
         name = name if name is not None else component_factory_name
         Language.factory(name=component_factory_name, default_config={"config": self.config}, func=tagger)

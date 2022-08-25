@@ -110,7 +110,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     return df
 
 
-def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=True, na_filter=False, **kwargs):
+def snomed_source_to_csv(snomed_term_paths=None, snomed_desc_paths=None, sep='\t', output_path=None, output_path_type_names=None, strip_fqn=True, na_filter=False, **kwargs):
     r''' Given paths to the snomed files with concepts e.g. `sct2_Concept_Snapshot_INT_20180731.txt` this will
     build a CSV required by the cdb_maker.py
 
@@ -138,6 +138,10 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
             - snomed_cdb_df - Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
             - type_id2name - map from type_id to name, can be used to extend a CDB.
     '''
+    if snomed_term_paths is None:
+        snomed_term_paths = []
+    if snomed_desc_paths is None:
+        snomed_desc_paths = []
 
     # Process terms
     snomed_terms = [pd.read_csv(path, sep=sep, dtype=str, **kwargs) for path in snomed_term_paths]

@@ -572,7 +572,7 @@ class CDB(object):
     def most_similar(self,
                      cui: str,
                      context_type: str,
-                     type_id_filter: List[str] = [],
+                     type_id_filter: List[str] = None,
                      min_cnt: int = 0,
                      topn: int = 50,
                      force_build: bool = False) -> Dict:
@@ -601,6 +601,8 @@ class CDB(object):
                                                               'type_id': <type_id>, 'cnt': <number of training examples the concept has seen>}, ...}
 
         '''
+        if type_id_filter is None:
+            type_id_filter = []
 
         if 'similarity' in self.addl_info:
             if context_type not in self.addl_info['similarity']:

@@ -84,8 +84,12 @@ class CAT(object):
                  cdb: CDB,
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
-                 meta_cats: List[MetaCAT] = [],
-                 addl_ner: Union[TransformersNER, List[TransformersNER]] = []) -> None:
+                 meta_cats: List[MetaCAT] = None,
+                 addl_ner: Union[TransformersNER, List[TransformersNER]] = None) -> None:
+        if meta_cats is None:
+            meta_cats = []
+        if addl_ner is None:
+            addl_ner = []
         self.cdb = cdb
         self.vocab = vocab
         if config is None:
@@ -714,9 +718,9 @@ class CAT(object):
                               name: str,
                               spacy_doc: Optional[Doc] = None,
                               spacy_entity: Optional[Union[List[Token], Span]] = None,
-                              ontologies: Set = set(),
+                              ontologies: Set = None,
                               name_status: str = 'A',
-                              type_ids: Set = set(),
+                              type_ids: Set = None,
                               description: str = '',
                               full_build: bool = True,
                               negative: bool = False,
@@ -744,6 +748,10 @@ class CAT(object):
             \*\*other:
                 Refer to medcat.cat.cdb.CDB.add_concept
         """
+        if ontologies is None:
+            ontologies = set()
+        if type_ids is None:
+            type_ids = set()
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
@@ -1085,7 +1093,9 @@ class CAT(object):
             for ent in spacy_doc.ents:
                 docs[spacy_doc.id]['entities'][ent._.id]['meta_anns'].update(ent._.meta_anns)
 
-    def _batch_generator(self, data: Iterable, batch_size_chars: int, skip_ids: Set = set()):
+    def _batch_generator(self, data: Iterable, batch_size_chars: int, skip_ids: Set = None):
+        if skip_ids is None:
+            skip_ids = set()
         docs = []
         char_count = 0
         for doc in data:
@@ -1115,7 +1125,7 @@ class CAT(object):
                         nproc: int = 2,
                         batch_size_chars: int = 5000 * 1000,
                         only_cui: bool = False,
-                        addl_info: List[str] = [],
+                        addl_info: List[str] = None,
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
@@ -1151,6 +1161,8 @@ class CAT(object):
             the last batch will be returned while that and all previous batches will be
             written to disk (out_save_dir).
         """
+        if addl_info is None:
+            addl_info = []
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
                 raise Exception("Please do not use multiprocessing when running a transformer model for NER, run sequentially.")
@@ -1237,8 +1249,8 @@ class CAT(object):
                                nproc: int = 8,
                                batch_size_chars: int = 1000000,
                                only_cui: bool = False,
-                               addl_info: List[str] = [],
-                               nn_components: List = [],
+                               addl_info: List[str] = None,
+                               nn_components: List = None,
                                min_free_memory: int = 0) -> Dict:
         r""" Run multiprocessing on one batch
 
@@ -1253,6 +1265,10 @@ class CAT(object):
         Returns:
             A dictionary: {id: doc_json, id2: doc_json2, ...}
         """
+        if addl_info is None:
+            addl_info = []
+        if nn_components is None:
+            nn_components = []
         # Create the input output for MP
         with Manager() as manager:
             out_list = manager.list()
@@ -1307,7 +1323,7 @@ class CAT(object):
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
-                             addl_info: List[str] = [],
+                             addl_info: List[str] = None,
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         r""" Run multiprocessing NOT FOR TRAINING
@@ -1319,6 +1335,8 @@ class CAT(object):
 
         return:  a dict: {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
+        if addl_info is None:
+            addl_info = []
         out: Union[Dict, List[Tuple]]
 
         if nproc == 0:
@@ -1354,7 +1372,9 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: int, lock: Lock, pid: int = 0, only_cui: bool = False, addl_info: List = []) -> None:
+    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: int, lock: Lock, pid: int = 0, only_cui: bool = False, addl_info: List = None) -> None:
+        if addl_info is None:
+            addl_info = []
         out: List = []
 
         while True:

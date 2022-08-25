@@ -170,7 +170,7 @@ class ContextModel(object):
         else:
             return None, 0
 
-    def train(self, cui: str, entity: Span, doc: Doc, negative: bool = False, names: Union[List[str], Dict] = []) -> None:
+    def train(self, cui: str, entity: Span, doc: Doc, negative: bool = False, names: Union[List[str], Dict] = None) -> None:
         r''' Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
 
@@ -178,6 +178,8 @@ class ContextModel(object):
             names (List[str]/Dict):
                 Optionally used to update the `status` of a name-cui pair in the CDB.
         '''
+        if names is None:
+            names = []
         # Context vectors to be calculated
         if len(entity) > 0: # Make sure there is something
             vectors = self.get_context_vectors(entity, doc, cui=cui)

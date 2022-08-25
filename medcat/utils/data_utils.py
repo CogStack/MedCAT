@@ -112,7 +112,9 @@ def meta_ann_from_ann(ann: Dict, meta_name: Union[Dict, List]) -> Optional[Dict]
     return None
 
 
-def are_anns_same(ann: Dict, ann2: Dict, meta_names: List = [], require_double_inner: bool = True) -> bool:
+def are_anns_same(ann: Dict, ann2: Dict, meta_names: List = None, require_double_inner: bool = True) -> bool:
+    if meta_names is None:
+        meta_names = []
     if ann['cui'] == ann2['cui'] and \
        ann['correct'] == ann2['correct'] and \
        ann['deleted'] == ann2['deleted'] and \
@@ -139,8 +141,12 @@ def are_anns_same(ann: Dict, ann2: Dict, meta_names: List = [], require_double_i
 
 
 def get_same_anns(
-    document: Dict, document2: Dict, require_double_inner: bool = True, ann_stats: List = [], meta_names: List = []
+    document: Dict, document2: Dict, require_double_inner: bool = True, ann_stats: List = None, meta_names: List = None
 ) -> Dict:
+    if ann_stats is None:
+        ann_stats = []
+    if meta_names is None:
+        meta_names = []
     new_document = copy.deepcopy(document)
     new_document['annotations'] = []
 
@@ -210,7 +216,11 @@ def get_same_anns(
     return new_document
 
 
-def print_consolid_stats(ann_stats: List = [], meta_names: List = []) -> None:
+def print_consolid_stats(ann_stats: List = None, meta_names: List = None) -> None:
+    if ann_stats is None:
+        ann_stats = []
+    if meta_names is None:
+        meta_names = []
     if ann_stats:
         _ann_stats = np.array(ann_stats[0])
         t = 0
@@ -399,7 +409,7 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
     json.dump(data, open(data_path, 'w'))
 
 
-def consolidate_double_annotations(data_path: str, out_path: str, require_double: bool = True, require_double_inner: bool = False, meta_anns_to_match: List = []) -> Dict:
+def consolidate_double_annotations(data_path: str, out_path: str, require_double: bool = True, require_double_inner: bool = False, meta_anns_to_match: List = None) -> Dict:
     """ Consolidated a dataset that was multi-annotated (same documents two times).
 
     data_path:
@@ -419,6 +429,8 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
         List of meta annotations that must match for two annotations to be the same. If empty only the mention
             level will be checked.
     """
+    if meta_anns_to_match is None:
+        meta_anns_to_match = []
     d_stats_proj: Dict = {}
     data: Dict = load_data(data_path, require_annotations=True)
     out_data: Dict = {'projects': []}
