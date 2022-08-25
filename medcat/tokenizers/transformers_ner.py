@@ -56,8 +56,8 @@ class TransformersTokenizerNER(object):
         for _ind, example in enumerate(zip(examples['text'], examples['ent_starts'],
                 examples['ent_ends'], examples['ent_cuis'])):
             tokens = self.hf_tokenizer(example[0], return_offsets_mapping=True, add_special_tokens=False)
-            entities = [(start, end, cui) for start, end, cui in zip(example[1],
-                        example[2], example[3])]
+            entities = list(zip(example[1],
+                        example[2], example[3]))
             entities.sort(key=lambda x: x[0])
             input_ids = []
             labels = []

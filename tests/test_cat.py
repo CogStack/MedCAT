@@ -305,10 +305,10 @@ class CATTests(unittest.TestCase):
     def test_create_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        pack = [f for f in os.listdir(save_dir_path.name)]
+        pack = list(os.listdir(save_dir_path.name))
         self.assertTrue(full_model_pack_name in pack)
         self.assertTrue(f'{full_model_pack_name}.zip' in pack)
-        contents = [f for f in os.listdir(os.path.join(save_dir_path.name, full_model_pack_name))]
+        contents = list(os.listdir(os.path.join(save_dir_path.name, full_model_pack_name)))
         self.assertTrue("cdb.dat" in contents)
         self.assertTrue("vocab.dat" in contents)
         self.assertTrue("model_card.json" in contents)

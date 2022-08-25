@@ -143,7 +143,7 @@ class ContextModel(object):
             # Calculate similarity for each cui
             similarities = [self._similarity(cui, vectors) for cui in cuis]
             # DEBUG
-            self.log.debug("Similarities: %s", [(sim, cui) for sim, cui in zip(cuis, similarities)])
+            self.log.debug("Similarities: %s", list(zip(cuis, similarities)))
 
             # Prefer primary
             if self.config.linking.get('prefer_primary_name', 0) > 0:
