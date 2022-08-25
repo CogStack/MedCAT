@@ -157,7 +157,7 @@ class Snomed:
             active_relat = int_relat[int_relat.active == '1']
             del int_relat
 
-            all_rela.extend([relationship for relationship in active_relat["typeId"].unique()])
+            all_rela.extend(list(active_relat["typeId"].unique()))
         return all_rela
 
     def relationship2json(self, relationshipcode, output_jsonfile):

@@ -545,9 +545,9 @@ class CAT(object):
             print("Docs with false negatives: {}\n".format("; ".join([str(x) for x in list(fn_docs)[0:10]])))
 
             # Sort fns & prec
-            fps = {k: v for k, v in sorted(fps.items(), key=lambda item: item[1], reverse=True)}
-            fns = {k: v for k, v in sorted(fns.items(), key=lambda item: item[1], reverse=True)}
-            tps = {k: v for k, v in sorted(tps.items(), key=lambda item: item[1], reverse=True)}
+            fps = dict(sorted(fps.items(), key=lambda item: item[1], reverse=True))
+            fns = dict(sorted(fns.items(), key=lambda item: item[1], reverse=True))
+            tps = dict(sorted(tps.items(), key=lambda item: item[1], reverse=True))
 
 
             # F1 per concept
@@ -1276,7 +1276,7 @@ class CAT(object):
             for batch in self._batch_generator(data, batch_size_chars):
                 if nn_components:
                     # We need this for the json_to_fake_spacy
-                    id2text.update({k: v for k, v in batch})
+                    id2text.update(dict(batch))
                 in_q.put(batch)
 
             # Final data point for workers
@@ -1304,7 +1304,7 @@ class CAT(object):
 
             docs = {}
             # Converts a tuple into a dict
-            docs.update({k: v for k, v in out_list})
+            docs.update(dict(out_list))
 
         # If we have separate GPU components now we pipe that
         if nn_components:
