@@ -276,9 +276,6 @@ class CAT(object):
                 A config dict that will overwrite existing configs in meta_cat.
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}
         """
-        from medcat.cdb import CDB
-        from medcat.vocab import Vocab
-        from medcat.meta_cat import MetaCAT
 
         base_dir = os.path.dirname(zip_path)
         filename = os.path.basename(zip_path)
