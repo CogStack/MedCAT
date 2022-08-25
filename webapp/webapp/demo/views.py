@@ -67,8 +67,7 @@ def get_html_and_json(text):
 
 
 def show_annotations(request):
-    context = {}
-    context['doc_json'] = '{"msg": "No documents yet"}'
+    context = {'doc_json': '{"msg": "No documents yet"}'}
 
     if request.POST and 'text' in request.POST:
         doc_html, doc_json = get_html_and_json(request.POST['text'])
