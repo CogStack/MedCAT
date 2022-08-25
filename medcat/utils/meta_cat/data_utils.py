@@ -8,7 +8,7 @@ def prepare_from_json(data: Dict,
                       tokenizer: TokenizerWrapperBase,
                       cui_filter: Optional[set] = None,
                       replace_center: Optional[str] = None,
-                      prerequisites: Dict = {},
+                      prerequisites: Dict = None,
                       lowercase: bool = True) -> Dict:
     """ Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
     working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
@@ -36,6 +36,8 @@ def prepare_from_json(data: Dict,
         out_data (`dict`):
             Example: {'category_name': [('<category_value>', '<[tokens]>', '<center_token>'), ...], ...}
     """
+    if prerequisites is None:
+        prerequisites = {}
     out_data: Dict = {}
 
     for project in data['projects']:
