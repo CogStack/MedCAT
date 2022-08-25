@@ -86,7 +86,7 @@ class CogStackConn(object):
         temp_results = []
         results = self.elastic.count(index=index, query=query['query'])
         for hit in tqdm(docs_generator, total=results['count'], desc="CogStack retrieved... "):
-            row = dict()
+            row = {}
             row['_index'] = hit['_index']
             row['_type'] = hit['_type']
             row['_id'] = hit['_id']
