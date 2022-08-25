@@ -1061,7 +1061,7 @@ class CAT(object):
         # Loop though the models and check are there GPU devices
         nn_components = []
         for component in self.pipe.spacy_nlp.components:
-            if isinstance(component[1], MetaCAT) or isinstance(component[1], TransformersNER):
+            if isinstance(component[1], (MetaCAT, TransformersNER)):
                 self.pipe.spacy_nlp.disable_pipe(component[0])
                 nn_components.append(component)
 
