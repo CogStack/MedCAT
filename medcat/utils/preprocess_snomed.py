@@ -207,7 +207,7 @@ class Snomed:
             active_relat = int_relat[int_relat.active == '1']
             del int_relat
 
-            relationship = dict([(key, []) for key in active_relat["destinationId"].unique()])
+            relationship = {key: [] for key in active_relat["destinationId"].unique()}
             for _, v in active_relat.iterrows():
                 if v['typeId'] == str(relationshipcode):
                     _ = v['destinationId']
