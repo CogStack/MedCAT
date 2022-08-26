@@ -293,11 +293,7 @@ class Config(ConfigMixin):
                     },
                 }
 
-
-        # Some regex that we will need
-        self.word_skipper = re.compile('^({})$'.format('|'.join(self.preprocessing['words_to_skip'])))
-        # Very agressive punct checker, input will be lowercased
-        self.punct_checker = re.compile(r'[^a-z0-9]+')
+        self.rebuild_re()
 
     # Override
     def rebuild_re(self) -> None:
