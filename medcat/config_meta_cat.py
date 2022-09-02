@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from medcat.config import ConfigMixin
 
-from medcat.idconfig import MixingConfig, BaseModel, Optional
+from medcat.idconfig import MixingConfig, BaseModel, Optional, Extra
 
 class _ConfigMetaCAT(ConfigMixin):
 
@@ -80,6 +80,9 @@ class General(MixingConfig, BaseModel):
         save_and_reuse_tokens: bool = False
         pipe_batch_size_in_chars: int = 20000000 # How many characters are piped at once into the meta_cat class
 
+        class Config:
+                extra = Extra.allow
+
 
 class Model(MixingConfig, BaseModel):
         model_name: str = 'lstm'
@@ -92,6 +95,9 @@ class Model(MixingConfig, BaseModel):
         padding_idx: int = -1
         emb_grad: bool = True # If True the embeddings will also be trained
         ignore_cpos: bool = False # If set to True center positions will be ignored when calculating represenation
+
+        class Config:
+                extra = Extra.allow
 
 
 class Train(MixingConfig, BaseModel):
@@ -108,8 +114,14 @@ class Train(MixingConfig, BaseModel):
         last_train_on: Optional[int] = None # When was the last training run
         metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'} # What metric should be used for choosing the best model
 
+        class Config:
+                extra = Extra.allow
+
 
 class ConfigMetaCAT(MixingConfig, BaseModel):
     general: General = General()
     model: Model = Model()
     train: Train = Train()
+
+    class Config:
+        extra = Extra.allow

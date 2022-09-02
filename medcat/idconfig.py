@@ -217,6 +217,9 @@ class VersionInfo(MixingConfig, BaseModel):
     # Which version of medcat was used to build the CDB
     medcat_version: Optional[str] = None
 
+    class Config:
+        extra = Extra.allow
+
 
 class NameVersion(Enum):
     LOWER = 1
@@ -237,6 +240,9 @@ class CDBMaker(MixingConfig, BaseModel):
     # Minimum number of letters required in a name to be accepted for a concept
     min_letters_required: int = 2
 
+    class Config:
+        extra = Extra.allow
+
 
 class AnnotationOutput(MixingConfig, BaseModel):
     doc_extended_info: bool = False
@@ -244,6 +250,9 @@ class AnnotationOutput(MixingConfig, BaseModel):
     context_right: int = -1
     lowercase_context: bool = True
     include_text_in_output: bool = False
+
+    class Config:
+        extra = Extra.allow
 
 
 class LabelType(str, Enum):
@@ -258,6 +267,9 @@ class CheckPoint(MixingConfig, BaseModel):
     steps: Optional[int] = None
     # When training the maximum checkpoints will be kept on the disk
     max_to_keep: int = 1
+
+    class Config:
+        extra = Extra.allow
 
 
 class General(MixingConfig, BaseModel):
@@ -303,6 +315,9 @@ class General(MixingConfig, BaseModel):
     # If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group
     map_cui_to_group: bool = False
 
+    class Config:
+        extra = Extra.allow
+
 
 class Preprocessing(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
@@ -328,6 +343,9 @@ class Preprocessing(MixingConfig, BaseModel):
     # Documents longer  than this will be trimmed
     max_document_length: int = 1000000
 
+    class Config:
+        extra = Extra.allow
+
 
 class Ner(MixingConfig, BaseModel):
     # Do not detect names below this limit, skip them
@@ -342,6 +360,9 @@ class Ner(MixingConfig, BaseModel):
     upper_case_limit_len: int = 4
     # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
     try_reverse_word_order: bool = False
+
+    class Config:
+        extra = Extra.allow
 
 
 class _DefPartial(object):
@@ -418,6 +439,9 @@ class Linking(MixingConfig, BaseModel):
     # If true when the context of a concept is calculated (embedding) the words making that concept are not taken into accout
     context_ignore_center_tokens: bool = False
 
+    class Config:
+        extra = Extra.allow
+
 
 class BaseConfig(MixingConfig, BaseModel):
     version: VersionInfo = VersionInfo()
@@ -431,6 +455,8 @@ class BaseConfig(MixingConfig, BaseModel):
     punct_checker: Optional[re.Pattern] = None
 
     class Config:
+        # this if for word_skipper and punct_checker which would otherwise
+        # not have a validator
         arbitrary_types_allowed = True
         extra = Extra.allow
 

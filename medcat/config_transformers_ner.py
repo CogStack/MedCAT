@@ -1,7 +1,7 @@
 from typing import Dict, Any
 from medcat.config import ConfigMixin
 
-from medcat.idconfig import MixingConfig, BaseModel, Optional
+from medcat.idconfig import MixingConfig, BaseModel, Optional, Extra
 
 class _ConfigTransformersNER(ConfigMixin):
 
@@ -30,5 +30,12 @@ class General(MixingConfig, BaseModel):
     last_train_on: Optional[int] = None
     verbose_metrics: bool = False
 
+    class Config:
+        extra = Extra.allow
+
 class ConfigTransformersNER(MixingConfig, BaseModel):
     general: General = General()
+
+
+    class Config:
+        extra = Extra.allow
