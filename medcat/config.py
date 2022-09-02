@@ -6,6 +6,8 @@ from multiprocessing import cpu_count
 from medcat.utils.hasher import Hasher
 from typing import Optional, Iterable, Tuple, Dict, Any
 
+from .idconfig import BaseConfig
+
 
 def weighted_average(step: int, factor: float) -> float:
     return max(0.1, 1 - (step ** 2 * factor))
@@ -117,8 +119,14 @@ class ConfigMixin(object):
 
         return config
 
+    def asdict(self): # for compatibility with new system
+        return self.__dict__
 
-class Config(ConfigMixin):
+
+class Config(BaseConfig):
+    pass
+
+class _Config(ConfigMixin):
 
     def __init__(self) -> None:
         self.version: Dict[str, Any] = {

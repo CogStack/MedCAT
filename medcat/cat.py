@@ -597,7 +597,7 @@ class CAT(object):
                 checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
                 self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
                 self.cdb = checkpoint.restore_latest_cdb()
-                self.cdb.config.merge_config(self.config.__dict__)
+                self.cdb.config.merge_config(self.config.asdict())
                 self.config = self.cdb.config
                 self._create_pipeline(self.config)
             else:

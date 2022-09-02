@@ -378,7 +378,7 @@ class CDB(object):
         with open(path, 'wb') as f:
             # No idea how to this correctly
             to_save = {}
-            to_save['config'] = self.config.__dict__
+            to_save['config'] = self.config.asdict()
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
 
