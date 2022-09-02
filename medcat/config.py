@@ -65,8 +65,6 @@ class MixingConfig(FakeDict):
             config_dict (`dict`):
                 A dictionary which key/values should be added to this class.
         '''
-        if not isinstance(config_dict, dict): # TODO - remove
-            raise ValueError('Need DICT (for now!)')
         for key in config_dict.keys():
             if hasattr(self, key):
                 attr = getattr(self, key)
