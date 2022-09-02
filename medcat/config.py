@@ -172,22 +172,25 @@ class MixingConfig(FakeDict):
 class VersionInfo(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    history: list = Field(default_factory=list)  # Populated automatically
-    meta_cats: dict = Field(default_factory=dict)  # Populated automatically
-    # Populated automatically, output from cdb.print_stats
+    history: list = Field(default_factory=list)
+    """Populated automatically"""
+    meta_cats: dict = Field(default_factory=dict)
+    """Populated automatically"""
     cdb_info: dict = Field(default_factory=dict)
-    # NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}
+    """Populated automatically, output from cdb.print_stats"""
     performance: dict = Field(default_factory=lambda: {'ner': {}, 'meta': {}})
-    # General description and what it was trained on
+    """NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}"""
     description: str = "No description"
-    id: Any = None  # Will be: hash of most things
-    last_modified: Optional[Union[int, datetime]] = None  # Yep
-    # Path/URL/Whatever to where is this CDB located
+    """General description and what it was trained on"""
+    id: Any = None
+    """Will be: hash of most things"""
+    last_modified: Optional[Union[int, datetime]] = None
     location: Optional[str] = None
-    # What was used to build the CDB, e.g. SNOMED_202009
+    """Path/URL/Whatever to where is this CDB located"""
     ontology: Optional[str] = None
-    # Which version of medcat was used to build the CDB
+    """What was used to build the CDB, e.g. SNOMED_202009"""
     medcat_version: Optional[str] = None
+    """Which version of medcat was used to build the CDB"""
 
     class Config:
         extra = Extra.allow
@@ -201,16 +204,16 @@ class NameVersion(Enum):
 class CDBMaker(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    # Name versions to be generated.
     name_versions: list = Field(default_factory=lambda: ['LOWER', 'CLEAN'])
-    # If multiple names or type_ids for a concept present in one row of a CSV, they are separted
-    # by the character below.
+    """Name versions to be generated."""
     multi_separator: str = '|'
-    # Should preferred names with parenthesis be cleaned 0 means no, else it means if longer than or equal
-    # e.g. Head (Body part) -> Head
+    """If multiple names or type_ids for a concept present in one row of a CSV, they are separted
+    by the character below."""
     remove_parenthesis: int = 5
-    # Minimum number of letters required in a name to be accepted for a concept
+    """Should preferred names with parenthesis be cleaned 0 means no, else it means if longer than or equal
+    e.g. Head (Body part) -> Head"""
     min_letters_required: int = 2
+    """Minimum number of letters required in a name to be accepted for a concept"""
 
     class Config:
         extra = Extra.allow
