@@ -1,6 +1,6 @@
 from datetime import datetime
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Extra
 from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
 from typing import List
 from multiprocessing import cpu_count
@@ -73,11 +73,10 @@ class MixingConfig(FakeDict):
         if not isinstance(config_dict, dict): # TODO - remove
             raise ValueError('Need DICT (for now!)')
         for key in config_dict.keys():
-            try:
+            if hasattr(self, key):
                 attr = getattr(self, key)
-            except AttributeError:
-                LOGGER.warning(f'Trying to set "{key}" in {type(self)} - no such attribute')
-                continue
+            else:
+                attr = None # new attribute
             value = config_dict[key]
             if isinstance(value, MixingConfig):
                 value = value.dict()
@@ -433,6 +432,7 @@ class BaseConfig(MixingConfig, BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
+        extra = Extra.allow
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
