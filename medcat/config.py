@@ -76,27 +76,6 @@ class MixingConfig(FakeDict):
             if isinstance(attr, MixingConfig):
                 attr.merge_config(value)
             else:
-                if isinstance(self, BaseModel):
-                    def is_correct_type(field_type, obj):
-                        obj_type = type(obj)
-                        if field_type is obj_type or field_type == obj_type:
-                            return True
-                        if 'Optional' in str(field_type) and obj is None:
-                            return True
-                        if field_type is Any:
-                            return True
-                        if field_type is Callable and hasattr(obj, '__call__'):
-                            return True
-                        return False
-                    all_fields = self.fields()
-                    found = [f for f in all_fields if f == key]
-                    if len(found) > 0:
-                        found = all_fields[found[0]]
-                        if not is_correct_type(found.type_, value):
-                            LOGGER.info('DEBUG: attr is NOT MixingConfig (but am within BaseModel) - SETTING (BAD)', key, 'expected', found.type_, 'setting', type(value), 'w', found)
-                    else:
-                        LOGGER.info('DEBUG: Could not find BaseModel field for', key, 'in', type(self))#, 'SKIPPING')
-                        # continue
                 try:
                     setattr(self, key, value)
                 except AttributeError as e:
