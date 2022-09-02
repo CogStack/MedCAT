@@ -32,11 +32,6 @@ class FakeDict(object):
     def __setitem__(self, arg: str, val):
         return setattr(self, arg, val)
 
-    def __setattr__(self, *args, **kwargs):
-        if '' in kwargs and kwargs['']:
-            return super().__setattr__(*args, **kwargs)
-        return super().__setattr__(*args, **kwargs)
-
     def get(self, key, default=None) -> Any:
         try:
             return self[key]
@@ -261,12 +256,12 @@ class LabelType(str, Enum):
 
 
 class CheckPoint(MixingConfig, BaseModel):
-    # When doing training this is the name of the directory where checkpoints will be saved
     output_dir: str = 'checkpoints'
-    # When training how often to save the checkpoint (one step represents one document), if None no ckpts will be created
+    """When doing training this is the name of the directory where checkpoints will be saved"""
     steps: Optional[int] = None
-    # When training the maximum checkpoints will be kept on the disk
+    """When training how often to save the checkpoint (one step represents one document), if None no ckpts will be created"""
     max_to_keep: int = 1
+    """When training the maximum checkpoints will be kept on the disk"""
 
     class Config:
         extra = Extra.allow
@@ -278,42 +273,41 @@ class General(MixingConfig, BaseModel):
     spacy_disabled_components: list = Field(default_factory=lambda: ['ner', 'parser', 'vectors', 'textcat',
                                                                      'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                                                      'merge_entities', 'merge_subtokens'])
-    # Checkpointing config
     checkpoint: CheckPoint = CheckPoint()
-    # checkpoint: dict = field(default_factory=dict)
-    # Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance
+    """Checkpointing config"""
     log_level: int = logging.INFO
+    """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
     log_format: str = '%(levelname)s:%(name)s: %(message)s'
     log_path: str = './medcat.log'
-    # What model will be used for tokenization
     spacy_model: str = 'en_core_web_md'
-    # Separator that will be used to merge tokens of a name. Once a CDB is built this should
-    # always stay the same.
+    """What model will be used for tokenization"""
     separator: str = '~'
-    # Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
-    # for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language.
+    """Separator that will be used to merge tokens of a name. Once a CDB is built this should
+    always stay the same."""
     spell_check: bool = True
-    # Should we process diacritics - for languages other than English, symbols such as 'é, ë, ö' can be relevant.
-    # Note that this makes spell_check slower.
+    """Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
+    for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language."""
     diacritics: bool = False
-    # If True the spell checker will try harder to find mistakes, this can slow down
-    # things drastically.
+    """Should we process diacritics - for languages other than English, symbols such as 'é, ë, ö' can be relevant.
+    Note that this makes spell_check slower."""
     spell_check_deep: bool = False
-    # Spelling will not be checked for words with length less than this
+    """If True the spell checker will try harder to find mistakes, this can slow down
+    things drastically."""
     spell_check_len_limit: int = 7
-    # If set to True functions like get_entities and get_json will return nested_entities and overlaps
+    """Spelling will not be checked for words with length less than this"""
     show_nested_entities: bool = False
-    # When unlinking a name from a concept should we do full_unlink (means unlink a name from all concepts, not just the one in question)
+    """If set to True functions like get_entities and get_json will return nested_entities and overlaps"""
     full_unlink: bool = False
-    # Number of workers used by a parallelizable pipeline component
+    """When unlinking a name from a concept should we do full_unlink (means unlink a name from all concepts, not just the one in question)"""
     workers: int = workers()
-    # Should the labels of entities (shown in displacy) be pretty or just 'concept'. Slows down the annotation pipeline
-    # should not be used when annotating millions of documents. If `None` it will be the string "concept", if `short` it will be CUI,
-    # if `long` it will be CUI | Name | Confidence
-    make_pretty_labels: Optional[str] = None
+    """Number of workers used by a parallelizable pipeline component"""
+    make_pretty_labels: Optional[str] = None # TODO - consider moving to LabelType enum
+    """Should the labels of entities (shown in displacy) be pretty or just 'concept'. Slows down the annotation pipeline
+    should not be used when annotating millions of documents. If `None` it will be the string "concept", if `short` it will be CUI,
+    if `long` it will be CUI | Name | Confidence"""
     # make_pretty_labels: Optional[LabelType] = None
-    # If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group
     map_cui_to_group: bool = False
+    """If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group"""
 
     class Config:
         extra = Extra.allow
@@ -322,44 +316,42 @@ class General(MixingConfig, BaseModel):
 class Preprocessing(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    # This words will be completly ignored from concepts and from the text (must be a Set)
     words_to_skip: set = Field(default_factory=lambda: {'nos'})
-    # All punct will be skipped by default, here you can set what will be kept
+    """This words will be completly ignored from concepts and from the text (must be a Set)"""
     keep_punct: set = Field(default_factory=lambda: {'.', ':'})
-    # Should specific word types be normalized: e.g. running -> run
-    # Values are detailed part-of-speech tags. See:
-    # - https://spacy.io/usage/linguistic-features#pos-tagging
-    # - Label scheme section per model at https://spacy.io/models/en
-    # do_not_normalize: set = field(default_factory=lambda: {
-    #                               'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'})
+    """All punct will be skipped by default, here you can set what will be kept"""
     do_not_normalize: set = Field(default_factory=lambda: {
                                   'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'})
-    # Should stopwords be skipped/ingored when processing input
+    """Should specific word types be normalized: e.g. running -> run
+    Values are detailed part-of-speech tags. See:
+    - https://spacy.io/usage/linguistic-features#pos-tagging
+    - Label scheme section per model at https://spacy.io/models/en"""
     skip_stopwords: bool = False
-    # Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case
+    """Should stopwords be skipped/ingored when processing input"""
     min_len_normalize: int = 5
-    # If None the default set of stowords from spacy will be used. This must be a Set.
+    """Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case"""
     stopwords: Optional[set] = None
-    # Documents longer  than this will be trimmed
+    """If None the default set of stowords from spacy will be used. This must be a Set."""
     max_document_length: int = 1000000
+    """Documents longer  than this will be trimmed"""
 
     class Config:
         extra = Extra.allow
 
 
 class Ner(MixingConfig, BaseModel):
-    # Do not detect names below this limit, skip them
     min_name_len: int = 3
-    # When checkng tokens for concepts you can have skipped tokens inbetween
-    # used ones (usually spaces, new lines etc). This number tells you how many skipped can you have.
+    """Do not detect names below this limit, skip them"""
     max_skip_tokens: int = 2
-    # Check uppercase to distinguish uppercase and lowercase words that have a different meaning.
+    """When checkng tokens for concepts you can have skipped tokens inbetween
+    used ones (usually spaces, new lines etc). This number tells you how many skipped can you have."""
     check_upper_case_names: bool = False
-    # Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
-    # it will be skipped.
+    """Check uppercase to distinguish uppercase and lowercase words that have a different meaning."""
     upper_case_limit_len: int = 4
-    # Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart
+    """Any name shorter than this must be uppercase in the text to be considered. If it is not uppercase
+    it will be skipped."""
     try_reverse_word_order: bool = False
+    """Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart"""
 
     class Config:
         extra = Extra.allow
@@ -385,59 +377,59 @@ _DEFAULT_PARTIAL = _DefPartial()
 class Linking(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    # Linear anneal
     optim: dict = Field(default_factory=lambda: {
                         'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005})
+    """Linear anneal"""
     # optim: dict = {'type': 'standard', 'lr': 1}
     # optim: dict = {'type': 'moving_avg', 'alpha': 0.99, 'e': 1e-4, 'size': 100}
-    # Context vector sizes that will be calculated and used for linking
     context_vector_sizes: dict = Field(
         default_factory=lambda: {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3})
-    # Weight of each vector in the similarity score - make trainable at some point. Should add up to 1.
+    """Context vector sizes that will be calculated and used for linking"""
     context_vector_weights: dict = Field(default_factory=lambda: {
                                          'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1})
-    # Filters
+    """Weight of each vector in the similarity score - make trainable at some point. Should add up to 1."""
     filters: dict = Field(default_factory=lambda: {
         'cuis': set(),  # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
     })
-    # Should it train or not, this is set automatically ignore in 99% of cases and do not set manually
+    """Filters"""
     train: bool = True
-    # If <1 during unsupervised training the detected term will be randomly replaced with a probability of 1 - random_replacement_unsupervised
-    # Replaced with a synonym used for that term
+    """Should it train or not, this is set automatically ignore in 99% of cases and do not set manually"""
     random_replacement_unsupervised: float = 0.80
-    # All concepts below this will always be disambiguated
+    """If <1 during unsupervised training the detected term will be randomly replaced with a probability of 1 - random_replacement_unsupervised
+    Replaced with a synonym used for that term"""
     disamb_length_limit: int = 3
-    # If True it will filter before doing disamb. Useful for the trainer.
+    """All concepts below this will always be disambiguated"""
     filter_before_disamb: bool = False
-    # Concepts that have seen less training examples than this will not be used for
-    # similarity calculation and will have a similarity of -1.
+    """If True it will filter before doing disamb. Useful for the trainer."""
     train_count_threshold: int = 1
-    # Do we want to calculate context similarity even for concepts that are not ambigous.
+    """Concepts that have seen less training examples than this will not be used for
+    similarity calculation and will have a similarity of -1."""
     always_calculate_similarity: bool = False
-    # Weights for a weighted average
-    # 'weighted_average_function': partial(weighted_average, factor=0.02),
+    """Do we want to calculate context similarity even for concepts that are not ambigous."""
     weighted_average_function: Callable = _DEFAULT_PARTIAL
-    # Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
-    # and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
-    # if the cdb was trained with calculate_dynamic_threshold = True.
+    """Weights for a weighted average
+    'weighted_average_function': partial(weighted_average, factor=0.02),"""
     calculate_dynamic_threshold: bool = False
+    """Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
+    and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
+    if the cdb was trained with calculate_dynamic_threshold = True."""
     similarity_threshold_type: str = 'static'
     similarity_threshold: float = 0.25
-    # Probability for the negative context to be added for each positive addition
     negative_probability: float = 0.5
-    # Do we ignore punct/num when negative sampling
+    """Probability for the negative context to be added for each positive addition"""
     negative_ignore_punct_and_num: bool = True
-    # If >0 concepts for which a detection is its primary name will be preferred by that amount (0 to 1)
+    """Do we ignore punct/num when negative sampling"""
     prefer_primary_name: float = 0.35
-    # If >0 concepts that are more frequent will be prefered by a multiply of this amount
+    """If >0 concepts for which a detection is its primary name will be preferred by that amount (0 to 1)"""
     prefer_frequent_concepts: float = 0.35
-    # DISABLED in code permanetly: Subsample during unsupervised training if a concept has received more than
+    """If >0 concepts that are more frequent will be prefered by a multiply of this amount"""
     subsample_after: int = 30000
-    # When adding a positive example, should it also be treated as Negative for concepts
-    # which link to the postive one via names (ambigous names).
+    """DISABLED in code permanetly: Subsample during unsupervised training if a concept has received more than"""
     devalue_linked_concepts: bool = False
-    # If true when the context of a concept is calculated (embedding) the words making that concept are not taken into accout
+    """When adding a positive example, should it also be treated as Negative for concepts
+    which link to the postive one via names (ambigous names)."""
     context_ignore_center_tokens: bool = False
+    """If true when the context of a concept is calculated (embedding) the words making that concept are not taken into accout"""
 
     class Config:
         extra = Extra.allow
