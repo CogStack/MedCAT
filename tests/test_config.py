@@ -10,9 +10,6 @@ class ConfigTests(unittest.TestCase):
         c = Config()
         self.assertIsNotNone(c.general.spacy_model)
 
-    def check_MixingConfig(self, c: MixingConfig):
-        pass
-
     def test_identifier_works_all(self, non_default_non_none=['word_skipper', 'punct_checker']):
         # Ignoring work_skipper and punct checker since their values
         # are not default, but they are also not None
