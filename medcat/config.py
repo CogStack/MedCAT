@@ -170,8 +170,6 @@ class MixingConfig(FakeDict):
 
 
 class VersionInfo(MixingConfig, BaseModel):
-    # rearranging order so that "non-default" values (with field method) 
-    # appear before ones with explicit default values
     history: list = []
     """Populated automatically"""
     meta_cats: dict = dict()
@@ -202,8 +200,6 @@ class NameVersion(Enum):
 
 
 class CDBMaker(MixingConfig, BaseModel):
-    # rearranging order so that "non-default" values (with field method) 
-    # appear before ones with explicit default values
     name_versions: list = ['LOWER', 'CLEAN']
     """Name versions to be generated."""
     multi_separator: str = '|'
@@ -248,8 +244,6 @@ class CheckPoint(MixingConfig, BaseModel):
 
 
 class General(MixingConfig, BaseModel):
-    # rearranging order so that "non-default" values (with field method) 
-    # appear before ones with explicit default values
     spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
                                        'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                        'merge_entities', 'merge_subtokens']
@@ -294,8 +288,6 @@ class General(MixingConfig, BaseModel):
 
 
 class Preprocessing(MixingConfig, BaseModel):
-    # rearranging order so that "non-default" values (with field method) 
-    # appear before ones with explicit default values
     words_to_skip: set = {'nos'}
     """This words will be completly ignored from concepts and from the text (must be a Set)"""
     keep_punct: set = {'.', ':'}
@@ -354,8 +346,6 @@ _DEFAULT_PARTIAL = _DefPartial()
 
 
 class Linking(MixingConfig, BaseModel):
-    # rearranging order so that "non-default" values (with field method) 
-    # appear before ones with explicit default values
     optim: dict = {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005}
     """Linear anneal"""
     # optim: dict = {'type': 'standard', 'lr': 1}
