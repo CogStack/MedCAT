@@ -38,6 +38,7 @@ class General(MixingConfig, BaseModel):
 
         class Config:
                 extra = Extra.allow
+                validate_assignment = True
 
 
 class Model(MixingConfig, BaseModel):
@@ -58,6 +59,7 @@ class Model(MixingConfig, BaseModel):
 
         class Config:
                 extra = Extra.allow
+                validate_assignment = True
 
 
 class Train(MixingConfig, BaseModel):
@@ -82,6 +84,7 @@ class Train(MixingConfig, BaseModel):
 
         class Config:
                 extra = Extra.allow
+                validate_assignment = True
 
 
 class ConfigMetaCAT(MixingConfig, BaseModel):
@@ -91,3 +94,4 @@ class ConfigMetaCAT(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True

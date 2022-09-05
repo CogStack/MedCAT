@@ -17,6 +17,7 @@ class General(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 class ConfigTransformersNER(MixingConfig, BaseModel):
     general: General = General()
@@ -24,3 +25,4 @@ class ConfigTransformersNER(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True

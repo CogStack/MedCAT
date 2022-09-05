@@ -241,7 +241,7 @@ class VersionInfo(MixingConfig, BaseModel):
     """General description and what it was trained on"""
     id: Any = None
     """Will be: hash of most things"""
-    last_modified: Optional[Union[int, datetime]] = None
+    last_modified: Optional[Union[int, datetime, str]] = None
     location: Optional[str] = None
     """Path/URL/Whatever to where is this CDB located"""
     ontology: Optional[str] = None
@@ -251,6 +251,7 @@ class VersionInfo(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class CDBMaker(MixingConfig, BaseModel):
@@ -267,6 +268,7 @@ class CDBMaker(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class AnnotationOutput(MixingConfig, BaseModel):
@@ -278,6 +280,7 @@ class AnnotationOutput(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class CheckPoint(MixingConfig, BaseModel):
@@ -290,6 +293,7 @@ class CheckPoint(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class General(MixingConfig, BaseModel):
@@ -334,6 +338,7 @@ class General(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class Preprocessing(MixingConfig, BaseModel):
@@ -357,6 +362,7 @@ class Preprocessing(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class Ner(MixingConfig, BaseModel):
@@ -375,6 +381,7 @@ class Ner(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class _DefPartial(object):
@@ -446,6 +453,7 @@ class Linking(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
+        validate_assignment = True
 
 
 class Config(MixingConfig, BaseModel):
@@ -464,6 +472,7 @@ class Config(MixingConfig, BaseModel):
         # not have a validator
         arbitrary_types_allowed = True
         extra = Extra.allow
+        validate_assignment = True
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
