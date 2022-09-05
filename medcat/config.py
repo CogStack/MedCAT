@@ -28,8 +28,8 @@ class FakeDict(object):
     def __getitem__(self, arg: str) -> Any:
         return getattr(self, arg)
 
-    def __setitem__(self, arg: str, val):
-        return setattr(self, arg, val)
+    def __setitem__(self, arg: str, val) -> None:
+        setattr(self, arg, val)
 
     def get(self, key, default=None) -> Any:
         try:
