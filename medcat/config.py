@@ -1,7 +1,7 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, Extra
+from pydantic import BaseModel, Field, Extra, ValidationError
 from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
-from typing import List
+from typing import List, Tuple, Callable
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -36,6 +36,51 @@ class FakeDict(object):
             return self[key]
         except KeyError:
             return default
+
+
+_EMPTY_DICT_2_EMPTY_SET = lambda rhs, val: set() if (val == {} or rhs == "{}") else None
+
+
+class ValueExtractor(object):
+    """The current example config has a value for an empty set as '{}'.
+    However, that evaluates to an empty dictionary instead.
+    In case there are other such examples, this allows adding other alternatives as well.
+    """
+
+    def __init__(self, alt_generators: List[Callable[[str, Any], Optional[Any]]] = [_EMPTY_DICT_2_EMPTY_SET]) -> None:
+        self.alt_generators = alt_generators
+
+    def extract(self, rhs: str) -> Tuple[str, List[str]]:
+        """Extracts value and its alternatives based on the alternative generators defined.
+
+        Args:
+            rhs (str): The parsable right hand side
+
+        Returns:
+            Tuple[str, List[str]]: The main value and the (potentially many) alternatives
+        """
+        val = eval(rhs)
+        alts = []
+        for gen in self.alt_generators:
+            alt_val = gen(rhs, val)
+            if alt_val is not None:
+                alts.append(alt_val)
+        return val, alts
+
+
+_DEFAULT_EXTRACTOR = ValueExtractor()
+
+
+def _set_value_or_alt(conf: 'MixingConfig', key: str, value: Any, alt_values: List[Any], err: ValidationError = None) -> None:
+    try:
+        setattr(conf, key, value) # hoping for correct type
+    except ValidationError as ve:
+        if len(alt_values) > 0:
+            _set_value_or_alt(conf, key, alt_values.pop(), alt_values, err=ve)
+        elif err is not None:
+            raise err
+        else:
+            raise ve
 
 
 class MixingConfig(FakeDict):
@@ -82,7 +127,7 @@ class MixingConfig(FakeDict):
                     LOGGER.warning('Issue with setting attribtue', key, ':', e)
         self.rebuild_re()
 
-    def parse_config_file(self, path: str) -> None:
+    def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
         r'''
         Parses a configuration file in text format. Must be like:
                 cat.<variable>.<key> = <value>
@@ -100,16 +145,15 @@ class MixingConfig(FakeDict):
                     variable, key = left.split(".")
                     variable = variable.strip()
                     key = key.strip()
-                    value = eval(right.strip())
+                    value, alt_values = extractor.extract(right)
 
                     attr = getattr(self, variable)
                     if isinstance(attr, MixingConfig):
-                        setattr(attr, key, value)  # assuming
+                        _set_value_or_alt(attr, key, value, alt_values)
                     elif isinstance(attr, dict):
                         attr[key] = value
                     else:
-                        raise ValueError(
-                            f'Unknown attribute {attr} for "{line}"')
+                        raise ValueError(f'Unknown attribute {attr} for "{line}"')
 
         self.rebuild_re()
 
