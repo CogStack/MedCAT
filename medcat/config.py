@@ -328,11 +328,10 @@ class General(MixingConfig, BaseModel):
     """When unlinking a name from a concept should we do full_unlink (means unlink a name from all concepts, not just the one in question)"""
     workers: int = workers()
     """Number of workers used by a parallelizable pipeline component"""
-    make_pretty_labels: Optional[str] = None # TODO - consider moving to LabelType enum
+    make_pretty_labels: Optional[str] = None
     """Should the labels of entities (shown in displacy) be pretty or just 'concept'. Slows down the annotation pipeline
     should not be used when annotating millions of documents. If `None` it will be the string "concept", if `short` it will be CUI,
     if `long` it will be CUI | Name | Confidence"""
-    # make_pretty_labels: Optional[LabelType] = None
     map_cui_to_group: bool = False
     """If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group"""
 
