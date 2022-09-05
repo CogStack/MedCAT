@@ -172,13 +172,13 @@ class MixingConfig(FakeDict):
 class VersionInfo(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    history: list = Field(default_factory=list)
+    history: list = []
     """Populated automatically"""
-    meta_cats: dict = Field(default_factory=dict)
+    meta_cats: dict = dict()
     """Populated automatically"""
-    cdb_info: dict = Field(default_factory=dict)
+    cdb_info: dict = dict()
     """Populated automatically, output from cdb.print_stats"""
-    performance: dict = Field(default_factory=lambda: {'ner': {}, 'meta': {}})
+    performance: dict = {'ner': {}, 'meta': {}}
     """NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}"""
     description: str = "No description"
     """General description and what it was trained on"""
@@ -204,7 +204,7 @@ class NameVersion(Enum):
 class CDBMaker(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    name_versions: list = Field(default_factory=lambda: ['LOWER', 'CLEAN'])
+    name_versions: list = ['LOWER', 'CLEAN']
     """Name versions to be generated."""
     multi_separator: str = '|'
     """If multiple names or type_ids for a concept present in one row of a CSV, they are separted
@@ -250,9 +250,9 @@ class CheckPoint(MixingConfig, BaseModel):
 class General(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    spacy_disabled_components: list = Field(default_factory=lambda: ['ner', 'parser', 'vectors', 'textcat',
-                                                                     'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
-                                                                     'merge_entities', 'merge_subtokens'])
+    spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
+                                       'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
+                                       'merge_entities', 'merge_subtokens']
     checkpoint: CheckPoint = CheckPoint()
     """Checkpointing config"""
     log_level: int = logging.INFO
@@ -296,12 +296,11 @@ class General(MixingConfig, BaseModel):
 class Preprocessing(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    words_to_skip: set = Field(default_factory=lambda: {'nos'})
+    words_to_skip: set = {'nos'}
     """This words will be completly ignored from concepts and from the text (must be a Set)"""
-    keep_punct: set = Field(default_factory=lambda: {'.', ':'})
+    keep_punct: set = {'.', ':'}
     """All punct will be skipped by default, here you can set what will be kept"""
-    do_not_normalize: set = Field(default_factory=lambda: {
-                                  'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'})
+    do_not_normalize: set = {'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'}
     """Should specific word types be normalized: e.g. running -> run
     Values are detailed part-of-speech tags. See:
     - https://spacy.io/usage/linguistic-features#pos-tagging
@@ -357,20 +356,15 @@ _DEFAULT_PARTIAL = _DefPartial()
 class Linking(MixingConfig, BaseModel):
     # rearranging order so that "non-default" values (with field method) 
     # appear before ones with explicit default values
-    optim: dict = Field(default_factory=lambda: {
-                        'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005})
+    optim: dict = {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005}
     """Linear anneal"""
     # optim: dict = {'type': 'standard', 'lr': 1}
     # optim: dict = {'type': 'moving_avg', 'alpha': 0.99, 'e': 1e-4, 'size': 100}
-    context_vector_sizes: dict = Field(
-        default_factory=lambda: {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3})
+    context_vector_sizes: dict = {'xlong': 27, 'long': 18, 'medium': 9, 'short': 3}
     """Context vector sizes that will be calculated and used for linking"""
-    context_vector_weights: dict = Field(default_factory=lambda: {
-                                         'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1})
+    context_vector_weights: dict = {'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1}
     """Weight of each vector in the similarity score - make trainable at some point. Should add up to 1."""
-    filters: dict = Field(default_factory=lambda: {
-        'cuis': set(),  # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
-    })
+    filters: dict = {'cuis': set(), } # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
     """Filters"""
     train: bool = True
     """Should it train or not, this is set automatically ignore in 99% of cases and do not set manually"""
