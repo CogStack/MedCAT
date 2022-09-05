@@ -6,6 +6,14 @@ from medcat.config import Config
 
 class ConfigTests(unittest.TestCase):
 
+    def test_identifier_works(self):
+        c = Config()
+        self.assertIsNotNone(c.general.spacy_model)
+
+    def test_legacy_getitem_works(self):
+        c = Config()
+        self.assertIsNotNone(c.general['spacy_model'])
+
     def test_creates_new_defaults(self):
         # the default values are mutable
         # so if new instances weren't being created,
