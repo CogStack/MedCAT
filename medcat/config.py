@@ -79,7 +79,7 @@ class MixingConfig(FakeDict):
                 try:
                     setattr(self, key, value)
                 except AttributeError as e:
-                    LOGGER.warning('DEBUG: Issue with setting attribtue', key, ':', e)
+                    LOGGER.warning('Issue with setting attribtue', key, ':', e)
         self.rebuild_re()
 
     def parse_config_file(self, path: str) -> None:
