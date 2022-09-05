@@ -22,7 +22,7 @@ def workers(workers_override: Optional[int] = None) -> int:
 
 
 class FakeDict(object):
-    """FakeDict that allows the use of the __get__ method for old access tokens.
+    """FakeDict that allows the use of the __getitem__ and __setitem__ method for legacy access.
     """
 
     def __getitem__(self, arg: str) -> Any:
@@ -40,7 +40,8 @@ class FakeDict(object):
 
 class MixingConfig(FakeDict):
     """Config that is able to saved and loaded from disk as well as mixed with other configs.
-    It is not intended to be initialised directly and it is assumed that instances are dataclasses
+    It is not intended to be initialised directly and it is assumed that instances also inherit from
+    pydantic's BaseModel.
     """
 
     def save(self, save_path: str) -> None:
@@ -154,17 +155,32 @@ class MixingConfig(FakeDict):
 
     @classmethod
     def from_dict(cls, config_dict: Dict) -> "MixingConfig":
+        """Generate a MixingConfig (of an extending type) from a a dictionary.
+
+        Args:
+            config_dict (Dict): The dictionary to create the config from
+
+        Returns:
+            MixingConfig: The resulting config
+        """
         config = cls()
         config.merge_config(config_dict)
         return config
 
-    def asdict(self):
+    def asdict(self) -> Dict[str, Any]:
+        """Get the config as a dictionary.
+
+        Returns:
+            Dict[str, Any]: The dictionary associated with this config
+        """
         return self.dict()
 
-    def keys(self) -> List[str]:
-        return self.fields().keys()
-
     def fields(self) -> Dict[str, Field]:
+        """Get the fields associated with this config.
+
+        Returns:
+            Dict[str, Field]: The dictionary of the field names and fields
+        """
         return self.__fields__
 
 
