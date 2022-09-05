@@ -5,19 +5,23 @@ from medcat.config import Config, MixingConfig
 
 
 class ConfigTests(unittest.TestCase):
+    _NON_DEFAULT_NON_NONE_FIELDS = ['word_skipper', 'punct_checker']
+    # The values for these config options are not default
+    # since they are recalculated at init time
+    # however, they are also not None
 
     def test_identifier_works(self):
         c = Config()
         self.assertIsNotNone(c.general.spacy_model)
 
-    def test_identifier_works_all(self, non_default_non_none=['word_skipper', 'punct_checker']):
+    def test_identifier_works_all(self):
         # Ignoring work_skipper and punct checker since their values
         # are not default, but they are also not None
         def check_recursively(c: MixingConfig):
             for field_name, field in c.fields().items():
                 with self.subTest(f'{type(c).__name__}:{field_name}'):
                     val = getattr(c, field_name)
-                    if field_name in non_default_non_none:
+                    if field_name in ConfigTests._NON_DEFAULT_NON_NONE_FIELDS:
                         self.assertIsNotNone(val)
                     else:
                         self.assertEqual(val, field.default)
@@ -29,14 +33,14 @@ class ConfigTests(unittest.TestCase):
         c = Config()
         self.assertIsNotNone(c.general['spacy_model'])
 
-    def test_getitem_works_all(self, non_default_non_none=['word_skipper', 'punct_checker']):
+    def test_getitem_works_all(self):
         # Ignoring work_skipper and punct checker since their values
         # are not default, but they are also not None
         def check_recursively(c: MixingConfig):
             for field_name, field in c.fields().items():
                 with self.subTest():
                     val = c[field_name]
-                    if field_name in non_default_non_none:
+                    if field_name in ConfigTests._NON_DEFAULT_NON_NONE_FIELDS:
                         self.assertIsNotNone(val)
                     else:
                         self.assertEqual(val, field.default)
