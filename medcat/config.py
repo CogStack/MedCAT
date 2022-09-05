@@ -1,5 +1,4 @@
 from datetime import datetime
-from enum import Enum
 from pydantic import BaseModel, Field, Extra
 from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
 from typing import List
@@ -194,11 +193,6 @@ class VersionInfo(MixingConfig, BaseModel):
         extra = Extra.allow
 
 
-class NameVersion(Enum):
-    LOWER = 1
-    CLEAN = 2
-
-
 class CDBMaker(MixingConfig, BaseModel):
     name_versions: list = ['LOWER', 'CLEAN']
     """Name versions to be generated."""
@@ -224,11 +218,6 @@ class AnnotationOutput(MixingConfig, BaseModel):
 
     class Config:
         extra = Extra.allow
-
-
-class LabelType(str, Enum):
-    short = 1
-    long = 2
 
 
 class CheckPoint(MixingConfig, BaseModel):
