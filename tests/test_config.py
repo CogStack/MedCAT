@@ -1,7 +1,8 @@
 import unittest
 import pickle
 import tempfile
-from medcat.config import Config, MixingConfig
+from medcat.config import Config, MixingConfig, VersionInfo
+from pydantic import ValidationError
 
 
 class ConfigTests(unittest.TestCase):
@@ -76,6 +77,10 @@ class ConfigTests(unittest.TestCase):
         self.assertNotEqual(bc1.general, bc2.general)
         self.assertNotEqual(bc1.general.spacy_model, bc2.general.spacy_model)
         self.assertNotEqual(bc1, bc2)
+
+    def test_fails_upon_wrong_type(self):
+        with self.assertRaises(ValidationError):
+            VersionInfo(history=-1)
 
     def test_pickleability(self):
         with tempfile.TemporaryFile() as f:
