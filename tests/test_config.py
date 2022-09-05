@@ -78,9 +78,18 @@ class ConfigTests(unittest.TestCase):
         self.assertNotEqual(bc1.general.spacy_model, bc2.general.spacy_model)
         self.assertNotEqual(bc1, bc2)
 
-    def test_fails_upon_wrong_type(self):
+    def test_fails_upon_wrong_type_init(self):
         with self.assertRaises(ValidationError):
             VersionInfo(history=-1)
+
+    def test_fails_upon_wrong_type_merge(self):
+        with self.assertRaises(ValidationError):
+            VersionInfo.from_dict(dict(history=-1))
+
+    def test_fails_upon_wrong_type_assignment(self):
+        vi = VersionInfo()
+        with self.assertRaises(ValidationError):
+            vi.history = -1
 
     def test_pickleability(self):
         with tempfile.TemporaryFile() as f:
