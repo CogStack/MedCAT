@@ -666,7 +666,8 @@ class CDB(object):
         # Hacky way of supporting old CDBs
         weighted_average_function = config.linking.weighted_average_function
         if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
-            config.linking.weighted_average_function = partial(weighted_average, factor=0.0004)
+            # the following type ignoring is for mypy because it is unable to detect the signature
+            config.linking.weighted_average_function = partial(weighted_average, factor=0.0004) # type: ignore
         if config.general.workers is None:
             config.general.workers = workers()
         disabled_comps = config.general.spacy_disabled_components

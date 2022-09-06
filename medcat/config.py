@@ -1,7 +1,8 @@
 from datetime import datetime
-from pydantic import BaseModel, Field, Extra, ValidationError
+from pydantic import BaseModel, Extra, ValidationError
 from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
-from typing import List, Tuple, Callable
+from pydantic.fields import ModelField
+from typing import List, Tuple, cast
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -38,7 +39,7 @@ class FakeDict(object):
             return default
 
 
-_EMPTY_DICT_2_EMPTY_SET = lambda rhs, val: set() if (val == {} or rhs == "{}") else None
+_EMPTY_DICT_2_EMPTY_SET: Callable[[str, Any], Optional[set]] = lambda rhs, val: set() if (val == {} or rhs == "{}") else None
 
 
 class ValueExtractor(object):
@@ -71,7 +72,7 @@ class ValueExtractor(object):
 _DEFAULT_EXTRACTOR = ValueExtractor()
 
 
-def _set_value_or_alt(conf: 'MixingConfig', key: str, value: Any, alt_values: List[Any], err: ValidationError = None) -> None:
+def _set_value_or_alt(conf: 'MixingConfig', key: str, value: Any, alt_values: List[Any], err: Optional[ValidationError] = None) -> None:
     try:
         setattr(conf, key, value) # hoping for correct type
     except ValidationError as ve:
@@ -116,7 +117,7 @@ class MixingConfig(FakeDict):
             else: # TODO - log this?
                 attr = None # new attribute
             value = config_dict[key]
-            if isinstance(value, MixingConfig):
+            if isinstance(value, BaseModel):
                 value = value.dict()
             if isinstance(attr, MixingConfig):
                 attr.merge_config(value)
@@ -163,7 +164,7 @@ class MixingConfig(FakeDict):
     def _calc_hash(self, hasher: Optional[Hasher] = None) -> Hasher:
         if hasher is None:
             hasher = Hasher()
-        for _, v in self.dict().items():
+        for _, v in cast(BaseModel, self).dict().items():
             if isinstance(v, MixingConfig):
                 v._calc_hash(hasher)
             else:
@@ -175,7 +176,7 @@ class MixingConfig(FakeDict):
         return hasher.hexdigest()
 
     def __str__(self) -> str:
-        return str(self.dict())
+        return str(cast(BaseModel, self).dict())
 
     @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
@@ -217,15 +218,15 @@ class MixingConfig(FakeDict):
         Returns:
             Dict[str, Any]: The dictionary associated with this config
         """
-        return self.dict()
+        return cast(BaseModel, self).dict()
 
-    def fields(self) -> Dict[str, Field]:
+    def fields(self) -> Dict[str, ModelField]:
         """Get the fields associated with this config.
 
         Returns:
             Dict[str, Field]: The dictionary of the field names and fields
         """
-        return self.__fields__
+        return cast(BaseModel, self).__fields__
 
 
 class VersionInfo(MixingConfig, BaseModel):
@@ -425,7 +426,7 @@ class Linking(MixingConfig, BaseModel):
     similarity calculation and will have a similarity of -1."""
     always_calculate_similarity: bool = False
     """Do we want to calculate context similarity even for concepts that are not ambigous."""
-    weighted_average_function: Callable = _DEFAULT_PARTIAL
+    weighted_average_function: Callable[..., Any] = _DEFAULT_PARTIAL
     """Weights for a weighted average
     'weighted_average_function': partial(weighted_average, factor=0.02),"""
     calculate_dynamic_threshold: bool = False
@@ -463,8 +464,8 @@ class Config(MixingConfig, BaseModel):
     preprocessing: Preprocessing = Preprocessing()
     ner: Ner = Ner()
     linking: Linking = Linking()
-    word_skipper: Optional[re.Pattern] = None
-    punct_checker: Optional[re.Pattern] = None
+    word_skipper: re.Pattern = re.compile('') # empty pattern gets replaced upon init
+    punct_checker: re.Pattern = re.compile('') # empty pattern gets replaced upon init
 
     class Config:
         # this if for word_skipper and punct_checker which would otherwise
