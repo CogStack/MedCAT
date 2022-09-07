@@ -1,7 +1,7 @@
 import unittest
 import pickle
 import tempfile
-from medcat.config import Config, MixingConfig, VersionInfo
+from medcat.config import Config, MixingConfig, VersionInfo, General
 from pydantic import ValidationError
 
 
@@ -60,6 +60,53 @@ class ConfigTests(unittest.TestCase):
         bc2 = Config()
         print(bc2.general.spacy_model, 'vs', bc1.general.spacy_model)
         self.assertNotEqual(bc2.general.spacy_model, bc1.general.spacy_model)
+
+    def test_config_get_hash_gets_same_value_on_each_pass(self):
+        c = Config()
+        h1 = c.get_hash()
+        h2 = c.get_hash()
+        self.assertEqual(h1, h2)
+
+    def test_identical_config_has_same_hash(self):
+        c1 = Config()
+        c2 = Config()
+        self.assertEqual(c1.get_hash(), c2.get_hash())
+
+    def test_changeed_config_different_hash(self):
+        c = Config()
+        hash1 = c.get_hash()
+        c.general.log_format = ''
+        hash2 = c.get_hash()
+        self.assertNotEqual(hash1, hash2)
+
+    def test_config_get_hash_gets_same_value_after_change_back_main(self):
+        c = Config()
+        h1 = c.get_hash()
+        # save prev
+        prev_gen = c.general
+        # change
+        gen = General(log_format='LOG')
+        c.general = gen
+        h2 = c.get_hash()
+        self.assertNotEqual(h1, h2)
+        # set back
+        c.general = prev_gen
+        h3 = c.get_hash()
+        self.assertEqual(h1, h3)
+
+    def test_config_get_hash_gets_same_value_after_change_back_nested(self):
+        c = Config()
+        h1 = c.get_hash()
+        # save prev
+        prev_log_format = str(c.general.log_format)
+        # change
+        c.general.log_format = ''
+        h2 = c.get_hash()
+        self.assertNotEqual(h1, h2)
+        # set back
+        c.general.log_format = prev_log_format
+        h3 = c.get_hash()
+        self.assertEqual(h1, h3)
 
     def test_lists_are_different(self):
         bc1 = Config()
