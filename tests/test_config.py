@@ -72,6 +72,16 @@ class ConfigTests(unittest.TestCase):
         c2 = Config()
         self.assertEqual(c1.get_hash(), c2.get_hash())
 
+    def test_ignored_parts_do_not_affect_hash(self, ignored_constructors={'version': lambda: VersionInfo(history=['-1.42.0'])}):
+        c = Config()
+        orig_hash = c.get_hash()
+        for name, constr in ignored_constructors.items():
+            with self.subTest(f'Changing {name}'):
+                new_version = constr()
+                setattr(c, name, new_version)
+                hash = c.get_hash()
+                self.assertEqual(orig_hash, hash)
+
     def test_changeed_config_different_hash(self):
         c = Config()
         hash1 = c.get_hash()
