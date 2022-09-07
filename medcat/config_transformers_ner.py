@@ -1,5 +1,6 @@
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
+
 class General(MixingConfig, BaseModel):
     name: str = 'deid'
     model_name: str = 'roberta-base'
@@ -19,9 +20,9 @@ class General(MixingConfig, BaseModel):
         extra = Extra.allow
         validate_assignment = True
 
+
 class ConfigTransformersNER(MixingConfig, BaseModel):
     general: General = General()
-
 
     class Config:
         extra = Extra.allow
