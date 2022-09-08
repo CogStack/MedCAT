@@ -3,6 +3,7 @@ import pickle
 import tempfile
 from medcat.config import Config, MixingConfig, VersionInfo, General
 from pydantic import ValidationError
+import os
 
 
 class ConfigTests(unittest.TestCase):
@@ -147,6 +148,29 @@ class ConfigTests(unittest.TestCase):
         vi = VersionInfo()
         with self.assertRaises(ValidationError):
             vi.history = -1
+
+    def test_parsing(self, folder=os.path.join('tests', 'model_creator'),
+                     files=('medcat.txt',),  # file(s) to read
+                     # the list of lambdas for attributes that differ, for each file (if needed)
+                     differences=([
+                         lambda c: c.preprocessing.do_not_normalize, lambda c: c.general.diacritics,
+                         lambda c: c.ner.check_upper_case_names, lambda c: c.version.location,
+                         lambda c: c.version.ontology, lambda c: c.version.location],)
+                     ):
+        for file, getters in zip(files, differences):
+            with self.subTest(f'Checking {file}'):
+                full_file = os.path.join(folder, file)
+                c = Config()
+                h1 = c.get_hash()
+                c.parse_config_file(full_file)
+                self.assertIsInstance(c, Config)
+                h2 = c.get_hash()
+                self.assertNotEqual(h1, h2)
+                _def_config = Config()
+                for i, val_getter in enumerate(getters):
+                    with self.subTest(f'Checking getter {val_getter} (#{i}) for {file}'):
+                        v1, v2 = val_getter(_def_config), val_getter(c)
+                        self.assertNotEqual(v1, v2)
 
     def test_pickleability(self):
         with tempfile.TemporaryFile() as f:
