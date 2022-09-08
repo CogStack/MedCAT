@@ -288,9 +288,9 @@ class Snomed:
                     pass
             if self.uk_drug_ext:
                 if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
-                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
+                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
                     continue
                 else:
