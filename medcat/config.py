@@ -11,8 +11,6 @@ import re
 
 from medcat.utils.hasher import Hasher
 
-LOGGER = logging.getLogger(__package__)
-
 
 def weighted_average(step: int, factor: float) -> float:
     return max(0.1, 1 - (step ** 2 * factor))
@@ -89,6 +87,7 @@ class MixingConfig(FakeDict):
     It is not intended to be initialised directly and it is assumed that instances also inherit from
     pydantic's BaseModel.
     """
+    log = logging.getLogger(__package__)
 
     def save(self, save_path: str) -> None:
         r''' Save the config into a .json file
@@ -125,7 +124,7 @@ class MixingConfig(FakeDict):
                 try:
                     setattr(self, key, value)
                 except AttributeError as e:
-                    LOGGER.warning('Issue with setting attribtue', key, ':', e)
+                    self.log.warning('Issue with setting attribtue', key, ':', e)
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
