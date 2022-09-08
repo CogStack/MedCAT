@@ -163,10 +163,10 @@ class Snomed:
             if self.uk_drug_ext:
                 if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKDGSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot-en"
+                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot-en"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
                     continue
                 else:
@@ -225,10 +225,10 @@ class Snomed:
             if self.uk_drug_ext:
                 if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKDGSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot-en"
+                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot-en"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
                     continue
                 else:
