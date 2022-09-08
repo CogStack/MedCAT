@@ -56,5 +56,5 @@ Please make sure the code additions are adequately tested and well documented.
 Before submitting a pull request, please ensure that the changes satisfy following:
 - There are no issues with types/mypy (run `python -m mypy --follow-imports=normal medcat` in the project root)
 - There are no issues with flake8 (run `flake8 medcat` in the project root)
-- All tests are successful (run `python -m unittest discover` in the project rood)
+- All tests are successful (run `python -m unittest discover` in the project root)
 
