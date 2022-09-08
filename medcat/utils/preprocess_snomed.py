@@ -222,6 +222,18 @@ class Snomed:
                     continue
                 else:
                     pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot-en"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot-en"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
@@ -274,6 +286,15 @@ class Snomed:
                     continue
                 else:
                     pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
             for f in os.listdir(refset_terminology):
                 m = re.search(f'{icd10_ref_set}'+r'_(.*)_\d*.txt', f)
                 if m:
@@ -312,6 +333,15 @@ class Snomed:
                     continue
                 elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
                     opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
