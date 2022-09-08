@@ -384,7 +384,7 @@ class Ner(MixingConfig, BaseModel):
 
 
 class _DefPartial(object):
-    """This is a helper class to make it possible to check equality of two diffault Linking instances
+    """This is a helper class to make it possible to check equality of two default Linking instances
     """
 
     def __init__(self):
