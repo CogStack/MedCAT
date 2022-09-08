@@ -21,10 +21,11 @@ class Snomed:
             Specification of a SNOMED UK extension after 2021 to process the divergent release format.
     """
 
-    def __init__(self, data_path, uk_ext=False):
+    def __init__(self, data_path, uk_ext=False, uk_drug_ext=False):
         self.data_path = data_path
         self.release = data_path[-16:-8]
         self.uk_ext = uk_ext
+        self.uk_drug_ext = uk_drug_ext
 
     def to_concept_df(self):
         """
@@ -56,6 +57,17 @@ class Snomed:
                 if "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKCLSnapshot"
                     description_snapshot = "sct2_Description_UKCLSnapshot-en"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    description_snapshot = "sct2_Description_UKEDSnapshot-en"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
+                    description_snapshot = "sct2_Description_UKDGSnapshot-en"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKEDSnapshot"
                     description_snapshot = "sct2_Description_UKEDSnapshot-en"
