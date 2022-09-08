@@ -20,7 +20,7 @@ def workers(workers_override: Optional[int] = None) -> int:
     return max(cpu_count() - 1, 1) if workers_override is None else workers_override
 
 
-class FakeDict(object):
+class FakeDict:
     """FakeDict that allows the use of the __getitem__ and __setitem__ method for legacy access.
     """
 
@@ -40,7 +40,7 @@ class FakeDict(object):
 _EMPTY_DICT_2_EMPTY_SET: Callable[[str, Any], Optional[set]] = lambda rhs, val: set() if (val == {} or rhs == "{}") else None
 
 
-class ValueExtractor(object):
+class ValueExtractor:
     """The current example config has a value for an empty set as '{}'.
     However, that evaluates to an empty dictionary instead.
     In case there are other such examples, this allows adding other alternatives as well.
@@ -383,7 +383,7 @@ class Ner(MixingConfig, BaseModel):
         validate_assignment = True
 
 
-class _DefPartial(object):
+class _DefPartial:
     """This is a helper class to make it possible to check equality of two default Linking instances
     """
 
