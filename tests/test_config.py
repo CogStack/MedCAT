@@ -82,7 +82,7 @@ class ConfigTests(unittest.TestCase):
                 hash = c.get_hash()
                 self.assertEqual(orig_hash, hash)
 
-    def test_changeed_config_different_hash(self):
+    def test_changed_config_different_hash(self):
         c = Config()
         hash1 = c.get_hash()
         c.general.log_format = ''
