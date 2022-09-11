@@ -378,7 +378,7 @@ class CDB(object):
         with open(path, 'wb') as f:
             # No idea how to this correctly
             to_save = {}
-            to_save['config'] = self.config.__dict__
+            to_save['config'] = self.config.asdict()
             to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
             dill.dump(to_save, f)
 
@@ -664,14 +664,15 @@ class CDB(object):
     @staticmethod
     def _ensure_backward_compatibility(config: Config) -> None:
         # Hacky way of supporting old CDBs
-        weighted_average_function = config.linking['weighted_average_function']
+        weighted_average_function = config.linking.weighted_average_function
         if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
-            config.linking['weighted_average_function'] = partial(weighted_average, factor=0.0004)
-        if config.general.get('workers', None) is None:
-            config.general['workers'] = workers()
-        disabled_comps = config.general.get('spacy_disabled_components', [])
+            # the following type ignoring is for mypy because it is unable to detect the signature
+            config.linking.weighted_average_function = partial(weighted_average, factor=0.0004) # type: ignore
+        if config.general.workers is None:
+            config.general.workers = workers()
+        disabled_comps = config.general.spacy_disabled_components
         if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
-            config.general['spacy_disabled_components'].append('lemmatizer')
+            config.general.spacy_disabled_components.append('lemmatizer')
 
     @classmethod
     def _check_medcat_version(cls, config_data: Dict) -> None:

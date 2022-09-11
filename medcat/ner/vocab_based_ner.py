@@ -18,7 +18,7 @@ class NER(PipeRunner):
     def __init__(self, cdb: CDB, config: Config) -> None:
         self.config = config
         self.cdb = cdb
-        super().__init__(self.config.general['workers'])
+        super().__init__(self.config.general.workers)
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
@@ -44,7 +44,7 @@ class NER(PipeRunner):
             for name_version in name_versions:
                 if name_version in self.cdb.snames:
                     if name:
-                        name = name + self.config.general['separator'] + name_version
+                        name = name + self.config.general.separator + name_version
                     else:
                         name = name_version
                     break
@@ -53,7 +53,7 @@ class NER(PipeRunner):
 
             if name: # There has to be at least something appended to the name to go forward
                 for j in range(i+1, len(_doc)):
-                    if _doc[j].i - _doc[j-1].i - 1 > self.config.ner['max_skip_tokens']:
+                    if _doc[j].i - _doc[j-1].i - 1 > self.config.ner.max_skip_tokens:
                         # Do not allow to skip more than limit
                         break
                     tkn = _doc[j]
@@ -63,7 +63,7 @@ class NER(PipeRunner):
                     name_changed = False
                     name_reverse = None
                     for name_version in name_versions:
-                        _name = name + self.config.general['separator'] + name_version
+                        _name = name + self.config.general.separator + name_version
                         if _name in self.cdb.snames:
                             # Append the name and break
                             name = _name
@@ -71,7 +71,7 @@ class NER(PipeRunner):
                             break
 
                         if self.config.ner.get('try_reverse_word_order', False):
-                            _name_reverse = name_version + self.config.general['separator'] + name
+                            _name_reverse = name_version + self.config.general.separator + name
                             if _name_reverse in self.cdb.snames:
                                 # Append the name and break
                                 name_reverse = _name_reverse
