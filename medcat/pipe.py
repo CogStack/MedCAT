@@ -36,15 +36,15 @@ class Pipe(object):
     log = logging.getLogger(__package__)
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
-        self._nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
-        if config.preprocessing['stopwords'] is not None:
-            self._nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
+        self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
+        if config.preprocessing.stopwords is not None:
+            self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
         # Set max document length
-        self._nlp.max_length = config.preprocessing.get('max_document_length', 1000000)
+        self._nlp.max_length = config.preprocessing.max_document_length
         self.config = config
         # Set log level
-        self.log.setLevel(self.config.general['log_level'])
+        self.log.setLevel(self.config.general.log_level)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
         r""" Add any kind of a tagger for tokens.

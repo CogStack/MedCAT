@@ -39,7 +39,7 @@ def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
 
     token_characters = r'[^A-Za-z0-9\@]'
 
-    if config.general['diacritics']:
+    if config.general.diacritics:
         token_characters = r'[^A-Za-zÀ-ÖØ-öø-ÿ0-9\@]'
 
     infix_re = re.compile(token_characters)

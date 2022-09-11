@@ -99,9 +99,9 @@ class CAT(object):
         self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
 
-    def _create_pipeline(self, config):
+    def _create_pipeline(self, config: Config):
         # Set log level
-        self.log.setLevel(config.general['log_level'])
+        self.log.setLevel(config.general.log_level)
 
         # Build the pipeline
         self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
@@ -123,14 +123,14 @@ class CAT(object):
 
         # Add addl_ner if they exist
         for ner in self._addl_ner:
-            self.pipe.add_addl_ner(ner, ner.config.general['name'])
+            self.pipe.add_addl_ner(ner, ner.config.general.name)
 
         # Add meta_annotation classes if they exist
         for meta_cat in self._meta_cats:
-            self.pipe.add_meta_cat(meta_cat, meta_cat.config.general['category_name'])
+            self.pipe.add_meta_cat(meta_cat, meta_cat.config.general.category_name)
 
         # Set max document length
-        self.pipe.spacy_nlp.max_length = config.preprocessing.get('max_document_length', 1000000)
+        self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
@@ -165,17 +165,17 @@ class CAT(object):
             By default a str - indented JSON object.
         """
         card = {
-                'Model ID': self.config.version['id'],
-                'Last Modified On': self.config.version['last_modified'],
-                'History (from least to most recent)': self.config.version['history'],
-                'Description': self.config.version['description'],
-                'Source Ontology': self.config.version['ontology'],
-                'Location': self.config.version['location'],
-                'MetaCAT models': self.config.version['meta_cats'],
-                'Basic CDB Stats': self.config.version['cdb_info'],
-                'Performance': self.config.version['performance'],
+                'Model ID': self.config.version.id,
+                'Last Modified On': self.config.version.last_modified,
+                'History (from least to most recent)': self.config.version.history,
+                'Description': self.config.version.description,
+                'Source Ontology': self.config.version.ontology,
+                'Location': self.config.version.location,
+                'MetaCAT models': self.config.version.meta_cats,
+                'Basic CDB Stats': self.config.version.cdb_info,
+                'Performance': self.config.version.performance,
                 'Important Parameters (Partial view, all available in cat.config)': get_important_config_parameters(self.config),
-                'MedCAT Version': self.config.version['medcat_version']
+                'MedCAT Version': self.config.version.medcat_version
                 }
 
         if as_dict:
@@ -185,20 +185,20 @@ class CAT(object):
 
     def _versioning(self):
         # Check version info and do not allow without it
-        if self.config.version['description'] == 'No description':
+        if self.config.version.description == 'No description':
             self.log.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
 
         # Fill the stuff automatically that is needed for versioning
         m = self.get_hash()
         version = self.config.version
-        if version['id'] is None or m != version['id']:
-            if version['id'] is not None:
-                version['history'].append(version['id'])
-            version['id'] = m
-            version['last_modified'] = date.today().strftime("%d %B %Y")
-            version['cdb_info'] = self.cdb._make_stats()
-            version['meta_cats'] = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
-            version['medcat_version'] = __version__
+        if version.id is None or m != version.id:
+            if version.id is not None:
+                version.history.append(version['id'])
+            version.id = m
+            version.last_modified = date.today().strftime("%d %B %Y")
+            version.cdb_info = self.cdb._make_stats()
+            version.meta_cats = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
+            version.medcat_version = __version__
             self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
@@ -211,10 +211,10 @@ class CAT(object):
             Model pack name
         """
         # Spacy model always should be just the name, but during loading it can be reset to path
-        self.config.general['spacy_model'] = os.path.basename(self.config.general['spacy_model'])
+        self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
         # Versioning
         self._versioning()
-        model_pack_name += "_{}".format(self.config.version['id'])
+        model_pack_name += "_{}".format(self.config.version.id)
 
         self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
@@ -224,7 +224,7 @@ class CAT(object):
         os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
 
         # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, self.config.general['spacy_model'])
+        spacy_path = os.path.join(save_dir_path, self.config.general.spacy_model)
         if str(self.pipe.spacy_nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
@@ -243,7 +243,7 @@ class CAT(object):
         # Save addl_ner
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
-                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.general['name'])
+                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.general.name)
                 comp[1].save(trf_path)
 
         # Save all meta_cats
@@ -298,7 +298,7 @@ class CAT(object):
         # TODO load addl_ner
 
         # Modify the config to contain full path to spacy model
-        cdb.config.general['spacy_model'] = os.path.join(model_pack_path, os.path.basename(cdb.config.general['spacy_model']))
+        cdb.config.general.spacy_model = os.path.join(model_pack_path, os.path.basename(cdb.config.general.spacy_model))
 
         # Load Vocab
         vocab_path = os.path.join(model_pack_path, "vocab.dat")
@@ -343,7 +343,7 @@ class CAT(object):
         """
         # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
-        self.config.linking['train'] = do_train
+        self.config.linking.train = do_train
 
         if text is None:
             self.log.error("The input text should be either a string or a sequence of strings but got %s", type(text))
@@ -423,8 +423,8 @@ class CAT(object):
         fp_docs: Set = set()
         fn_docs: Set = set()
         # reset and back up filters
-        _filters = deepcopy(self.config.linking['filters'])
-        filters = self.config.linking['filters']
+        _filters = deepcopy(self.config.linking.filters)
+        filters = self.config.linking.filters
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             filters['cuis'] = set()
 
@@ -583,13 +583,13 @@ class CAT(object):
             traceback.print_exc()
 
         # restore filters to original state
-        self.config.linking['filters'] = _filters
+        self.config.linking.filters = _filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
     def _init_ckpts(self, is_resumed, checkpoint):
-        if self.config.general['checkpoint']['steps'] is not None or checkpoint is not None:
-            checkpoint_config = CheckpointConfig(**self.config.general.get('checkpoint', {}))
+        if self.config.general.checkpoint.steps is not None or checkpoint is not None:
+            checkpoint_config = CheckpointConfig(**self.config.general.checkpoint.dict())
             checkpoint_manager = CheckpointManager('cat_train', checkpoint_config)
             if is_resumed:
                 # TODO: probably remove is_resumed mark and always resume if a checkpoint is provided,
@@ -597,7 +597,7 @@ class CAT(object):
                 checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
                 self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
                 self.cdb = checkpoint.restore_latest_cdb()
-                self.cdb.config.merge_config(self.config.__dict__)
+                self.cdb.config.merge_config(self.config.asdict())
                 self.config = self.cdb.config
                 self._create_pipeline(self.config)
             else:
@@ -657,7 +657,7 @@ class CAT(object):
             if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                 checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
-        self.config.linking['train'] = False
+        self.config.linking.train = False
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
         r"""
@@ -848,8 +848,8 @@ class CAT(object):
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
         # Backup filters
-        _filters = deepcopy(self.config.linking['filters'])
-        filters = self.config.linking['filters']
+        _filters = deepcopy(self.config.linking.filters)
+        filters = self.config.linking.filters
 
         fp = fn = tp = p = r = f1 = examples = {}
         with open(data_path) as f:
@@ -967,7 +967,7 @@ class CAT(object):
                                                                                extra_cui_filter=extra_cui_filter)
 
         # Set the filters again
-        self.config.linking['filters'] = _filters
+        self.config.linking.filters = _filters
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
@@ -1015,8 +1015,8 @@ class CAT(object):
                         elif out[i].get('text', '') != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))
 
-                cnf_annotation_output = getattr(self.config, 'annotation_output', {})
-                if not(cnf_annotation_output.get('include_text_in_output', False)):
+                cnf_annotation_output = self.config.annotation_output
+                if not(cnf_annotation_output.include_text_in_output):
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
@@ -1156,7 +1156,7 @@ class CAT(object):
                 raise Exception("Please do not use multiprocessing when running a transformer model for NER, run sequentially.")
 
         # Set max document length
-        self.pipe.spacy_nlp.max_length = self.config.preprocessing.get('max_document_length', 1000000)
+        self.pipe.spacy_nlp.max_length = self.config.preprocessing.max_document_length
 
         if self._meta_cats and not separate_nn_components:
             # Hack for torch using multithreading, which is not good if not 
@@ -1388,10 +1388,10 @@ class CAT(object):
                     addl_info: List[str],
                     out_with_text: bool = False) -> Dict:
         out: Dict = {'entities': {}, 'tokens': []}
-        cnf_annotation_output = getattr(self.config, 'annotation_output', {})
+        cnf_annotation_output = self.config.annotation_output
         if doc is not None:
             out_ent: Dict = {}
-            if self.config.general.get('show_nested_entities', False):
+            if self.config.general.show_nested_entities:
                 _ents = []
                 for _ent in doc._.ents:
                     entity = Span(doc, _ent['start'], _ent['end'], label=_ent['label'])
@@ -1405,18 +1405,18 @@ class CAT(object):
             else:
                 _ents = doc.ents
 
-            if cnf_annotation_output.get("lowercase_context", True):
+            if cnf_annotation_output.lowercase_context:
                 doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
             else:
                 doc_tokens = [tkn.text_with_ws for tkn in list(doc)]
 
-            if cnf_annotation_output.get('doc_extended_info', False):
+            if cnf_annotation_output.doc_extended_info:
                 # Add tokens if extended info
                 out['tokens'] = doc_tokens
 
-            context_left = cnf_annotation_output.get('context_left', -1)
-            context_right = cnf_annotation_output.get('context_right', -1)
-            doc_extended_info = cnf_annotation_output.get('doc_extended_info', False)
+            context_left = cnf_annotation_output.context_left
+            context_right = cnf_annotation_output.context_right
+            doc_extended_info = cnf_annotation_output.doc_extended_info
 
             for _, ent in enumerate(_ents):
                 cui = str(ent._.cui)
@@ -1453,12 +1453,12 @@ class CAT(object):
                 else:
                     out['entities'][ent._.id] = cui
 
-            if cnf_annotation_output.get('include_text_in_output', False) or out_with_text:
+            if cnf_annotation_output.include_text_in_output or out_with_text:
                 out['text'] = doc.text
         return out
 
     def _get_trimmed_text(self, text: Optional[str]) -> str:
-        return text[0:self.config.preprocessing.get('max_document_length')] if text is not None and len(text) > 0 else ""
+        return text[0:self.config.preprocessing.max_document_length] if text is not None and len(text) > 0 else ""
 
     def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[str]:
         text_: str
