@@ -231,9 +231,9 @@ class MixingConfig(FakeDict):
 class VersionInfo(MixingConfig, BaseModel):
     history: list = []
     """Populated automatically"""
-    meta_cats: dict = dict()
+    meta_cats: Any = {}
     """Populated automatically"""
-    cdb_info: dict = dict()
+    cdb_info: dict = {}
     """Populated automatically, output from cdb.print_stats"""
     performance: dict = {'ner': {}, 'meta': {}}
     """NER general performance, meta should be: {'meta': {'model_name': {'f1': <>, 'p': <>, ...}, ...}}"""
