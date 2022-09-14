@@ -249,8 +249,8 @@ class Snomed:
                     relationship[_].append(v['sourceId'])
                 else:
                     pass
-                    output_dict = {key: output_dict.get(key, []) + relationship.get(key, []) for key in
-                                   set(list(output_dict.keys()) + list(relationship.keys()))}
+            output_dict = {key: output_dict.get(key, []) + relationship.get(key, []) for key in
+                           set(list(output_dict.keys()) + list(relationship.keys()))}
         with open(output_jsonfile, 'w') as json_file:
             json.dump(output_dict, json_file)
         return
