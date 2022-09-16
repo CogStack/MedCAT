@@ -123,8 +123,8 @@ class MixingConfig(FakeDict):
             else:
                 try:
                     setattr(self, key, value)
-                except AttributeError as e:
-                    self.log.warning('Issue with setting attribtue', key, ':', e)
+                except AttributeError as err:
+                    self.log.warning('Issue with setting attribtue "%s":', key, exc_info=err)
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
