@@ -85,7 +85,6 @@ class MakeVocab(object):
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
                 self.log.info("Vocab builder at: %s", str(ind))
-                print(ind)
 
             doc = self.pipe.spacy_nlp.tokenizer(doc)
             line = ""
