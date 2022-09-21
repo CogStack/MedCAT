@@ -98,7 +98,7 @@ class RepairCDB(object):
             new_count = row['new_count']
             cui = row['base_cui']
             if base_cui in cui_filter:
-                logger.info("{:3} -- {:20} -> {:20}, base_count: {}, new_count: {}, cui: {}",
+                self.log.info("%3s -- %20s -> %20s, base_count: %s, new_count: %s, cui: %s",
                     ind, str(name)[:20], str(self.final_cdb.get_name(base_cui))[:30], base_count, new_count, cui)
 
                 if apply_existing_decisions and apply_existing_decisions > ind:
@@ -114,8 +114,8 @@ class RepairCDB(object):
                         self.final_cat.unlink_concept_name(base_cui, name, preprocessed_name=True)
                 elif decision == 'f':
                     if base_cui in cui_filter:
-                        self.log("Removing from filter: %s", str(base_cui))
-                        self.log("\n\n") # TODO - remove?
+                        self.log.info("Removing from filter: %s", str(base_cui))
+                        self.log.info("\n\n") # TODO - remove?
                         cui_filter.remove(base_cui)
                 else:
                     decision = 'k' # Means keep
