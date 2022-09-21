@@ -10,6 +10,9 @@ from medcat.config import Config
 import random
 
 
+logger = logging.getLogger(__name__)
+
+
 class ContextModel(object):
     r''' Used to learn embeddings for concepts and calculate similarities in new documents.
 
@@ -18,7 +21,7 @@ class ContextModel(object):
         vocab
         config
     '''
-    log = logging.getLogger(__name__)
+    log = logger
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb

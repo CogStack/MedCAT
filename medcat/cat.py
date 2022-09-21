@@ -42,6 +42,9 @@ from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 
 
+logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
 class CAT(object):
     r"""
     The main MedCAT class used to annotate documents, it is built on top of spaCy
@@ -77,7 +80,7 @@ class CAT(object):
         >>> print(spacy_doc.ents) # Detected entities
     """
     # Add file and console handlers
-    log = logging.getLogger(__package__)
+    log = logger
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
     def __init__(self,

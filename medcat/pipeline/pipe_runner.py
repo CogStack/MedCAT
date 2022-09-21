@@ -8,9 +8,12 @@ from spacy.pipeline import Pipe
 from spacy.util import minibatch
 
 
+logger = logging.getLogger(__name__)
+
+
 class PipeRunner(Pipe):
 
-    log = logging.getLogger(__name__)
+    log = logger
     _execute = None
     _delayed = None
     _time_out_in_secs = 3600

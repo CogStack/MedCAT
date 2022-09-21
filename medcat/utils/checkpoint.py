@@ -9,6 +9,9 @@ from medcat.utils.decorators import check_positive
 T = TypeVar("T", bound="Checkpoint")
 
 
+logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
 class Checkpoint(object):
     r""" The base class of checkpoint objects
 
@@ -24,7 +27,7 @@ class Checkpoint(object):
     """
     DEFAULT_STEP = 1000
     DEFAULT_MAX_TO_KEEP = 1
-    log = logging.getLogger(__package__)
+    log = logger
 
     @check_positive
     def __init__(self, dir_path: str, *, steps: int = DEFAULT_STEP, max_to_keep: int = DEFAULT_MAX_TO_KEEP) -> None:

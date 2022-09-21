@@ -21,6 +21,9 @@ from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
+logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
 class MetaCAT(PipeRunner):
     r"""
     The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
@@ -46,7 +49,7 @@ class MetaCAT(PipeRunner):
     _component_lock = Lock()
 
     # Add file and console handlers
-    log = logging.getLogger(__package__)
+    log = logger
 
     # Override
     def __init__(self,

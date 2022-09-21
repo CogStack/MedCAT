@@ -15,6 +15,9 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
 
 
+logger = logging.getLogger(__name__)
+
+
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
     updates an exisitng one.
@@ -27,7 +30,7 @@ class CDBMaker(object):
         name_max_words (`int`, defaults to `20`):
             Names with more words will be skipped during the build of a CDB
     '''
-    log = logging.getLogger(__package__)
+    log = logger
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
