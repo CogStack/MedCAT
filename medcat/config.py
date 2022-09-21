@@ -87,7 +87,7 @@ class MixingConfig(FakeDict):
     It is not intended to be initialised directly and it is assumed that instances also inherit from
     pydantic's BaseModel.
     """
-    log = logging.getLogger(__package__)
+    log = logging.getLogger(__name__)
 
     def save(self, save_path: str) -> None:
         r''' Save the config into a .json file
