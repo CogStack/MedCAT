@@ -289,7 +289,6 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
 
                 logger.info("__________________") # TODO - remove?
                 logger.info("T: ", t_anns_norm)
-                logger.info() # TODO - remove?
                 logger.info("P: ", p_anns_norm)
 
 
@@ -554,7 +553,6 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                             m = text[start:end].replace("\n", " ")
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
                             logger.info("SNIPPET: %s <<<%s>>> %s", b, m, e)
-                            logger.info() # TODO - remove?
                             logger.info("C | %3s | %20s | %70s | %s", "ID", "CUI", "Concept", "Number of annotations in the dataset")
                             logger.info("-"*110) # TODO - remove?
                             for id_cui, _cui in enumerate(cuis):
@@ -563,7 +561,6 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                                 else:
                                     c = " "
                                 logger.info("%s | %3s | %20s | %70s | %s", c, id_cui, _cui, cdb.get_name(_cui)[:69], name2cui[name][_cui])
-                            logger.info()
                             d = str(input("###Change to ([s]kip/[q]uit/id): "))
 
                             if d == 'q':
@@ -645,7 +642,6 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                             logger.info("ANNS TOTAL        :")
                             for k,v in cui2status[cui][name].items():
                                 logger.info("        %s: %s", str(k), str(v))
-                            logger.info()
 
                             d = str(input("###Change to ([q]uit/[s]kip/[c]orrect/[i]ncorrect/[t]erminate): "))
 
@@ -671,8 +667,6 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                                 ann['killed'] = True
                                 ann['deleted'] = False
                                 ann['alternative'] = False
-                            logger.info() # TODO - remove?
-                            logger.info() # TODO - remove?
                 if quit_:
                     break
             if quit_:
