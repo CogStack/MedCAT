@@ -32,7 +32,6 @@ def add_default_log_handlers(log: logging.Logger = logger, target_file : str = '
         log.addHandler(fh)
         log.addHandler(ch)
 
-    return log
 
 name = 'medcat'
 
