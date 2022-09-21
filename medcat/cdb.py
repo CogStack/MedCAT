@@ -652,7 +652,6 @@ class CDB(object):
 
         # Create the return dict
         res = {}
-        print()
         for ind, _cui in enumerate(cuis[sims_srt[0:topn]]):
             res[_cui] = {'name': self.cui2preferred_name.get(_cui, list(self.cui2names[_cui])[0]), 'sim': sims[sims_srt][ind],
                          'type_names': [self.addl_info['type_id2name'].get(cui, 'unk') for cui in self.cui2type_ids.get(_cui, ['unk'])],
