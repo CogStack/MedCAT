@@ -16,6 +16,7 @@ logger = logging.getLogger(__name__)
 
 class CogStackConn(object):
     log = logger
+
     def __init__(self, hosts, username=None, password=None,
                  api_username=None, api_password=None, api: bool = False,
                  timeout: int = 360, max_retries: int = 10, retry_on_timeout: bool = True, **kwargs):

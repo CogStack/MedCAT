@@ -10,6 +10,7 @@ logger = logging.getLogger(__name__)
 
 class RepairCDB(object):
     log = logger
+
     def __init__(self, base_cdb, final_cdb, vocab):
         self.base_cdb = base_cdb
         self.vocab = vocab
