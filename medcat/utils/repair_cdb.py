@@ -3,8 +3,13 @@ from medcat.config import Config
 from medcat.cat import CAT
 from medcat.cdb_maker import CDBMaker
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class RepairCDB(object):
+    log = logger
     def __init__(self, base_cdb, final_cdb, vocab):
         self.base_cdb = base_cdb
         self.vocab = vocab
@@ -93,8 +98,8 @@ class RepairCDB(object):
             new_count = row['new_count']
             cui = row['base_cui']
             if base_cui in cui_filter:
-                print("{:3} -- {:20} -> {:20}, base_count: {}, new_count: {}, cui: {}".format(
-                    ind, str(name)[:20], str(self.final_cdb.get_name(base_cui))[:30], base_count, new_count, cui))
+                logger.info("{:3} -- {:20} -> {:20}, base_count: {}, new_count: {}, cui: {}",
+                    ind, str(name)[:20], str(self.final_cdb.get_name(base_cui))[:30], base_count, new_count, cui)
 
                 if apply_existing_decisions and apply_existing_decisions > ind:
                     decision = row['decision']
@@ -103,14 +108,14 @@ class RepairCDB(object):
 
                 if decision == 'l':
                     names = self.cdb.cui2names[new_cui]
-                    print("Unlinking: " + str(names))
-                    print("\n\n")
+                    self.log.info("Unlinking: %s", names)
+                    self.log.info("\n\n") # TODO - remove?
                     for name in names:
                         self.final_cat.unlink_concept_name(base_cui, name, preprocessed_name=True)
                 elif decision == 'f':
                     if base_cui in cui_filter:
-                        print("Removing from filter: " + str(base_cui))
-                        print("\n\n")
+                        self.log("Removing from filter: %s", str(base_cui))
+                        self.log("\n\n") # TODO - remove?
                         cui_filter.remove(base_cui)
                 else:
                     decision = 'k' # Means keep
