@@ -56,11 +56,9 @@ class Vocab(object):
             cnt (int):
                 Word count limit.
         '''
-        print("Words before removal: " + str(len(self.vocab)))
         for word in list(self.vocab.keys()):
             if self.vocab[word]['cnt'] < cnt:
                 del self.vocab[word]
-        print("Words after removal : " + str(len(self.vocab)))
 
         # Rebuild index2word and vec_index2word
         self.index2word = {}
