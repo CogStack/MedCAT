@@ -12,7 +12,6 @@ from medcat.datasets import transformers_ner
 from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 from medcat.utils.hasher import Hasher
 from medcat.config_transformers_ner import ConfigTransformersNER
-#from medcat.utils.loggers import add_handlers
 from medcat.tokenizers.transformers_ner import TransformersTokenizerNER
 from medcat.utils.ner.metrics import metrics
 from medcat.datasets.data_collator import CollateAndPadNER
@@ -27,6 +26,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 os.environ['WANDB_DISABLED'] = 'true'
 
 
+logger = logging.getLogger(__name__)
+
+
 class TransformersNER(object):
     r''' TODO: Add documentation
     '''
@@ -36,8 +38,7 @@ class TransformersNER(object):
     name = 'transformers_ner'
 
     # Add file and console handlers. TODO: get's messed up because of transformer loggers
-    #log = add_handlers(logging.getLogger(__package__))
-    log = logging.getLogger(__package__)
+    log = logger
 
     def __init__(self, cdb, config: Optional[ConfigTransformersNER] = None,
                  training_arguments=None) -> None:

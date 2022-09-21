@@ -19,6 +19,9 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.ner.transformers_ner import TransformersNER
 
 
+logger = logging.getLogger(__name__) # different logger from the package-level one
+
+
 class Pipe(object):
     r""" A wrapper around the standard spacy pipeline.
 
@@ -33,7 +36,7 @@ class Pipe(object):
             The base spacy NLP pipeline.
     """
     # Add file and console handlers
-    log = logging.getLogger(__package__)
+    log = logger
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)

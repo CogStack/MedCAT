@@ -15,6 +15,9 @@ from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
 
 
+logger = logging.getLogger(__name__)
+
+
 class CDB(object):
     """ Concept DataBase - holds all information necessary for NER+L.
 
@@ -51,7 +54,7 @@ class CDB(object):
         vocab (`Dict[str, int]`):
             Stores all the words tha appear in this CDB and the count for each one.
     """
-    log = logging.getLogger(__name__)
+    log = logger
 
     def __init__(self, config: Union[Config, None] = None) -> None:
         if config is None:

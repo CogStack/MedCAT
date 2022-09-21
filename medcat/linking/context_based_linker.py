@@ -12,6 +12,9 @@ from medcat.config import Config
 from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 
 
+logger = logging.getLogger(__name__)
+
+
 class Linker(PipeRunner):
     r''' Link to a biomedical database.
 
@@ -20,7 +23,7 @@ class Linker(PipeRunner):
         vocab
         config
     '''
-    log = logging.getLogger(__name__)
+    log = logger
 
     # Custom pipeline component name
     name = 'cat_linker'
