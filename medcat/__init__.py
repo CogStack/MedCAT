@@ -9,7 +9,8 @@ import logging
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
 
-def add_default_log_handlers(log: logging.Logger = logger, target_file : str = 'medcat.log') -> None:
+
+def add_default_log_handlers(log: logging.Logger = logger, target_file: str = 'medcat.log') -> None:
     """Add default log handlers to the specified logger.
     This method will add a file handler that will write
     into `target_file` (defaults to 'medcat.log') and

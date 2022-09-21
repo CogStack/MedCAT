@@ -14,6 +14,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
