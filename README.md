@@ -39,6 +39,13 @@ A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). 
 ## Tutorials
 A guide on how to use MedCAT is available at [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials). Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
 
+## Logging
+Since MedCAT is primarily a library, logging has been effectively disabled by default. The idea is that the user of the library should have the choice of what, where, and how to log the information from a specific library they are using.
+
+The idea is that the user can directly modify the logging behaviour of either the entire library or a certain set of modules within as they wish. We have provided a convenience method to add default handlers that log into the console as well as _medcat.log_ (`medcat.add_default_log_handlers`).
+
+Some details as to how one can configure the logging are described in the [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials).
+
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
 
