@@ -33,7 +33,6 @@ class MakeVocab(object):
         >>> maker.make(data_iterator, out_folder="./output/")
         >>> maker.add_vectors(in_path="./output/data.txt")
     '''
-    log = logger
 
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
@@ -87,7 +86,7 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                self.log.info("Vocab builder at: %s", str(ind))
+                logger.info("Vocab builder at: %s", str(ind))
 
             doc = self.pipe.spacy_nlp.tokenizer(doc)
             line = ""

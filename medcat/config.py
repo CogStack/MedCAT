@@ -90,7 +90,6 @@ class MixingConfig(FakeDict):
     It is not intended to be initialised directly and it is assumed that instances also inherit from
     pydantic's BaseModel.
     """
-    log = logger
 
     def save(self, save_path: str) -> None:
         r''' Save the config into a .json file
@@ -127,7 +126,7 @@ class MixingConfig(FakeDict):
                 try:
                     setattr(self, key, value)
                 except AttributeError as e:
-                    self.log.warning('Issue with setting attribtue', key, ':', e)
+                    logger.warning('Issue with setting attribtue', key, ':', e)
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:

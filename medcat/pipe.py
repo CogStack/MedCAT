@@ -35,8 +35,6 @@ class Pipe(object):
         nlp (spacy.language.<lng>):
             The base spacy NLP pipeline.
     """
-    # Add file and console handlers
-    log = logger
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
@@ -47,7 +45,7 @@ class Pipe(object):
         self._nlp.max_length = config.preprocessing.max_document_length
         self.config = config
         # Set log level
-        self.log.setLevel(self.config.general.log_level)
+        logger.setLevel(self.config.general.log_level)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
         r""" Add any kind of a tagger for tokens.
@@ -238,11 +236,11 @@ class Pipe(object):
                 try:
                     doc = self._nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
-                    self.log.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
-                    self.log.warning(e, exc_info=True, stack_info=True)
+                    logger.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
+                    logger.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
             return docs
         else:
-            self.log.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
+            logger.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
             return None

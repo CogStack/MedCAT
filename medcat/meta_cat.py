@@ -48,9 +48,6 @@ class MetaCAT(PipeRunner):
     name = 'meta_cat'
     _component_lock = Lock()
 
-    # Add file and console handlers
-    log = logger
-
     # Override
     def __init__(self,
                  tokenizer: Optional[TokenizerWrapperBase] = None,
@@ -161,10 +158,10 @@ class MetaCAT(PipeRunner):
 
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
-            self.log.warning(
+            logger.warning(
                 "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
                     self.config.model['nclasses'], len(category_value2id)))
-            self.log.warning("Auto-setting the nclasses value in config and rebuilding the model.")
+            logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
             self.model = self.get_model(embeddings=self.embeddings)
 
@@ -279,7 +276,7 @@ class MetaCAT(PipeRunner):
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
         if not torch.cuda.is_available() and device.type == 'cuda':
-            MetaCAT.log.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
+            logger.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
             config.general['device'] = 'cpu'
             device = torch.device('cpu')
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))

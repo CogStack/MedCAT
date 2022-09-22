@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class CogStackConn(object):
-    log = logger
 
     def __init__(self, hosts, username=None, password=None,
                  api_username=None, api_password=None, api: bool = False,
@@ -125,11 +124,11 @@ class CogStackConn(object):
     def show_all_ent_cntx(self, stream, cui: str, cntx_size: int = 100, index='epr_documents', text_field='body_analysed'):
         for id in range(len(stream['entities'])):
             if stream['entities'][id]['conceptId'] == cui:
-                self.log.info(stream['entities'][id]['name'])
-                self.log.info("Status: %s", stream['entities'][id]['metaSubject'])
-                self.log.info("Presence: %s", stream['entities'][id]['metaPresence'])
-                self.log.info("Time: %s", stream['entities'][id]['metaTime'])
-                self.log.info("Date: %s", str(datetime.fromtimestamp((stream['entities'][id]['timestamp']))))
+                logger.info(stream['entities'][id]['name'])
+                logger.info("Status: %s", stream['entities'][id]['metaSubject'])
+                logger.info("Presence: %s", stream['entities'][id]['metaPresence'])
+                logger.info("Time: %s", stream['entities'][id]['metaTime'])
+                logger.info("Date: %s", str(datetime.fromtimestamp((stream['entities'][id]['timestamp']))))
 
                 self.show_ent_cntx(stream, id, cntx_size, index, text_field)
 
@@ -147,7 +146,7 @@ class CogStackConn(object):
         display(HTML(ent_cntx))
 
         if len(text) < start:
-            self.log.info("Text of the clinical note corrupted: %s", text[0:100])
+            logger.info("Text of the clinical note corrupted: %s", text[0:100])
 
 
     def bulk_to_cogstack(self):
