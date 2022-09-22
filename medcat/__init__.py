@@ -19,11 +19,9 @@ def add_default_log_handlers(log: logging.Logger = logger, target_file: str = 'm
     Args:
         log (logging.Logger): The logger to add the handlers to. Defaults to logger.
         target_file (str): The target file for file handler. Defaults to 'medcat.log'.
-
-    Returns:
-        _type_: _description_
     """
-    if len(log.handlers) == 0: # If we do not have any handlers add them
+    # If we do not have any non-null handlers add them
+    if len(log.handlers) == 0 or (len(log.handlers) == 1 and isinstance(log.handlers[0], logging.NullHandler)):
         # create a file handler
         fh = logging.FileHandler(target_file)
         # create console handler
