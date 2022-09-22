@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 class PipeRunner(Pipe):
 
-    log = logger
     _execute = None
     _delayed = None
     _time_out_in_secs = 3600

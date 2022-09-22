@@ -9,7 +9,6 @@ logger = logging.getLogger(__name__)
 
 
 class RepairCDB(object):
-    log = logger
 
     def __init__(self, base_cdb, final_cdb, vocab):
         self.base_cdb = base_cdb
@@ -99,7 +98,7 @@ class RepairCDB(object):
             new_count = row['new_count']
             cui = row['base_cui']
             if base_cui in cui_filter:
-                self.log.info("%3s -- %20s -> %20s, base_count: %s, new_count: %s, cui: %s",
+                logger.info("%3s -- %20s -> %20s, base_count: %s, new_count: %s, cui: %s",
                     ind, str(name)[:20], str(self.final_cdb.get_name(base_cui))[:30], base_count, new_count, cui)
 
                 if apply_existing_decisions and apply_existing_decisions > ind:
@@ -109,14 +108,14 @@ class RepairCDB(object):
 
                 if decision == 'l':
                     names = self.cdb.cui2names[new_cui]
-                    self.log.info("Unlinking: %s", names)
-                    self.log.info("\n\n") # TODO - remove?
+                    logger.info("Unlinking: %s", names)
+                    logger.info("\n\n") # TODO - remove?
                     for name in names:
                         self.final_cat.unlink_concept_name(base_cui, name, preprocessed_name=True)
                 elif decision == 'f':
                     if base_cui in cui_filter:
-                        self.log.info("Removing from filter: %s", str(base_cui))
-                        self.log.info("\n\n") # TODO - remove?
+                        logger.info("Removing from filter: %s", str(base_cui))
+                        logger.info("\n\n") # TODO - remove?
                         cui_filter.remove(base_cui)
                 else:
                     decision = 'k' # Means keep

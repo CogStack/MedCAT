@@ -54,7 +54,6 @@ class CDB(object):
         vocab (`Dict[str, int]`):
             Stores all the words tha appear in this CDB and the count for each one.
     """
-    log = logger
 
     def __init__(self, config: Union[Config, None] = None) -> None:
         if config is None:
@@ -351,12 +350,12 @@ class CDB(object):
                     self.cui2context_vectors[cui][context_type] = cv*(1-b) + vector*b
 
                 # DEBUG
-                self.log.debug("Updated vector embedding.\n" +
+                logger.debug("Updated vector embedding.\n" +
                         "CUI: %s, Context Type: %s, Similarity: %.2f, Is Negative: %s, LR: %.5f, b: %.3f", cui, context_type,
                             similarity, negative, lr, b)
                 cv = self.cui2context_vectors[cui][context_type]
                 similarity_after = np.dot(unitvec(cv), unitvec(vector))
-                self.log.debug("Similarity before vs after: %.5f vs %.5f", similarity, similarity_after)
+                logger.debug("Similarity before vs after: %.5f vs %.5f", similarity, similarity_after)
             else:
                 if negative:
                     self.cui2context_vectors[cui][context_type] = -1 * vector
@@ -364,7 +363,7 @@ class CDB(object):
                     self.cui2context_vectors[cui][context_type] = vector
 
                 # DEBUG
-                self.log.debug("Added new context type with vectors.\n" +
+                logger.debug("Added new context type with vectors.\n" +
                         "CUI: %s, Context Type: %s, Is Negative: %s", cui, context_type, negative)
 
         if not negative:
@@ -565,7 +564,7 @@ class CDB(object):
     def print_stats(self) -> None:
         r'''Print basic statistics for the CDB.
         '''
-        self.log.info(json.dumps(self._make_stats(), indent=2))
+        logger.info(json.dumps(self._make_stats(), indent=2))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
@@ -615,7 +614,7 @@ class CDB(object):
 
         # Create the matrix if necessary
         if 'sim_vectors' not in sim_data or force_build:
-            self.log.info("Building similarity matrix")
+            logger.info("Building similarity matrix")
 
             sim_vectors = []
             sim_vectors_counts = []
@@ -680,14 +679,14 @@ class CDB(object):
     def _check_medcat_version(cls, config_data: Dict) -> None:
         cdb_medcat_version = config_data.get('version', {}).get('medcat_version', None)
         if cdb_medcat_version is None:
-            cls.log.warning('The CDB was exported by an unknown version of MedCAT.')
+            logger.warning('The CDB was exported by an unknown version of MedCAT.')
         elif __version__.split(".")[:1] != cdb_medcat_version.split(".")[:1]:
-            cls.log.warning(
+            logger.warning(
                 f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}'.
 Please reinstall MedCAT or download the compatible model."""
             )
         elif __version__.split(".")[:2] != cdb_medcat_version.split(".")[:2]:
-            cls.log.warning(
+            logger.warning(
                 f"""You have MedCAT version '{__version__}' installed while the CDB was exported by MedCAT version '{cdb_medcat_version}',
 which may or may not work. If you experience any compatibility issues, please reinstall MedCAT
 or download the compatible model."""

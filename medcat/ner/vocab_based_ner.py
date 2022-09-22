@@ -12,7 +12,6 @@ logger = logging.getLogger(__name__)
 class NER(PipeRunner):
     r'''
     '''
-    log = logger
 
     # Custom pipeline component name
     name = 'cat_ner'
