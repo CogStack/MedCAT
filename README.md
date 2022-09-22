@@ -45,6 +45,7 @@ Since MedCAT is primarily a library, logging has been effectively disabled by de
 The idea is that the user can directly modify the logging behaviour of either the entire library or a certain set of modules within as they wish. We have provided a convenience method to add default handlers that log into the console as well as _medcat.log_ (`medcat.add_default_log_handlers`).
 
 Some details as to how one can configure the logging are described in the [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials).
+PS: Currently (temporarily!) the tutorial is in the `tutorials` folder.
 
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS
