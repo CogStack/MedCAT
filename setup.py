@@ -28,7 +28,7 @@ setuptools.setup(
         'sklearn~=0.0',
         'elasticsearch>=8.3,<9',  # Check if this is compatible with opensearch otherwise: 'elasticsearch>=7.10,<8.0.0',
         'eland>=8.3.0,<9',
-        'dill~=0.3.4',
+        'dill~=0.3.4,<0.3.5', # less than 0.3.5 due to datasets requirement
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
