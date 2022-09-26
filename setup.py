@@ -35,7 +35,7 @@ setuptools.setup(
         # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
         'multiprocess==0.70.12',  # seems to work better than standard mp
         'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
-        'smart-open==5.2.1', # 5.2.1 is needed for compatibility with
+        'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
         'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
