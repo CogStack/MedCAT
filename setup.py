@@ -32,7 +32,10 @@ setuptools.setup(
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
-        'multiprocess',  # seems to work better than standard mp
+        # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
+        'multiprocess==0.70.12',  # seems to work better than standard mp
+        'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
+        'smart-open==5.2.1', # 5.2.1 is needed for compatibility with
         'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
