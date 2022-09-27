@@ -244,7 +244,7 @@ class VersionInfo(MixingConfig, BaseModel):
     last_modified: Optional[Union[int, datetime, str]] = None
     location: Optional[str] = None
     """Path/URL/Whatever to where is this CDB located"""
-    ontology: Optional[str] = None
+    ontology: Optional[Union[str, List[str]]] = None
     """What was used to build the CDB, e.g. SNOMED_202009"""
     medcat_version: Optional[str] = None
     """Which version of medcat was used to build the CDB"""
