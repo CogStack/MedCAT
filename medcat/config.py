@@ -125,8 +125,8 @@ class MixingConfig(FakeDict):
             else:
                 try:
                     setattr(self, key, value)
-                except AttributeError as e:
-                    logger.warning('Issue with setting attribtue', key, ':', e)
+                except AttributeError as err:
+                    self.log.warning('Issue with setting attribtue "%s":', key, exc_info=err)
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
@@ -246,7 +246,7 @@ class VersionInfo(MixingConfig, BaseModel):
     last_modified: Optional[Union[int, datetime, str]] = None
     location: Optional[str] = None
     """Path/URL/Whatever to where is this CDB located"""
-    ontology: Optional[str] = None
+    ontology: Optional[Union[str, List[str]]] = None
     """What was used to build the CDB, e.g. SNOMED_202009"""
     medcat_version: Optional[str] = None
     """Which version of medcat was used to build the CDB"""
