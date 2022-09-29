@@ -32,7 +32,8 @@ setuptools.setup(
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
-        'multiprocess',  # seems to work better than standard mp
+        # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
+        'multiprocess==0.70.12',  # seems to work better than standard mp
         'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
@@ -40,6 +41,9 @@ setuptools.setup(
         'blis<=0.7.5',
         'click<=8.0.4',  # Spacy breaks without this
         'pydantic!=1.8,!=1.8.1,<1.9.0,>=1.7.4', # identical constraints to thinc and spacy
+        # the following are not direct dependencies of MedCAT but needed for docs/building
+        'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
+        'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
