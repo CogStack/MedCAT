@@ -12,7 +12,6 @@ from medcat.datasets import transformers_ner
 from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 from medcat.utils.hasher import Hasher
 from medcat.config_transformers_ner import ConfigTransformersNER
-#from medcat.utils.loggers import add_handlers
 from medcat.tokenizers.transformers_ner import TransformersTokenizerNER
 from medcat.utils.ner.metrics import metrics
 from medcat.datasets.data_collator import CollateAndPadNER
@@ -27,6 +26,9 @@ os.environ["TOKENIZERS_PARALLELISM"] = "true"
 os.environ['WANDB_DISABLED'] = 'true'
 
 
+logger = logging.getLogger(__name__)
+
+
 class TransformersNER(object):
     r''' TODO: Add documentation
     '''
@@ -34,10 +36,6 @@ class TransformersNER(object):
 
     # Custom pipeline component name
     name = 'transformers_ner'
-
-    # Add file and console handlers. TODO: get's messed up because of transformer loggers
-    #log = add_handlers(logging.getLogger(__package__))
-    log = logging.getLogger(__package__)
 
     def __init__(self, cdb, config: Optional[ConfigTransformersNER] = None,
                  training_arguments=None) -> None:
@@ -117,7 +115,7 @@ class TransformersNER(object):
 
         # Remove labels that did not exist in old dataset
         if ignore_extra_labels and self.tokenizer.label_map:
-            self.log.info("Ignoring extra labels from the data")
+            logger.info("Ignoring extra labels from the data")
             for p in data_loaded['projects']:
                 for d in p['documents']:
                     new_anns = []
@@ -126,7 +124,7 @@ class TransformersNER(object):
                             new_anns.append(a)
                     d['annotations'] = new_anns
         if meta_requirements is not None:
-            self.log.info("Removing anns that do not meet meta requirements")
+            logger.info("Removing anns that do not meet meta requirements")
             for p in data_loaded['projects']:
                 for d in p['documents']:
                     new_anns = []
@@ -174,8 +172,8 @@ class TransformersNER(object):
         self.tokenizer.calculate_label_map(dataset['test'])
 
         if self.model.num_labels != len(self.tokenizer.label_map):
-            self.log.warning("The dataset contains labels we've not seen before, model is being reinitialized")
-            self.log.warning("Model: {} vs Dataset: {}".format(self.model.num_labels, len(self.tokenizer.label_map)))
+            logger.warning("The dataset contains labels we've not seen before, model is being reinitialized")
+            logger.warning("Model: {} vs Dataset: {}".format(self.model.num_labels, len(self.tokenizer.label_map)))
             self.model = AutoModelForTokenClassification.from_pretrained(self.config.general['model_name'], num_labels=len(self.tokenizer.label_map))
             self.tokenizer.cui2name = {k:self.cdb.get_name(k) for k in self.tokenizer.label_map.keys()}
 
@@ -373,7 +371,7 @@ class TransformersNER(object):
                     if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
                         map_ents_to_groups(self.cdb, doc)
                 except Exception as e:
-                    self.log.warning(e, exc_info=True)
+                    logger.warning(e, exc_info=True)
             yield from docs
 
     # Override

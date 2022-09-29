@@ -6,10 +6,12 @@ from medcat.cdb import CDB
 from medcat.config import Config
 
 
+logger = logging.getLogger(__name__)
+
+
 class NER(PipeRunner):
     r'''
     '''
-    log = logging.getLogger(__name__)
 
     # Custom pipeline component name
     name = 'cat_ner'

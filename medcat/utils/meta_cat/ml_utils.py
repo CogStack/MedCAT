@@ -11,6 +11,11 @@ from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from sklearn.metrics import classification_report, precision_recall_fscore_support
 
+import logging
+
+
+logger = logging.getLogger(__name__)
+
 
 def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
@@ -130,8 +135,8 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         name
     '''
     if all_logits:
-        print(f'Epoch: {epoch} ' + "*"*50 + f"  {name}")
-        print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
+        logger.info('Epoch: %d %s %s', epoch, "*"*50, name)
+        logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
 
 def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
@@ -218,8 +223,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                 else:
                     path = os.path.join(save_dir_path, 'model.dat')
                     torch.save(model.state_dict(), path)
-                    print("\n##### Model saved to {} at epoch: {} and {}/{}: {} #####\n".format(path, epoch, config.train['metric']['base'],
-                          config.train['metric']['score'], winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]))
+                    logger.info("\n##### Model saved to %s at epoch: %d and %s/%s: %s #####\n", path, epoch, config.train['metric']['base'],
+                          config.train['metric']['score'], winner_report['report'][config.train['metric']['base']][config.train['metric']['score']])
 
     return winner_report
 

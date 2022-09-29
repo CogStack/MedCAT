@@ -42,6 +42,9 @@ from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 
 
+logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
 class CAT(object):
     r"""
     The main MedCAT class used to annotate documents, it is built on top of spaCy
@@ -76,8 +79,6 @@ class CAT(object):
         >>> spacy_doc = cat("Put some text here")
         >>> print(spacy_doc.ents) # Detected entities
     """
-    # Add file and console handlers
-    log = logging.getLogger(__package__)
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
     def __init__(self,
@@ -101,7 +102,7 @@ class CAT(object):
 
     def _create_pipeline(self, config: Config):
         # Set log level
-        self.log.setLevel(config.general.log_level)
+        logger.setLevel(config.general.log_level)
 
         # Build the pipeline
         self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
@@ -186,7 +187,7 @@ class CAT(object):
     def _versioning(self):
         # Check version info and do not allow without it
         if self.config.version.description == 'No description':
-            self.log.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
+            logger.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
 
         # Fill the stuff automatically that is needed for versioning
         m = self.get_hash()
@@ -199,7 +200,7 @@ class CAT(object):
             version.cdb_info = self.cdb._make_stats()
             version.meta_cats = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version.medcat_version = __version__
-            self.log.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
+            logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
         r""" Will crete a .zip file containing all the models in the current running instance
@@ -216,7 +217,7 @@ class CAT(object):
         self._versioning()
         model_pack_name += "_{}".format(self.config.version.id)
 
-        self.log.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
+        logger.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
         _save_dir_path = save_dir_path
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
@@ -261,7 +262,7 @@ class CAT(object):
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
 
         # Log model card and return new name
-        self.log.info(self.get_model_card()) # Print the model card
+        logger.info(self.get_model_card()) # Print the model card
         return model_pack_name
 
     @classmethod
@@ -286,9 +287,9 @@ class CAT(object):
 
         model_pack_path = os.path.join(base_dir, foldername)
         if os.path.exists(model_pack_path):
-            cls.log.info("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
+            logger.info("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
         else:
-            cls.log.info("Unziping the model pack and loading models.")
+            logger.info("Unziping the model pack and loading models.")
             shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
 
         # Load the CDB
@@ -323,7 +324,7 @@ class CAT(object):
                                           config_dict=meta_cat_config_dict))
 
         cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
-        cls.log.info(cat.get_model_card())  # Print the model card
+        logger.info(cat.get_model_card())  # Print the model card
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
@@ -346,7 +347,7 @@ class CAT(object):
         self.config.linking.train = do_train
 
         if text is None:
-            self.log.error("The input text should be either a string or a sequence of strings but got %s", type(text))
+            logger.error("The input text should be either a string or a sequence of strings but got %s", type(text))
             return None
         else:
             text = self._get_trimmed_text(str(text))
@@ -595,14 +596,14 @@ class CAT(object):
                 # TODO: probably remove is_resumed mark and always resume if a checkpoint is provided,
                 #but I'll leave it for now
                 checkpoint = checkpoint or checkpoint_manager.get_latest_checkpoint()
-                self.log.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
+                logger.info(f"Resume training on the most recent checkpoint at {checkpoint.dir_path}...")
                 self.cdb = checkpoint.restore_latest_cdb()
                 self.cdb.config.merge_config(self.config.asdict())
                 self.config = self.cdb.config
                 self._create_pipeline(self.config)
             else:
                 checkpoint = checkpoint or checkpoint_manager.create_checkpoint()
-                self.log.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
+                logger.info(f"Start new training and checkpoints will be saved at {checkpoint.dir_path}...")
 
         return checkpoint
 
@@ -632,7 +633,7 @@ class CAT(object):
                 If True resume the previous training; If False, start a fresh new training.
         """
         if not fine_tune:
-            self.log.info("Removing old training data!")
+            logger.info("Removing old training data!")
             self.cdb.reset_training()
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
@@ -646,14 +647,14 @@ class CAT(object):
                 try:
                     _ = self(line, do_train=True)
                 except Exception as e:
-                    self.log.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
-                    self.log.warning("BECAUSE OF: %s", str(e))
+                    logger.warning("LINE: '%s...' \t WAS SKIPPED", line[0:100])
+                    logger.warning("BECAUSE OF: %s", str(e))
             else:
-                self.log.warning("EMPTY LINE WAS DETECTED AND SKIPPED")
+                logger.warning("EMPTY LINE WAS DETECTED AND SKIPPED")
 
             latest_trained_step += 1
             if latest_trained_step % progress_print == 0:
-                self.log.info("DONE: %s", str(latest_trained_step))
+                logger.info("DONE: %s", str(latest_trained_step))
             if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                 checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
@@ -857,7 +858,7 @@ class CAT(object):
         cui_counts = {}
 
         if test_size == 0:
-            self.log.info("Running without a test set, or train==test")
+            logger.info("Running without a test set, or train==test")
             test_set = data
             train_set = data
         else:
@@ -1008,7 +1009,7 @@ class CAT(object):
                 # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
                 # which also assumes texts are different from each others.
                 if len(out) < len(texts_):
-                    self.log.warning("Found at least one failed batch and set output for enclosed texts to empty")
+                    logger.warning("Found at least one failed batch and set output for enclosed texts to empty")
                     for i, text in enumerate(texts_):
                         if i == len(out):
                             out.append(self._doc_to_out(None, only_cui, addl_info))
@@ -1070,7 +1071,7 @@ class CAT(object):
     def _run_nn_components(self, docs: Dict, nn_components: List, id2text: Dict) -> None:
         r""" This will add meta_anns in-place to the docs dict.
         """
-        self.log.debug("Running GPU components separately")
+        logger.debug("Running GPU components separately")
 
         # First convert the docs into the fake spacy doc format
         spacy_docs = json_to_fake_spacy(docs, id2text=id2text)
@@ -1104,7 +1105,7 @@ class CAT(object):
     def _save_docs_to_file(self, docs: Iterable, annotated_ids: List[str], save_dir_path: str, annotated_ids_path: Optional[str], part_counter: int = 0) -> int:
         path = os.path.join(save_dir_path, 'part_{}.pickle'.format(part_counter))
         pickle.dump(docs, open(path, "wb"))
-        self.log.info("Saved part: %s, to: %s", part_counter, path)
+        logger.info("Saved part: %s, to: %s", part_counter, path)
         part_counter = part_counter + 1 # Increase for save, as it should be what is the next part
         if annotated_ids_path is not None:
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
@@ -1185,7 +1186,7 @@ class CAT(object):
         _start_time = time.time()
         _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
         for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
-            self.log.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
+            logger.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
                           len(annotated_ids),
                           len(batch),
                           (time.time() - _start_time)/60)
@@ -1212,8 +1213,8 @@ class CAT(object):
                     docs = {}
                     _batch_counter = 0
             except Exception as e:
-                self.log.warning("Failed an outer batch in the multiprocessing script")
-                self.log.warning(e, exc_info=True, stack_info=True)
+                logger.warning("Failed an outer batch in the multiprocessing script")
+                logger.warning(e, exc_info=True, stack_info=True)
 
         # Save the last batch
         if out_split_size_chars is not None and len(docs) > 0:
@@ -1298,7 +1299,7 @@ class CAT(object):
             try:
                 self._run_nn_components(docs, nn_components, id2text=id2text)
             except Exception as e:
-                self.log.warning(e, exc_info=True, stack_info=True)
+                logger.warning(e, exc_info=True, stack_info=True)
 
         return docs
 
@@ -1377,9 +1378,9 @@ class CAT(object):
                         doc = self.get_entities(text=text, only_cui=only_cui, addl_info=addl_info)
                         out.append((i_text, doc))
                     except Exception as e:
-                        self.log.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
+                        logger.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
-                        self.log.warning(str(e))
+                        logger.warning(str(e))
         sleep(2)
 
     def _doc_to_out(self,
@@ -1476,13 +1477,13 @@ class CAT(object):
 
     @staticmethod
     def _pipe_error_handler(proc_name: str, proc: "Pipe", docs: List[Doc], e: Exception) -> None:
-        CAT.log.warning("Exception raised when applying component %s to a batch of docs.", proc_name)
-        CAT.log.warning(e, exc_info=True, stack_info=True)
+        logger.warning("Exception raised when applying component %s to a batch of docs.", proc_name)
+        logger.warning(e, exc_info=True, stack_info=True)
         if docs is not None:
-            CAT.log.warning("Docs contained in the batch:")
+            logger.warning("Docs contained in the batch:")
             for doc in docs:
                 if hasattr(doc, "text"):
-                    CAT.log.warning("%s...", doc.text[:50])
+                    logger.warning("%s...", doc.text[:50])
 
     @staticmethod
     def _get_doc_annotations(doc: Doc):
