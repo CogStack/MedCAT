@@ -12,6 +12,9 @@ from medcat.config import Config
 from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
 
 
+logger = logging.getLogger(__name__)
+
+
 class Linker(PipeRunner):
     r''' Link to a biomedical database.
 
@@ -20,7 +23,6 @@ class Linker(PipeRunner):
         vocab
         config
     '''
-    log = logging.getLogger(__name__)
 
     # Custom pipeline component name
     name = 'cat_linker'
@@ -88,7 +90,7 @@ class Linker(PipeRunner):
                                     linked_entities.append(entity)
         else:
             for entity in doc._.ents:
-                self.log.debug("Linker started with entity: %s", entity)
+                logger.debug("Linker started with entity: %s", entity)
                 # Check does it have a detected name
                 if entity._.link_candidates is not None:
                     if entity._.detected_name is not None:

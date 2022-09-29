@@ -9,6 +9,9 @@ from medcat.utils.decorators import check_positive
 T = TypeVar("T", bound="Checkpoint")
 
 
+logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
 class Checkpoint(object):
     r""" The base class of checkpoint objects
 
@@ -24,7 +27,6 @@ class Checkpoint(object):
     """
     DEFAULT_STEP = 1000
     DEFAULT_MAX_TO_KEEP = 1
-    log = logging.getLogger(__package__)
 
     @check_positive
     def __init__(self, dir_path: str, *, steps: int = DEFAULT_STEP, max_to_keep: int = DEFAULT_MAX_TO_KEEP) -> None:
@@ -83,7 +85,7 @@ class Checkpoint(object):
         checkpoint = cls(dir_path, steps=steps)
         checkpoint._file_paths = ckpt_file_paths
         checkpoint._count = count
-        cls.log.info(f"Checkpoint loaded from {latest_ckpt}")
+        logger.info(f"Checkpoint loaded from {latest_ckpt}")
         return checkpoint
 
     def save(self, cdb: CDB, count: int) -> None:
@@ -101,7 +103,7 @@ class Checkpoint(object):
             to_remove = self._file_paths.pop(0)
             os.remove(to_remove)
         cdb.save(ckpt_file_path)
-        self.log.debug("Checkpoint saved: %s", ckpt_file_path)
+        logger.debug("Checkpoint saved: %s", ckpt_file_path)
         self._file_paths.append(ckpt_file_path)
         self._count = count
 

@@ -8,6 +8,9 @@ from medcat.preprocessing.iterators import SimpleIter
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
 
+logger = logging.getLogger(__name__)
+
+
 class MakeVocab(object):
     r'''
     Create a new vocab from a text file.
@@ -30,7 +33,6 @@ class MakeVocab(object):
         >>> maker.make(data_iterator, out_folder="./output/")
         >>> maker.add_vectors(in_path="./output/data.txt")
     '''
-    log = logging.getLogger(__name__)
 
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
@@ -84,8 +86,7 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                self.log.info("Vocab builder at: %s", str(ind))
-                print(ind)
+                logger.info("Vocab builder at: %s", str(ind))
 
             doc = self.pipe.spacy_nlp.tokenizer(doc)
             line = ""
