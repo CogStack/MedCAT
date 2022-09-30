@@ -54,7 +54,7 @@ class UMLS:
             The separator used within the files. Defaults to '|'.
     """
 
-    def __init__(self, main_file_name: str, sem_types_file: str, allow_languages: list = ['ENG'] , sep: str = '|'):
+    def __init__(self, main_file_name: str, sem_types_file: str, allow_languages: list = ['ENG'], sep: str = '|'):
         self.main_file_name = main_file_name
         self.sem_types_file = sem_types_file
         self.main_columns = list(_DEFAULT_COLUMNS) # copy
@@ -111,4 +111,3 @@ if __name__ == '__main__':
     save_file = "preprocessed_umls.csv"
     print(f"Saving to {save_file}")
     df.to_csv(save_file, index=False)
-
