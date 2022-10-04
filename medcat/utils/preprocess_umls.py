@@ -101,6 +101,14 @@ class UMLS:
         return df
 
     def map_umls2snomed(self) -> pd.DataFrame:
+        """Map to SNOMED-CT.
+
+        Currently, uses the SCUI column. At the time of writing, this is equal to the CODE column.
+        But this may not be the case in the future.
+
+        Returns:
+            pd.DataFrame: Dataframe that contains the SCUI (source CUI) as well as the UMLS CUI for each applicable concept
+        """
         df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False, dtype={'SCUI': 'str'})
         # get only SNOMED-CT US based concepts that have a SNOMED-CT (source) CUI
         df = df[df.SAB == 'SNOMEDCT_US'][df.SCUI.notna()]
