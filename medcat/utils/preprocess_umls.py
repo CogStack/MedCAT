@@ -118,6 +118,37 @@ class UMLS:
         df = df[['SCUI',] + [col for col in df.columns.values if col != 'SCUI']]
         return df
 
+    def map_umls2icd10(self) -> pd.DataFrame:
+        """Map to ICD-10.
+
+        Available SAB's that contain 'ICD10':
+         - CCSR_ICD10CM - CCSR_ICD10CM (Clinical Classifications Software Refined for ICD-10-CM) - Synopsis
+         - CCSR_ICD10PCS - CCSR_ICD10PCS (Clinical Classifications Software Refined for ICD-10-PCS) - Synopsis
+         - DMDICD10 - DMDICD10 (ICD-10 German) - Statistics
+         - ICD10AE - ICD10AE (ICD-10, American English Equivalents) - Synopsis
+         - ICD10AMAE - ICD10AMAE (ICD-10, Australian Modification, Americanized English Equivalents) - Synopsis
+         - ICD10AM - ICD10AM (ICD-10, Australian Modification) - Synopsis
+         - ICD10DUT - ICD10DUT (ICD10, Dutch Translation) - Synopsis
+         - ICD10PCS - ICD10PCS (ICD-10 Procedure Coding System) - Synopsis
+         - ICD10 - ICD10 (International Classification of Diseases and Related Health Problems, Tenth Revision) - Synopsis
+         - ICPC2ICD10DUT - ICPC2ICD10DUT (ICPC2-ICD10 Thesaurus, Dutch Translation) - Synopsis
+         - ICPC2ICD10ENG - ICPC2ICD10ENG (ICPC2-ICD10 Thesaurus) - Synopsis
+         - MTHICPC2ICD10AE - MTHICPC2ICD10AE (ICPC2E-ICD10 Thesaurus, American English Equivalents) - Synopsis
+
+        Currently only using 'ICD10'. But others may be relevant as well.
+
+        Returns:
+            pd.DataFrame: DataFrame that has the ICD-10 SCUI's
+        """
+        df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False, dtype={'CODE': 'str'})
+        # get only ICD10 part
+        df = df[df.SAB == 'ICD10'][df.CODE.notna()]
+        # sort by CODE
+        df = df.sort_values(by='CODE').reset_index(drop=True)
+        # rearrange columns starting with CODE
+        df = df[['CODE',] + [col for col in df.columns.values if col != 'CODE']]
+        return df
+
 
 if __name__ == '__main__':
     import sys
@@ -133,3 +164,6 @@ if __name__ == '__main__':
     to_snomed = umls.map_umls2snomed()
     print('As SNOMED:')
     print(to_snomed.head())
+    to_ICD10 = umls.map_umls2icd10()
+    print('As ICD-10:')
+    print(to_ICD10.head())
