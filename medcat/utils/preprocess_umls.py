@@ -100,6 +100,16 @@ class UMLS:
 
         return df
 
+    def map_umls2snomed(self) -> pd.DataFrame:
+        df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False, dtype={'SCUI': 'str'})
+        # get only SNOMED-CT US based concepts that have a SNOMED-CT (source) CUI
+        df = df[df.SAB == 'SNOMEDCT_US'][df.SCUI.notna()]
+        # sort by SCUI
+        df = df.sort_values(by='SCUI').reset_index(drop=True)
+        # rearrange with SCUI as the first column
+        df = df[['SCUI',] + [col for col in df.columns.values if col != 'SCUI']]
+        return df
+
 
 if __name__ == '__main__':
     import sys
@@ -111,3 +121,7 @@ if __name__ == '__main__':
     save_file = "preprocessed_umls.csv"
     print(f"Saving to {save_file}")
     df.to_csv(save_file, index=False)
+    print('Converting to SNOMED')
+    to_snomed = umls.map_umls2snomed()
+    print('As SNOMED:')
+    print(to_snomed.head())
