@@ -15,15 +15,15 @@ class CATTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
-        cls.cdb.config.general["spacy_model"] = "en_core_web_md"
-        cls.cdb.config.ner['min_name_len'] = 2
-        cls.cdb.config.ner['upper_case_limit_len'] = 3
-        cls.cdb.config.general['spell_check'] = True
-        cls.cdb.config.linking['train_count_threshold'] = 10
-        cls.cdb.config.linking['similarity_threshold'] = 0.3
-        cls.cdb.config.linking['train'] = True
-        cls.cdb.config.linking['disamb_length_limit'] = 5
-        cls.cdb.config.general['full_unlink'] = True
+        cls.cdb.config.general.spacy_model = "en_core_web_md"
+        cls.cdb.config.ner.min_name_len = 2
+        cls.cdb.config.ner.upper_case_limit_len = 3
+        cls.cdb.config.general.spell_check = True
+        cls.cdb.config.linking.train_count_threshold = 10
+        cls.cdb.config.linking.similarity_threshold = 0.3
+        cls.cdb.config.linking.train = True
+        cls.cdb.config.linking.disamb_length_limit = 5
+        cls.cdb.config.general.full_unlink = True
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab)
 
     @classmethod
@@ -31,7 +31,7 @@ class CATTests(unittest.TestCase):
         cls.undertest.destroy_pipe()
 
     def tearDown(self) -> None:
-        self.cdb.config.annotation_output['include_text_in_output'] = False
+        self.cdb.config.annotation_output.include_text_in_output = False
 
     def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
@@ -174,7 +174,7 @@ class CATTests(unittest.TestCase):
         self.assertFalse("text" in out)
 
     def test_get_entities_including_text(self):
-        self.cdb.config.annotation_output['include_text_in_output'] = True
+        self.cdb.config.annotation_output.include_text_in_output = True
         text = "The dog is sitting outside the house."
         out = self.undertest.get_entities(text)
         self.assertEqual({}, out["entities"])
@@ -190,7 +190,7 @@ class CATTests(unittest.TestCase):
         self.assertFalse("text" in out[2])
 
     def test_get_entities_multi_texts_including_text(self):
-        self.cdb.config.annotation_output['include_text_in_output'] = True
+        self.cdb.config.annotation_output.include_text_in_output = True
         in_data = [(1, "The dog is sitting outside the house."), (2, ""), (3, None)]
         out = self.undertest.get_entities_multi_texts(in_data, n_process=2)
         self.assertEqual(3, len(out))
@@ -278,7 +278,7 @@ class CATTests(unittest.TestCase):
         self.assertEqual([], out[2]["tokens"])
 
     def test_error_handling_multi_processes(self):
-        self.cdb.config.annotation_output['include_text_in_output'] = True
+        self.cdb.config.annotation_output.include_text_in_output = True
         out = self.undertest.get_entities_multi_texts([
                                            (1, "The dog is sitting outside the house 1."),
                                            (2, "The dog is sitting outside the house 2."),
@@ -321,13 +321,13 @@ class CATTests(unittest.TestCase):
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
-        self.assertIsNotNone(cat.config.version['medcat_version'])
+        self.assertIsNotNone(cat.config.version.medcat_version)
 
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
-        self.assertEqual(cat.get_hash(), cat.config.version['id'])
+        self.assertEqual(cat.get_hash(), cat.config.version.id)
 
 
 if __name__ == '__main__':

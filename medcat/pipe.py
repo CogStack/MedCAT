@@ -19,6 +19,9 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.ner.transformers_ner import TransformersNER
 
 
+logger = logging.getLogger(__name__) # different logger from the package-level one
+
+
 class Pipe(object):
     r""" A wrapper around the standard spacy pipeline.
 
@@ -32,19 +35,17 @@ class Pipe(object):
         nlp (spacy.language.<lng>):
             The base spacy NLP pipeline.
     """
-    # Add file and console handlers
-    log = logging.getLogger(__package__)
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
-        self._nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
-        if config.preprocessing['stopwords'] is not None:
-            self._nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
+        self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
+        if config.preprocessing.stopwords is not None:
+            self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
         # Set max document length
-        self._nlp.max_length = config.preprocessing.get('max_document_length', 1000000)
+        self._nlp.max_length = config.preprocessing.max_document_length
         self.config = config
         # Set log level
-        self.log.setLevel(self.config.general['log_level'])
+        logger.setLevel(self.config.general.log_level)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
         r""" Add any kind of a tagger for tokens.
@@ -235,11 +236,11 @@ class Pipe(object):
                 try:
                     doc = self._nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
-                    self.log.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
-                    self.log.warning(e, exc_info=True, stack_info=True)
+                    logger.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
+                    logger.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
             return docs
         else:
-            self.log.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
+            logger.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
             return None

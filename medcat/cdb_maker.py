@@ -15,6 +15,9 @@ from medcat.preprocessing.taggers import tag_skip_and_punct
 PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
 
 
+logger = logging.getLogger(__name__)
+
+
 class CDBMaker(object):
     r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
     updates an exisitng one.
@@ -27,12 +30,11 @@ class CDBMaker(object):
         name_max_words (`int`, defaults to `20`):
             Names with more words will be skipped during the build of a CDB
     '''
-    log = logging.getLogger(__package__)
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
         # Set log level
-        self.log.setLevel(self.config.general['log_level'])
+        logger.setLevel(self.config.general['log_level'])
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker
@@ -93,7 +95,7 @@ class CDBMaker(object):
         for csv_path in csv_paths:
             # Read CSV, everything is converted to strings
             if isinstance(csv_path, str):
-                self.log.info("Started importing concepts from: {}".format(csv_path))
+                logger.info("Started importing concepts from: {}".format(csv_path))
                 df = pd.pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=index_col, dtype=str, **kwargs)
             else:
                 # Not very clear, but csv_path can be a pre-loaded csv
@@ -120,7 +122,7 @@ class CDBMaker(object):
                     ctime = datetime.datetime.now()
                     # Get time difference
                     timediff = ctime - _time
-                    self.log.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format(
+                    logger.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format(
                         (row_id / len(df)) * 100, timediff.microseconds/10**6 + timediff.seconds, (len(df[cols]) // 100)))
                     # Set previous time to current time
                     _time = ctime
@@ -175,7 +177,7 @@ class CDBMaker(object):
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
-                    self.log.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
+                    logger.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
                                    cui, names, ontologies, name_status, type_ids, description, full_build)
 
         return self.cdb

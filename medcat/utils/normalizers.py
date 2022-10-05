@@ -42,7 +42,7 @@ class BasicSpellChecker(object):
 
     def candidates(self, word):
         "Generate possible spelling corrections for word."
-        if self.config.general['spell_check_deep']:
+        if self.config.general.spell_check_deep:
             # This will check a two letter edit distance
             return self.known([word]) or self.known(self.edits1(word)) or self.known(self.edits2(word)) or [word]
         else:
@@ -57,7 +57,7 @@ class BasicSpellChecker(object):
         "All edits that are one edit away from `word`."
         letters    = 'abcdefghijklmnopqrstuvwxyz'
 
-        if self.config.general['diacritics']:
+        if self.config.general.diacritics:
             letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
 
         splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
@@ -92,16 +92,16 @@ class TokenNormalizer(PipeRunner):
     def __init__(self, config, spell_checker=None):
         self.config = config
         self.spell_checker = spell_checker
-        self.nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
-        super().__init__(self.config.general['workers'])
+        self.nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
+        super().__init__(self.config.general.workers)
 
     # Override
     def __call__(self, doc):
         for token in doc:
-            if len(token.lower_) < self.config.preprocessing['min_len_normalize']:
+            if len(token.lower_) < self.config.preprocessing.min_len_normalize:
                 token._.norm = token.lower_
-            elif (self.config.preprocessing.get('do_not_normalize', set())) and token.tag_ is not None and \
-                     token.tag_ in self.config.preprocessing.get('do_not_normalize'):
+            elif (self.config.preprocessing.do_not_normalize) and token.tag_ is not None and \
+                     token.tag_ in self.config.preprocessing.do_not_normalize:
                 token._.norm = token.lower_
             elif token.lemma_ == '-PRON-':
                 token._.norm = token.lemma_
@@ -109,14 +109,14 @@ class TokenNormalizer(PipeRunner):
             else:
                 token._.norm = token.lemma_.lower()
 
-            if self.config.general['spell_check']:
+            if self.config.general.spell_check:
                 # Fix the token if necessary
-                if len(token.text) >= self.config.general['spell_check_len_limit'] and not token._.is_punct \
+                if len(token.text) >= self.config.general.spell_check_len_limit and not token._.is_punct \
                         and token.lower_ not in self.spell_checker and not CONTAINS_NUMBER.search(token.lower_):
                     fix = self.spell_checker.fix(token.lower_)
                     if fix is not None:
                         tmp = self.nlp(fix)[0]
-                        if len(token.lower_) < self.config.preprocessing['min_len_normalize']:
+                        if len(token.lower_) < self.config.preprocessing.min_len_normalize:
                             token._.norm = tmp.lower_
                         else:
                             token._.norm = tmp.lemma_.lower()

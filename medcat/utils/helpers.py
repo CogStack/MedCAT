@@ -3,27 +3,35 @@ from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
 from medcat.utils.other import TPL_ENT, TPL_ENTS
 
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 def get_important_config_parameters(config):
     cnf = {
             "config.ner['min_name_len']": {
-                'value': config.ner['min_name_len'],
+                'value': config.ner.min_name_len,
                 'description': "Minimum detection length (found terms/mentions shorter than this will not be detected)."
                 },
             "config.ner['upper_case_limit_len']": {
-                'value': config.ner['upper_case_limit_len'],
+                'value': config.ner.upper_case_limit_len,
                 'description': "All detected terms shorter than this value have to be uppercase, otherwise they will be ignored."
                 },
             "config.linking['similarity_threshold']": {
-                'value': config.linking['similarity_threshold'],
+                'value': config.linking.similarity_threshold,
                 'description': "If the confidence of the model is lower than this a detection will be ignore."
                 },
+            "config.linking['filters']['cuis']": {
+                'value': len(config.linking.filters['cuis']),
+                'description': "Length of the CUIs filter to be included in outputs. If this is not 0 (i.e. not empty) its best to check what is included before using the model"
+            },
             "config.general['spell_check']": {
-                'value': config.general['spell_check'],
+                'value': config.general.spell_check,
                 'description': "Is spell checking enabled."
                 },
             "config.general['spell_check_len_limit']": {
-                'value': config.general['spell_check_len_limit'],
+                'value': config.general.spell_check_len_limit,
                 'description': "Words shorter than this will not be spell checked."
                 },
             }
@@ -206,8 +214,8 @@ def umls_to_icd10cm(cdb, csv_path):
                             cdb.cui2info[cui]['icd10'].append(icd10)
                     else:
                         cdb.cui2info[cui]["icd10"] = [icd10]
-        except Exception:
-            print(row["CUI"])
+        except Exception as e:
+            logger.warn("Issue at %s", row["CUI"], exc_info=e)
 
 
 def umls_to_icd10_over_snomed(cdb, pickle_path):
@@ -224,7 +232,7 @@ def umls_to_icd10_over_snomed(cdb, pickle_path):
                     # If it exists skip it
                     pass
                 else:
-                    print(cui, icd10)
+                    logger.info("%s %s", cui, icd10)
                     cdb.cui2info[cui]['icd10'] = [icd10]
             else:
                 pass
@@ -239,7 +247,7 @@ def umls_to_icd10_ext(cdb, pickle_path):
             if cui in cdb.cui2info and 'icd10' not in cdb.cui2info[cui]:
                 icd10 = u2i[cui]
 
-                print(cui, icd10)
+                logger.info("%s %s", cui, icd10)
                 cdb.cui2info[cui]['icd10'] = [icd10]
 
 
@@ -266,8 +274,8 @@ def umls_to_icd10(cdb, csv_path):
                         cdb.cui2info[cui]['icd10'].append(icd10)
                 else:
                     cdb.cui2info[cui]["icd10"] = [icd10]
-        except Exception:
-            print(row["CUI"])
+        except Exception as e:
+            logger.warn("Issue at %s", row["CUI"], exc_info=e)
 
 
 def umls_to_snomed(cdb, pickle_path):
@@ -382,11 +390,11 @@ def add_names_icd10(csv_path, cat):
             cui = str(row['cui'])
             name = row['name']
             cat.add_name(cui, name, is_pref_name=False, only_new=True)
-        except Exception:
-            print(row["cui"])
+        except Exception as e:
+            logger.warn("Issue at %s", row["CUI"], exc_info=e)
 
         if index % 1000 == 0:
-            print(index)
+            logger.info('index=%d', index)
 
 
 def add_names_icd10cm(cdb, csv_path, cat):
@@ -401,13 +409,13 @@ def add_names_icd10cm(cdb, csv_path, cat):
                 bl = len(cdb.cui2names.get(cui, []))
                 cat.add_name(cui, name, is_pref_name=False, only_new=True)
                 if bl != len(cdb.cui2names.get(cui, [])):
-                    print(name, cui)
+                    logger.info("'%s' with cui '%s'", name, cui)
         except Exception as e:
-            print(e)
+            logger.warn("Issue at %s", row["CUI"], exc_info=e)
             break
 
         if index % 1000 == 0:
-            print(index)
+            logger.info("Index=%d", index)
 
 
 def remove_icd10_ranges(cdb):
@@ -431,7 +439,7 @@ def dep_check_scispacy():
     try:
         _ = spacy.load("en_core_sci_md")
     except Exception:
-        print("Installing the missing models for scispacy\n")
+        logger.info("Installing the missing models for scispacy\n")
         pkg = 'https://s3-us-west-2.amazonaws.com/ai2-s2-scispacy/releases/v0.4.0/en_core_sci_md-0.4.0.tar.gz'
         subprocess.check_call([sys.executable, '-m', 'pip', 'install', pkg])
 
