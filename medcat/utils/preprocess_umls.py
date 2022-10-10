@@ -1,4 +1,5 @@
 
+from typing import List, Union
 import pandas as pd
 
 _DEFAULT_COLUMNS: list = [
@@ -137,12 +138,29 @@ class UMLS:
 
         Currently only using 'ICD10'. But others may be relevant as well.
 
+        If one wants to use one of the other sources listed above,
+        they would need to use the map_umls2source method.
+
         Returns:
-            pd.DataFrame: DataFrame that has the ICD-10 SCUI's
+            pd.DataFrame: DataFrame that has the ICD-10 codes
+        """
+        return self.map_umls2source(sources='ICD10')
+
+    def map_umls2source(self, sources: Union[str, List[str]]) -> pd.DataFrame:
+        """Allows mapping to an arbitrary
+
+        Args:
+            sources (Union[str, List[str]]): The source or sources to include.
+
+        Returns:
+            pd.DataFrame: DataFrame that has the target source codes
         """
         df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False, dtype={'CODE': 'str'})
-        # get only ICD10 part
-        df = df[df.SAB == 'ICD10'][df.CODE.notna()]
+        # get the specified source(s)
+        if isinstance(sources, list):
+            df = df[df.SAB.isin(sources)][df.CODE.notna()]
+        else:
+            df = df[df.SAB == sources][df.CODE.notna()]
         # sort by CODE
         df = df.sort_values(by='CODE').reset_index(drop=True)
         # rearrange columns starting with CODE
@@ -167,3 +185,6 @@ if __name__ == '__main__':
     to_ICD10 = umls.map_umls2icd10()
     print('As ICD-10:')
     print(to_ICD10.head())
+    to_ICD10_man = umls.map_umls2source(sources=['ICD10'])
+    print('As ICD-10(MAN):')
+    print(to_ICD10_man.head())
