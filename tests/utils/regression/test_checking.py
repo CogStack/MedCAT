@@ -1,7 +1,7 @@
 
 import unittest
 
-from medcat.utils.regression.checking import FilterStrategy, FilterType, FilterOptions
+from medcat.utils.regression.checking import FilterStrategy, FilterType, FilterOptions, RegressionChecker
 from medcat.utils.regression.checking import TypedFilter, SingleFilter, MultiFilter
 from medcat.utils.regression.checking import TranslationLayer, RegressionCase
 
@@ -325,3 +325,10 @@ class TestRegressionCase(unittest.TestCase):
         success, fail = rc.check_case(FakeCat(tl), tl)
         self.assertEqual(fail, 0)
         self.assertEqual(success, len(EXAMPLE_TYPE_T1_CUI))
+
+
+class TestRegressionChecker(unittest.TestCase):
+
+    def test_reads_default(self, yaml_file='configs/default_regression_tests.yml'):
+        rc = RegressionChecker.from_yaml(yaml_file)
+        self.assertIsInstance(rc, RegressionChecker)
