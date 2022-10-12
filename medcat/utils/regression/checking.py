@@ -336,7 +336,7 @@ class RegressionCase(BaseModel):
             for phrase in self.phrases:
                 res = cat.get_entities(phrase % ti.val, only_cui=True)
                 ents = res['entities']
-                found_cuis = [ents[nr]['cui'] for nr in ents]
+                found_cuis = [ents[nr] for nr in ents]
                 if ti.cui in found_cuis:
                     logger.debug(
                         'Matched test case %s in phrase "%s"', ti, phrase)
