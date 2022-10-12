@@ -1,6 +1,6 @@
 
 from enum import Enum
-from typing import Dict, Iterator, List, Set, Tuple, Type, Any
+from typing import Dict, Iterator, List, Set, Tuple, Type, Any, TypeVar
 import yaml
 import logging
 
@@ -12,8 +12,10 @@ from medcat.cdb import CDB
 
 logger = logging.getLogger(__name__)
 
+ENUM = TypeVar('ENUM', bound=Enum)
 
-def loosely_match_enum(e_type: Type[Enum], name: str) -> Enum:
+
+def loosely_match_enum(e_type: Type[ENUM], name: str) -> ENUM:
     """Loosely (i.e case-insensitively) match enum names.
 
     Args:
@@ -188,7 +190,7 @@ class TypedFilter(BaseModel):
         Returns:
             List[TypedFilter]: The list of constructed TypedFilter
         """
-        parsed_targets = []
+        parsed_targets: List[TypedFilter] = []
         for target_type, vals in input.items():
             t_type: FilterType = FilterType.match_str(target_type)
             if isinstance(vals, list):
