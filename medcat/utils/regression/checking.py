@@ -444,6 +444,14 @@ class RegressionChecker:
         self.cases: List[RegressionCase] = cases
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, TargetInfo, str]]:
+        """Get all subcases (i.e regssion case, target info and phrase) for this checker.
+
+        Args:
+            translation (TranslationLayer): The translation layer
+
+        Yields:
+            Iterator[Tuple[RegressionCase, TargetInfo, str]]: The generator for all the cases
+        """
         for case in self.cases:
             for ti, phrase in case.get_all_subcases(translation):
                 yield case, ti, phrase
