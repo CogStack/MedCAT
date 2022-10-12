@@ -443,6 +443,11 @@ class RegressionChecker:
     def __init__(self, cases: List[RegressionCase]) -> None:
         self.cases: List[RegressionCase] = cases
 
+    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, TargetInfo, str]]:
+        for case in self.cases:
+            for ti, phrase in case.get_all_subcases(translation):
+                yield case, ti, phrase
+
     def check_model(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
         """_summary_
 
@@ -454,11 +459,12 @@ class RegressionChecker:
             Tuple[int, int]: The number of successful and failed checks
         """
         successes, fails = 0, 0
-        for case in self.cases:
-            s, f = case.check_case(cat, translation)
-            successes += s
-            fails += f
-        return s, f
+        for case, ti, phrase in self.get_all_subcases(translation):
+            if case.check_specific_for_phrase(cat, ti, phrase):
+                successes += 1
+            else:
+                fails += 1
+        return successes, fails
 
     def __str__(self) -> str:
         return f'RegressionTester[cases={self.cases}]'
