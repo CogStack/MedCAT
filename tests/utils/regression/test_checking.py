@@ -214,7 +214,7 @@ class TestFilterOptions(unittest.TestCase):
         self.assertEqual(opts.strategy, FilterStrategy.ALL)
 
     def test_loads_from_dict_with_onlypref(self):
-        D = {'prefname-only': True}
+        D = {'prefname-only': 'True'}
         opts = FilterOptions.from_dict(D)
         self.assertIsInstance(opts, FilterOptions)
         self.assertTrue(opts.onlyprefnames)
