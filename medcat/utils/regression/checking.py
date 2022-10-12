@@ -32,15 +32,15 @@ def loosely_match_enum(e_type: Type[Enum], name: str) -> Enum:
     raise _key_err
 
 
-class TargetStrategy(Enum):
+class FilterStrategy(Enum):
     ALL = 1
     all = 1
     ANY = 2
     any = 2
 
     @classmethod
-    def match_str(cls, name: str) -> 'TargetStrategy':
-        return loosely_match_enum(TargetStrategy, name)
+    def match_str(cls, name: str) -> 'FilterStrategy':
+        return loosely_match_enum(FilterStrategy, name)
 
 
 class TargetInfo:
@@ -76,7 +76,7 @@ class TranslationLayer:
         return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids)
 
 
-class TargetType(Enum):
+class FilterType(Enum):
     TYPE_ID = 1
     type_id = 1
     CUI = 2
@@ -85,76 +85,76 @@ class TargetType(Enum):
     name = 3
 
     @classmethod
-    def match_str(cls, name: str) -> 'TargetType':
-        return loosely_match_enum(TargetType, name)
+    def match_str(cls, name: str) -> 'FilterType':
+        return loosely_match_enum(FilterType, name)
 
 
-class TypedTarget(BaseModel):
-    type: TargetType
+class TypedFilter(BaseModel):
+    type: FilterType
 
     def get_applicable_targets(self, translation: TranslationLayer, input: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
         pass  # has to be overwritten
 
     @classmethod
-    def from_dict(cls, input: Dict[str, Any]) -> List['TypedTarget']:
+    def from_dict(cls, input: Dict[str, Any]) -> List['TypedFilter']:
         parsed_targets = []
         for target_type, vals in input.items():
-            t_type: TargetType = TargetType.match_str(target_type)
+            t_type: FilterType = FilterType.match_str(target_type)
             if isinstance(vals, list):
-                parsed_targets.append(MultiTarget(type=t_type, values=vals))
+                parsed_targets.append(MultiFilter(type=t_type, values=vals))
             else:
-                parsed_targets.append(SingleTarget(type=t_type, value=vals))
+                parsed_targets.append(SingleFilter(type=t_type, value=vals))
         return parsed_targets
 
 
-class TargetsOptions(BaseModel):
-    strategy: TargetStrategy
+class FilterOptions(BaseModel):
+    strategy: FilterStrategy
     onlyprefnames: bool = False
 
     @classmethod
-    def from_dict(cls, section: Dict[str, str]) -> 'TargetsOptions':
+    def from_dict(cls, section: Dict[str, str]) -> 'FilterOptions':
         if 'strategy' in section:
-            strategy = TargetStrategy.match_str(section['strategy'])
+            strategy = FilterStrategy.match_str(section['strategy'])
         else:
-            strategy = TargetStrategy.ALL  # default
+            strategy = FilterStrategy.ALL  # default
         if 'prefname-only' in section:
             onlyprefnames = bool(section['prefname-only'])
         else:
             onlyprefnames = False
-        return TargetsOptions(strategy=strategy, onlyprefnames=onlyprefnames)
+        return FilterOptions(strategy=strategy, onlyprefnames=onlyprefnames)
 
 
-class SingleTarget(TypedTarget):
+class SingleFilter(TypedFilter):
     value: str
 
     def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
-        if self.type == TargetType.CUI:
+        if self.type == FilterType.CUI:
             for ti in in_gen:
                 if ti.cui == self.value:
                     yield ti
-        if self.type == TargetType.NAME:
+        if self.type == FilterType.NAME:
             for ti in in_gen:
                 if self.value in ti.val:
                     yield ti
-        if self.type == TargetType.TYPE_ID:
+        if self.type == FilterType.TYPE_ID:
             for ti in in_gen:
                 if ti.cui in translation.cui2type_ids and self.value in translation.cui2type_ids[ti.cui]:
                     yield ti
 
 
-class MultiTarget(TypedTarget):
+class MultiFilter(TypedFilter):
     values: List[str]
 
     def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
-        if self.type == TargetType.CUI:
+        if self.type == FilterType.CUI:
             for ti in in_gen:
                 if ti.cui in self.values:
                     yield ti
-        if self.type == TargetType.NAME:
+        if self.type == FilterType.NAME:
             for ti in in_gen:
                 if ti.val in self.values:
                     yield ti
-        if self.type == TargetType.TYPE_ID:
+        if self.type == FilterType.TYPE_ID:
             for ti in in_gen:
                 if ti.cui in translation.cui2type_ids and translation.cui2type_ids[ti.cui] in self.values:
                     yield ti
@@ -162,21 +162,21 @@ class MultiTarget(TypedTarget):
 
 class RegressionCase(BaseModel):
     name: str
-    options: TargetsOptions
-    targets: List[TypedTarget]
+    options: FilterOptions
+    filters: List[TypedFilter]
     phrases: List[str]
 
     def get_all_targets(self, in_set: Iterator[TargetInfo], translation: TranslationLayer) -> Iterator[TargetInfo]:
-        if len(self.targets) == 1:
-            yield from self.targets[0].get_applicable_targets(translation, in_set)
+        if len(self.filters) == 1:
+            yield from self.filters[0].get_applicable_targets(translation, in_set)
             return
-        if self.options.strategy == TargetStrategy.ANY:
-            for target in self.targets:
-                yield from target.get_applicable_targets(translation, in_set)
-        elif self.options.strategy == TargetStrategy.ALL:
+        if self.options.strategy == FilterStrategy.ANY:
+            for filter in self.filters:
+                yield from filter.get_applicable_targets(translation, in_set)
+        elif self.options.strategy == FilterStrategy.ALL:
             cur_gen = in_set
-            for target in self.targets:
-                cur_gen = target.get_applicable_targets(translation, cur_gen)
+            for filter in self.filters:
+                cur_gen = filter.get_applicable_targets(translation, cur_gen)
             yield from cur_gen
 
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
@@ -198,19 +198,19 @@ class RegressionCase(BaseModel):
         return success, fail
 
     @classmethod
-    def from_dict(cls, name: str, in_dict: dict) -> 'TargetStrategy':
+    def from_dict(cls, name: str, in_dict: dict) -> 'FilterStrategy':
         # set up targeting
         if 'targeting' not in in_dict:
             raise ValueError('Input dict should define targeting')
         targeting_section = in_dict['targeting']
         # set up options
-        options = TargetsOptions.from_dict(targeting_section)
-        if 'targets' not in targeting_section:
+        options = FilterOptions.from_dict(targeting_section)
+        if 'filters' not in targeting_section:
             raise ValueError(
                 'Input dict should have define targets section under targeting')
         # set up targets
-        parsed_targets: List[TypedTarget] = TypedTarget.from_dict(
-            targeting_section['targets'])
+        parsed_filters: List[TypedFilter] = TypedFilter.from_dict(
+            targeting_section['filters'])
         # set up test phrases
         if 'phrases' not in in_dict:
             raise ValueError('Input dict should defined phrases')
@@ -219,7 +219,7 @@ class RegressionCase(BaseModel):
             phrases = [phrases]  # just one defined
         if not phrases:
             raise ValueError('Need at least one target phrase')
-        return RegressionCase(name=name, options=options, targets=parsed_targets, phrases=phrases)
+        return RegressionCase(name=name, options=options, filters=parsed_filters, phrases=phrases)
 
 
 class RegressionChecker:

@@ -1,8 +1,8 @@
 
 import unittest
 
-from medcat.utils.regression.checking import TargetStrategy, TargetType, TargetsOptions
-from medcat.utils.regression.checking import TypedTarget, SingleTarget, MultiTarget
+from medcat.utils.regression.checking import FilterStrategy, FilterType, FilterOptions
+from medcat.utils.regression.checking import TypedFilter, SingleFilter, MultiFilter
 from medcat.utils.regression.checking import TranslationLayer, RegressionCase
 
 DICT_WITH_CUI = {'cui': '123'}
@@ -94,7 +94,7 @@ _CUI = 'C123'
 _NAME = 'NAMEof123'
 _TYPE_ID = '-1'
 _D = {'cui': _CUI}
-_tts = TypedTarget.from_dict(_D)
+_tts = TypedFilter.from_dict(_D)
 _cui2names = {_CUI: [_NAME, ]}
 _name2cuis = {_NAME: [_CUI, ]}
 _cui2type_ids = {_CUI: [_TYPE_ID, ]}
@@ -102,17 +102,17 @@ _tl = TranslationLayer(cui2names=_cui2names,
                        name2cuis=_name2cuis, cui2type_ids=_cui2type_ids)
 
 
-class TestTypedTarget(unittest.TestCase):
+class TestTypedFilter(unittest.TestCase):
 
     def test_has_correct_target_type(self):
-        target_types = [TargetType.CUI, TargetType.NAME, TargetType.TYPE_ID]
+        target_types = [FilterType.CUI, FilterType.NAME, FilterType.TYPE_ID]
         for target_type in target_types:
             with self.subTest(f'With target type {target_type}'):
-                tt = TypedTarget(type=target_type)
+                tt = TypedFilter(type=target_type)
                 self.assertEqual(tt.type, target_type)
 
     def check_is_correct_target(self, in_dict: dict, *types, test_with_upper_case=True):
-        tts = TypedTarget.from_dict(in_dict)
+        tts = TypedFilter.from_dict(in_dict)
         # should have the correct number of elements
         self.assertEqual(len(tts), len(types))
         for (the_type, single_multi), tt in zip(types, tts):
@@ -127,43 +127,43 @@ class TestTypedTarget(unittest.TestCase):
 
     def test_constructs_SingleTarget_from_dict_with_single_cui(self):
         self.check_is_correct_target(
-            DICT_WITH_CUI, (TargetType.CUI, SingleTarget))
+            DICT_WITH_CUI, (FilterType.CUI, SingleFilter))
 
     def test_constructs_MultiTarget_from_dict_with_multiple_cuis(self):
         self.check_is_correct_target(
-            DICT_WITH_MULTI_CUI, (TargetType.CUI, MultiTarget))
+            DICT_WITH_MULTI_CUI, (FilterType.CUI, MultiFilter))
 
     def test_constructs_SingleTarget_from_dict_with_single_name(self):
         self.check_is_correct_target(
-            DICT_WITH_NAME, (TargetType.NAME, SingleTarget))
+            DICT_WITH_NAME, (FilterType.NAME, SingleFilter))
 
     def test_constructs_MultiTarget_from_dict_with_multiple_names(self):
         self.check_is_correct_target(
-            DICT_WITH_MULTI_NAME, (TargetType.NAME, MultiTarget))
+            DICT_WITH_MULTI_NAME, (FilterType.NAME, MultiFilter))
 
     def test_constructs_SingleTarget_from_dict_with_single_type_id(self):
         self.check_is_correct_target(
-            DICT_WITH_TYPE_ID, (TargetType.TYPE_ID, SingleTarget))
+            DICT_WITH_TYPE_ID, (FilterType.TYPE_ID, SingleFilter))
 
     def test_constructs_MultiTarget_from_dict_with_multiple_type_ids(self):
         self.check_is_correct_target(
-            DICT_WITH_MULTI_TYPE_ID, (TargetType.TYPE_ID, MultiTarget))
+            DICT_WITH_MULTI_TYPE_ID, (FilterType.TYPE_ID, MultiFilter))
 
     def test_constructs_correct_list_of_types_1(self):
         self.check_is_correct_target(DICT_WITH_MIX_1, (
-            TargetType.CUI, SingleTarget), (TargetType.NAME, SingleTarget))
+            FilterType.CUI, SingleFilter), (FilterType.NAME, SingleFilter))
 
     def test_constructs_correct_list_of_types_2(self):
         self.check_is_correct_target(DICT_WITH_MIX_2, (
-            TargetType.NAME, SingleTarget), (TargetType.TYPE_ID, MultiTarget))
+            FilterType.NAME, SingleFilter), (FilterType.TYPE_ID, MultiFilter))
 
     def test_constructs_correct_list_of_types_3(self):
         self.check_is_correct_target(DICT_WITH_MIX_3, (
-            TargetType.NAME, MultiTarget), (TargetType.TYPE_ID, MultiTarget))
+            FilterType.NAME, MultiFilter), (FilterType.TYPE_ID, MultiFilter))
 
     def test_constructs_correct_list_of_types_4(self):
         self.check_is_correct_target(DICT_WITH_MIX_4, (
-            TargetType.NAME, MultiTarget), (TargetType.TYPE_ID, MultiTarget), (TargetType.CUI, MultiTarget))
+            FilterType.NAME, MultiFilter), (FilterType.TYPE_ID, MultiFilter), (FilterType.CUI, MultiFilter))
 
     def test_get_applicable_targets_gets_target(self):
         self.assertEqual(len(_tts), 1)
@@ -193,35 +193,35 @@ class TestTypedTarget(unittest.TestCase):
         self.assertEqual(target.cui, _CUI)
 
 
-class TestTargetsOptions(unittest.TestCase):
+class TestFilterOptions(unittest.TestCase):
 
     def test_loads_from_dict(self):
         D = {'strategy': 'all'}
-        opts = TargetsOptions.from_dict(D)
-        self.assertIsInstance(opts, TargetsOptions)
-        self.assertEqual(opts.strategy, TargetStrategy.ALL)
+        opts = FilterOptions.from_dict(D)
+        self.assertIsInstance(opts, FilterOptions)
+        self.assertEqual(opts.strategy, FilterStrategy.ALL)
 
     def test_loads_from_dict_defaults_not_pref_only(self):
         D = dict()
-        opts = TargetsOptions.from_dict(D)
-        self.assertIsInstance(opts, TargetsOptions)
+        opts = FilterOptions.from_dict(D)
+        self.assertIsInstance(opts, FilterOptions)
         self.assertFalse(opts.onlyprefnames)
 
     def test_loads_from_empty_dict_w_default(self):
         D = dict()
-        opts = TargetsOptions.from_dict(D)
-        self.assertIsInstance(opts, TargetsOptions)
-        self.assertEqual(opts.strategy, TargetStrategy.ALL)
+        opts = FilterOptions.from_dict(D)
+        self.assertIsInstance(opts, FilterOptions)
+        self.assertEqual(opts.strategy, FilterStrategy.ALL)
 
     def test_loads_from_dict_with_onlypref(self):
         D = {'prefname-only': True}
-        opts = TargetsOptions.from_dict(D)
-        self.assertIsInstance(opts, TargetsOptions)
+        opts = FilterOptions.from_dict(D)
+        self.assertIsInstance(opts, FilterOptions)
         self.assertTrue(opts.onlyprefnames)
 
 
 class TestRegressionCase(unittest.TestCase):
-    D_MIN = {'targeting': {'targets': DICT_WITH_CUI},
+    D_MIN = {'targeting': {'filters': DICT_WITH_CUI},
              'phrases': ['The phrase %s works']}
 
     def _create_copy(self, d):
@@ -241,8 +241,8 @@ class TestRegressionCase(unittest.TestCase):
         D = self.min_d
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
         self.assertIsInstance(rc, RegressionCase)
-        self.assertEqual(len(rc.targets), 1)
-        self.assertIsInstance(rc.options, TargetsOptions)
+        self.assertEqual(len(rc.filters), 1)
+        self.assertIsInstance(rc.options, FilterOptions)
         self.assertEqual(len(rc.phrases), 1)
 
     def test_fails_dict_no_targets_1(self):
@@ -255,7 +255,7 @@ class TestRegressionCase(unittest.TestCase):
     def test_fails_dict_no_targets_2(self):
         NAME = 'NAME2'
         D = self.min_d
-        D['targeting'].pop('targets')
+        D['targeting'].pop('filters')
         with self.assertRaises(ValueError):
             RegressionCase.from_dict(NAME, D)
 
@@ -273,7 +273,7 @@ class TestRegressionCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             RegressionCase.from_dict(NAME, D)
 
-    D_COMPLEX = {'targeting': dict({'targets': DICT_WITH_MIX_4}, **{'strategy': 'any',
+    D_COMPLEX = {'targeting': dict({'filters': DICT_WITH_MIX_4}, **{'strategy': 'any',
                                    'prefname-only': 'true'}), 'phrases': ['The phrase %s works', 'ALL %s phrases']}
 
     def test_loads_from_complex_dict(self):
@@ -281,12 +281,12 @@ class TestRegressionCase(unittest.TestCase):
         D = self.complex_d
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
         self.assertIsInstance(rc, RegressionCase)
-        self.assertEqual(len(rc.targets), 3)
-        self.assertIsInstance(rc.options, TargetsOptions)
+        self.assertEqual(len(rc.filters), 3)
+        self.assertIsInstance(rc.options, FilterOptions)
         self.assertEqual(len(rc.phrases), 2)
 
     TARGET_CUI = 'C123'
-    D_SPECIFIC_CASE = {'targeting': {'targets': {
+    D_SPECIFIC_CASE = {'targeting': {'filters': {
         'cui': [TARGET_CUI, ]}}, 'phrases': ['%s']}  # should just find the name itself
 
     def test_specific_case_CUI(self):
@@ -300,7 +300,7 @@ class TestRegressionCase(unittest.TestCase):
             tl.cui2names[TestRegressionCase.TARGET_CUI]))
 
     TARGET_NAME = 'N223'
-    D_SPECIFIC_CASE_NAME = {'targeting': {'targets': {
+    D_SPECIFIC_CASE_NAME = {'targeting': {'filters': {
         'name': TARGET_NAME}}, 'phrases': ['%s']}
 
     def test_specific_case_NAME(self):
@@ -314,7 +314,7 @@ class TestRegressionCase(unittest.TestCase):
             tl.name2cuis[TestRegressionCase.TARGET_NAME]))
 
     TARGET_TYPE = 'T1'
-    D_SPECIFIC_CASE_TYPE_ID = {'targeting': {'targets': {
+    D_SPECIFIC_CASE_TYPE_ID = {'targeting': {'filters': {
         'type_id': TARGET_TYPE}}, 'phrases': ['%s']}
 
     def test_specific_case_TYPE_ID(self):
