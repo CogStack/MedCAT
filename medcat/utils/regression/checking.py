@@ -319,6 +319,44 @@ class RegressionCase(BaseModel):
                 cur_gen = filter.get_applicable_targets(translation, cur_gen)
             yield from cur_gen
 
+    def check_specific_for_phrase(self, cat: CAT, ti: TargetInfo, phrase: str) -> bool:
+        """Checks whether the specific target along with the specified phrase
+        is able to be identified using the specified model.
+
+        Args:
+            cat (CAT): The model
+            ti (TargetInfo): The target info
+            phrase (str): The phrase to check
+
+        Returns:
+            bool: Whether or not the target was correctly identified
+        """
+        res = cat.get_entities(phrase % ti.val, only_cui=True)
+        ents = res['entities']
+        found_cuis = [ents[nr] for nr in ents]
+        if ti.cui in found_cuis:
+            logger.debug(
+                'Matched test case %s in phrase "%s"', ti, phrase)
+            return True
+        else:
+            logger.debug(
+                'FAILED to match test case %s in phrase "%s", found the following CUIS: %s', ti, phrase, found_cuis)
+            return False
+
+    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
+        """Get all subcases for this case.
+        That is, all combinations of targets with their appropriate phrases.
+
+        Args:
+            translation (TranslationLayer): The translation layer
+
+        Yields:
+            Iterator[Tuple[TargetInfo, str]]: The generator for the target info and the phrase
+        """
+        for ti in self.get_all_targets(translation.all_targets(), translation):
+            for phrase in self.phrases:
+                yield ti, phrase
+
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
         """Check the regression case against a model.
         I.e check all its applicable targets.
@@ -332,19 +370,11 @@ class RegressionCase(BaseModel):
         """
         success = 0
         fail = 0
-        for ti in self.get_all_targets(translation.all_targets(), translation):
-            for phrase in self.phrases:
-                res = cat.get_entities(phrase % ti.val, only_cui=True)
-                ents = res['entities']
-                found_cuis = [ents[nr] for nr in ents]
-                if ti.cui in found_cuis:
-                    logger.debug(
-                        'Matched test case %s in phrase "%s"', ti, phrase)
-                    success += 1
-                else:
-                    logger.debug(
-                        'FAILED to match test case %s in phrase "%s", found the following CUIS: %s', ti, phrase, found_cuis)
-                    fail += 1
+        for target, phrase in self.get_all_subcases(translation):
+            if self.check_specific_for_phrase(cat, target, phrase):
+                success += 1
+            else:
+                fail += 1
         return success, fail
 
     @classmethod
@@ -455,7 +485,6 @@ class RegressionChecker:
             case = RegressionCase.from_dict(case_name, details)
             cases.append(case)
         return RegressionChecker(cases=cases)
-
 
     @classmethod
     def from_yaml(cls, file_name: str) -> 'RegressionChecker':
