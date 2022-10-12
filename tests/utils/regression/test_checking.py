@@ -67,6 +67,8 @@ class FakeCat:
     def get_entities(self, str, only_cui=True) -> dict:
         if str in self.tl.name2cuis:
             cuis = list(self.tl.name2cuis[str])
+            if only_cui:
+                return {'entities': dict((i, cui) for i, cui in enumerate(cuis))}
             return {'entities': dict((i, {'cui': cui}) for i, cui in enumerate(cuis))}
         return {}
 
