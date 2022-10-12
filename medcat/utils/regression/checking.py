@@ -1,8 +1,9 @@
 
 from enum import Enum
-from typing import Dict, Iterator, List, Set, Tuple, Type, Any, TypeVar
+from typing import Dict, Iterator, List, Optional, Set, Tuple, Type, Any, TypeVar
 import yaml
 import logging
+import tqdm
 
 from pydantic import BaseModel
 
@@ -458,22 +459,30 @@ class RegressionChecker:
             for ti, phrase in case.get_all_subcases(translation):
                 yield case, ti, phrase
 
-    def check_model(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
+    def check_model(self, cat: CAT, translation: TranslationLayer, total: Optional[int] = None) -> Tuple[int, int]:
         """_summary_
 
         Args:
             cat (CAT): The model to check against
             translation (TranslationLayer): The translation layer
+            total (Optional[int]): The total number of (sub)cases expected (for a progress bar)
 
         Returns:
             Tuple[int, int]: The number of successful and failed checks
         """
         successes, fails = 0, 0
-        for case, ti, phrase in self.get_all_subcases(translation):
-            if case.check_specific_for_phrase(cat, ti, phrase):
-                successes += 1
-            else:
-                fails += 1
+        if total is not None:
+            for case, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
+                if case.check_specific_for_phrase(cat, ti, phrase):
+                    successes += 1
+                else:
+                    fails += 1
+        else:
+            for case, ti, phrase in self.get_all_subcases(translation):
+                if case.check_specific_for_phrase(cat, ti, phrase):
+                    successes += 1
+                else:
+                    fails += 1
         return successes, fails
 
     def __str__(self) -> str:
