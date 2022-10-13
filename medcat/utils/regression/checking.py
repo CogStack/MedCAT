@@ -112,6 +112,9 @@ class TranslationLayer:
         self.name2cuis = name2cuis
         self.cui2type_ids = cui2type_ids
         self.cui2children = cui2children
+        for cui in cui2names:
+            if cui not in cui2children:
+                self.cui2children[cui] = {}
 
     def targets_for(self, cui: str) -> Iterator[TargetInfo]:
         for name in self.cui2names[cui]:
