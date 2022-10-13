@@ -1,6 +1,6 @@
 
 from enum import Enum
-from typing import Dict, Iterator, List, Optional, Set, Tuple, Type, Any, TypeVar
+from typing import Dict, Iterator, List, Optional, Set, Tuple, Type, Any, TypeVar, Union
 import yaml
 import logging
 import tqdm
@@ -95,19 +95,27 @@ class TranslationLayer:
     - CUIs to names
     - names to CUIs
     - type_ids to CUIs
+    - CUIs to chil CUIs
 
     The idea is to decouple these translations from the CDB instance in case something changes there.
 
     Args:
         cui2names (Dict[str, Set[str]]): The map from CUI to names
         name2cuis (Dict[str, Set[str]]): The map from name to CUIs
-        cui2type_ids (Dict[str, Set[str]]): The map from cui to type_ids
+        cui2type_ids (Dict[str, Set[str]]): The map from CUI to type_ids
+        cui2children (Dict[str, Set[str]]): The map from CUI to child CUIs
     """
 
-    def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, Set[str]], cui2type_ids: Dict[str, Set[str]]) -> None:
+    def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, Set[str]],
+                 cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]]) -> None:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
         self.cui2type_ids = cui2type_ids
+        self.cui2children = cui2children
+
+    def targets_for(self, cui: str) -> Iterator[TargetInfo]:
+        for name in self.cui2names[cui]:
+            yield TargetInfo(cui, name)
 
     def all_targets(self) -> Iterator[TargetInfo]:
         """Get a generator of all target information objects.
@@ -133,7 +141,7 @@ class TranslationLayer:
         Returns:
             TranslationLayer: The subsequent TranslationLayer
         """
-        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids)
+        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, cdb.addl_info['pt2ch'])
 
 
 class FilterType(Enum):
@@ -145,6 +153,8 @@ class FilterType(Enum):
     """Filters by specified CUIs"""
     NAME = 3
     """Filters by specified names"""
+    CUI_AND_CHILDREN = 4
+    """Filter by CUI but also allow children, up to a specified distance"""
 
     @classmethod
     def match_str(cls, name: str) -> 'FilterType':
@@ -177,6 +187,41 @@ class TypedFilter(BaseModel):
         pass  # has to be overwritten
 
     @classmethod
+    def one_from_input(cls, target_type: str, vals: Union[str, list, dict]) -> 'TypedFilter':
+        """Get one typed filter from the input target type and values.
+        The values can either a be a string for a single target,
+        a list of strings for multiple targets, or
+        a dict in some more complicated cases (i.e CUI_AND_CHILDREN).
+
+        Args:
+            target_type (str): The target type as string
+            vals (Union[str, list, dict]): The values
+
+        Raises:
+            ValueError: If the values are malformed
+
+        Returns:
+            TypedFilter: The parsed filter
+        """
+        t_type: FilterType = FilterType.match_str(target_type)
+        if isinstance(vals, list):
+            filt = MultiFilter(type=t_type, values=vals)
+        elif isinstance(vals, dict):
+            if t_type != FilterType.CUI_AND_CHILDREN:
+                # currently only applicable for CUI_AND_CHILDREN case
+                raise ValueError(f'Misconfigured config for {target_type}, '
+                                 'expected either a value or a list of values '
+                                 'for this type of filter')
+            depth = vals['depth']
+            delegate = cls.one_from_input(target_type, vals['cui'])
+            if t_type is FilterType.CUI_AND_CHILDREN:
+                filt = CUIWithChildFilter(
+                    type=t_type, delegate=delegate, depth=depth)
+        else:
+            filt = SingleFilter(type=t_type, value=vals)
+        return filt
+
+    @classmethod
     def from_dict(cls, input: Dict[str, Any]) -> List['TypedFilter']:
         """Construct a list of TypedFilter from a dict.
 
@@ -193,11 +238,8 @@ class TypedFilter(BaseModel):
         """
         parsed_targets: List[TypedFilter] = []
         for target_type, vals in input.items():
-            t_type: FilterType = FilterType.match_str(target_type)
-            if isinstance(vals, list):
-                parsed_targets.append(MultiFilter(type=t_type, values=vals))
-            else:
-                parsed_targets.append(SingleFilter(type=t_type, value=vals))
+            filt = cls.one_from_input(target_type, vals)
+            parsed_targets.append(filt)
         return parsed_targets
 
 
@@ -249,7 +291,7 @@ class SingleFilter(TypedFilter):
         Yields:
             Iterator[TargetInfo]: The output generator
         """
-        if self.type == FilterType.CUI:
+        if self.type == FilterType.CUI or self.type == FilterType.CUI_AND_CHILDREN:
             for ti in in_gen:
                 if ti.cui == self.value:
                     yield ti
@@ -290,6 +332,31 @@ class MultiFilter(TypedFilter):
             for ti in in_gen:
                 if ti.cui in translation.cui2type_ids and translation.cui2type_ids[ti.cui] in self.values:
                     yield ti
+
+
+class CUIWithChildFilter(TypedFilter):
+    delegate: TypedFilter
+    depth: int
+
+    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
+        """Get all applicable targets for this filter
+
+        Args:
+            translation (TranslationLayer): The translation layer
+            in_gen (Iterator[TargetInfo]): The input generator / iterator
+
+        Yields:
+            Iterator[TargetInfo]: The output generator
+        """
+        for ti in self.delegate.get_applicable_targets(translation, in_gen):
+            yield ti
+            yield from self.get_children_of(translation, ti.cui, cur_depth=1)
+
+    def get_children_of(self, translation: TranslationLayer, cui: str, cur_depth: int) -> Iterator[TargetInfo]:
+        for child in translation.cui2children[cui]:
+            yield from translation.targets_for(child)
+            if cur_depth < self.depth:
+                yield from self.get_children_of(translation, child, cur_depth=cur_depth + 1)
 
 
 class RegressionCase(BaseModel):
