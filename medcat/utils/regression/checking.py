@@ -115,7 +115,7 @@ class TranslationLayer:
         self.cui2children = cui2children
         for cui in cui2names:
             if cui not in cui2children:
-                self.cui2children[cui] = {}
+                self.cui2children[cui] = set()
 
     def targets_for(self, cui: str) -> Iterator[TargetInfo]:
         for name in self.cui2names[cui]:
@@ -208,6 +208,7 @@ class TypedFilter(BaseModel):
             TypedFilter: The parsed filter
         """
         t_type: FilterType = FilterType.match_str(target_type)
+        filt: TypedFilter
         if isinstance(vals, list):
             filt = MultiFilter(type=t_type, values=vals)
         elif isinstance(vals, dict):
