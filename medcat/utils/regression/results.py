@@ -62,17 +62,17 @@ class MultiDescriptor(pydantic.BaseModel):
         Returns:
             str: The report string
         """
-        del_out = ''  # delegation
+        del_out = []  # delegation
         total_s, total_f = 0, 0
         for part in self.parts:
             total_s += part.success
             total_f += part.fail
-            cur_add = part.get_report().replace('\n', '\n\t')
-            if cur_add.endswith('\n\t'):
-                cur_add = cur_add[:-1]  # remove tab
-            del_out += cur_add
+            cur_add = '\t' + part.get_report().replace('\n', '\n\t\t')
+            del_out.append(cur_add)
         total_total = total_s + total_f
-        return f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}"
+        delegated = '\n\t'.join(del_out)
+        return f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
+And a total of {total_total} (sub)cases were checked.
         Total success:  {total_s:10d} ({100 * total_s / total_total if total_total > 0 else 0}%)
         Total failure:  {total_f:10d} ({100 * total_f / total_total if total_total > 0 else 0}%)
-        {del_out}"""
+        {delegated}"""
