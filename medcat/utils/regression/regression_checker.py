@@ -8,7 +8,7 @@ from sys import exit as sys_exit
 from typing import Optional
 
 from medcat.cat import CAT
-from medcat.utils.regression.checking import RegressionChecker, TranslationLayer
+from checking import RegressionChecker, TranslationLayer
 
 logger = logging.getLogger(__name__)
 
