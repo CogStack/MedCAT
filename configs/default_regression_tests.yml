@@ -68,3 +68,12 @@ test-case-2:
   phrases:
   - "The patient has been diagnosed with %s"
   - "There are no signs of %s"
+test-case-3:
+  targeting:
+    strategy: "ALL"
+    filters:
+      cui_and_children:
+       cui: "364075005" # 'heart rate'
+       depth: 4         # and children 4 deep
+  phrases:
+  - "The patient's %s was 82 bps"
