@@ -10,10 +10,7 @@ from pydantic import BaseModel
 from medcat.cat import CAT
 from medcat.cdb import CDB
 
-if not __package__:  # when regression_checker is run
-    from results import MultiDescriptor, ResultDescriptor
-else:  # when used as part of the project
-    from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor
+from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor
 
 logger = logging.getLogger(__name__)
 
