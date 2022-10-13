@@ -31,7 +31,7 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0, total: Opt
     logger.info('Checking took %s seconds', time.time() - st)
     logger.info('\tSuccessful:\t%d\n\tFailed:\t\t%d', s, f)
     if f > max_failures:
-        logger.warn('Found too many failures (%s)', f)
+        logger.warning('Found too many failures (%s)', f)
         sys_exit(2)
 
 
