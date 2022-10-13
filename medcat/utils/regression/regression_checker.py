@@ -51,8 +51,9 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--verbose', '-debug', help='Enable debug/verbose mode',
                         action='store_true')
-    parser.add_argument('--total', '-t', help='Set the total number of (sub)cases that will be tested.'
-                        'This will enable using a progress bar', type=int, default=None)
+    parser.add_argument('--total', '-t', help='Set the total number of (sub)cases that will be tested. '
+                        'This will enable using a progress bar. '
+                        'If unknown, a large-ish number might still be beneficial to show progress.', type=int, default=None)
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
