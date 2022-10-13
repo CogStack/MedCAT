@@ -9,6 +9,7 @@ from typing import Optional
 
 from medcat.cat import CAT
 from medcat.utils.regression.checking import RegressionChecker, TranslationLayer
+from medcat.utils.regression.results import MultiDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -24,14 +25,14 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0,
         report (bool): Whether to use a more comprehensive report
     """
     logger.info('Loading RegressionChecker from yaml: %s', test_suite_file)
-    rc = RegressionChecker.from_yaml(test_suite_file, report=report)
+    rc = RegressionChecker.from_yaml(str(test_suite_file), report=report)
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
     st = time.time()
     # s, f = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
     res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
-    if report:
+    if report and isinstance(res, MultiDescriptor):
         logger.info(res.get_report())
         return
     s, f = res # tuple

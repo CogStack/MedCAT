@@ -569,7 +569,7 @@ class RegressionChecker:
                     successes += 1
                 else:
                     fails += 1
-        if self.use_report:
+        if self.use_report and self.report is not None:
             return self.report
         return successes, fails
 
