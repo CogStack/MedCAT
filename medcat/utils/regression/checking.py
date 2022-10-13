@@ -10,6 +10,7 @@ from pydantic import BaseModel
 from medcat.cat import CAT
 from medcat.cdb import CDB
 
+from results import MultiDescriptor, ResultDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -369,6 +370,7 @@ class RegressionCase(BaseModel):
     options: FilterOptions
     filters: List[TypedFilter]
     phrases: List[str]
+    report: Optional[ResultDescriptor] = None
 
     def get_all_targets(self, in_set: Iterator[TargetInfo], translation: TranslationLayer) -> Iterator[TargetInfo]:
         """Get all applicable targets for this regression case
@@ -407,14 +409,16 @@ class RegressionCase(BaseModel):
         res = cat.get_entities(phrase % ti.val, only_cui=True)
         ents = res['entities']
         found_cuis = [ents[nr] for nr in ents]
-        if ti.cui in found_cuis:
+        success = ti.cui in found_cuis
+        if success:
             logger.debug(
                 'Matched test case %s in phrase "%s"', ti, phrase)
-            return True
         else:
             logger.debug(
                 'FAILED to match test case %s in phrase "%s", found the following CUIS: %s', ti, phrase, found_cuis)
-            return False
+        if self.report is not None:
+            self.report.report(ti.cui, ti.val, phrase, success)
+        return success
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
         """Get all subcases for this case.
@@ -511,10 +515,19 @@ class RegressionChecker:
 
     Args:
         cases (List[RegressionCase]): The list of regression cases
+        use_report (bool): Whether or not to use the report functionality (defaults to False)
     """
 
-    def __init__(self, cases: List[RegressionCase]) -> None:
+    def __init__(self, cases: List[RegressionCase], use_report: bool = True) -> None:
         self.cases: List[RegressionCase] = cases
+        self.use_report = use_report
+        self.report: Optional[MultiDescriptor] = None if not self.use_report else MultiDescriptor(
+            name='ALL')  # TODO - allow setting names
+        if self.report is not None:
+            for case in self.cases:
+                cur_rd = ResultDescriptor(name=case.name)
+                self.report.parts.append(cur_rd)
+                case.report = cur_rd
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, TargetInfo, str]]:
         """Get all subcases (i.e regssion case, target info and phrase) for this checker.
@@ -529,7 +542,8 @@ class RegressionChecker:
             for ti, phrase in case.get_all_subcases(translation):
                 yield case, ti, phrase
 
-    def check_model(self, cat: CAT, translation: TranslationLayer, total: Optional[int] = None) -> Tuple[int, int]:
+    def check_model(self, cat: CAT, translation: TranslationLayer,
+                    total: Optional[int] = None) -> Union[Tuple[int, int], MultiDescriptor]:
         """_summary_
 
         Args:
@@ -538,7 +552,8 @@ class RegressionChecker:
             total (Optional[int]): The total number of (sub)cases expected (for a progress bar)
 
         Returns:
-            Tuple[int, int]: The number of successful and failed checks
+            Union[Tuple[int, int], MultiDescriptor]: The number of successful and failed checks,
+                                                        or a MultiDescriptor if a report was requested
         """
         successes, fails = 0, 0
         if total is not None:
@@ -553,6 +568,8 @@ class RegressionChecker:
                     successes += 1
                 else:
                     fails += 1
+        if self.use_report:
+            return self.report
         return successes, fails
 
     def __str__(self) -> str:
