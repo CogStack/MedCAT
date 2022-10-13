@@ -579,7 +579,7 @@ class RegressionChecker:
         return f'<{self}>'
 
     @classmethod
-    def from_dict(cls, in_dict: dict) -> 'RegressionChecker':
+    def from_dict(cls, in_dict: dict, report: bool = False) -> 'RegressionChecker':
         """Construct a RegressionChecker from a dict.
 
         Most of the parsing is handled in RegressionChecker.from_dict.
@@ -588,6 +588,7 @@ class RegressionChecker:
 
         Args:
             in_dict (dict): The input dict
+            report (bool): Whether or not to use a more comprehensive report (defaults to False)
 
         Returns:
             RegressionChecker: The built regression checker
@@ -596,20 +597,21 @@ class RegressionChecker:
         for case_name, details in in_dict.items():
             case = RegressionCase.from_dict(case_name, details)
             cases.append(case)
-        return RegressionChecker(cases=cases)
+        return RegressionChecker(cases=cases, use_report=report)
 
     @classmethod
-    def from_yaml(cls, file_name: str) -> 'RegressionChecker':
+    def from_yaml(cls, file_name: str, report: bool = False) -> 'RegressionChecker':
         """Constructs a RegressionChcker from a YAML file.
 
         The from_dict method is used for the construction from the dict.
 
         Args:
             file_name (str): The file name
+            report (bool): Whether or not to use a more comprehensive report (defaults to False)
 
         Returns:
             RegressionChecker: The constructed regression checker
         """
         with open(file_name, 'r') as f:
             data = yaml.safe_load(f)
-        return RegressionChecker.from_dict(data)
+        return RegressionChecker.from_dict(data, report=report)
