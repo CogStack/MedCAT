@@ -44,6 +44,8 @@ class FakeCDB:
         self.cui2names = {}
         self.name2cuis = {}
         self.cui2type_ids = {}
+        pt2ch = {}
+        self.addl_info = {'pt2ch': pt2ch}
         for cui, name, type_id in infos:
             if cui in self.cui2names:
                 self.cui2names[cui].add(name)
@@ -57,6 +59,7 @@ class FakeCDB:
                 self.name2cuis[name].add(cui)
             else:
                 self.name2cuis[name] = set([cui])
+        pt2ch.update(dict((cui, set()) for cui in self.cui2names))
 
 
 class FakeCat:
@@ -100,8 +103,9 @@ _tts = TypedFilter.from_dict(_D)
 _cui2names = {_CUI: [_NAME, ]}
 _name2cuis = {_NAME: [_CUI, ]}
 _cui2type_ids = {_CUI: [_TYPE_ID, ]}
-_tl = TranslationLayer(cui2names=_cui2names,
-                       name2cuis=_name2cuis, cui2type_ids=_cui2type_ids)
+_cui2children = {}
+_tl = TranslationLayer(cui2names=_cui2names, name2cuis=_name2cuis,
+                       cui2type_ids=_cui2type_ids, cui2children=_cui2children)
 
 
 class TestTypedFilter(unittest.TestCase):
@@ -184,8 +188,9 @@ class TestTypedFilter(unittest.TestCase):
             _name2cuis, **dict((f'{name}sss', f'{cui}123') for cui, name in _name2cuis.items()))
         cui2type_ids = dict(
             _cui2type_ids, **dict((f'{cui}123', 'typeid') for cui in _cui2type_ids))
+        cui2children = {}
         tl = TranslationLayer(cui2names=cui2names, name2cuis=name2cuis,
-                              cui2type_ids=cui2type_ids)
+                              cui2type_ids=cui2type_ids, cui2children=cui2children)
         self.assertEqual(len(_tts), 1)
         tt = _tts[0]
         targets = list(tt.get_applicable_targets(tl, tl.all_targets()))
@@ -327,6 +332,83 @@ class TestRegressionCase(unittest.TestCase):
         success, fail = rc.check_case(FakeCat(tl), tl)
         self.assertEqual(fail, 0)
         self.assertEqual(success, len(EXAMPLE_TYPE_T1_CUI))
+
+    PARENT_CUI = 'C123'
+    CHILD_CUI = 'C124'
+    D_PARENT_W_CHILDREN = {'targeting': {'filters': {
+        'cui_and_children': {'cui': PARENT_CUI, 'depth': 1}}},
+        'phrases': ['%s']}
+    PT2CHILD = {PARENT_CUI: set([CHILD_CUI])}
+
+    def test_cui_and_children_finds_child(self):
+        NAME = 'NAMEpt2ch'
+        cdb = FakeCDB(*EXAMPLE_INFOS)
+        cdb.addl_info['pt2ch'].update(self.PT2CHILD)
+        tl = TranslationLayer.from_CDB(cdb)
+        D = self.D_PARENT_W_CHILDREN
+        rc: RegressionCase = RegressionCase.from_dict(NAME, D)
+        success, fail = rc.check_case(FakeCat(tl), tl)
+        self.assertEqual(fail, 0)
+        expected = len(cdb.cui2names[self.PARENT_CUI]) + \
+            len(cdb.cui2names[self.CHILD_CUI])
+        self.assertEqual(success, expected)
+
+    P_CUI = 'C123'
+    C_CUI1 = 'C124'
+    C_CUI2 = 'C223'
+    C_CUI1_C1 = 'C224'
+    C_CUI1_C1_C1 = 'C323'
+    C_CUI1_C1_C1_C1 = 'C324'
+    D_MULIT_CHILD_1 = {'targeting': {'filters': {
+        'cui_and_children': {'cui': P_CUI, 'depth': 2}}},
+        'phrases': ['%s']}
+    PT2CHILD_M1 = {P_CUI: set([C_CUI1, C_CUI2]),
+                   C_CUI1: set([C_CUI1_C1]),
+                   C_CUI1_C1: set([C_CUI1_C1_C1]),
+                   C_CUI1_C1_C1: set([C_CUI1_C1_C1_C1])}
+
+    def test_cui_and_children_finds_children_depth_2(self):
+        NAME = 'NAMEpt2ch'
+        cdb = FakeCDB(*EXAMPLE_INFOS)
+        cdb.addl_info['pt2ch'].update(self.PT2CHILD_M1)
+        tl = TranslationLayer.from_CDB(cdb)
+        D = self.D_MULIT_CHILD_1
+        rc: RegressionCase = RegressionCase.from_dict(NAME, D)
+        success, fail = rc.check_case(FakeCat(tl), tl)
+        self.assertEqual(fail, 0)
+        expected = len(cdb.cui2names[self.P_CUI])
+        # children
+        for child in tl.cui2children[self.P_CUI]:
+            expected += len(cdb.cui2names[child])
+            # children of children
+            for child2 in tl.cui2children[child]:
+                expected += len(cdb.cui2names[child2])
+        self.assertEqual(success, expected)
+
+    D_MULIT_CHILD_2 = {'targeting': {'filters': {
+        'cui_and_children': {'cui': P_CUI, 'depth': 3}}},
+        'phrases': ['%s']}
+
+    def test_cui_and_children_finds_children_depth_3(self):
+        NAME = 'NAMEpt2ch'
+        cdb = FakeCDB(*EXAMPLE_INFOS)
+        cdb.addl_info['pt2ch'].update(self.PT2CHILD_M1)
+        tl = TranslationLayer.from_CDB(cdb)
+        D = self.D_MULIT_CHILD_2
+        rc: RegressionCase = RegressionCase.from_dict(NAME, D)
+        success, fail = rc.check_case(FakeCat(tl), tl)
+        self.assertEqual(fail, 0)
+        expected = len(cdb.cui2names[self.P_CUI])
+        # children
+        for child in tl.cui2children[self.P_CUI]:
+            expected += len(cdb.cui2names[child])
+            # children of children
+            for child2 in tl.cui2children[child]:
+                expected += len(cdb.cui2names[child2])
+                # children of children of children
+                for child3 in tl.cui2children[child2]:
+                    expected += len(cdb.cui2names[child3])
+        self.assertEqual(success, expected)
 
 
 class TestRegressionChecker(unittest.TestCase):
