@@ -26,7 +26,6 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0, total: Opt
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
     st = time.time()
-    # TODO - use total
     s, f = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
     logger.info('Checking took %s seconds', time.time() - st)
     logger.info('\tSuccessful:\t%d\n\tFailed:\t\t%d', s, f)
