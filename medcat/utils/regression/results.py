@@ -62,7 +62,7 @@ class MultiDescriptor(pydantic.BaseModel):
         Returns:
             str: The report string
         """
-        del_out = ''
+        del_out = ''  # delegation
         total_s, total_f = 0, 0
         for part in self.parts:
             total_s += part.success
@@ -74,4 +74,5 @@ class MultiDescriptor(pydantic.BaseModel):
         total_total = total_s + total_f
         return f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}"
         Total success:  {total_s:10d} ({100 * total_s / total_total if total_total > 0 else 0}%)
-        Total failure:  {total_f:10d} ({100 * total_f / total_total if total_total > 0 else 0}%)"""
+        Total failure:  {total_f:10d} ({100 * total_f / total_total if total_total > 0 else 0}%)
+        {del_out}"""
