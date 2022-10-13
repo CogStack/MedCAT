@@ -410,6 +410,18 @@ class TestRegressionCase(unittest.TestCase):
                     expected += len(cdb.cui2names[child3])
         self.assertEqual(success, expected)
 
+    def test_gets_with_ANY_strategy(self):
+        NAME = 'ANYNAME'
+        tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
+        D = {'targeting': {'strategy': 'any', 'filters': {
+            'cui': ['C123', 'C124'], 'name': ['N223', 'N224']}}, 'phrases': ['%s']}
+        rc: RegressionCase = RegressionCase.from_dict(NAME, D)
+        success, fail = rc.check_case(FakeCat(tl), tl)
+        self.assertEqual(fail, 0)
+        expected = sum([len(tl.cui2children[cui]) for cui in D['targeting']
+                       ['filters']['cui']]) + len(D['targeting']['filters']['name'])
+        self.assertEqual(success, expected)
+
 
 class TestRegressionChecker(unittest.TestCase):
 
