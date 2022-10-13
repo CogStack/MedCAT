@@ -61,14 +61,14 @@ test-case-2:
   phrases:
   - "Patient presented with %s"
   - "No %s was present"
-test-case-2:
+test-case-3:
   targeting:
     filters:
       type_id: "67667581"
   phrases:
   - "The patient has been diagnosed with %s"
   - "There are no signs of %s"
-test-case-3:
+test-case-4:
   targeting:
     strategy: "ALL"
     filters:
