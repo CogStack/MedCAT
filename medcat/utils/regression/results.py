@@ -87,8 +87,11 @@ class MultiDescriptor(pydantic.BaseModel):
         """
         return sum(part.fail for part in self.parts)
 
-    def get_report(self) -> str:
+    def get_report(self, phrases_separately: bool) -> str:
         """Get the report associated with this descriptor
+
+        Args:
+            phrases_separately (bool): Whether to include per-phrase information
 
         Returns:
             str: The report string
@@ -98,7 +101,9 @@ class MultiDescriptor(pydantic.BaseModel):
         for part in self.parts:
             total_s += part.success
             total_f += part.fail
-            cur_add = '\t' + part.get_report().replace('\n', '\n\t\t')
+            cur_add = '\t' + \
+                part.get_report(phrases_separately=phrases_separately).replace(
+                    '\n', '\n\t\t')
             del_out.append(cur_add)
         total_total = total_s + total_f
         delegated = '\n\t'.join(del_out)
