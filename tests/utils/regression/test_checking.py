@@ -2,7 +2,7 @@
 import unittest
 
 from medcat.utils.regression.checking import FilterStrategy, FilterType, FilterOptions, RegressionChecker
-from medcat.utils.regression.checking import TypedFilter, SingleFilter, MultiFilter
+from medcat.utils.regression.checking import TypedFilter, TypedFilter
 from medcat.utils.regression.checking import TranslationLayer, RegressionCase
 
 DICT_WITH_CUI = {'cui': '123'}
@@ -114,7 +114,7 @@ class TestTypedFilter(unittest.TestCase):
         target_types = [FilterType.CUI, FilterType.NAME, FilterType.TYPE_ID]
         for target_type in target_types:
             with self.subTest(f'With target type {target_type}'):
-                tt = TypedFilter(type=target_type)
+                tt = TypedFilter(type=target_type, values=[])
                 self.assertEqual(tt.type, target_type)
 
     def check_is_correct_target(self, in_dict: dict, *types, test_with_upper_case=True):
@@ -133,43 +133,43 @@ class TestTypedFilter(unittest.TestCase):
 
     def test_constructs_SingleTarget_from_dict_with_single_cui(self):
         self.check_is_correct_target(
-            DICT_WITH_CUI, (FilterType.CUI, SingleFilter))
+            DICT_WITH_CUI, (FilterType.CUI, TypedFilter))
 
     def test_constructs_MultiTarget_from_dict_with_multiple_cuis(self):
         self.check_is_correct_target(
-            DICT_WITH_MULTI_CUI, (FilterType.CUI, MultiFilter))
+            DICT_WITH_MULTI_CUI, (FilterType.CUI, TypedFilter))
 
     def test_constructs_SingleTarget_from_dict_with_single_name(self):
         self.check_is_correct_target(
-            DICT_WITH_NAME, (FilterType.NAME, SingleFilter))
+            DICT_WITH_NAME, (FilterType.NAME, TypedFilter))
 
     def test_constructs_MultiTarget_from_dict_with_multiple_names(self):
         self.check_is_correct_target(
-            DICT_WITH_MULTI_NAME, (FilterType.NAME, MultiFilter))
+            DICT_WITH_MULTI_NAME, (FilterType.NAME, TypedFilter))
 
     def test_constructs_SingleTarget_from_dict_with_single_type_id(self):
         self.check_is_correct_target(
-            DICT_WITH_TYPE_ID, (FilterType.TYPE_ID, SingleFilter))
+            DICT_WITH_TYPE_ID, (FilterType.TYPE_ID, TypedFilter))
 
     def test_constructs_MultiTarget_from_dict_with_multiple_type_ids(self):
         self.check_is_correct_target(
-            DICT_WITH_MULTI_TYPE_ID, (FilterType.TYPE_ID, MultiFilter))
+            DICT_WITH_MULTI_TYPE_ID, (FilterType.TYPE_ID, TypedFilter))
 
     def test_constructs_correct_list_of_types_1(self):
         self.check_is_correct_target(DICT_WITH_MIX_1, (
-            FilterType.CUI, SingleFilter), (FilterType.NAME, SingleFilter))
+            FilterType.CUI, TypedFilter), (FilterType.NAME, TypedFilter))
 
     def test_constructs_correct_list_of_types_2(self):
         self.check_is_correct_target(DICT_WITH_MIX_2, (
-            FilterType.NAME, SingleFilter), (FilterType.TYPE_ID, MultiFilter))
+            FilterType.NAME, TypedFilter), (FilterType.TYPE_ID, TypedFilter))
 
     def test_constructs_correct_list_of_types_3(self):
         self.check_is_correct_target(DICT_WITH_MIX_3, (
-            FilterType.NAME, MultiFilter), (FilterType.TYPE_ID, MultiFilter))
+            FilterType.NAME, TypedFilter), (FilterType.TYPE_ID, TypedFilter))
 
     def test_constructs_correct_list_of_types_4(self):
         self.check_is_correct_target(DICT_WITH_MIX_4, (
-            FilterType.NAME, MultiFilter), (FilterType.TYPE_ID, MultiFilter), (FilterType.CUI, MultiFilter))
+            FilterType.NAME, TypedFilter), (FilterType.TYPE_ID, TypedFilter), (FilterType.CUI, TypedFilter))
 
     def test_get_applicable_targets_gets_target(self):
         self.assertEqual(len(_tts), 1)
