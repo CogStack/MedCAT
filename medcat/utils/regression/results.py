@@ -11,7 +11,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
     fail: int = 0
     """Number of failures"""
 
-    def report(self, success: bool) -> None:
+    def report_success(self, success: bool) -> None:
         """Report a test case and its successfulness
 
         Args:
@@ -46,11 +46,11 @@ class ResultDescriptor(SingleResultDescriptor):
             phrase (str): The phrase being checked
             success (bool): Whether or not the check was successful
         """
-        super().report(success)
+        super().report_success(success)
         if phrase not in self.per_phrase_results:
             self.per_phrase_results[phrase] = SingleResultDescriptor(
                 name=phrase)
-        self.per_phrase_results[phrase].report(success)
+        self.per_phrase_results[phrase].report_success(success)
 
     def get_report(self, phrases_separately: bool = False) -> str:
         """Get the report associated with this descriptor
