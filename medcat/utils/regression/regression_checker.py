@@ -15,7 +15,8 @@ logger = logging.getLogger(__name__)
 
 
 def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0,
-         total: Optional[int] = None, report: bool = False) -> None:
+         total: Optional[int] = None, report: bool = False,
+         phrases: bool = False) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -23,6 +24,7 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0,
         test_suite_file (Path): The path to the test suite YAML
         total (Optional[int]): The total number of (sub)cases to be tested (for progress bar)
         report (bool): Whether to use a more comprehensive report
+        phrases (bool): Whether to show per-phrase information in a report
     """
     logger.info('Loading RegressionChecker from yaml: %s', test_suite_file)
     rc = RegressionChecker.from_yaml(str(test_suite_file), report=report)
@@ -33,9 +35,9 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0,
     # s, f = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
     res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
     if report and isinstance(res, MultiDescriptor):
-        logger.info(res.get_report())
+        logger.info(res.get_report(phrases_separately=phrases))
         return
-    s, f = res # tuple
+    s, f = res  # tuple
     logger.info('Checking took %s seconds', time.time() - st)
     logger.info('\tSuccessful:\t%d\n\tFailed:\t\t%d', s, f)
     if f > max_failures:
@@ -64,6 +66,8 @@ if __name__ == '__main__':
                         'If unknown, a large-ish number might still be beneficial to show progress.', type=int, default=None)
     parser.add_argument('--report', help='Show a more comprehensive report instead of a simple '
                         'total of success and failures', action='store_true')
+    parser.add_argument('--phrases', '-p', help='Include per-phrase information in report '
+                        '(only applicable if --report was passed)', action='store_true')
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -73,4 +77,5 @@ if __name__ == '__main__':
         checking_logger.addHandler(logging.StreamHandler())
         checking_logger.setLevel('DEBUG')
     main(args.modelpack, args.test_suite,
-         max_failures=args.maxfail, total=args.total, report=args.report)
+         max_failures=args.maxfail, total=args.total, report=args.report,
+         phrases=args.phrases)
