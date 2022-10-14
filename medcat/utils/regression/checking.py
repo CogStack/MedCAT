@@ -174,21 +174,38 @@ class FilterType(Enum):
 
 
 class TypedFilter(BaseModel):
-    """The base class for targeting.
+    """A filter with multiple values to filter against.
     """
     type: FilterType
+    values: List[str]
 
-    def get_applicable_targets(self, translation: TranslationLayer, input: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
-        """Get the targets applicable for this filter.
+    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
+        """Get all applicable targets for this filter
 
         Args:
             translation (TranslationLayer): The translation layer
-            input (Iterator[TargetInfo]): The input targets
+            in_gen (Iterator[TargetInfo]): The input generator / iterator
 
         Yields:
-            Iterator[TargetInfo]: The output targets
+            Iterator[TargetInfo]: The output generator
         """
-        pass  # has to be overwritten
+        if self.type == FilterType.CUI or self.type == FilterType.CUI_AND_CHILDREN:
+            for ti in in_gen:
+                if ti.cui in self.values:
+                    yield ti
+        if self.type == FilterType.NAME:
+            for ti in in_gen:
+                if ti.val in self.values:
+                    yield ti
+        if self.type == FilterType.TYPE_ID:
+            for ti in in_gen:
+                if ti.cui in translation.cui2type_ids:
+                    tids = translation.cui2type_ids[ti.cui]
+                else:
+                    tids = set()
+                for tid in tids:
+                    if tid in self.values:
+                        yield ti
 
     @classmethod
     def one_from_input(cls, target_type: str, vals: Union[str, list, dict]) -> 'TypedFilter':
@@ -209,9 +226,7 @@ class TypedFilter(BaseModel):
         """
         t_type: FilterType = FilterType.match_str(target_type)
         filt: TypedFilter
-        if isinstance(vals, list):
-            filt = MultiFilter(type=t_type, values=vals)
-        elif isinstance(vals, dict):
+        if isinstance(vals, dict):
             if t_type != FilterType.CUI_AND_CHILDREN:
                 # currently only applicable for CUI_AND_CHILDREN case
                 raise ValueError(f'Misconfigured config for {target_type}, '
@@ -223,7 +238,9 @@ class TypedFilter(BaseModel):
                 filt = CUIWithChildFilter(
                     type=t_type, delegate=delegate, depth=depth)
         else:
-            filt = SingleFilter(type=t_type, value=vals)
+            if isinstance(vals, str):
+                vals = [vals, ]
+            filt = TypedFilter(type=t_type, values=vals)
         return filt
 
     @classmethod
@@ -235,8 +252,6 @@ class TypedFilter(BaseModel):
         or
         {<filter type>: [<filtered value2>, <filtered value 2>]}
         There can be multiple filter types defined.
-
-        This creates instances MultiFilter and SingleFilter as needed.
 
         Returns:
             List[TypedFilter]: The list of constructed TypedFilter
@@ -281,67 +296,10 @@ class FilterOptions(BaseModel):
         return FilterOptions(strategy=strategy, onlyprefnames=onlyprefnames)
 
 
-class SingleFilter(TypedFilter):
-    """A filter with a single value to filter against.
-    """
-    value: str
-
-    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
-        """Get all applicable targets for this filter
-
-        Args:
-            translation (TranslationLayer): The translation layer
-            in_gen (Iterator[TargetInfo]): The input generator / iterator
-
-        Yields:
-            Iterator[TargetInfo]: The output generator
-        """
-        if self.type == FilterType.CUI or self.type == FilterType.CUI_AND_CHILDREN:
-            for ti in in_gen:
-                if ti.cui == self.value:
-                    yield ti
-        if self.type == FilterType.NAME:
-            for ti in in_gen:
-                if self.value in ti.val:
-                    yield ti
-        if self.type == FilterType.TYPE_ID:
-            for ti in in_gen:
-                if ti.cui in translation.cui2type_ids and self.value in translation.cui2type_ids[ti.cui]:
-                    yield ti
-
-
-class MultiFilter(TypedFilter):
-    """A filter with multiple values to filter against.
-    """
-    values: List[str]
-
-    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
-        """Get all applicable targets for this filter
-
-        Args:
-            translation (TranslationLayer): The translation layer
-            in_gen (Iterator[TargetInfo]): The input generator / iterator
-
-        Yields:
-            Iterator[TargetInfo]: The output generator
-        """
-        if self.type == FilterType.CUI:
-            for ti in in_gen:
-                if ti.cui in self.values:
-                    yield ti
-        if self.type == FilterType.NAME:
-            for ti in in_gen:
-                if ti.val in self.values:
-                    yield ti
-        if self.type == FilterType.TYPE_ID:
-            for ti in in_gen:
-                if ti.cui in translation.cui2type_ids and translation.cui2type_ids[ti.cui] in self.values:
-                    yield ti
-
-
 class CUIWithChildFilter(TypedFilter):
     delegate: TypedFilter
     depth: int
+    values: List[str] = []  # overwrite TypedFilter
 
     def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
         """Get all applicable targets for this filter
