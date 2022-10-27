@@ -404,7 +404,7 @@ _DEFAULT_PARTIAL = _DefPartial()
 
 class LinkingFilters(MixingConfig, BaseModel):
     cuis: Set[str] = set()
-    cuis_exclude: Optional[Set[str]] = set()
+    cuis_exclude: Set[str] = set()
 
     def check_filters(self, cui: str) -> bool:
         """Checks is a CUI in the filters
