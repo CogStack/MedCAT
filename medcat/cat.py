@@ -427,11 +427,11 @@ class CAT(object):
         _filters = deepcopy(self.config.linking.filters)
         filters = self.config.linking.filters
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            filters['cuis'] = set()
+            filters.cuis = set()
 
             # Add extra filter if set
             if isinstance(extra_cui_filter, set):
-                filters['cuis'] = extra_cui_filter
+                filters.cuis = extra_cui_filter
 
             if use_project_filters:
                 project_filter = get_project_filters(cuis=project.get('cuis', None),
@@ -440,7 +440,7 @@ class CAT(object):
                                                      project=project)
                 # Intersect project filter with existing if it has something
                 if project_filter:
-                    filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+                    filters.cuis = intersect_nonempty_set(project_filter, filters.cuis)
 
             for dind, doc in tqdm(
                 enumerate(project["documents"]),
@@ -454,9 +454,9 @@ class CAT(object):
                 if use_cui_doc_limit:
                     _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
+                        filters.cuis = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
-                        filters['cuis'] = {'empty'}
+                        filters.cuis = {'empty'}
 
                 spacy_doc: Doc = self(doc['text'])
 
@@ -901,9 +901,9 @@ class CAT(object):
                 project = train_set['projects'][idx_project]
 
                 # Set filters in case we are using the train_from_fp
-                filters['cuis'] = set()
+                filters.cuis = set()
                 if isinstance(extra_cui_filter, set):
-                    filters['cuis'] = extra_cui_filter
+                    filters.cuis = extra_cui_filter
 
                 if use_filters:
                     project_filter = get_project_filters(cuis=project.get('cuis', None),
@@ -912,7 +912,7 @@ class CAT(object):
                                                          project=project)
 
                     if project_filter:
-                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+                        filters.cuis = intersect_nonempty_set(project_filter, filters.cuis)
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
