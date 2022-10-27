@@ -13,10 +13,11 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 
 ## Available Models
 
-We have 3 public models available:
+We have 4 public models available:
 1) UMLS Small (A modelpack containing a subset of UMLS (disorders, symptoms, medications...). Trained on MIMIC-III)
 2) SNOMED International (Full SNOMED modelpack trained on MIMIC-III)
 3) UMLS Dutch v 1.10 (UMLS Dutch (A Dutch UMLS model pack trained on Dutch medical Wikipedia articles and EMC Dutch Clinical Corpus. Provided by Sander Tan, UMC Utrecht, more info at https://github.com/umcu/dutch-umls))
+4) UMLS Full. >4MM concepts trained self-supervsied on MIMIC-III. v2022AA of UMLS.
 
 To download any of these models, please [follow this link](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) and sign into your NIH profile / UMLS license. You will then be redirected to the MedCAT model download form. Please complete this form and you will be provided a download link.
 
