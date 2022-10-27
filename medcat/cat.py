@@ -927,12 +927,13 @@ class CAT(object):
                             end = ann['end']
                             spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
                             deleted = ann.get('deleted', False)
-                            self.add_and_train_concept(cui=cui,
-                                                       name=ann['value'],
-                                                       spacy_doc=spacy_doc,
-                                                       spacy_entity=spacy_entity,
-                                                       negative=deleted,
-                                                       devalue_others=devalue_others)
+                            if filters.check_filters(cui):
+                                self.add_and_train_concept(cui=cui,
+                                                        name=ann['value'],
+                                                        spacy_doc=spacy_doc,
+                                                        spacy_entity=spacy_entity,
+                                                        negative=deleted,
+                                                        devalue_others=devalue_others)
                     if train_from_false_positives:
                         fps: List[Span] = get_false_positives(doc, spacy_doc)
 
