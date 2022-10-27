@@ -420,6 +420,16 @@ class LinkingFilters(MixingConfig, BaseModel):
         else:
             return False
 
+    def copy_of(self) -> 'LinkingFilters':
+        """Create a copy of this LinkingFilters.
+        This copy will describe an identical filter but will refer to
+        different sets so they can be mutated separately.
+
+        Returns:
+            LinkingFilters: A copy of the original filters.
+        """
+        return LinkingFilters(cuis=set(self.cuis), cuis_exclude=set(self.cuis_exclude))
+
 
 class Linking(MixingConfig, BaseModel):
     optim: dict = {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005}
