@@ -8,7 +8,6 @@ import math
 import time
 import psutil
 from time import sleep
-from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
@@ -423,9 +422,8 @@ class CAT(object):
 
         fp_docs: Set = set()
         fn_docs: Set = set()
-        # reset and back up filters
-        _filters = deepcopy(self.config.linking.filters)
-        filters = self.config.linking.filters
+
+        filters = self.config.linking.filters.copy_of()
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             filters.cuis = set()
 
@@ -582,9 +580,6 @@ class CAT(object):
 
         except Exception:
             traceback.print_exc()
-
-        # restore filters to original state
-        self.config.linking.filters = _filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
@@ -848,9 +843,7 @@ class CAT(object):
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
-        # Backup filters
-        _filters = deepcopy(self.config.linking.filters)
-        filters = self.config.linking.filters
+        local_filters = self.config.linking.filters.copy_of()
 
         fp = fn = tp = p = r = f1 = examples = {}
         with open(data_path) as f:
@@ -901,9 +894,9 @@ class CAT(object):
                 project = train_set['projects'][idx_project]
 
                 # Set filters in case we are using the train_from_fp
-                filters.cuis = set()
+                local_filters.cuis = set()
                 if isinstance(extra_cui_filter, set):
-                    filters.cuis = extra_cui_filter
+                    local_filters.cuis = extra_cui_filter
 
                 if use_filters:
                     project_filter = get_project_filters(cuis=project.get('cuis', None),
@@ -912,7 +905,7 @@ class CAT(object):
                                                          project=project)
 
                     if project_filter:
-                        filters.cuis = intersect_nonempty_set(project_filter, filters.cuis)
+                        local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
@@ -927,7 +920,7 @@ class CAT(object):
                             end = ann['end']
                             spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
                             deleted = ann.get('deleted', False)
-                            if filters.check_filters(cui):
+                            if local_filters.check_filters(cui):
                                 self.add_and_train_concept(cui=cui,
                                                         name=ann['value'],
                                                         spacy_doc=spacy_doc,
@@ -967,9 +960,6 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
-
-        # Set the filters again
-        self.config.linking.filters = _filters
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
