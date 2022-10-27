@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
 from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
 from pydantic.fields import ModelField
-from typing import List, Tuple, cast
+from typing import List, Set, Tuple, cast
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -402,6 +402,25 @@ class _DefPartial:
 _DEFAULT_PARTIAL = _DefPartial()
 
 
+class LinkingFilters(MixingConfig, BaseModel):
+    cuis: Set[str] = set()
+    cuis_exclude: Optional[Set[str]] = set()
+
+    def check_filters(self, cui: str) -> bool:
+        """Checks is a CUI in the filters
+
+        Args:
+            cui (str): The CUI in question
+
+        Returns:
+            bool: True if the CUI is allowed
+        """
+        if cui in self.cuis or not self.cuis:
+            return cui not in self.cuis_exclude
+        else:
+            return False
+
+
 class Linking(MixingConfig, BaseModel):
     optim: dict = {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005}
     """Linear anneal"""
@@ -411,7 +430,7 @@ class Linking(MixingConfig, BaseModel):
     """Context vector sizes that will be calculated and used for linking"""
     context_vector_weights: dict = {'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1}
     """Weight of each vector in the similarity score - make trainable at some point. Should add up to 1."""
-    filters: dict = {'cuis': set(), } # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
+    filters: LinkingFilters = LinkingFilters()
     """Filters"""
     train: bool = True
     """Should it train or not, this is set automatically ignore in 99% of cases and do not set manually"""
