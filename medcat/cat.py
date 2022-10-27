@@ -32,7 +32,7 @@ from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
-from medcat.utils.filters import get_project_filters, check_filters
+from medcat.utils.filters import get_project_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
@@ -471,7 +471,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if check_filters(cui, filters):
+                    if filters.check_filters(cui):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
