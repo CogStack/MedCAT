@@ -247,6 +247,29 @@ class CATTests(unittest.TestCase):
         for step in range(1, (nepochs_train + nepochs_retrain) * num_of_documents):
             self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
 
+    def test_train_supervised_does_not_retain_MCT_filters_default(self):
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
+        before = str(self.undertest.config.linking.filters)
+        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True)
+        after = str(self.undertest.config.linking.filters)
+        self.assertEqual(before, after)
+
+    def test_train_supervised_can_retain_MCT_filters(self):
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
+        before = str(self.undertest.config.linking.filters)
+        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, retain_filters=True)
+        after = str(self.undertest.config.linking.filters)
+        print('BEFORE', before)
+        print('AFTER', after)
+        self.assertNotEqual(before, after)
+        with open(data_path, 'r') as f:
+            project0 = json.load(f)['projects'][0]
+        filtered_cuis = project0['cuis'].split(',')
+        self.assertGreater(len(filtered_cuis), 0)
+        for filtered_cui in filtered_cuis:
+            with self.subTest(f'CUI: {filtered_cui}'):
+                self.assertTrue(filtered_cui in self.undertest.config.linking.filters.cuis)
+
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)
         self.assertEqual({}, out["entities"])
