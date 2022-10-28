@@ -259,8 +259,6 @@ class CATTests(unittest.TestCase):
         before = str(self.undertest.config.linking.filters)
         self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, retain_filters=True)
         after = str(self.undertest.config.linking.filters)
-        print('BEFORE', before)
-        print('AFTER', after)
         self.assertNotEqual(before, after)
         with open(data_path, 'r') as f:
             project0 = json.load(f)['projects'][0]
