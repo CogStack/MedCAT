@@ -423,13 +423,13 @@ class CAT(object):
         fp_docs: Set = set()
         fn_docs: Set = set()
 
-        filters = self.config.linking.filters.copy_of()
+        local_filters = self.config.linking.filters.copy_of()
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            filters.cuis = set()
+            local_filters.cuis = set()
 
             # Add extra filter if set
             if isinstance(extra_cui_filter, set):
-                filters.cuis = extra_cui_filter
+                local_filters.cuis = extra_cui_filter
 
             if use_project_filters:
                 project_filter = get_project_filters(cuis=project.get('cuis', None),
@@ -438,7 +438,7 @@ class CAT(object):
                                                      project=project)
                 # Intersect project filter with existing if it has something
                 if project_filter:
-                    filters.cuis = intersect_nonempty_set(project_filter, filters.cuis)
+                    local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
 
             for dind, doc in tqdm(
                 enumerate(project["documents"]),
@@ -452,9 +452,9 @@ class CAT(object):
                 if use_cui_doc_limit:
                     _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        filters.cuis = intersect_nonempty_set(_cuis, extra_cui_filter)
+                        local_filters.cuis = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
-                        filters.cuis = {'empty'}
+                        local_filters.cuis = {'empty'}
 
                 spacy_doc: Doc = self(doc['text'])
 
@@ -469,7 +469,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if filters.check_filters(cui):
+                    if local_filters.check_filters(cui):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
