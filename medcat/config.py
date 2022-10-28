@@ -428,7 +428,7 @@ class LinkingFilters(MixingConfig, BaseModel):
         Args:
             other (LinkingFilters): The other filter to merge with
         """
-        self.cuis = intersect_nonempty_set(self.cuis, other.cuis)
+        self.cuis = intersect_nonempty_set(other.cuis, self.cuis)
         self.cuis_exclude.update(other.cuis_exclude) # TODO - something different?
 
     def copy_of(self) -> 'LinkingFilters':
