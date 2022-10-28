@@ -35,7 +35,7 @@ from medcat.utils.filters import get_project_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
-from medcat.config import Config
+from medcat.config import Config, LinkingFilters
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
@@ -428,17 +428,7 @@ class CAT(object):
             local_filters.cuis = set()
 
             # Add extra filter if set
-            if isinstance(extra_cui_filter, set):
-                local_filters.cuis = extra_cui_filter
-
-            if use_project_filters:
-                project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                     type_ids=project.get('tuis', None),
-                                                     cdb=self.cdb,
-                                                     project=project)
-                # Intersect project filter with existing if it has something
-                if project_filter:
-                    local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
+            self._set_project_filters(local_filters, project, extra_cui_filter, use_project_filters)
 
             for dind, doc in tqdm(
                 enumerate(project["documents"]),
@@ -582,6 +572,29 @@ class CAT(object):
             traceback.print_exc()
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
+
+    def _set_project_filters(self, local_filters: LinkingFilters, project: dict,
+             extra_cui_filter: Optional[Set], use_project_filters: bool):
+        """Set the project filters to a LinkingFilters object based on
+        the specified project.
+
+        Args:
+            local_filters (LinkingFilters): The linking filters instance
+            project (dict): The project
+            extra_cui_filter (Optional[Set]): Extra CUIs (if specified)
+            use_project_filters (bool): Whether to use per-project filters
+        """
+        if isinstance(extra_cui_filter, set):
+            local_filters.cuis = extra_cui_filter
+
+        if use_project_filters:
+            project_filter = get_project_filters(cuis=project.get('cuis', None),
+                                                    type_ids=project.get('tuis', None),
+                                                    cdb=self.cdb,
+                                                    project=project)
+            # Intersect project filter with existing if it has something
+            if project_filter:
+                local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
 
     def _init_ckpts(self, is_resumed, checkpoint):
         if self.config.general.checkpoint.steps is not None or checkpoint is not None:
@@ -906,18 +919,7 @@ class CAT(object):
                 project = train_set['projects'][idx_project]
 
                 # Set filters in case we are using the train_from_fp
-                local_filters.cuis = set()
-                if isinstance(extra_cui_filter, set):
-                    local_filters.cuis = extra_cui_filter
-
-                if use_filters:
-                    project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                         type_ids=project.get('tuis', None),
-                                                         cdb=self.cdb,
-                                                         project=project)
-
-                    if project_filter:
-                        local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
+                self._set_project_filters(local_filters, project, extra_cui_filter, use_filters)
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
