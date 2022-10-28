@@ -871,7 +871,7 @@ class CAT(object):
 
         if retain_filters:
             # TODO - allow specifying number of project to retain?
-            if len(data) > 1:
+            if len(data['projects']) > 1:
                 raise ValueError('Cannot retain multiple (potentially) different filters from multiple projects')
             # will merge with local when loading in project
 
