@@ -778,6 +778,7 @@ class CAT(object):
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
                          checkpoint: Optional[Checkpoint] = None,
+                         retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
         r""" TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
@@ -821,6 +822,11 @@ class CAT(object):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
             checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
                 The MedCAT CheckpointST object
+            retain_filters (bool):
+                If True, retain the filters in the MedCATtrainer export within this CAT instance. In other words, the
+                filters defined in the input file will henseforth be saved within config.linking.filters .
+                This only makes sense if there is only one project in the input data. If that is not the case,
+                a ValueError is raised. The merging is done in the first epoch.
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
@@ -849,6 +855,12 @@ class CAT(object):
         with open(data_path) as f:
             data = json.load(f)
         cui_counts = {}
+
+        if retain_filters:
+            # TODO - allow specifying number of project to retain?
+            if len(data) > 1:
+                raise ValueError('Cannot retain multiple (potentially) different filters from multiple projects')
+            # will merge with local when loading in project
 
         if test_size == 0:
             logger.info("Running without a test set, or train==test")
@@ -942,6 +954,10 @@ class CAT(object):
                     latest_trained_step += 1
                     if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
+                if retain_filters:
+                    self.config.linking.filters.merge_with(local_filters)
+                    # refrain from doing it again for subsequent epochs
+                    retain_filters = False
 
             if terminate_last and not never_terminate:
                 # Remove entities that were terminated, but after all training is done
