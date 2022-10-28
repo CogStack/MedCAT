@@ -10,6 +10,7 @@ from functools import partial
 import re
 
 from medcat.utils.hasher import Hasher
+from medcat.utils.matutils import intersect_nonempty_set
 
 
 logger = logging.getLogger(__name__)
@@ -419,6 +420,16 @@ class LinkingFilters(MixingConfig, BaseModel):
             return cui not in self.cuis_exclude
         else:
             return False
+
+    def merge_with(self, other: 'LinkingFilters') -> None:
+        """Merge CUIs and excluded CUIs within two filters.
+        The data will be kept within this filter (and not the other).
+
+        Args:
+            other (LinkingFilters): The other filter to merge with
+        """
+        self.cuis = intersect_nonempty_set(self.cuis, other.cuis)
+        self.cuis_exclude.update(other.cuis_exclude) # TODO - something different?
 
     def copy_of(self) -> 'LinkingFilters':
         """Create a copy of this LinkingFilters.
