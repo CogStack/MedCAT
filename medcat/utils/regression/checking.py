@@ -1,11 +1,11 @@
 
 
-from typing import Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
 import yaml
 import logging
 import tqdm
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import FilterOptions, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
@@ -112,7 +112,7 @@ class RegressionCase(BaseModel):
         Returns:
             dict: The dict representation
         """
-        d = {'phrases': list(self.phrases)}
+        d: Dict[str, Any] = {'phrases': list(self.phrases)}
         targeting = self.options.to_dict()
         targeting['filters'] = {}
         for filt in self.filters:
@@ -263,7 +263,7 @@ class RegressionChecker:
         """
         return yaml.dump(self.to_dict())
 
-    def __eq__(self, other: 'RegressionChecker') -> bool:
+    def __eq__(self, other: object) -> bool:
         # only checks cases
         if not isinstance(other, RegressionChecker):
             return False
