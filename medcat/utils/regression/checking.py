@@ -5,7 +5,7 @@ import yaml
 import logging
 import tqdm
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import FilterOptions, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
@@ -113,8 +113,11 @@ class RegressionCase(BaseModel):
             dict: The dict representation
         """
         d = {'phrases': list(self.phrases)}
-        d['targeting'] = self.options.to_dict()
-        d['targeting'].update([filt.to_dict() for filt in self.filters])
+        targeting = self.options.to_dict()
+        targeting['filters'] = {}
+        for filt in self.filters:
+            targeting['filters'].update(filt.to_dict())
+        d['targeting'] = targeting
         return d
 
     @classmethod
@@ -259,6 +262,12 @@ class RegressionChecker:
             str: The YAML representation
         """
         return yaml.dump(self.to_dict())
+
+    def __eq__(self, other: 'RegressionChecker') -> bool:
+        # only checks cases
+        if not isinstance(other, RegressionChecker):
+            return False
+        return self.cases == other.cases
 
     @classmethod
     def from_dict(cls, in_dict: dict, report: bool = False) -> 'RegressionChecker':
