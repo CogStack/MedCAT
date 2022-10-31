@@ -5,7 +5,7 @@ import os
 from pathlib import Path
 from typing import List, Optional
 
-from medcat.utils.regression.converting import PerSentenceSelector, PerWordContextSelector, medcat_export_json_to_regression_yml
+from medcat.utils.regression.converting import ContextSelector, PerSentenceSelector, PerWordContextSelector, medcat_export_json_to_regression_yml
 
 
 logger = logging.getLogger(__name__)
@@ -18,6 +18,7 @@ def main(mct_export: str, target: str, overwrite: bool = False,
                          "pass '--overwrite' to force an overwrite")
     logger.info(
         "Starting to convert export JSON to YAML from file %s", mct_export)
+    cont_sel: ContextSelector
     if not words:
         cont_sel = PerSentenceSelector()
     else:
