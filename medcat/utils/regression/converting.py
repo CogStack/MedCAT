@@ -13,6 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 class ContextSelector:
+    """Describes how the context of a concept is found.
+    A sub-class should be used as this one has no implementation.
+    """
 
     def _splitter(self, text: str) -> List[str]:
         text = re.sub(' +', ' ', text)  # remove duplicate spaces
@@ -21,12 +24,33 @@ class ContextSelector:
             len(word) > 1 or re.match('\w', word))]
 
     def get_context(self, text: str, start: int, end: int) -> str:
+        """Get the context of a concept within a larger body of text.
+        The concept is specifiedb by its start and end indices.
+
+        Args:
+            text (str): The larger text
+            start (int): The starting index
+            end (int): The ending index
+
+        Returns:
+            str: The select contexts
+        """
         pass  # should be overwritten by subclass
 
 
 class PerWordContextSelector(ContextSelector):
+    """Context selector that selects a number of words
+    from either side of the concept, regardless of punctuation.
+
+    Args:
+        words_before (int): Number of words to select from before concept
+        words_after (int): Number of words to select from after concepts
+    """
 
     def __init__(self, words_before: int, words_after: int) -> None:
+        """_summary_
+
+        """
         self.words_before = words_before
         self.words_after = words_after
 
@@ -39,6 +63,9 @@ class PerWordContextSelector(ContextSelector):
 
 
 class PerSentenceSelector(ContextSelector):
+    """Context selector that selects a sentence as context.
+    Sentences are said to end with either ".", "?" or "!".
+    """
     stoppers = '\.+|\?+|!+'
 
     def get_context(self, text: str, start: int, end: int) -> str:
@@ -59,7 +86,18 @@ class PerSentenceSelector(ContextSelector):
         return (context_before + concept + context_after).strip()
 
 
-def medcat_export_json_to_regression_yml(mct_export_file: str, ) -> str:
+def medcat_export_json_to_regression_yml(mct_export_file: str,
+                                         cont_sel: ContextSelector = PerSentenceSelector()) -> str:
+    """Extract regression test cases from a MedCATtrainer export yaml.
+    This is done based on the context selector specified.
+
+    Args:
+        mct_export_file (str): The MCT export file path
+        cont_sel (ContextSelector, optional): The context selector. Defaults to PerSentenceSelector().
+
+    Returns:
+        str: _description_
+    """
     with open(mct_export_file, 'r') as f:
         data = json.load(f)
     test_cases = []
@@ -80,7 +118,8 @@ def medcat_export_json_to_regression_yml(mct_export_file: str, ) -> str:
                     strategy=FilterStrategy.ANY, onlyprefnames=False)
                 filt = TypedFilter(type=FilterType.NAME,
                                    values=[target_name, ])
-                phrase = text[:start] + '%s' + text[end:]
+                context = cont_sel.get_context(text, start, end)
+                phrase = context.replace(target_name, '%')
                 rc = RegressionCase(name=f'{name.replace(" ", "-").replace(" ", "-")}-'
                                     f'{target_name.replace(" ", "-")}', options=fo, filters=[filt, ], phrases=[phrase, ])
                 test_cases.append(rc)
