@@ -1,10 +1,11 @@
 import json
+import re
 import unittest
 import yaml
 
 from medcat.utils.regression.checking import RegressionChecker
 
-from medcat.utils.regression.converting import medcat_export_json_to_regression_yml
+from medcat.utils.regression.converting import PerSentenceSelector, PerWordContextSelector, medcat_export_json_to_regression_yml
 from medcat.utils.regression.targeting import TargetInfo
 
 
@@ -53,3 +54,90 @@ class TestConversion(unittest.TestCase):
         nr_of_cases = len(list(checker.get_all_subcases(
             FakeTranslationLayer(mct_export))))
         self.assertEqual(nr_of_cases, expected)
+
+
+class TestSelectors(unittest.TestCase):
+    words_before = 2
+    words_after = 3
+
+    def test_PerWordContext_contains_concept(self, text='some random text with #TEST# stuff and'
+                                             ' then some more text', find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        pwcs = PerWordContextSelector(self.words_before, self.words_after)
+        context = pwcs.get_context(text, start, end)
+        self.assertIn(find, context)
+
+    def test_PerWordContextSelector_selects_words_both_sides_plenty(self,
+                                                                    text='with some text here #TEST# and some text after',
+                                                                    find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        pwcs = PerWordContextSelector(self.words_before, self.words_after)
+        context = pwcs.get_context(text, start, end)
+        expected_words = self.words_before + \
+            self.words_after + 1  # 1 for the word to be found
+        nr_of_original_words = len(text.split())
+        nr_of_words_in_context = len(context.split())
+        self.assertLessEqual(nr_of_words_in_context, nr_of_original_words)
+        self.assertEqual(nr_of_words_in_context, expected_words)
+
+    def test_PerWordContextSelector_selects_words_both_sides_short(self,
+                                                                   text='one #TEST# each',
+                                                                   find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        pwcs = PerWordContextSelector(self.words_before, self.words_after)
+        context = pwcs.get_context(text, start, end)
+        nr_of_original_words = len(text.split())
+        expected_words = nr_of_original_words  # all
+        nr_of_words_in_context = len(context.split())
+        self.assertEqual(nr_of_words_in_context, expected_words)
+
+    def test_PerWordContextSelector_no_care_sentences(self,
+                                                      text='sentence ends. #TEST# here. '
+                                                      'And more stuff',
+                                                      find='#TEST#'):
+        self.test_PerWordContextSelector_selects_words_both_sides_plenty(
+            text, find)
+
+    def test_PerSentenceSelector_contains_concept(self, text='other sentence ends.'
+                                                  ' some random text with #TEST# stuff and'
+                                                  ' then sentence ends.'
+                                                  ' some more text', find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        psc = PerSentenceSelector()
+        context = psc.get_context(text, start, end)
+        self.assertIn(find, context)
+
+    def test_PerSentenceSelector_selects_sentence_ends_long(self, text='Prev sent. Now #TEST# sentence that ends with a lot of words.'
+                                                            'And then there is more sentences. And more.', find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        psc = PerSentenceSelector()
+        context = psc.get_context(text, start, end)
+        self.assertIsNone(re.search(psc.stoppers, context))
+        self.assertLessEqual(len(context), len(text))
+        man_found = text[text.rfind(
+            '.', 0, start) + 1: text.find('.', end)].strip()
+        self.assertEqual(context, man_found)
+
+    def test_PerSentenceSelector_selects_first_sent(self, text='First #TEST# sentence. That ends early.'
+                                                    'And then there is more sentences. And more.', find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        psc = PerSentenceSelector()
+        context = psc.get_context(text, start, end)
+        self.assertIn(context, text)
+        self.assertTrue(text.startswith(context))
+
+    def test_PerSentenceSelector_selects_last_sent(self, text='Firs there are sentences.'
+                                                   'And then there are more. Finally, we have #TEST# word',
+                                                   find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        psc = PerSentenceSelector()
+        context = psc.get_context(text, start, end)
+        self.assertIn(context, text)
+        self.assertTrue(text.endswith(context))
