@@ -1,8 +1,8 @@
 
 import unittest
 
-from medcat.utils.regression.targeting import CUIWithChildFilter, FilterType, FilterStrategy, FilterOptions
-from medcat.utils.regression.targeting import TypedFilter, TranslationLayer
+from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterStrategy, FilterType
+from medcat.utils.regression.targeting import TypedFilter
 from medcat.utils.regression.checking import RegressionChecker, RegressionCase
 
 
@@ -32,11 +32,7 @@ class TestSerialisation(unittest.TestCase):
         tf = CUIWithChildFilter(
             type=FilterType.CUI_AND_CHILDREN, depth=depth, delegate=delegate)
         tf2 = TypedFilter.from_dict(tf.to_dict())[0]
-        print('TF dict', tf.to_dict())
         self.assertIsInstance(tf2, CUIWithChildFilter)
-        print('tf1', tf)
-        print('vs')
-        print('tf2', tf2)
         self.assertEqual(tf, tf2)
 
     def test_multiple_TypedFilter_serialise(self, ft1=FilterType.NAME, ft2=FilterType.CUI, vals1=['NAMEFILTER1'], vals2=['CUI1']):
@@ -68,7 +64,47 @@ class TestSerialisation(unittest.TestCase):
         tf2 = TypedFilter(type=ft2, values=vals2)
         the_dict = TypedFilter.list_to_dict([tf1, tf2])
         self.assertIsInstance(the_dict, dict)
-        print('THE dict', the_dict)
         tf1_cp, tf2_cp = TypedFilter.from_dict(the_dict)
         self.assertEqual(tf1, tf1_cp)
         self.assertEqual(tf2, tf2_cp)
+
+    def test_RegressionCase_serialises(self, name='the-name', options=FilterOptions(strategy=FilterStrategy.ALL),
+                                       filters=[TypedFilter(
+                                           type=FilterType.NAME, values=['nom1', 'nom2'])],
+                                       phrases=['the %s phrase']):
+        rc = RegressionCase(name=name, options=options,
+                            filters=filters, phrases=phrases)
+        self.assertIsInstance(rc.to_dict(), dict)
+
+    def test_RegressionCase_deserialises_to_same(self, name='the-name', options=FilterOptions(strategy=FilterStrategy.ANY),
+                                                 filters=[TypedFilter(
+                                                     type=FilterType.NAME, values=['nom1', 'nom2'])],
+                                                 phrases=['the %s phrase']):
+        rc = RegressionCase(name=name, options=options,
+                            filters=filters, phrases=phrases)
+        rc2 = RegressionCase.from_dict(name, rc.to_dict())
+        self.assertIsInstance(rc2, RegressionCase)
+        self.assertEqual(rc, rc2)
+
+    def test_RegressionChecker_serialises(self, name='the-name', options=FilterOptions(strategy=FilterStrategy.ALL),
+                                          filters=[TypedFilter(
+                                              type=FilterType.NAME, values=['nom1', 'nom2'])],
+                                          phrases=['the %s phrase']):
+        rc = RegressionCase(name=name, options=options,
+                            filters=filters, phrases=phrases)
+        checker = RegressionChecker(cases=[rc])
+        self.assertIsInstance(checker.to_dict(), dict)
+
+    def test_RegressionChecker_deserialises_to_same(self, name='the-name', options=FilterOptions(strategy=FilterStrategy.ANY),
+                                                    filters=[TypedFilter(
+                                                        type=FilterType.NAME, values=['nom1', 'nom2'])],
+                                                    phrases=['the %s phrase']):
+        rc = RegressionCase(name=name, options=options,
+                            filters=filters, phrases=phrases)
+        checker = RegressionChecker(cases=[rc], use_report=False)
+        checker2 = RegressionChecker.from_dict(checker.to_dict())
+        self.assertIsInstance(checker2, RegressionChecker)
+        print('\n\nCHECKER1\n', checker)
+        print('\nvs\n\nCHECKER2\n', checker2)
+        rc.__eq__
+        self.assertEqual(checker, checker2)
