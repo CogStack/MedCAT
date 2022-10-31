@@ -106,6 +106,17 @@ class RegressionCase(BaseModel):
                 fail += 1
         return success, fail
 
+    def to_dict(self) -> dict:
+        """Converts the RegressionCase to a dict for serialisation.
+
+        Returns:
+            dict: The dict representation
+        """
+        d = {'phrases': list(self.phrases)}
+        d['targeting'] = self.options.to_dict()
+        d['targeting'].update([filt.to_dict() for filt in self.filters])
+        return d
+
     @classmethod
     def from_dict(cls, name: str, in_dict: dict) -> 'RegressionCase':
         """Construct the regression case from a dict.
@@ -229,6 +240,25 @@ class RegressionChecker:
 
     def __repr__(self) -> str:
         return f'<{self}>'
+
+    def to_dict(self) -> dict:
+        """Converts the RegressionChecker to dict for serialisation.
+
+        Returns:
+            dict: The dict representation
+        """
+        d = {}
+        for case in self.cases:
+            d[case.name] = case.to_dict()
+        return d
+
+    def to_yaml(self) -> str:
+        """Convert the RegressionChecker to YAML string.
+
+        Returns:
+            str: The YAML representation
+        """
+        return yaml.dump(self.to_dict())
 
     @classmethod
     def from_dict(cls, in_dict: dict, report: bool = False) -> 'RegressionChecker':
