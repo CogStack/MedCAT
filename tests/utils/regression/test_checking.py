@@ -2,7 +2,7 @@
 import unittest
 
 from medcat.utils.regression.targeting import FilterType, FilterStrategy, FilterOptions
-from medcat.utils.regression.targeting import TypedFilter, TypedFilter, TranslationLayer
+from medcat.utils.regression.targeting import TypedFilter, TranslationLayer
 from medcat.utils.regression.checking import RegressionChecker, RegressionCase
 
 DICT_WITH_CUI = {'cui': '123'}

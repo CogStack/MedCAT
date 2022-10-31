@@ -204,6 +204,41 @@ class TypedFilter(BaseModel):
             filt = TypedFilter(type=t_type, values=vals)
         return filt
 
+    def to_dict(self) -> dict:
+        """Convert the TypedFilter to a dict to be serialised.
+
+        Returns:
+            dict: The dict representation
+        """
+        return {self.type.name: self.values}
+
+    @staticmethod
+    def list_to_dicts(filters: List['TypedFilter']) -> List[dict]:
+        """Create a list of dicts from list of TypedFilters.
+
+        Args:
+            filters (List[TypedFilter]): The list of typed filters
+
+        Returns:
+            List[dict]: The list of dicts
+        """
+        return [filt.to_dict() for filt in filters]
+
+    @staticmethod
+    def list_to_dict(filters: List['TypedFilter']) -> dict:
+        """Create a single dict from the list of TypedFilters.
+
+        Args:
+            filters (List[TypedFilter]): The list of typed filters
+
+        Returns:
+            dict: The dict
+        """
+        d = {}
+        for filt_dict in TypedFilter.list_to_dicts(filters):
+            d.update(filt_dict)
+        return d
+
     @classmethod
     def from_dict(cls, input: Dict[str, Any]) -> List['TypedFilter']:
         """Construct a list of TypedFilter from a dict.
@@ -229,6 +264,14 @@ class FilterOptions(BaseModel):
     """
     strategy: FilterStrategy
     onlyprefnames: bool = False
+
+    def to_dict(self) -> dict:
+        """Convert the FilterOptions to a dict.
+
+        Returns:
+            dict: The dict representation
+        """
+        return {'strategy': self.strategy.name, 'prefname-only': str(self.onlyprefnames)}
 
     @classmethod
     def from_dict(cls, section: Dict[str, str]) -> 'FilterOptions':
@@ -281,3 +324,11 @@ class CUIWithChildFilter(TypedFilter):
             yield from translation.targets_for(child)
             if cur_depth < self.depth:
                 yield from self.get_children_of(translation, child, cur_depth=cur_depth + 1)
+
+    def to_dict(self) -> dict:
+        """Convert this CUIWithChildFilter to a dict.
+
+        Returns:
+            dict: The dict representation
+        """
+        return {self.type.name: {'depth': self.depth, 'cui': self.delegate.values}}
