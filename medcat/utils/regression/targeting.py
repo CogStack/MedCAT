@@ -1,5 +1,6 @@
 
 from enum import Enum
+import logging
 from typing import Dict, Iterator, List, Set, Any, Union
 
 from pydantic import BaseModel
@@ -7,6 +8,9 @@ from pydantic import BaseModel
 from medcat.cdb import CDB
 
 from medcat.utils.regression.utils import loosely_match_enum
+
+
+logger = logging.getLogger(__name__)
 
 
 class TargetInfo:
@@ -50,6 +54,12 @@ class TranslationLayer:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
         self.cui2type_ids = cui2type_ids
+        self.type_id2cuis: Dict[str, Set[str]] = {}
+        for cui, type_ids in self.cui2type_ids.items():
+            for type_id in type_ids:
+                if type_id not in self.type_id2cuis:
+                    self.type_id2cuis[type_id] = set()
+                self.type_id2cuis[type_id].add(cui)
         self.cui2children = cui2children
         for cui in cui2names:
             if cui not in cui2children:
@@ -59,16 +69,48 @@ class TranslationLayer:
         for name in self.cui2names[cui]:
             yield TargetInfo(cui, name)
 
-    def all_targets(self) -> Iterator[TargetInfo]:
+    def all_targets(self, all_cuis: Set[str], all_names: Set[str], all_types: Set[str]) -> Iterator[TargetInfo]:
         """Get a generator of all target information objects.
         This is the starting point for checking cases.
+
+        Args:
+            all_cuis (Set[str]): The set of all CUIs to be queried
+            all_names (Set[str]): The set of all names to be queried
+            all_types (Set[str]): The set of all type IDs to be queried
 
         Yields:
             Iterator[TargetInfo]: The iterator of the target info
         """
-        for cui, names in self.cui2names.items():
-            for name in names:
+        for cui in all_cuis:
+            if cui not in self.cui2names:
+                logger.warn('CUI not found in translation layer: %s', cui)
+                continue
+            for name in self.cui2names[cui]:
                 yield TargetInfo(cui, name)
+        for name in all_names:
+            if name not in self.name2cuis:
+                logger.warn('Name not found in translation layer: %s', name)
+                continue
+            for cui in self.name2cuis:
+                if cui in all_cuis:
+                    continue  # this cui-name pair should already have been yielded above
+                yield TargetInfo(cui, name)
+        for type_id in all_types:
+            if type_id not in self.type_id2cuis:
+                logger.warn(
+                    'Type ID not found in translation layer: %s', type_id)
+                continue
+            for cui in self.type_id2cuis[type_id]:
+                if cui in all_cuis:
+                    continue  # should have been yielded above
+                if cui not in self.cui2names:
+                    logger.warn(
+                        'CUI not found in translation layer: %s', cui)
+                    continue
+                for name in self.cui2names[cui]:
+                    if name in all_names:
+                        continue  # should have been yielded above
+                    yield TargetInfo(cui, name)
 
     @classmethod
     def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
