@@ -1,6 +1,6 @@
 
 
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
 import yaml
 import logging
 import tqdm
@@ -8,7 +8,7 @@ import tqdm
 from pydantic import BaseModel
 
 from medcat.cat import CAT
-from medcat.utils.regression.targeting import FilterOptions, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
+from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
 
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor
 
@@ -72,6 +72,21 @@ class RegressionCase(BaseModel):
             self.report.report(ti.cui, ti.val, phrase, success)
         return success
 
+    def _get_all_cuis_names_types(self) -> Tuple[Set[str], Set[str], Set[str]]:
+        cuis = set()
+        names = set()
+        types = set()
+        for filt in self.filters:
+            if filt.type == FilterType.CUI:
+                cuis.update(filt.values)
+            elif filt.type == FilterType.CUI_AND_CHILDREN:
+                cuis.update(cast(CUIWithChildFilter, filt).delegate.values)
+            if filt.type == FilterType.NAME:
+                names.update(filt.values)
+            if filt.type == FilterType.TYPE_ID:
+                types.update(filt.values)
+        return cuis, names, types
+
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
         """Get all subcases for this case.
         That is, all combinations of targets with their appropriate phrases.
@@ -82,7 +97,7 @@ class RegressionCase(BaseModel):
         Yields:
             Iterator[Tuple[TargetInfo, str]]: The generator for the target info and the phrase
         """
-        for ti in self.get_all_targets(translation.all_targets(), translation):
+        for ti in self.get_all_targets(translation.all_targets(*self._get_all_cuis_names_types()), translation):
             for phrase in self.phrases:
                 yield ti, phrase
 

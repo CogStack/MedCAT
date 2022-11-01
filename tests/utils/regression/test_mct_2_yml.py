@@ -14,7 +14,7 @@ class FakeTranslationLayer:
     def __init__(self, mct_export: dict) -> None:
         self.mct_export = json.loads(mct_export)
 
-    def all_targets(self):  # -> Iterator[TargetInfo]:
+    def all_targets(self, *args, **kwargs):  # -> Iterator[TargetInfo]:
         for project in self.mct_export['projects']:
             for doc in project['documents']:
                 for ann in doc['annotations']:
