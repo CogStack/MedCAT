@@ -6,7 +6,7 @@ import yaml
 from medcat.utils.regression.checking import RegressionChecker
 
 from medcat.utils.regression.converting import PerSentenceSelector, PerWordContextSelector, UniqueNamePreserver, medcat_export_json_to_regression_yml
-from medcat.utils.regression.targeting import TargetInfo
+from medcat.utils.regression.targeting import FilterType, TargetInfo
 
 
 class FakeTranslationLayer:
@@ -70,10 +70,26 @@ class TestConversion(unittest.TestCase):
         self.assertIsInstance(d, dict)
         self.assertGreater(len(d), 0)
 
-    def test_conversion_valid_regression_case(self):
+    def test_conversion_valid_regression_checker(self):
         d = yaml.safe_load(self.converted_yaml)
         checker = RegressionChecker.from_dict(d)
         self.assertIsInstance(checker, RegressionChecker)
+
+    def test_conversion_filters_for_names(self):
+        d = yaml.safe_load(self.converted_yaml)
+        checker = RegressionChecker.from_dict(d)
+        for case in checker.cases:
+            with self.subTest(f'Case {case}'):
+                self.assertTrue(
+                    any(filt.type == FilterType.NAME for filt in case.filters))
+
+    def test_conversion_filters_for_cuis(self):
+        d = yaml.safe_load(self.converted_yaml)
+        checker = RegressionChecker.from_dict(d)
+        for case in checker.cases:
+            with self.subTest(f'Case {case}'):
+                self.assertTrue(
+                    any(filt.type == FilterType.CUI for filt in case.filters))
 
     def test_correct_number_of_cases(self):
         checker = RegressionChecker.from_dict(
