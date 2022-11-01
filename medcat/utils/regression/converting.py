@@ -144,7 +144,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
     """
     with open(mct_export_file, 'r') as f:
         data = json.load(f)
-    fo = FilterOptions(strategy=FilterStrategy.ANY, onlyprefnames=False)
+    fo = FilterOptions(strategy=FilterStrategy.ALL, onlyprefnames=False)
     test_cases = []
     unique_names = UniqueNamePreserver()
     for project in tqdm.tqdm(data['projects']):
@@ -154,20 +154,23 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
             text = doc['text']
             for ann in tqdm.tqdm(doc['annotations']):
                 target_name = ann['value']
+                target_cui = ann['cui']
                 start, end = ann['start'], ann['end']
                 in_text_name = text[start: end]
                 if target_name != in_text_name:
                     logging.warn('Could not convert annotation since the text was not '
                                  f' equal to the name, ignoring:\n{ann}')
                     break
-                filt = TypedFilter(type=FilterType.NAME,
-                                   values=[target_name, ])
+                name_filt = TypedFilter(type=FilterType.NAME,
+                                        values=[target_name, ])
+                cui_filt = TypedFilter(type=FilterType.CUI,
+                                       values=[target_cui, ])
                 context = cont_sel.get_context(text, start, end)
                 phrase = context
                 case_name = unique_names.get_unique_name(f'{proj_name.replace(" ", "-")}-'
                                                          f'{target_name.replace(" ", "~")}')
                 rc = RegressionCase(name=case_name, options=fo, filters=[
-                                    filt, ], phrases=[phrase, ])
+                                    name_filt, cui_filt], phrases=[phrase, ])
                 test_cases.append(rc)
     checker = RegressionChecker(cases=test_cases)
     return checker.to_yaml()
