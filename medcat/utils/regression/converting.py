@@ -125,9 +125,10 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
     """
     with open(mct_export_file, 'r') as f:
         data = json.load(f)
+    fo = FilterOptions(strategy=FilterStrategy.ANY, onlyprefnames=False)
     test_cases = []
     for project in tqdm.tqdm(data['projects']):
-        name = project['name']
+        proj_name = project['name']
         docs = project['documents']
         for doc in tqdm.tqdm(docs):
             text = doc['text']
@@ -139,14 +140,12 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
                     logging.warn('Could not convert annotation since the text was not '
                                  f' equal to the name, ignoring:\n{ann}')
                     break
-                fo = FilterOptions(
-                    strategy=FilterStrategy.ANY, onlyprefnames=False)
                 filt = TypedFilter(type=FilterType.NAME,
                                    values=[target_name, ])
                 context = cont_sel.get_context(text, start, end)
                 phrase = context
-                rc = RegressionCase(name=f'{name.replace(" ", "-").replace(" ", "-")}-'
-                                    f'{target_name.replace(" ", "-")}', options=fo, filters=[filt, ], phrases=[phrase, ])
+                rc = RegressionCase(name=f'{proj_name.replace(" ", "-")}-'
+                                    f'{target_name.replace(" ", "~")}', options=fo, filters=[filt, ], phrases=[phrase, ])
                 test_cases.append(rc)
     checker = RegressionChecker(cases=test_cases)
     return checker.to_yaml()

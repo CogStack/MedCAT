@@ -75,6 +75,26 @@ class TestSelectors(unittest.TestCase):
     words_before = 2
     words_after = 3
 
+    def test_ContextSelector_able_to_remove_extra_percent(self, text='Some 1% and #TEST# '
+                                                          'then 2%-3%, or 5%', find='#TEST#'):
+        found = re.search(find, text)
+        start, end = found.start(), found.end()
+        sel = PerSentenceSelector()
+        context = sel.get_context(text, start, end)
+        replaced = context % find
+        self.assertIsInstance(replaced, str)
+        self.assertIn(find, replaced)
+
+    def test_ContextSelector_removes_precentage_example(self, text=',HISTORY OF PRESENT ILLNESS:, '
+                                                        'A 48-year-old African-American male with a history of '
+                                                        'coronary artery disease, COPD, congestive heart failure '
+                                                        'with EF of 20%-25%, hypertension, renal insufficiency, '
+                                                        'and recurrent episodes of hypertensive emergency, '
+                                                        'admitted secondary to shortness of breath and '
+                                                        'productive cough', find='episodes'):
+        self.test_ContextSelector_able_to_remove_extra_percent(
+            text=text, find=find)
+
     def test_PerWordContext_contains_concept(self, text='some random text with #TEST# stuff and'
                                              ' then some more text', find='#TEST#'):
         found = re.search(find, text)
