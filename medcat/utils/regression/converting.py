@@ -111,6 +111,25 @@ class PerSentenceSelector(ContextSelector):
         return (context_before + concept + context_after).strip()
 
 
+class UniqueNamePreserver:
+
+    def __init__(self) -> None:
+        self.unique_names = set()
+
+    def name2nrgen(self, name: str, nr: int) -> str:
+        return f'{name}-{nr}'
+
+    def get_unique_name(self, orig_name: str, dupe_nr: int = 0) -> str:
+        if dupe_nr == 0:
+            cur_name = orig_name
+        else:
+            cur_name = self.name2nrgen(orig_name, dupe_nr)
+        if cur_name not in self.unique_names:
+            self.unique_names.add(cur_name)
+            return cur_name
+        return self.get_unique_name(orig_name, dupe_nr + 1)
+
+
 def medcat_export_json_to_regression_yml(mct_export_file: str,
                                          cont_sel: ContextSelector = PerSentenceSelector()) -> str:
     """Extract regression test cases from a MedCATtrainer export yaml.
@@ -127,6 +146,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
         data = json.load(f)
     fo = FilterOptions(strategy=FilterStrategy.ANY, onlyprefnames=False)
     test_cases = []
+    unique_names = UniqueNamePreserver()
     for project in tqdm.tqdm(data['projects']):
         proj_name = project['name']
         docs = project['documents']
@@ -144,8 +164,10 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
                                    values=[target_name, ])
                 context = cont_sel.get_context(text, start, end)
                 phrase = context
-                rc = RegressionCase(name=f'{proj_name.replace(" ", "-")}-'
-                                    f'{target_name.replace(" ", "~")}', options=fo, filters=[filt, ], phrases=[phrase, ])
+                case_name = unique_names.get_unique_name(f'{proj_name.replace(" ", "-")}-'
+                                                         f'{target_name.replace(" ", "~")}')
+                rc = RegressionCase(name=case_name, options=fo, filters=[
+                                    filt, ], phrases=[phrase, ])
                 test_cases.append(rc)
     checker = RegressionChecker(cases=test_cases)
     return checker.to_yaml()

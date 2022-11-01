@@ -5,7 +5,7 @@ import yaml
 
 from medcat.utils.regression.checking import RegressionChecker
 
-from medcat.utils.regression.converting import PerSentenceSelector, PerWordContextSelector, medcat_export_json_to_regression_yml
+from medcat.utils.regression.converting import PerSentenceSelector, PerWordContextSelector, UniqueNamePreserver, medcat_export_json_to_regression_yml
 from medcat.utils.regression.targeting import TargetInfo
 
 
@@ -19,6 +19,27 @@ class FakeTranslationLayer:
             for doc in project['documents']:
                 for ann in doc['annotations']:
                     yield TargetInfo(ann['cui'], ann['value'])
+
+
+class TestUniqueNames(unittest.TestCase):
+
+    def test_UniqueNamePreserver_first_same(self, name='some name'):
+        unp = UniqueNamePreserver()
+        uname = unp.get_unique_name(name)
+        self.assertEqual(name, uname)
+
+    def test_UniqueNamePreserver_second_different(self, name='some name'):
+        unp = UniqueNamePreserver()
+        _ = unp.get_unique_name(name)
+        uname2 = unp.get_unique_name(name)
+        self.assertNotEqual(name, uname2)
+
+    def test_UniqueNamePreserver_second_starts_with_name(self, name='some name'):
+        unp = UniqueNamePreserver()
+        _ = unp.get_unique_name(name)
+        uname2 = unp.get_unique_name(name)
+        self.assertIn(name, uname2)
+        self.assertTrue(uname2.startswith(name))
 
 
 class TestConversion(unittest.TestCase):
@@ -58,9 +79,7 @@ class TestConversion(unittest.TestCase):
         checker = RegressionChecker.from_dict(
             yaml.safe_load(self.converted_yaml))
         expected = self.mct_export.count('"cui":')
-        nr_of_cases = len(list(checker.get_all_subcases(
-            FakeTranslationLayer(self.mct_export))))
-        self.assertEqual(nr_of_cases, expected)
+        self.assertEqual(len(checker.cases), expected)
 
     def test_cases_have_1_replacement_part(self):
         checker = RegressionChecker.from_dict(
