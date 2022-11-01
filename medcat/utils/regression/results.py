@@ -87,28 +87,36 @@ class MultiDescriptor(pydantic.BaseModel):
         """
         return sum(part.fail for part in self.parts)
 
-    def get_report(self, phrases_separately: bool) -> str:
+    def get_report(self, phrases_separately: bool, hide_empty: bool=False) -> str:
         """Get the report associated with this descriptor
 
         Args:
             phrases_separately (bool): Whether to include per-phrase information
+            hide_empty (bool): Whether to hide empty cases
 
         Returns:
             str: The report string
         """
         del_out = []  # delegation
         total_s, total_f = 0, 0
+        nr_of_empty = 0
         for part in self.parts:
             total_s += part.success
             total_f += part.fail
+            if hide_empty and part.success == part.fail == 0:
+                nr_of_empty += 1
+                continue
             cur_add = '\t' + \
                 part.get_report(phrases_separately=phrases_separately).replace(
                     '\n', '\n\t\t')
             del_out.append(cur_add)
         total_total = total_s + total_f
         delegated = '\n\t'.join(del_out)
+        empty_text = ''
+        if hide_empty:
+            empty_text = f' A total of {nr_of_empty} cases did not match any CUIs and/or names.'
         return f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
-And a total of {total_total} (sub)cases were checked.
+And a total of {total_total} (sub)cases were checked.{empty_text}
         Total success:  {total_s:10d} ({100 * total_s / total_total if total_total > 0 else 0}%)
         Total failure:  {total_f:10d} ({100 * total_f / total_total if total_total > 0 else 0}%)
         {delegated}"""
