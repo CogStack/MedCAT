@@ -23,7 +23,20 @@ class ContextSelector:
         return [word for word in text.split() if (
             len(word) > 1 or re.match('\w', word))]
 
-    def get_context(self, text: str, start: int, end: int) -> str:
+    def make_replace_safe(self, text: str) -> str:
+        """Make the text replace-safe.
+        That is, wrap all '%' as '%%' so that the `text % replacement` syntax
+        can be used for an inserted part (and that part only).
+
+        Args:
+            text (str): The text to use
+
+        Returns:
+            str: The replace-safe text
+        """
+        return text.replace(r'%', r'%%')
+
+    def get_context(self, text: str, start: int, end: int, leave_concept: bool = False) -> str:
         """Get the context of a concept within a larger body of text.
         The concept is specifiedb by its start and end indices.
 
@@ -31,6 +44,7 @@ class ContextSelector:
             text (str): The larger text
             start (int): The starting index
             end (int): The ending index
+            leave_concept (bool): Whether to leave the concept or replace it by '%s'. Defaults to False
 
         Returns:
             str: The select contexts
@@ -54,12 +68,18 @@ class PerWordContextSelector(ContextSelector):
         self.words_before = words_before
         self.words_after = words_after
 
-    def get_context(self, text: str, start: int, end: int) -> str:
+    def get_context(self, text: str, start: int, end: int, leave_concept: bool = False) -> str:
         words_before = self._splitter(text[:start])
         words_after = self._splitter(text[end:])
-        concept = text[start:end]
-        # TODO - better joining?
-        return ' '.join(words_before[-self.words_before:] + [concept] + words_after[:self.words_after])
+        if leave_concept:
+            concept = text[start:end]
+        else:
+            concept = '%s'
+        before = ' '.join(words_before[-self.words_before:])
+        before = self.make_replace_safe(before)
+        after = ' '.join(words_after[:self.words_after])
+        after = self.make_replace_safe(after)
+        return f'{before} {concept} {after}'
 
 
 class PerSentenceSelector(ContextSelector):
@@ -68,7 +88,7 @@ class PerSentenceSelector(ContextSelector):
     """
     stoppers = '\.+|\?+|!+'
 
-    def get_context(self, text: str, start: int, end: int) -> str:
+    def get_context(self, text: str, start: int, end: int, leave_concept: bool = False) -> str:
         text_before = text[:start]
         r_last_stopper = re.search(self.stoppers, text_before[::-1])
         if r_last_stopper:
@@ -82,7 +102,12 @@ class PerSentenceSelector(ContextSelector):
             context_after = text_after[:first_stopper.start()]
         else:  # concept in last sentence
             context_after = text_after
-        concept = text[start: end]
+        if leave_concept:
+            concept = text[start: end]
+        else:
+            concept = '%s'
+        context_before = self.make_replace_safe(context_before)
+        context_after = self.make_replace_safe(context_after)
         return (context_before + concept + context_after).strip()
 
 
@@ -96,7 +121,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
         cont_sel (ContextSelector, optional): The context selector. Defaults to PerSentenceSelector().
 
     Returns:
-        str: _description_
+        str: Extracted regression cases in YAML form
     """
     with open(mct_export_file, 'r') as f:
         data = json.load(f)
@@ -119,7 +144,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
                 filt = TypedFilter(type=FilterType.NAME,
                                    values=[target_name, ])
                 context = cont_sel.get_context(text, start, end)
-                phrase = context.replace(target_name, '%')
+                phrase = context
                 rc = RegressionCase(name=f'{name.replace(" ", "-").replace(" ", "-")}-'
                                     f'{target_name.replace(" ", "-")}', options=fo, filters=[filt, ], phrases=[phrase, ])
                 test_cases.append(rc)
