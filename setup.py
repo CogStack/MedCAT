@@ -17,15 +17,14 @@ setuptools.setup(
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.ner'],
     install_requires=[
-        'numpy>=1.21.4',
+       'numpy>=1.21.4',
         'pandas<=1.4.2,>=1.1.5',
         'gensim~=4.1.2',
-        'spacy<3.1.4,>=3.1.0',
-        'scipy<=1.8.1,>=1.5.4',
-        'transformers~=4.19.2',
+        'spacy>=3.1.0',
+        'scipy>=1.5.4',
+        'transformers>=4.19.2',
         'torch>=1.0',
         'tqdm>=4.27',
-        'sklearn~=0.0',
         'elasticsearch>=8.3,<9',  # Check if this is compatible with opensearch otherwise: 'elasticsearch>=7.10,<8.0.0',
         'eland>=8.3.0,<9',
         'dill~=0.3.4,<0.3.5', # less than 0.3.5 due to datasets requirement
@@ -38,7 +37,7 @@ setuptools.setup(
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==3.0.0',
-        'blis<=0.7.5',
+        'blis<=0.7.9',
         'click<=8.0.4',  # Spacy breaks without this
         'pydantic!=1.8,!=1.8.1,<1.9.0,>=1.7.4', # identical constraints to thinc and spacy
         # the following are not direct dependencies of MedCAT but needed for docs/building
