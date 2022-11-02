@@ -1,5 +1,6 @@
 
 from enum import Enum
+import logging
 from typing import Dict, Iterator, List, Set, Any, Union
 
 from pydantic import BaseModel
@@ -7,6 +8,8 @@ from pydantic import BaseModel
 from medcat.cdb import CDB
 
 from medcat.utils.regression.utils import loosely_match_enum
+
+logger = logging.getLogger(__name__)
 
 
 class TargetInfo:
@@ -83,7 +86,13 @@ class TranslationLayer:
         Returns:
             TranslationLayer: The subsequent TranslationLayer
         """
-        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, cdb.addl_info['pt2ch'])
+        if 'pt2ch' not in cdb.addl_info:
+            logger.warn(
+                "No parent to child information presented so they cannot be used")
+            parent2child = {}
+        else:
+            parent2child = cdb.addl_info['pt2ch']
+        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child)
 
 
 class FilterStrategy(Enum):
