@@ -2,7 +2,7 @@
 import json
 import logging
 import re
-from typing import List
+from typing import List, Set
 import tqdm
 
 from medcat.utils.regression.checking import RegressionCase, RegressionChecker
@@ -114,7 +114,7 @@ class PerSentenceSelector(ContextSelector):
 class UniqueNamePreserver:
 
     def __init__(self) -> None:
-        self.unique_names = set()
+        self.unique_names: Set[str] = set()
 
     def name2nrgen(self, name: str, nr: int) -> str:
         return f'{name}-{nr}'
