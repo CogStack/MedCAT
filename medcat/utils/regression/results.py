@@ -6,6 +6,7 @@ import pydantic
 # i.e save to file and include information such as which name-cui pairs
 # failed to work and/or which ones weren't found
 
+
 class SingleResultDescriptor(pydantic.BaseModel):
     name: str
     """The name of the part that was checked"""
