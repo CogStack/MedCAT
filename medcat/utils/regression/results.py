@@ -2,6 +2,9 @@
 from typing import Dict, List
 import pydantic
 
+# TODO - add more comprohensive report
+# i.e save to file and include information such as which name-cui pairs
+# failed to work and/or which ones weren't found
 
 class SingleResultDescriptor(pydantic.BaseModel):
     name: str
