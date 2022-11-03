@@ -183,7 +183,15 @@ class MultiDescriptor(pydantic.BaseModel):
             empty_text = f' A total of {nr_of_empty} cases did not match any CUIs and/or names.'
         failures = ''
         if show_failures and all_failures:
-            failures = '\nFailures:\n' + '\n'.join(
+            failure_types = {}
+            for _, _, ft in all_failures:
+                if ft not in failure_types:
+                    failure_types[ft] = 0
+                failure_types[ft] += 1
+            failures = '\nFailures:\n' + \
+                '\n'.join(
+                    [f'{ft}: {occurances}' for ft, occurances in failure_types.items()])
+            failures += '\nDetailed:\n' + '\n'.join(
                 [f'CUI: {repr(cui)}, name: {repr(name)}, reason: {reason}'
                  for cui, name, reason in all_failures])
         return f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
