@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import FilterOptions, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
 
-from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor
+from medcat.utils.regression.results import FailReason, MultiDescriptor, ResultDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,8 @@ class RegressionCase(BaseModel):
                 cur_gen = filter.get_applicable_targets(translation, cur_gen)
             yield from cur_gen
 
-    def check_specific_for_phrase(self, cat: CAT, ti: TargetInfo, phrase: str) -> bool:
+    def check_specific_for_phrase(self, cat: CAT, ti: TargetInfo, phrase: str,
+                                  translation: TranslationLayer) -> bool:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
@@ -54,22 +55,27 @@ class RegressionCase(BaseModel):
             cat (CAT): The model
             ti (TargetInfo): The target info
             phrase (str): The phrase to check
+            translation (TranslationLayer): The translation layer
 
         Returns:
             bool: Whether or not the target was correctly identified
         """
-        res = cat.get_entities(phrase % ti.val, only_cui=True)
+        res = cat.get_entities(phrase % ti.val, only_cui=False)
         ents = res['entities']
-        found_cuis = [ents[nr] for nr in ents]
+        found_cuis = [ents[nr]['cui'] for nr in ents]
         success = ti.cui in found_cuis
         if success:
             logger.debug(
                 'Matched test case %s in phrase "%s"', ti, phrase)
         else:
+            fail_reason = FailReason.get_reason_for(ti.cui, ti.val, res,
+                                                    translation)
             logger.debug(
-                'FAILED to match test case %s in phrase "%s", found the following CUIS: %s', ti, phrase, found_cuis)
-        if self.report is not None:
-            self.report.report(ti.cui, ti.val, phrase, success)
+                'FAILED to match (%s) test case %s in phrase "%s", '
+                'found the following CUIS: %s', fail_reason, ti, phrase, found_cuis)
+            if self.report is not None:
+                self.report.report(ti.cui, ti.val, phrase,
+                                   success, fail_reason)
         return success
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
@@ -100,7 +106,7 @@ class RegressionCase(BaseModel):
         success = 0
         fail = 0
         for target, phrase in self.get_all_subcases(translation):
-            if self.check_specific_for_phrase(cat, target, phrase):
+            if self.check_specific_for_phrase(cat, target, phrase, translation):
                 success += 1
             else:
                 fail += 1
@@ -224,14 +230,14 @@ class RegressionChecker:
         successes, fails = 0, 0
         if total is not None:
             for case, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
-                if case.check_specific_for_phrase(cat, ti, phrase):
+                if case.check_specific_for_phrase(cat, ti, phrase, translation):
                     successes += 1
                 else:
                     fails += 1
         else:
             for case in tqdm.tqdm(self.cases):
                 for ti, phrase in case.get_all_subcases(translation):
-                    if case.check_specific_for_phrase(cat, ti, phrase):
+                    if case.check_specific_for_phrase(cat, ti, phrase, translation):
                         successes += 1
                     else:
                         fails += 1
