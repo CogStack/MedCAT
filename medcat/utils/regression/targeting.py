@@ -73,6 +73,49 @@ class TranslationLayer:
             for name in names:
                 yield TargetInfo(cui, name)
 
+    def has_child_of(self, found_cuis: Iterator[str], cui: str, depth: int = 1) -> bool:
+        """Check if the listed CUIs have a child of the specified CUI.
+
+        Args:
+            found_cuis (Iterator[str]): The list of CUIs to look in
+            cui (str): The target parent CUI
+            depth (int): The depth to carry out the search for
+
+        Returns:
+            bool: Whether the listed CUIs have a child of the specified one
+        """
+        if cui not in self.cui2children:
+            return False  # no children
+        children = self.cui2children[cui]
+        for child in children:
+            if child in found_cuis:
+                return True
+        if depth > 1:
+            return any(self.has_child_of(found_cuis, child, depth - 1) for child in children)
+        return False  # none of the children found
+
+    def has_parent_of(self, found_cuis: Iterator[str], cui: str, depth: int = 1) -> bool:
+        """Check if the listed CUIs have a parent of the specified CUI.
+
+        If needed, higher order parents (i.e grandparents) can be queries for.
+
+        This uses the `has_child_of` method intenrnally.
+        That is, if any of the found CUIs have the specified CUI as a child of
+        the specified depth, the found CUIs have a parent of the specified depth.
+
+        Args:
+            found_cuis (Iterator[str]): The list of CUIs to look in
+            cui (str): The target child CUI
+            depth (int): The depth to carry out the search for
+
+        Returns:
+            bool: Whether the listed CUIs have a parent of the specified one
+        """
+        for found_cui in found_cuis:
+            if self.has_child_of([cui], found_cui, depth=depth):
+                return True
+        return False
+
     @classmethod
     def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
         """Construct a TranslationLayer object from a context database (CDB).
