@@ -1,7 +1,7 @@
 
 from enum import Enum
 import logging
-from typing import Dict, Iterator, List, Set, Any, Union
+from typing import Dict, Iterable, Iterator, List, Set, Any, Union
 
 from pydantic import BaseModel
 
@@ -73,11 +73,11 @@ class TranslationLayer:
             for name in names:
                 yield TargetInfo(cui, name)
 
-    def has_child_of(self, found_cuis: Iterator[str], cui: str, depth: int = 1) -> bool:
+    def has_child_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> bool:
         """Check if the listed CUIs have a child of the specified CUI.
 
         Args:
-            found_cuis (Iterator[str]): The list of CUIs to look in
+            found_cuis (Iterable[str]): The list of CUIs to look in
             cui (str): The target parent CUI
             depth (int): The depth to carry out the search for
 
@@ -94,7 +94,7 @@ class TranslationLayer:
             return any(self.has_child_of(found_cuis, child, depth - 1) for child in children)
         return False  # none of the children found
 
-    def has_parent_of(self, found_cuis: Iterator[str], cui: str, depth: int = 1) -> bool:
+    def has_parent_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> bool:
         """Check if the listed CUIs have a parent of the specified CUI.
 
         If needed, higher order parents (i.e grandparents) can be queries for.
@@ -104,7 +104,7 @@ class TranslationLayer:
         the specified depth, the found CUIs have a parent of the specified depth.
 
         Args:
-            found_cuis (Iterator[str]): The list of CUIs to look in
+            found_cuis (Iterable[str]): The list of CUIs to look in
             cui (str): The target child CUI
             depth (int): The depth to carry out the search for
 
@@ -112,7 +112,7 @@ class TranslationLayer:
             bool: Whether the listed CUIs have a parent of the specified one
         """
         for found_cui in found_cuis:
-            if self.has_child_of([cui], found_cui, depth=depth):
+            if self.has_child_of(set([cui]), found_cui, depth=depth):
                 return True
         return False
 

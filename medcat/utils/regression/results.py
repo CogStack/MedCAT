@@ -1,6 +1,6 @@
 
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, cast
 import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer
@@ -80,7 +80,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
             self.success += 1
         else:
             self.fail += 1
-            self.failures.append((cui, name, fail_reason))
+            self.failures.append((cui, name, cast(FailReason, fail_reason)))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
