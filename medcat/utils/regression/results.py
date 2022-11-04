@@ -47,6 +47,7 @@ class FailDescriptor(pydantic.BaseModel):
             fail_reason = FailReason.CUI_NOT_FOUND
         elif name not in translation.name2cuis:
             fail_reason = FailReason.NAME_NOT_FOUND
+            extra = f'Names for concept: {translation.cui2names[cui]}'
         else:
             ents = res['entities']
             found_cuis = [ents[nr]['cui'] for nr in ents]
