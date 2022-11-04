@@ -95,7 +95,10 @@ class TestConversion(unittest.TestCase):
         checker = RegressionChecker.from_dict(
             yaml.safe_load(self.converted_yaml))
         expected = self.mct_export.count('"cui":')
-        self.assertEqual(len(checker.cases), expected)
+        total_cases = 0
+        for case in checker.cases:
+            total_cases += len(case.phrases)
+        self.assertEqual(total_cases, expected)
 
     def test_cases_have_1_replacement_part(self):
         checker = RegressionChecker.from_dict(
