@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
 
-from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor
+from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,8 @@ class RegressionCase(BaseModel):
                 cur_gen = filter.get_applicable_targets(translation, cur_gen)
             yield from cur_gen
 
-    def check_specific_for_phrase(self, cat: CAT, ti: TargetInfo, phrase: str) -> bool:
+    def check_specific_for_phrase(self, cat: CAT, ti: TargetInfo, phrase: str,
+                                  translation: TranslationLayer) -> bool:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
@@ -54,22 +55,32 @@ class RegressionCase(BaseModel):
             cat (CAT): The model
             ti (TargetInfo): The target info
             phrase (str): The phrase to check
+            translation (TranslationLayer): The translation layer
 
         Returns:
             bool: Whether or not the target was correctly identified
         """
-        res = cat.get_entities(phrase % ti.val, only_cui=True)
+        res = cat.get_entities(phrase % ti.val, only_cui=False)
         ents = res['entities']
-        found_cuis = [ents[nr] for nr in ents]
+        found_cuis = [ents[nr]['cui'] for nr in ents]
         success = ti.cui in found_cuis
+        fail_reason: Optional[FailDescriptor]
         if success:
             logger.debug(
                 'Matched test case %s in phrase "%s"', ti, phrase)
+            fail_reason = None
         else:
+            fail_reason = FailDescriptor.get_reason_for(ti.cui, ti.val, res,
+                                                        translation)
+            found_names = [ents[nr]['source_value'] for nr in ents]
+            cuis_names = ', '.join([f'{fcui}|{fname}'
+                                    for fcui, fname in zip(found_cuis, found_names)])
             logger.debug(
-                'FAILED to match test case %s in phrase "%s", found the following CUIS: %s', ti, phrase, found_cuis)
+                'FAILED to match (%s) test case %s in phrase "%s", '
+                'found the following CUIS/names: %s', fail_reason, ti, phrase, cuis_names)
         if self.report is not None:
-            self.report.report(ti.cui, ti.val, phrase, success)
+            self.report.report(ti.cui, ti.val, phrase,
+                               success, fail_reason)
         return success
 
     def _get_all_cuis_names_types(self) -> Tuple[Set[str], Set[str], Set[str]]:
@@ -97,9 +108,33 @@ class RegressionCase(BaseModel):
         Yields:
             Iterator[Tuple[TargetInfo, str]]: The generator for the target info and the phrase
         """
+        cntr = 0
         for ti in self.get_all_targets(translation.all_targets(*self._get_all_cuis_names_types()), translation):
             for phrase in self.phrases:
+                cntr += 1
                 yield ti, phrase
+        if not cntr:
+            for ti in self._get_specific_cui_and_name():
+                for phrase in self.phrases:
+                    yield ti, phrase
+
+    def _get_specific_cui_and_name(self) -> Iterator[TargetInfo]:
+        if len(self.filters) != 2:
+            return
+        if self.options.strategy != FilterStrategy.ALL:
+            return
+        f1, f2 = self.filters
+        if f1.type == FilterType.NAME and f2.type == FilterType.CUI:
+            name_filter, cui_filter = f1, f2
+        elif f2.type == FilterType.NAME and f1.type == FilterType.CUI:
+            name_filter, cui_filter = f2, f1
+        else:
+            return
+        # There should only ever be one for the ALL strategty
+        # because otherwise a match is impossible
+        for name in name_filter.values:
+            for cui in cui_filter.values:
+                yield TargetInfo(cui, name)
 
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
         """Check the regression case against a model.
@@ -115,7 +150,7 @@ class RegressionCase(BaseModel):
         success = 0
         fail = 0
         for target, phrase in self.get_all_subcases(translation):
-            if self.check_specific_for_phrase(cat, target, phrase):
+            if self.check_specific_for_phrase(cat, target, phrase, translation):
                 success += 1
             else:
                 fail += 1
@@ -239,14 +274,14 @@ class RegressionChecker:
         successes, fails = 0, 0
         if total is not None:
             for case, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
-                if case.check_specific_for_phrase(cat, ti, phrase):
+                if case.check_specific_for_phrase(cat, ti, phrase, translation):
                     successes += 1
                 else:
                     fails += 1
         else:
             for case in tqdm.tqdm(self.cases):
                 for ti, phrase in case.get_all_subcases(translation):
-                    if case.check_specific_for_phrase(cat, ti, phrase):
+                    if case.check_specific_for_phrase(cat, ti, phrase, translation):
                         successes += 1
                     else:
                         fails += 1

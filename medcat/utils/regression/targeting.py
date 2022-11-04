@@ -1,7 +1,7 @@
 
 from enum import Enum
 import logging
-from typing import Dict, Iterator, List, Set, Any, Union
+from typing import Dict, Iterable, Iterator, List, Set, Any, Union
 
 from pydantic import BaseModel
 
@@ -113,6 +113,56 @@ class TranslationLayer:
                     if name in all_names:
                         continue  # should have been yielded above
                     yield TargetInfo(cui, name)
+
+    def get_children_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
+        """Get the children of the specifeid CUI in the listed CUIs (if they exist).
+
+        Args:
+            found_cuis (Iterable[str]): The list of CUIs to look in
+            cui (str): The target parent CUI
+            depth (int): The depth to carry out the search for
+
+        Returns:
+            List[str]: The list of children found
+        """
+        if cui not in self.cui2children:
+            return []  # no children
+        children = self.cui2children[cui]
+        found_children = []
+        for child in children:
+            if child in found_cuis:
+                found_children.append(child)
+        if depth > 1:
+            for child in children:
+                found_children.extend(self.get_children_of(
+                    found_cuis, child, depth - 1))
+        return found_children
+
+    def get_parents_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
+        """Get the parents of the specifeid CUI in the listed CUIs (if they exist).
+
+        If needed, higher order parents (i.e grandparents) can be queries for.
+
+        This uses the `get_children_of` method intenrnally.
+        That is, if any of the found CUIs have the specified CUI as a child of
+        the specified depth, the found CUIs have a parent of the specified depth.
+
+        Args:
+            found_cuis (Iterable[str]): The list of CUIs to look in
+            cui (str): The target child CUI
+            depth (int): The depth to carry out the search for
+
+        Returns:
+            List[str]: The list of parents found
+        """
+        found_parents = []
+        for found_cui in found_cuis:
+            if self.get_children_of(set([cui]), found_cui, depth=depth):
+                # TODO - the intermediate results may get lost here
+                # i.e if found_cui is grandparent of the specified one,
+                # the direct parent is not listed
+                found_parents.append(found_cui)
+        return found_parents
 
     @classmethod
     def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
