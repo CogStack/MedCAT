@@ -145,7 +145,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
     with open(mct_export_file, 'r') as f:
         data = json.load(f)
     fo = FilterOptions(strategy=FilterStrategy.ALL, onlyprefnames=False)
-    test_cases = []
+    test_cases: List[RegressionCase] = []
     unique_names = UniqueNamePreserver()
     for project in tqdm.tqdm(data['projects']):
         proj_name = project['name']
@@ -169,8 +169,15 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
                 phrase = context
                 case_name = unique_names.get_unique_name(f'{proj_name.replace(" ", "-")}-'
                                                          f'{target_name.replace(" ", "~")}')
-                rc = RegressionCase(name=case_name, options=fo, filters=[
-                                    name_filt, cui_filt], phrases=[phrase, ])
-                test_cases.append(rc)
+                cur_filters = [name_filt, cui_filt]
+                added_to_existing = False
+                for prev_rc in test_cases:
+                    if prev_rc.filters == cur_filters:
+                        prev_rc.phrases.append(phrase)
+                        added_to_existing = True
+                if not added_to_existing:
+                    rc = RegressionCase(name=case_name, options=fo,
+                                        filters=cur_filters, phrases=[phrase, ])
+                    test_cases.append(rc)
     checker = RegressionChecker(cases=test_cases)
     return checker.to_yaml()
