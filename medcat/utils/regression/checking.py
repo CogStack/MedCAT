@@ -8,7 +8,7 @@ import tqdm
 from pydantic import BaseModel
 
 from medcat.cat import CAT
-from medcat.utils.regression.targeting import FilterOptions, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
+from medcat.utils.regression.targeting import FilterOptions, FilterType, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
 
 from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor
 
@@ -80,7 +80,7 @@ class RegressionCase(BaseModel):
                 'found the following CUIS/names: %s', fail_reason, ti, phrase, cuis_names)
         if self.report is not None:
             self.report.report(ti.cui, ti.val, phrase,
-                                success, fail_reason)
+                               success, fail_reason)
         return success
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
@@ -93,9 +93,33 @@ class RegressionCase(BaseModel):
         Yields:
             Iterator[Tuple[TargetInfo, str]]: The generator for the target info and the phrase
         """
+        cntr = 0
         for ti in self.get_all_targets(translation.all_targets(), translation):
             for phrase in self.phrases:
+                cntr += 1
                 yield ti, phrase
+        if not cntr:
+            for ti in self._get_specific_cui_and_name():
+                for phrase in self.phrases:
+                    yield ti, phrase
+
+    def _get_specific_cui_and_name(self) -> Iterator[TargetInfo]:
+        if len(self.filters) != 2:
+            return
+        if self.options.strategy != FilterStrategy.ALL:
+            return
+        f1, f2 = self.filters
+        if f1.type == FilterType.NAME and f2.type == FilterType.CUI:
+            name_filter, cui_filter = f1, f2
+        elif f2.type == FilterType.NAME and f1.type == FilterType.CUI:
+            name_filter, cui_filter = f2, f1
+        else:
+            return
+        # There should only ever be one for the ALL strategty
+        # because otherwise a match is impossible
+        for name in name_filter.values:
+            for cui in cui_filter.values:
+                yield TargetInfo(cui, name)
 
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
         """Check the regression case against a model.
