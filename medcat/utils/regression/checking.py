@@ -64,9 +64,11 @@ class RegressionCase(BaseModel):
         ents = res['entities']
         found_cuis = [ents[nr]['cui'] for nr in ents]
         success = ti.cui in found_cuis
+        fail_reason: Optional[FailDescriptor]
         if success:
             logger.debug(
                 'Matched test case %s in phrase "%s"', ti, phrase)
+            fail_reason = None
         else:
             fail_reason = FailDescriptor.get_reason_for(ti.cui, ti.val, res,
                                                         translation)
@@ -76,9 +78,9 @@ class RegressionCase(BaseModel):
             logger.debug(
                 'FAILED to match (%s) test case %s in phrase "%s", '
                 'found the following CUIS/names: %s', fail_reason, ti, phrase, cuis_names)
-            if self.report is not None:
-                self.report.report(ti.cui, ti.val, phrase,
-                                   success, fail_reason)
+        if self.report is not None:
+            self.report.report(ti.cui, ti.val, phrase,
+                                success, fail_reason)
         return success
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
