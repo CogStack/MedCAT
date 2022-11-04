@@ -73,8 +73,8 @@ class TranslationLayer:
             for name in names:
                 yield TargetInfo(cui, name)
 
-    def has_child_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> bool:
-        """Check if the listed CUIs have a child of the specified CUI.
+    def get_children_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
+        """Get the children of the specifeid CUI in the listed CUIs (if they exist).
 
         Args:
             found_cuis (Iterable[str]): The list of CUIs to look in
@@ -82,24 +82,27 @@ class TranslationLayer:
             depth (int): The depth to carry out the search for
 
         Returns:
-            bool: Whether the listed CUIs have a child of the specified one
+            List[str]: The list of children found
         """
         if cui not in self.cui2children:
-            return False  # no children
+            return []  # no children
         children = self.cui2children[cui]
+        found_children = []
         for child in children:
             if child in found_cuis:
-                return True
+                found_children.append(child)
         if depth > 1:
-            return any(self.has_child_of(found_cuis, child, depth - 1) for child in children)
-        return False  # none of the children found
+            for child in children:
+                found_children.extend(self.get_children_of(
+                    found_cuis, child, depth - 1))
+        return found_children
 
-    def has_parent_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> bool:
-        """Check if the listed CUIs have a parent of the specified CUI.
+    def get_parents_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
+        """Get the parents of the specifeid CUI in the listed CUIs (if they exist).
 
         If needed, higher order parents (i.e grandparents) can be queries for.
 
-        This uses the `has_child_of` method intenrnally.
+        This uses the `get_children_of` method intenrnally.
         That is, if any of the found CUIs have the specified CUI as a child of
         the specified depth, the found CUIs have a parent of the specified depth.
 
@@ -109,12 +112,16 @@ class TranslationLayer:
             depth (int): The depth to carry out the search for
 
         Returns:
-            bool: Whether the listed CUIs have a parent of the specified one
+            List[str]: The list of parents found
         """
+        found_parents = []
         for found_cui in found_cuis:
-            if self.has_child_of(set([cui]), found_cui, depth=depth):
-                return True
-        return False
+            if self.get_children_of(set([cui]), found_cui, depth=depth):
+                # TODO - the intermediate results may get lost here
+                # i.e if found_cui is grandparent of the specified one,
+                # the direct parent is not listed
+                found_parents.append(found_cui)
+        return found_parents
 
     @classmethod
     def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
