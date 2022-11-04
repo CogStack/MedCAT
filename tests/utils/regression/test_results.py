@@ -26,11 +26,11 @@ class TestFailReason(unittest.TestCase):
 
     def test_cui_not_found(self, cui='cui-100', name='random n4m3'):
         fr = FailReason.get_reason_for(cui, name, {}, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_CUI_NOT_FOUND)
+        self.assertIs(fr, FailReason.CUI_NOT_FOUND)
 
     def test_cui_name_found(self, cui='cui1', name='random n4m3-not-there'):
         fr = FailReason.get_reason_for(cui, name, {}, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_NAME_NOT_FOUND)
+        self.assertIs(fr, FailReason.NAME_NOT_FOUND)
 
 
 class TestFailReasonWithResultAndChildren(TestFailReason):
@@ -54,11 +54,11 @@ class TestFailReasonWithResultAndChildren(TestFailReason):
 
     def test_found_child(self, cui='cui1', name='name-cui1-2'):
         fr = FailReason.get_reason_for(cui, name, self.res_w_cui2, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_CUI_FOUND_CHILD)
+        self.assertIs(fr, FailReason.CUI_CHILD_FOUND)
 
     def test_found_parent(self, cui='cui2', name='name-cui2-1'):
         fr = FailReason.get_reason_for(cui, name, self.res_w_cui1, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_CUI_FOUND_PARENT)
+        self.assertIs(fr, FailReason.CUI_PARENT_FOUND)
 
 
 class TestFailReasonWithSpanningConcepts(unittest.TestCase):
