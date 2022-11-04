@@ -1,6 +1,6 @@
 
 from enum import Enum
-from typing import Dict, List, Optional, Tuple, cast
+from typing import Callable, Dict, List, Optional, Tuple, cast
 import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer
@@ -13,24 +13,36 @@ from medcat.utils.regression.targeting import TranslationLayer
 class FailReason(Enum):
     CONCEPT_NOT_ANNOTATED = 1
     """The concept was not annotated by the model"""
-    INCORRECT_SPAN_BIG = 2
+    INCORRECT_CUI_FOUND = 2
+    """A different CUI with the same name was found"""
+    INCORRECT_SPAN_BIG = 3
     """The concept was a part of an annotation made by the model"""
-    INCORRECT_SPAN_SMALL = 3
+    INCORRECT_SPAN_SMALL = 4
     """Only a part of the concept was annotated"""
-    INCORRECT_CUI_NOT_FOUND = 4
+    INCORRECT_CUI_NOT_FOUND = 5
     """The CUI was not found in the context database"""
-    INCORRECT_CUI_FOUND_PARENT = 5
+    INCORRECT_CUI_FOUND_PARENT = 6
     """The CUI annotated was the parent of the concept"""
-    INCORRECT_CUI_FOUND_CHILD = 6
+    INCORRECT_CUI_FOUND_CHILD = 7
     """The CUI annotated was a child of the concept"""
-    INCORRECT_NAME_NOT_FOUND = 7
+    INCORRECT_NAME_NOT_FOUND = 8
     """The name specified was not found in the context database"""
     UNKNOWN = -1
     """Unknown reason for failure"""
 
+
+class FailDescriptor(pydantic.BaseModel):
+    cui: str
+    name: str
+    reason: FailReason
+    extra: str = ''
+
     @classmethod
-    def get_reason_for(cls, cui: str, name: str, res: dict, translation: TranslationLayer) -> 'FailReason':
+    def get_reason_for(cls, cui: str, name: str, res: dict, translation: TranslationLayer) -> 'FailDescriptor':
+        def format_matching(matches: List[Tuple[str, str]]) -> str:
+            return 'Found: ' + ', '.join(f'{mcui}|{mname}' for mcui, mname in matches)
         fail_reason: FailReason = FailReason.UNKNOWN  # should never remain unknown
+        extra: str = ''
         if cui not in translation.cui2names:
             fail_reason = FailReason.INCORRECT_CUI_NOT_FOUND
         elif name not in translation.name2cuis:
@@ -38,23 +50,45 @@ class FailReason(Enum):
         else:
             ents = res['entities']
             found_cuis = [ents[nr]['cui'] for nr in ents]
-            found_child = translation.has_child_of(found_cuis, cui)
-            found_parent = translation.has_parent_of(found_cuis, cui)
-            if found_child:
+            found_names = [ents[nr]['source_value'] for nr in ents]
+            found_children = translation.get_children_of(found_cuis, cui)
+            found_parents = translation.get_parents_of(found_cuis, cui)
+            if found_children:
                 fail_reason = FailReason.INCORRECT_CUI_FOUND_CHILD
-            elif found_parent:
+                w_name = [(ccui, found_names[found_cuis.index(ccui)])
+                          for ccui in found_children]
+                extra = format_matching(w_name)
+            elif found_parents:
                 fail_reason = FailReason.INCORRECT_CUI_FOUND_PARENT
+                w_name = [(ccui, found_names[found_cuis.index(ccui)])
+                          for ccui in found_parents]
+                extra = format_matching(w_name)
             else:
-                found_names = [ents[nr]['source_value'].lower()
-                               for nr in ents]
+                found_cuis_names = list(zip(found_cuis, found_names))
+
+                def get_matching(condition: Callable[[str, str], bool]):
+                    return [(found_cui, found_name)
+                            for found_cui, found_name in found_cuis_names
+                            if condition(found_cui, found_name)]
                 name = name.lower()
-                if any(name in found_name for found_name in found_names):
+                same_names = get_matching(
+                    lambda _, fname: fname.lower() == name)
+                bigger_span = get_matching(
+                    lambda _, fname: name in fname.lower())
+                smaller_span = get_matching(
+                    lambda _, fname: fname.lower() in name)
+                if same_names:
+                    extra = format_matching(same_names)
+                    fail_reason = FailReason.INCORRECT_CUI_FOUND
+                elif bigger_span:
+                    extra = format_matching(bigger_span)
                     fail_reason = FailReason.INCORRECT_SPAN_BIG
-                elif any(found_name in name for found_name in found_names):
+                elif smaller_span:
+                    extra = format_matching(smaller_span)
                     fail_reason = FailReason.INCORRECT_SPAN_SMALL
                 else:
                     fail_reason = FailReason.CONCEPT_NOT_ANNOTATED
-        return fail_reason
+        return FailDescriptor(cui=cui, name=name, reason=fail_reason, extra=extra)
 
 
 class SingleResultDescriptor(pydantic.BaseModel):
@@ -64,23 +98,23 @@ class SingleResultDescriptor(pydantic.BaseModel):
     """Number of successes"""
     fail: int = 0
     """Number of failures"""
-    failures: List[Tuple[str, str, FailReason]] = []
+    failures: List[FailDescriptor] = []
     """The description of failures"""
 
-    def report_success(self, cui: str, name: str, success: bool, fail_reason: Optional[FailReason]) -> None:
+    def report_success(self, cui: str, name: str, success: bool, fail_reason: Optional[FailDescriptor]) -> None:
         """Report a test case and its successfulness
 
         Args:
             cui (str): The CUI being checked
             name (str): The name being checked
             success (bool): Whether or not the check was successful
-            fail_reason (Optional[FailReason]): The reason for the failure (if applicable)
+            fail_reason (Optional[FailDescriptor]): The reason for the failure (if applicable)
         """
         if success:
             self.success += 1
         else:
             self.fail += 1
-            self.failures.append((cui, name, cast(FailReason, fail_reason)))
+            self.failures.append(cast(FailDescriptor, fail_reason))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -97,7 +131,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
 class ResultDescriptor(SingleResultDescriptor):
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
 
-    def report(self, cui: str, name: str, phrase: str, success: bool, fail_reason: Optional[FailReason]) -> None:
+    def report(self, cui: str, name: str, phrase: str, success: bool, fail_reason: Optional[FailDescriptor]) -> None:
         """Report a test case and its successfulness
 
         Args:
@@ -105,7 +139,7 @@ class ResultDescriptor(SingleResultDescriptor):
             name (str): The name being checked
             phrase (str): The phrase being checked
             success (bool): Whether or not the check was successful
-            fail_reason (Optional[FailReason]): The reason for the failure (if applicable)
+            fail_reason (Optional[FailDescriptor]): The reason for the failure (if applicable)
         """
         super().report_success(cui, name, success, fail_reason)
         if phrase not in self.per_phrase_results:
@@ -162,7 +196,7 @@ class MultiDescriptor(pydantic.BaseModel):
             str: The report string
         """
         del_out = []  # delegation
-        all_failures = []
+        all_failures: List[FailDescriptor] = []
         total_s, total_f = 0, 0
         nr_of_empty = 0
         for part in self.parts:
@@ -184,16 +218,17 @@ class MultiDescriptor(pydantic.BaseModel):
         failures = ''
         if show_failures and all_failures:
             failure_types = {}
-            for _, _, ft in all_failures:
-                if ft not in failure_types:
-                    failure_types[ft] = 0
-                failure_types[ft] += 1
+            for fd in all_failures:
+                if fd.reason not in failure_types:
+                    failure_types[fd.reason] = 0
+                failure_types[fd.reason] += 1
             failures = '\nFailures:\n' + \
                 '\n'.join(
                     [f'{ft}: {occurances}' for ft, occurances in failure_types.items()])
             failures += '\nDetailed:\n' + '\n'.join(
-                [f'CUI: {repr(cui)}, name: {repr(name)}, reason: {reason}'
-                 for cui, name, reason in all_failures])
+                [f'CUI: {repr(descriptor.cui)}, name: {repr(descriptor.name)}, '
+                 f'reason: {descriptor.reason}{" (%s)"%descriptor.extra if descriptor.extra else ""}'
+                 for descriptor in all_failures])
         return f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
 And a total of {total_total} (sub)cases were checked.{empty_text}
         Total success:  {total_s:10d} ({100 * total_s / total_total if total_total > 0 else 0}%)

@@ -10,7 +10,7 @@ from pydantic import BaseModel
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import FilterOptions, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
 
-from medcat.utils.regression.results import FailReason, MultiDescriptor, ResultDescriptor
+from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor
 
 logger = logging.getLogger(__name__)
 
@@ -68,11 +68,14 @@ class RegressionCase(BaseModel):
             logger.debug(
                 'Matched test case %s in phrase "%s"', ti, phrase)
         else:
-            fail_reason = FailReason.get_reason_for(ti.cui, ti.val, res,
-                                                    translation)
+            fail_reason = FailDescriptor.get_reason_for(ti.cui, ti.val, res,
+                                                        translation)
+            found_names = [ents[nr]['source_value'] for nr in ents]
+            cuis_names = ', '.join([f'{fcui}|{fname}'
+                                    for fcui, fname in zip(found_cuis, found_names)])
             logger.debug(
                 'FAILED to match (%s) test case %s in phrase "%s", '
-                'found the following CUIS: %s', fail_reason, ti, phrase, found_cuis)
+                'found the following CUIS/names: %s', fail_reason, ti, phrase, cuis_names)
             if self.report is not None:
                 self.report.report(ti.cui, ti.val, phrase,
                                    success, fail_reason)
