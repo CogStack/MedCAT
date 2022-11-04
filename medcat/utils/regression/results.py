@@ -19,13 +19,13 @@ class FailReason(Enum):
     """The concept was a part of an annotation made by the model"""
     INCORRECT_SPAN_SMALL = 4
     """Only a part of the concept was annotated"""
-    INCORRECT_CUI_NOT_FOUND = 5
+    CUI_NOT_FOUND = 5
     """The CUI was not found in the context database"""
-    INCORRECT_CUI_FOUND_PARENT = 6
+    CUI_PARENT_FOUND = 6
     """The CUI annotated was the parent of the concept"""
-    INCORRECT_CUI_FOUND_CHILD = 7
+    CUI_CHILD_FOUND = 7
     """The CUI annotated was a child of the concept"""
-    INCORRECT_NAME_NOT_FOUND = 8
+    NAME_NOT_FOUND = 8
     """The name specified was not found in the context database"""
     UNKNOWN = -1
     """Unknown reason for failure"""
@@ -44,9 +44,9 @@ class FailDescriptor(pydantic.BaseModel):
         fail_reason: FailReason = FailReason.UNKNOWN  # should never remain unknown
         extra: str = ''
         if cui not in translation.cui2names:
-            fail_reason = FailReason.INCORRECT_CUI_NOT_FOUND
+            fail_reason = FailReason.CUI_NOT_FOUND
         elif name not in translation.name2cuis:
-            fail_reason = FailReason.INCORRECT_NAME_NOT_FOUND
+            fail_reason = FailReason.NAME_NOT_FOUND
         else:
             ents = res['entities']
             found_cuis = [ents[nr]['cui'] for nr in ents]
@@ -54,12 +54,12 @@ class FailDescriptor(pydantic.BaseModel):
             found_children = translation.get_children_of(found_cuis, cui)
             found_parents = translation.get_parents_of(found_cuis, cui)
             if found_children:
-                fail_reason = FailReason.INCORRECT_CUI_FOUND_CHILD
+                fail_reason = FailReason.CUI_CHILD_FOUND
                 w_name = [(ccui, found_names[found_cuis.index(ccui)])
                           for ccui in found_children]
                 extra = format_matching(w_name)
             elif found_parents:
-                fail_reason = FailReason.INCORRECT_CUI_FOUND_PARENT
+                fail_reason = FailReason.CUI_PARENT_FOUND
                 w_name = [(ccui, found_names[found_cuis.index(ccui)])
                           for ccui in found_parents]
                 extra = format_matching(w_name)
