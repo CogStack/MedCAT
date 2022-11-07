@@ -235,7 +235,7 @@ class TypedFilter(BaseModel):
                 if cui in self.values:
                     yield cui, name
         if self.type == FilterType.NAME:
-            for ti in in_gen:
+            for cui, name in in_gen:
                 if name in self.values:
                     yield cui, name
         if self.type == FilterType.TYPE_ID:
