@@ -6,7 +6,7 @@ import yaml
 from medcat.utils.regression.checking import RegressionChecker
 
 from medcat.utils.regression.converting import PerSentenceSelector, PerWordContextSelector, UniqueNamePreserver, medcat_export_json_to_regression_yml
-from medcat.utils.regression.targeting import FilterType, TargetInfo
+from medcat.utils.regression.targeting import FilterType
 
 
 class FakeTranslationLayer:
@@ -14,11 +14,11 @@ class FakeTranslationLayer:
     def __init__(self, mct_export: dict) -> None:
         self.mct_export = json.loads(mct_export)
 
-    def all_targets(self, *args, **kwargs):  # -> Iterator[TargetInfo]:
+    def all_targets(self, *args, **kwargs):  # -> Iterator[str, str]:
         for project in self.mct_export['projects']:
             for doc in project['documents']:
                 for ann in doc['annotations']:
-                    yield TargetInfo(ann['cui'], ann['value'])
+                    yield ann['cui'], ann['value']
 
 
 class TestUniqueNames(unittest.TestCase):

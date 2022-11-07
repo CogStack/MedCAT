@@ -1,7 +1,7 @@
 
 from enum import Enum
 import logging
-from typing import Dict, Iterable, Iterator, List, Set, Any, Union
+from typing import Dict, Iterable, Iterator, List, Set, Any, Tuple, Union
 
 from pydantic import BaseModel
 
@@ -13,26 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 logger = logging.getLogger(__name__)
-
-
-class TargetInfo:
-    """The helper class to identify individual target info.
-    The main reason for this class is to simplify type hints.
-
-    Args:
-        cui (str): The CUI of the target
-        val (str): The name/value of the target
-    """
-
-    def __init__(self, cui: str, val: str) -> None:
-        self.cui = cui
-        self.val = val
-
-    def __str__(self) -> str:
-        return f'TI[{self.cui}:{self.val}]'
-
-    def __repr__(self) -> str:
-        return f'<{self}>'
 
 
 class TranslationLayer:
@@ -67,11 +47,11 @@ class TranslationLayer:
             if cui not in cui2children:
                 self.cui2children[cui] = set()
 
-    def targets_for(self, cui: str) -> Iterator[TargetInfo]:
+    def targets_for(self, cui: str) -> Iterator[Tuple[str, str]]:
         for name in self.cui2names[cui]:
-            yield TargetInfo(cui, name)
+            yield cui, name
 
-    def all_targets(self, all_cuis: Set[str], all_names: Set[str], all_types: Set[str]) -> Iterator[TargetInfo]:
+    def all_targets(self, all_cuis: Set[str], all_names: Set[str], all_types: Set[str]) -> Iterator[Tuple[str, str]]:
         """Get a generator of all target information objects.
         This is the starting point for checking cases.
 
@@ -88,7 +68,7 @@ class TranslationLayer:
                 logger.warn('CUI not found in translation layer: %s', cui)
                 continue
             for name in self.cui2names[cui]:
-                yield TargetInfo(cui, name)
+                yield cui, name
         for name in all_names:
             if name not in self.name2cuis:
                 logger.warn('Name not found in translation layer: %s', name)
@@ -96,7 +76,7 @@ class TranslationLayer:
             for cui in self.name2cuis:
                 if cui in all_cuis:
                     continue  # this cui-name pair should already have been yielded above
-                yield TargetInfo(cui, name)
+                yield cui, name
         for type_id in all_types:
             if type_id not in self.type_id2cuis:
                 logger.warn(
@@ -112,7 +92,7 @@ class TranslationLayer:
                 for name in self.cui2names[cui]:
                     if name in all_names:
                         continue  # should have been yielded above
-                    yield TargetInfo(cui, name)
+                    yield cui, name
 
     def get_children_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
         """Get the children of the specifeid CUI in the listed CUIs (if they exist).
@@ -240,7 +220,7 @@ class TypedFilter(BaseModel):
     type: FilterType
     values: List[str]
 
-    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
+    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
         """Get all applicable targets for this filter
 
         Args:
@@ -251,22 +231,23 @@ class TypedFilter(BaseModel):
             Iterator[TargetInfo]: The output generator
         """
         if self.type == FilterType.CUI or self.type == FilterType.CUI_AND_CHILDREN:
-            for ti in in_gen:
-                if ti.cui in self.values:
-                    yield ti
+            for cui, name in in_gen:
+                if cui in self.values:
+                    yield cui, name
         if self.type == FilterType.NAME:
             for ti in in_gen:
-                if ti.val in self.values:
-                    yield ti
+                if name in self.values:
+                    yield cui, name
         if self.type == FilterType.TYPE_ID:
-            for ti in in_gen:
-                if ti.cui in translation.cui2type_ids:
-                    tids = translation.cui2type_ids[ti.cui]
+            for cui, name in in_gen:
+                if cui in translation.cui2type_ids:
+                    tids = translation.cui2type_ids[cui]
                 else:
                     tids = set()
                 for tid in tids:
                     if tid in self.values:
-                        yield ti
+                        yield cui, name
+                        break
 
     @classmethod
     def one_from_input(cls, target_type: str, vals: Union[str, list, dict]) -> 'TypedFilter':
@@ -405,7 +386,7 @@ class CUIWithChildFilter(TypedFilter):
     depth: int
     values: List[str] = []  # overwrite TypedFilter
 
-    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[TargetInfo]) -> Iterator[TargetInfo]:
+    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
         """Get all applicable targets for this filter
 
         Args:
@@ -415,11 +396,11 @@ class CUIWithChildFilter(TypedFilter):
         Yields:
             Iterator[TargetInfo]: The output generator
         """
-        for ti in self.delegate.get_applicable_targets(translation, in_gen):
-            yield ti
-            yield from self.get_children_of(translation, ti.cui, cur_depth=1)
+        for cui, name in self.delegate.get_applicable_targets(translation, in_gen):
+            yield cui, name
+            yield from self.get_children_of(translation, cui, cur_depth=1)
 
-    def get_children_of(self, translation: TranslationLayer, cui: str, cur_depth: int) -> Iterator[TargetInfo]:
+    def get_children_of(self, translation: TranslationLayer, cui: str, cur_depth: int) -> Iterator[Tuple[str, str]]:
         for child in translation.cui2children[cui]:
             yield from translation.targets_for(child)
             if cur_depth < self.depth:
