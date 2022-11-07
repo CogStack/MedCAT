@@ -280,8 +280,8 @@ class RegressionChecker:
                     fails += 1
         else:
             for case in tqdm.tqdm(self.cases):
-                for ti, phrase in case.get_all_subcases(translation):
-                    if case.check_specific_for_phrase(cat, ti, phrase, translation):
+                for cui, name, phrase in case.get_all_subcases(translation):
+                    if case.check_specific_for_phrase(cat, cui, name, phrase, translation):
                         successes += 1
                     else:
                         fails += 1
