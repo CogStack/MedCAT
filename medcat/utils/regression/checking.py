@@ -28,11 +28,11 @@ class RegressionCase(BaseModel):
         """Get all applicable targets for this regression case
 
         Args:
-            in_set (Iterator[TargetInfo]): The input generator / iterator
+            in_set (Iterator[Tuple[str, str]]): The input generator / iterator
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[TargetInfo]: The output generator
+            Iterator[Tuple[str, str]]: The output generator
         """
         if len(self.filters) == 1:
             yield from self.filters[0].get_applicable_targets(translation, in_set)
@@ -53,7 +53,8 @@ class RegressionCase(BaseModel):
 
         Args:
             cat (CAT): The model
-            ti (TargetInfo): The target info
+            cui (str): The target CUI
+            name (str): The target name
             phrase (str): The phrase to check
             translation (TranslationLayer): The translation layer
 
@@ -106,7 +107,7 @@ class RegressionCase(BaseModel):
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[Tuple[TargetInfo, str]]: The generator for the target info and the phrase
+            Iterator[Tuple[str, str, str]]: The generator for the target info and the phrase
         """
         cntr = 0
         for cui, name in self.get_all_targets(translation.all_targets(*self._get_all_cuis_names_types()), translation):
@@ -252,7 +253,7 @@ class RegressionChecker:
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[Tuple[RegressionCase, TargetInfo, str]]: The generator for all the cases
+            Iterator[Tuple[RegressionCase, str, str, str]]: The generator for all the cases
         """
         for case in self.cases:
             for cui, name, phrase in case.get_all_subcases(translation):
