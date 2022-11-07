@@ -61,7 +61,7 @@ class TranslationLayer:
             all_types (Set[str]): The set of all type IDs to be queried
 
         Yields:
-            Iterator[TargetInfo]: The iterator of the target info
+            Iterator[Tuple[str, str]]: The iterator of the target info
         """
         for cui in all_cuis:
             if cui not in self.cui2names:
@@ -225,10 +225,10 @@ class TypedFilter(BaseModel):
 
         Args:
             translation (TranslationLayer): The translation layer
-            in_gen (Iterator[TargetInfo]): The input generator / iterator
+            in_gen (Iterator[Tuple[str, str]]): The input generator / iterator
 
         Yields:
-            Iterator[TargetInfo]: The output generator
+            Iterator[Tuple[str, str]]: The output generator
         """
         if self.type == FilterType.CUI or self.type == FilterType.CUI_AND_CHILDREN:
             for cui, name in in_gen:
@@ -391,10 +391,10 @@ class CUIWithChildFilter(TypedFilter):
 
         Args:
             translation (TranslationLayer): The translation layer
-            in_gen (Iterator[TargetInfo]): The input generator / iterator
+            in_gen (Iterator[Tuple[str, str]]): The input generator / iterator
 
         Yields:
-            Iterator[TargetInfo]: The output generator
+            Iterator[Tuple[str, str]]: The output generator
         """
         for cui, name in self.delegate.get_applicable_targets(translation, in_gen):
             yield cui, name
