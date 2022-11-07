@@ -8,7 +8,7 @@ import tqdm
 from pydantic import BaseModel
 
 from medcat.cat import CAT
-from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TargetInfo, TranslationLayer, FilterStrategy
+from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TranslationLayer, FilterStrategy
 
 from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor
 
@@ -24,7 +24,7 @@ class RegressionCase(BaseModel):
     phrases: List[str]
     report: Optional[ResultDescriptor] = None
 
-    def get_all_targets(self, in_set: Iterator[TargetInfo], translation: TranslationLayer) -> Iterator[TargetInfo]:
+    def get_all_targets(self, in_set: Iterator[Tuple[str, str]], translation: TranslationLayer) -> Iterator[Tuple[str, str]]:
         """Get all applicable targets for this regression case
 
         Args:
@@ -46,7 +46,7 @@ class RegressionCase(BaseModel):
                 cur_gen = filter.get_applicable_targets(translation, cur_gen)
             yield from cur_gen
 
-    def check_specific_for_phrase(self, cat: CAT, ti: TargetInfo, phrase: str,
+    def check_specific_for_phrase(self, cat: CAT, cui: str, name: str, phrase: str,
                                   translation: TranslationLayer) -> bool:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
@@ -60,26 +60,26 @@ class RegressionCase(BaseModel):
         Returns:
             bool: Whether or not the target was correctly identified
         """
-        res = cat.get_entities(phrase % ti.val, only_cui=False)
+        res = cat.get_entities(phrase % name, only_cui=False)
         ents = res['entities']
         found_cuis = [ents[nr]['cui'] for nr in ents]
-        success = ti.cui in found_cuis
+        success = cui in found_cuis
         fail_reason: Optional[FailDescriptor]
         if success:
             logger.debug(
-                'Matched test case %s in phrase "%s"', ti, phrase)
+                'Matched test case %s in phrase "%s"', (cui, name), phrase)
             fail_reason = None
         else:
-            fail_reason = FailDescriptor.get_reason_for(ti.cui, ti.val, res,
+            fail_reason = FailDescriptor.get_reason_for(cui, name, res,
                                                         translation)
             found_names = [ents[nr]['source_value'] for nr in ents]
             cuis_names = ', '.join([f'{fcui}|{fname}'
                                     for fcui, fname in zip(found_cuis, found_names)])
             logger.debug(
                 'FAILED to match (%s) test case %s in phrase "%s", '
-                'found the following CUIS/names: %s', fail_reason, ti, phrase, cuis_names)
+                'found the following CUIS/names: %s', fail_reason, (cui, name), phrase, cuis_names)
         if self.report is not None:
-            self.report.report(ti.cui, ti.val, phrase,
+            self.report.report(cui, name, phrase,
                                success, fail_reason)
         return success
 
@@ -98,7 +98,7 @@ class RegressionCase(BaseModel):
                 types.update(filt.values)
         return cuis, names, types
 
-    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[TargetInfo, str]]:
+    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[str, str, str]]:
         """Get all subcases for this case.
         That is, all combinations of targets with their appropriate phrases.
 
@@ -109,16 +109,16 @@ class RegressionCase(BaseModel):
             Iterator[Tuple[TargetInfo, str]]: The generator for the target info and the phrase
         """
         cntr = 0
-        for ti in self.get_all_targets(translation.all_targets(*self._get_all_cuis_names_types()), translation):
+        for cui, name in self.get_all_targets(translation.all_targets(*self._get_all_cuis_names_types()), translation):
             for phrase in self.phrases:
                 cntr += 1
-                yield ti, phrase
+                yield cui, name, phrase
         if not cntr:
-            for ti in self._get_specific_cui_and_name():
+            for cui, name in self._get_specific_cui_and_name():
                 for phrase in self.phrases:
-                    yield ti, phrase
+                    yield cui, name, phrase
 
-    def _get_specific_cui_and_name(self) -> Iterator[TargetInfo]:
+    def _get_specific_cui_and_name(self) -> Iterator[Tuple[str, str]]:
         if len(self.filters) != 2:
             return
         if self.options.strategy != FilterStrategy.ALL:
@@ -134,7 +134,7 @@ class RegressionCase(BaseModel):
         # because otherwise a match is impossible
         for name in name_filter.values:
             for cui in cui_filter.values:
-                yield TargetInfo(cui, name)
+                yield cui, name
 
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
         """Check the regression case against a model.
@@ -149,8 +149,8 @@ class RegressionCase(BaseModel):
         """
         success = 0
         fail = 0
-        for target, phrase in self.get_all_subcases(translation):
-            if self.check_specific_for_phrase(cat, target, phrase, translation):
+        for cui, name, phrase in self.get_all_subcases(translation):
+            if self.check_specific_for_phrase(cat, cui, name, phrase, translation):
                 success += 1
             else:
                 fail += 1
@@ -245,7 +245,7 @@ class RegressionChecker:
                 self.report.parts.append(cur_rd)
                 case.report = cur_rd
 
-    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, TargetInfo, str]]:
+    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, str, str, str]]:
         """Get all subcases (i.e regssion case, target info and phrase) for this checker.
 
         Args:
@@ -255,8 +255,8 @@ class RegressionChecker:
             Iterator[Tuple[RegressionCase, TargetInfo, str]]: The generator for all the cases
         """
         for case in self.cases:
-            for ti, phrase in case.get_all_subcases(translation):
-                yield case, ti, phrase
+            for cui, name, phrase in case.get_all_subcases(translation):
+                yield case, cui, name, phrase
 
     def check_model(self, cat: CAT, translation: TranslationLayer,
                     total: Optional[int] = None) -> Union[Tuple[int, int], MultiDescriptor]:
