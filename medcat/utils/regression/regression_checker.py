@@ -14,7 +14,7 @@ from medcat.utils.regression.results import MultiDescriptor
 logger = logging.getLogger(__name__)
 
 
-def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0,
+def main(model_pack_dir: Path, test_suite_file: Path, max_failures: int = 0,
          total: Optional[int] = None, report: bool = False,
          phrases: bool = False, hide_empty: bool = False,
          hide_failures: bool = False) -> None:
@@ -23,6 +23,7 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures=0,
     Args:
         model_pack_dir (Path): The path to the model pack
         test_suite_file (Path): The path to the test suite YAML
+        max_failures (int): The maximal number of failures allowed
         total (Optional[int]): The total number of (sub)cases to be tested (for progress bar)
         report (bool): Whether to use a more comprehensive report
         phrases (bool): Whether to show per-phrase information in a report
