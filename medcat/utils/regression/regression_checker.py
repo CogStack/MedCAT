@@ -2,20 +2,17 @@
 import argparse
 from pathlib import Path
 import logging
-import time
 
-from sys import exit as sys_exit
 from typing import Optional
 
 from medcat.cat import CAT
 from medcat.utils.regression.checking import RegressionChecker, TranslationLayer
-from medcat.utils.regression.results import MultiDescriptor
 
 logger = logging.getLogger(__name__)
 
 
-def main(model_pack_dir: Path, test_suite_file: Path, max_failures: int = 0,
-         total: Optional[int] = None, report: bool = False,
+def main(model_pack_dir: Path, test_suite_file: Path,
+         total: Optional[int] = None,
          phrases: bool = False, hide_empty: bool = False,
          hide_failures: bool = False) -> None:
     """Check test suite against the specifeid model pack.
@@ -23,31 +20,19 @@ def main(model_pack_dir: Path, test_suite_file: Path, max_failures: int = 0,
     Args:
         model_pack_dir (Path): The path to the model pack
         test_suite_file (Path): The path to the test suite YAML
-        max_failures (int): The maximal number of failures allowed
         total (Optional[int]): The total number of (sub)cases to be tested (for progress bar)
-        report (bool): Whether to use a more comprehensive report
         phrases (bool): Whether to show per-phrase information in a report
         hide_empty (bool): Whether to hide empty cases in a report
         hide_failures (bool): Whether to hide failures in a report
     """
     logger.info('Loading RegressionChecker from yaml: %s', test_suite_file)
-    rc = RegressionChecker.from_yaml(str(test_suite_file), report=report)
+    rc = RegressionChecker.from_yaml(str(test_suite_file))
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
-    st = time.time()
-    # s, f = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
     res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
-    if report and isinstance(res, MultiDescriptor):
-        logger.info(res.get_report(
-            phrases_separately=phrases, hide_empty=hide_empty, show_failures=not hide_failures))
-        return
-    s, f = res  # tuple
-    logger.info('Checking took %s seconds', time.time() - st)
-    logger.info('\tSuccessful:\t%d\n\tFailed:\t\t%d', s, f)
-    if f > max_failures:
-        logger.warning('Found too many failures (%s)', f)
-        sys_exit(2)
+    logger.info(res.get_report(phrases_separately=phrases,
+                hide_empty=hide_empty, show_failures=not hide_failures))
 
 
 if __name__ == '__main__':
@@ -60,8 +45,6 @@ if __name__ == '__main__':
                             'configs', 'default_regression_tests.yml'),
                         nargs='?',
                         type=Path)
-    parser.add_argument('--maxfail', '--mf', help='Number of maximum failures allowed (defaults to 0)',
-                        type=int, default='0')
     parser.add_argument('--silent', '-s', help='Make the operation silent (i.e ignore console output)',
                         action='store_true')
     parser.add_argument('--verbose', '-debug', help='Enable debug/verbose mode',
@@ -69,14 +52,12 @@ if __name__ == '__main__':
     parser.add_argument('--total', '-t', help='Set the total number of (sub)cases that will be tested. '
                         'This will enable using a progress bar. '
                         'If unknown, a large-ish number might still be beneficial to show progress.', type=int, default=None)
-    parser.add_argument('--report', help='Show a more comprehensive report instead of a simple '
-                        'total of success and failures', action='store_true')
-    parser.add_argument('--phrases', '-p', help='Include per-phrase information in report '
-                        '(only applicable if --report was passed)', action='store_true')
-    parser.add_argument('--noempty', help='Hide empty cases in report'
-                        '(only applicable if --report was passed)', action='store_true')
-    parser.add_argument('--hidefailures', help='Hide failed cases in report'
-                        '(only applicable if --report was passed)', action='store_true')
+    parser.add_argument('--phrases', '-p', help='Include per-phrase information in report',
+                        action='store_true')
+    parser.add_argument('--noempty', help='Hide empty cases in report',
+                        action='store_true')
+    parser.add_argument('--hidefailures', help='Hide failed cases in report',
+                        action='store_true')
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -89,6 +70,5 @@ if __name__ == '__main__':
         checking_logger.setLevel('DEBUG')
         converting_logger.addHandler(console)
         converting_logger.setLevel('DEBUG')
-    main(args.modelpack, args.test_suite,
-         max_failures=args.maxfail, total=args.total, report=args.report,
+    main(args.modelpack, args.test_suite, total=args.total,
          phrases=args.phrases, hide_empty=args.noempty, hide_failures=args.hidefailures)
