@@ -2,7 +2,7 @@
 import unittest
 
 from medcat.utils.regression.targeting import TranslationLayer
-from medcat.utils.regression.results import FailReason
+from medcat.utils.regression.results import FailDescriptor, FailReason
 
 
 class TestFailReason(unittest.TestCase):
@@ -25,12 +25,12 @@ class TestFailReason(unittest.TestCase):
     tl = TranslationLayer(cui2names, name2cuis, cui2type_ids, cui2children)
 
     def test_cui_not_found(self, cui='cui-100', name='random n4m3'):
-        fr = FailReason.get_reason_for(cui, name, {}, self.tl)
-        self.assertIs(fr, FailReason.CUI_NOT_FOUND)
+        fr = FailDescriptor.get_reason_for(cui, name, {}, self.tl)
+        self.assertIs(fr.reason, FailReason.CUI_NOT_FOUND)
 
     def test_cui_name_found(self, cui='cui1', name='random n4m3-not-there'):
-        fr = FailReason.get_reason_for(cui, name, {}, self.tl)
-        self.assertIs(fr, FailReason.NAME_NOT_FOUND)
+        fr = FailDescriptor.get_reason_for(cui, name, {}, self.tl)
+        self.assertIs(fr.reason, FailReason.NAME_NOT_FOUND)
 
 
 class TestFailReasonWithResultAndChildren(TestFailReason):
@@ -53,12 +53,12 @@ class TestFailReasonWithResultAndChildren(TestFailReason):
                           TestFailReason.cui2type_ids, cui2children)
 
     def test_found_child(self, cui='cui1', name='name-cui1-2'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_cui2, self.tl)
-        self.assertIs(fr, FailReason.CUI_CHILD_FOUND)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui2, self.tl)
+        self.assertIs(fr.reason, FailReason.CUI_CHILD_FOUND)
 
     def test_found_parent(self, cui='cui2', name='name-cui2-1'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_cui1, self.tl)
-        self.assertIs(fr, FailReason.CUI_PARENT_FOUND)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl)
+        self.assertIs(fr.reason, FailReason.CUI_PARENT_FOUND)
 
 
 class TestFailReasonWithSpanningConcepts(unittest.TestCase):
@@ -97,21 +97,21 @@ class TestFailReasonWithSpanningConcepts(unittest.TestCase):
         res_w_cui1, res_w_cui11, res_w_cui111])])}
 
     def test_gets_incorrect_span_big(self, cui='cui1', name='shallow'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_cui11, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_SPAN_BIG)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui11, self.tl)
+        self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_BIG)
 
     def test_gets_incorrect_span_bigger(self, cui='cui1', name='shallow'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_cui111, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_SPAN_BIG)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui111, self.tl)
+        self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_BIG)
 
     def test_gets_incorrect_span_small(self, cui='cui1.1', name='broader shallow'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_cui1, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_SPAN_SMALL)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl)
+        self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_SMALL)
 
     def test_gets_incorrect_span_smaller(self, cui='cui1.1.1', name='even broader shallow'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_cui1, self.tl)
-        self.assertIs(fr, FailReason.INCORRECT_SPAN_SMALL)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl)
+        self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_SMALL)
 
     def test_gets_not_annotated(self, cui='cui2', name='name-2'):
-        fr = FailReason.get_reason_for(cui, name, self.res_w_all, self.tl)
-        self.assertIs(fr, FailReason.CONCEPT_NOT_ANNOTATED)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_all, self.tl)
+        self.assertIs(fr.reason, FailReason.CONCEPT_NOT_ANNOTATED)
