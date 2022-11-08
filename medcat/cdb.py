@@ -564,7 +564,7 @@ class CDB(object):
     def print_stats(self) -> None:
         r'''Print basic statistics for the CDB.
         '''
-        logger.info(json.dumps(self._make_stats(), indent=2))
+        logger.info(json.dumps(self.make_stats(), indent=2))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
