@@ -65,13 +65,13 @@ class TranslationLayer:
         """
         for cui in all_cuis:
             if cui not in self.cui2names:
-                logger.warn('CUI not found in translation layer: %s', cui)
+                logger.warning('CUI not found in translation layer: %s', cui)
                 continue
             for name in self.cui2names[cui]:
                 yield cui, name
         for name in all_names:
             if name not in self.name2cuis:
-                logger.warn('Name not found in translation layer: %s', name)
+                logger.warning('Name not found in translation layer: %s', name)
                 continue
             for cui in self.name2cuis:
                 if cui in all_cuis:
@@ -79,14 +79,14 @@ class TranslationLayer:
                 yield cui, name
         for type_id in all_types:
             if type_id not in self.type_id2cuis:
-                logger.warn(
+                logger.warning(
                     'Type ID not found in translation layer: %s', type_id)
                 continue
             for cui in self.type_id2cuis[type_id]:
                 if cui in all_cuis:
                     continue  # should have been yielded above
                 if cui not in self.cui2names:
-                    logger.warn(
+                    logger.warning(
                         'CUI not found in translation layer: %s', cui)
                     continue
                 for name in self.cui2names[cui]:
@@ -158,7 +158,7 @@ class TranslationLayer:
             TranslationLayer: The subsequent TranslationLayer
         """
         if 'pt2ch' not in cdb.addl_info:
-            logger.warn(
+            logger.warning(
                 "No parent to child information presented so they cannot be used")
             parent2child = {}
         else:
