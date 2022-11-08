@@ -3,6 +3,7 @@ import shutil
 import unittest
 import tempfile
 import asyncio
+import numpy as np
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 
@@ -57,6 +58,12 @@ class CDBTests(unittest.TestCase):
             asyncio.run(self.undertest.save_async(f.name))
             self.undertest.load(f.name)
 
+    def test_empty_count_train(self):
+        copied = dict(self.undertest.cui2count_train)
+        self.undertest.cui2count_train = {}
+        stats = self.undertest.make_stats()
+        self.assertFalse(np.isnan(stats["Average training examples per concept"]))
+        self.undertest.cui2count_train = copied
 
 if __name__ == '__main__':
     unittest.main()
