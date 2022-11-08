@@ -73,7 +73,7 @@ class TranslationLayer:
             if name not in self.name2cuis:
                 logger.warning('Name not found in translation layer: %s', name)
                 continue
-            for cui in self.name2cuis:
+            for cui in self.name2cuis[name]:
                 if cui in all_cuis:
                     continue  # this cui-name pair should already have been yielded above
                 yield cui, name
