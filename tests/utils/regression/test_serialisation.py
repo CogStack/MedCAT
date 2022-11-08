@@ -105,7 +105,5 @@ class TestSerialisation(unittest.TestCase):
         checker = RegressionChecker(cases=[rc])
         checker2 = RegressionChecker.from_dict(checker.to_dict())
         self.assertIsInstance(checker2, RegressionChecker)
-        print('\n\nCHECKER1\n', checker)
-        print('\nvs\n\nCHECKER2\n', checker2)
         rc.__eq__
         self.assertEqual(checker, checker2)
