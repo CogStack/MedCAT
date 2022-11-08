@@ -1,6 +1,6 @@
 
 
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, cast
 import yaml
 import logging
 import tqdm
@@ -22,7 +22,7 @@ class RegressionCase(BaseModel):
     options: FilterOptions
     filters: List[TypedFilter]
     phrases: List[str]
-    report: Optional[ResultDescriptor] = None
+    report: ResultDescriptor
 
     def get_all_targets(self, in_set: Iterator[Tuple[str, str]], translation: TranslationLayer) -> Iterator[Tuple[str, str]]:
         """Get all applicable targets for this regression case
@@ -79,9 +79,8 @@ class RegressionCase(BaseModel):
             logger.debug(
                 'FAILED to match (%s) test case %s in phrase "%s", '
                 'found the following CUIS/names: %s', fail_reason, (cui, name), phrase, cuis_names)
-        if self.report is not None:
-            self.report.report(cui, name, phrase,
-                               success, fail_reason)
+        self.report.report(cui, name, phrase,
+                           success, fail_reason)
         return success
 
     def _get_all_cuis_names_types(self) -> Tuple[Set[str], Set[str], Set[str]]:
@@ -223,7 +222,8 @@ class RegressionCase(BaseModel):
             phrases = [phrases]  # just one defined
         if not phrases:
             raise ValueError('Need at least one target phrase')
-        return RegressionCase(name=name, options=options, filters=parsed_filters, phrases=phrases)
+        return RegressionCase(name=name, options=options, filters=parsed_filters,
+                              phrases=phrases, report=ResultDescriptor(name=name))
 
 
 class RegressionChecker:
@@ -235,16 +235,11 @@ class RegressionChecker:
         use_report (bool): Whether or not to use the report functionality (defaults to False)
     """
 
-    def __init__(self, cases: List[RegressionCase], use_report: bool = True) -> None:
+    def __init__(self, cases: List[RegressionCase]) -> None:
         self.cases: List[RegressionCase] = cases
-        self.use_report = use_report
-        self.report: Optional[MultiDescriptor] = None if not self.use_report else MultiDescriptor(
-            name='ALL')  # TODO - allow setting names
-        if self.report is not None:
-            for case in self.cases:
-                cur_rd = ResultDescriptor(name=case.name)
-                self.report.parts.append(cur_rd)
-                case.report = cur_rd
+        self.report = MultiDescriptor(name='ALL')  # TODO - allow setting names
+        for case in self.cases:
+            self.report.parts.append(case.report)
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, str, str, str]]:
         """Get all subcases (i.e regssion case, target info and phrase) for this checker.
@@ -260,8 +255,8 @@ class RegressionChecker:
                 yield case, cui, name, phrase
 
     def check_model(self, cat: CAT, translation: TranslationLayer,
-                    total: Optional[int] = None) -> Union[Tuple[int, int], MultiDescriptor]:
-        """_summary_
+                    total: Optional[int] = None) -> MultiDescriptor:
+        """Checks model and generates a report
 
         Args:
             cat (CAT): The model to check against
@@ -269,8 +264,7 @@ class RegressionChecker:
             total (Optional[int]): The total number of (sub)cases expected (for a progress bar)
 
         Returns:
-            Union[Tuple[int, int], MultiDescriptor]: The number of successful and failed checks,
-                                                        or a MultiDescriptor if a report was requested
+            MultiDescriptor: A report description
         """
         successes, fails = 0, 0
         if total is not None:
@@ -286,9 +280,7 @@ class RegressionChecker:
                         successes += 1
                     else:
                         fails += 1
-        if self.use_report and self.report is not None:
-            return self.report
-        return successes, fails
+        return self.report
 
     def __str__(self) -> str:
         return f'RegressionTester[cases={self.cases}]'
@@ -322,7 +314,7 @@ class RegressionChecker:
         return self.cases == other.cases
 
     @classmethod
-    def from_dict(cls, in_dict: dict, report: bool = False) -> 'RegressionChecker':
+    def from_dict(cls, in_dict: dict) -> 'RegressionChecker':
         """Construct a RegressionChecker from a dict.
 
         Most of the parsing is handled in RegressionChecker.from_dict.
@@ -331,7 +323,6 @@ class RegressionChecker:
 
         Args:
             in_dict (dict): The input dict
-            report (bool): Whether or not to use a more comprehensive report (defaults to False)
 
         Returns:
             RegressionChecker: The built regression checker
@@ -340,21 +331,20 @@ class RegressionChecker:
         for case_name, details in in_dict.items():
             case = RegressionCase.from_dict(case_name, details)
             cases.append(case)
-        return RegressionChecker(cases=cases, use_report=report)
+        return RegressionChecker(cases=cases)
 
     @classmethod
-    def from_yaml(cls, file_name: str, report: bool = False) -> 'RegressionChecker':
+    def from_yaml(cls, file_name: str) -> 'RegressionChecker':
         """Constructs a RegressionChcker from a YAML file.
 
         The from_dict method is used for the construction from the dict.
 
         Args:
             file_name (str): The file name
-            report (bool): Whether or not to use a more comprehensive report (defaults to False)
 
         Returns:
             RegressionChecker: The constructed regression checker
         """
         with open(file_name, 'r') as f:
             data = yaml.safe_load(f)
-        return RegressionChecker.from_dict(data, report=report)
+        return RegressionChecker.from_dict(data)
