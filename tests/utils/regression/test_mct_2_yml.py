@@ -103,8 +103,8 @@ class TestConversion(unittest.TestCase):
     def test_cases_have_1_replacement_part(self):
         checker = RegressionChecker.from_dict(
             yaml.safe_load(self.converted_yaml))
-        for case, ti, phrase in checker.get_all_subcases(FakeTranslationLayer(self.mct_export)):
-            with self.subTest(f'With phrase {phrase} and {case} and {ti}'):
+        for case, cui, name, phrase in checker.get_all_subcases(FakeTranslationLayer(self.mct_export)):
+            with self.subTest(f'With phrase {phrase} and {case} and {(cui, name)}'):
                 replaced = phrase % 'something'
                 self.assertIsInstance(replaced, str)
 

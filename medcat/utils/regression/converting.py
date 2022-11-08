@@ -6,6 +6,7 @@ from typing import List, Set
 import tqdm
 
 from medcat.utils.regression.checking import RegressionCase, RegressionChecker
+from medcat.utils.regression.results import ResultDescriptor
 from medcat.utils.regression.targeting import FilterOptions, FilterStrategy, FilterType, TypedFilter
 
 
@@ -177,7 +178,9 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
                         added_to_existing = True
                 if not added_to_existing:
                     rc = RegressionCase(name=case_name, options=fo,
-                                        filters=cur_filters, phrases=[phrase, ])
+                                        filters=cur_filters, phrases=[
+                                            phrase, ],
+                                        report=ResultDescriptor(name=case_name))
                     test_cases.append(rc)
     checker = RegressionChecker(cases=test_cases)
     return checker.to_yaml()
