@@ -67,12 +67,12 @@ class FakeCat:
     def __init__(self, tl: TranslationLayer) -> None:
         self.tl = tl
 
-    def get_entities(self, str, only_cui=True) -> dict:
-        if str in self.tl.name2cuis:
-            cuis = list(self.tl.name2cuis[str])
+    def get_entities(self, text, only_cui=True) -> dict:
+        if text in self.tl.name2cuis:
+            cuis = list(self.tl.name2cuis[text])
             if only_cui:
                 return {'entities': dict((i, cui) for i, cui in enumerate(cuis))}
-            return {'entities': dict((i, {'cui': cui}) for i, cui in enumerate(cuis))}
+            return {'entities': dict((i, {'cui': cui, 'source_value': text}) for i, cui in enumerate(cuis))}
         return {}
 
 
@@ -91,7 +91,8 @@ class TestTranslationLayer(unittest.TestCase):
     def test_gets_all_targets(self):
         fakeCDB = FakeCDB(*EXAMPLE_INFOS)
         tl = TranslationLayer.from_CDB(fakeCDB)
-        targets = list(tl.all_targets())
+        targets = list(tl.all_targets([ei[0] for ei in EXAMPLE_INFOS], [
+                       ei[1] for ei in EXAMPLE_INFOS], [ei[2] for ei in EXAMPLE_INFOS]))
         self.assertEqual(len(targets), len(EXAMPLE_INFOS))
 
 
@@ -174,11 +175,12 @@ class TestTypedFilter(unittest.TestCase):
     def test_get_applicable_targets_gets_target(self):
         self.assertEqual(len(_tts), 1)
         tt = _tts[0]
-        targets = list(tt.get_applicable_targets(_tl, _tl.all_targets()))
+        targets = list(tt.get_applicable_targets(_tl, _tl.all_targets([ei[0] for ei in EXAMPLE_INFOS], [
+                       ei[1] for ei in EXAMPLE_INFOS], [ei[2] for ei in EXAMPLE_INFOS])))
         self.assertEqual(len(targets), 1)
-        target = targets[0]
-        self.assertEqual(target.val, _NAME)
-        self.assertEqual(target.cui, _CUI)
+        cui, name = targets[0]
+        self.assertEqual(name, _NAME)
+        self.assertEqual(cui, _CUI)
 
     def test_get_applicable_targets_gets_target_from_many(self):
         # add noise to existing translations
@@ -193,11 +195,12 @@ class TestTypedFilter(unittest.TestCase):
                               cui2type_ids=cui2type_ids, cui2children=cui2children)
         self.assertEqual(len(_tts), 1)
         tt = _tts[0]
-        targets = list(tt.get_applicable_targets(tl, tl.all_targets()))
+        targets = list(tt.get_applicable_targets(tl, tl.all_targets([ei[0] for ei in EXAMPLE_INFOS], [
+                       ei[1] for ei in EXAMPLE_INFOS], [ei[2] for ei in EXAMPLE_INFOS])))
         self.assertEqual(len(targets), 1)
-        target = targets[0]
-        self.assertEqual(target.val, _NAME)
-        self.assertEqual(target.cui, _CUI)
+        cui, name = targets[0]
+        self.assertEqual(name, _NAME)
+        self.assertEqual(cui, _CUI)
 
 
 class TestFilterOptions(unittest.TestCase):
