@@ -1,5 +1,6 @@
 
 import unittest
+from medcat.utils.regression.results import ResultDescriptor
 
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterStrategy, FilterType
 from medcat.utils.regression.targeting import TypedFilter
@@ -73,7 +74,7 @@ class TestSerialisation(unittest.TestCase):
                                            type=FilterType.NAME, values=['nom1', 'nom2'])],
                                        phrases=['the %s phrase']):
         rc = RegressionCase(name=name, options=options,
-                            filters=filters, phrases=phrases)
+                            filters=filters, phrases=phrases, report=ResultDescriptor(name=name))
         self.assertIsInstance(rc.to_dict(), dict)
 
     def test_RegressionCase_deserialises_to_same(self, name='the-name', options=FilterOptions(strategy=FilterStrategy.ANY),
@@ -81,7 +82,7 @@ class TestSerialisation(unittest.TestCase):
                                                      type=FilterType.NAME, values=['nom1', 'nom2'])],
                                                  phrases=['the %s phrase']):
         rc = RegressionCase(name=name, options=options,
-                            filters=filters, phrases=phrases)
+                            filters=filters, phrases=phrases, report=ResultDescriptor(name=name))
         rc2 = RegressionCase.from_dict(name, rc.to_dict())
         self.assertIsInstance(rc2, RegressionCase)
         self.assertEqual(rc, rc2)
@@ -91,7 +92,7 @@ class TestSerialisation(unittest.TestCase):
                                               type=FilterType.NAME, values=['nom1', 'nom2'])],
                                           phrases=['the %s phrase']):
         rc = RegressionCase(name=name, options=options,
-                            filters=filters, phrases=phrases)
+                            filters=filters, phrases=phrases, report=ResultDescriptor(name=name))
         checker = RegressionChecker(cases=[rc])
         self.assertIsInstance(checker.to_dict(), dict)
 
@@ -100,8 +101,8 @@ class TestSerialisation(unittest.TestCase):
                                                         type=FilterType.NAME, values=['nom1', 'nom2'])],
                                                     phrases=['the %s phrase']):
         rc = RegressionCase(name=name, options=options,
-                            filters=filters, phrases=phrases)
-        checker = RegressionChecker(cases=[rc], use_report=False)
+                            filters=filters, phrases=phrases, report=ResultDescriptor(name=name))
+        checker = RegressionChecker(cases=[rc])
         checker2 = RegressionChecker.from_dict(checker.to_dict())
         self.assertIsInstance(checker2, RegressionChecker)
         print('\n\nCHECKER1\n', checker)
