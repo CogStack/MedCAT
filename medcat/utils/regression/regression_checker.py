@@ -63,12 +63,8 @@ if __name__ == '__main__':
         logger.addHandler(logging.StreamHandler())
         logger.setLevel('INFO')
     if args.verbose:
-        from medcat.utils.regression.checking import logger as checking_logger
-        from medcat.utils.regression.converting import logger as converting_logger
-        console = logging.StreamHandler()
-        checking_logger.addHandler(console)
-        checking_logger.setLevel('DEBUG')
-        converting_logger.addHandler(console)
-        converting_logger.setLevel('DEBUG')
+        from medcat.utils.regression import logger as regr_logger
+        regr_logger.setLevel('DEBUG')
+        regr_logger.addHandler(logging.StreamHandler())
     main(args.modelpack, args.test_suite, total=args.total,
          phrases=args.phrases, hide_empty=args.noempty, hide_failures=args.hidefailures)
