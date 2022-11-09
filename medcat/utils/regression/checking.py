@@ -305,7 +305,7 @@ class RegressionChecker:
         Returns:
             str: The YAML representation
         """
-        return yaml.dump(self.to_dict())
+        return yaml.safe_dump(self.to_dict())
 
     def __eq__(self, other: object) -> bool:
         # only checks cases
