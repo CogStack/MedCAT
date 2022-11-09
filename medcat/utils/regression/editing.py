@@ -10,7 +10,7 @@ from medcat.utils.regression.checking import RegressionChecker
 logger = logging.getLogger(__name__)
 
 
-def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False) -> dict:
+def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False, ignore_identicals: bool = True) -> dict:
     base = RegressionChecker.from_dict(base_dict)
     add = RegressionChecker.from_dict(add_dict)
     name_preserver = UniqueNamePreserver()
@@ -19,6 +19,10 @@ def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False) -> di
     for case in add.cases:
         existing = get_matching_case(base.cases, case.filters)
         if existing:
+            if ignore_identicals and existing == case:
+                logger.warning(
+                    'Found two identical case: %s and %s in base and addon', existing, case)
+                continue
             logging.info(
                 'Found existing case (%s), adding phrases: %s', existing, case.phrases)
             existing.phrases.extend(case.phrases)
@@ -39,17 +43,19 @@ def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False) -> di
         return new_dict
 
 
-def combine_contents(base_yaml: str, add_yaml: str) -> str:
+def combine_contents(base_yaml: str, add_yaml: str, ignore_identicals: bool = True) -> str:
     base_dict = yaml.safe_load(base_yaml)
     add_dict = yaml.safe_load(add_yaml)
-    combined_dict = combine_dicts(base_dict, add_dict, in_place=True)
+    combined_dict = combine_dicts(
+        base_dict, add_dict, in_place=True, ignore_identicals=ignore_identicals)
     return yaml.safe_dump(combined_dict)
 
 
-def combine_yamls(base_file: str, add_file: str, new_file: Optional[str] = None) -> str:
+def combine_yamls(base_file: str, add_file: str, new_file: Optional[str] = None, ignore_identicals: bool = True) -> str:
     base_yaml = Path(base_file).read_text()
     add_yaml = Path(add_file).read_text()
-    combined_yaml = combine_contents(base_yaml, add_yaml)
+    combined_yaml = combine_contents(
+        base_yaml, add_yaml, ignore_identicals=ignore_identicals)
     if new_file is None:
         new_file = base_file  # overwrite base
     Path(new_file).write_text(combined_yaml)
