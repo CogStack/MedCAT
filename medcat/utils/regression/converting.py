@@ -2,7 +2,7 @@
 import json
 import logging
 import re
-from typing import List, Set
+from typing import List, Optional, Set
 import tqdm
 
 from medcat.utils.regression.checking import RegressionCase, RegressionChecker
@@ -113,14 +113,34 @@ class PerSentenceSelector(ContextSelector):
 
 
 class UniqueNamePreserver:
+    """Used to preserver unique names in a set
+    """
 
     def __init__(self) -> None:
         self.unique_names: Set[str] = set()
 
     def name2nrgen(self, name: str, nr: int) -> str:
+        """The method to generate name and copy-number combinations.
+
+        Args:
+            name (str): The base name
+            nr (int): The number of the copy
+
+        Returns:
+            str: The combined name
+        """
         return f'{name}-{nr}'
 
     def get_unique_name(self, orig_name: str, dupe_nr: int = 0) -> str:
+        """Get the unique name of dupe number (at least) as high as specified.
+
+        Args:
+            orig_name (str): The original / base name
+            dupe_nr (int, optional): The number of the copy to start from. Defaults to 0.
+
+        Returns:
+            str: The unique name
+        """
         if dupe_nr == 0:
             cur_name = orig_name
         else:
@@ -129,6 +149,22 @@ class UniqueNamePreserver:
             self.unique_names.add(cur_name)
             return cur_name
         return self.get_unique_name(orig_name, dupe_nr + 1)
+
+
+def get_matching_case(cases: List[RegressionCase], filters: List[TypedFilter]) -> Optional[RegressionCase]:
+    """Get a case that matches a set of filters (if one exists) from within a list.
+
+    Args:
+        cases (List[RegressionCase]): The list to look in
+        filters (List[TypedFilter]): The filters to compare to
+
+    Returns:
+        Optional[RegressionCase]: The regression case (if found) or None
+    """
+    for case in cases:
+        if case.filters == filters:
+            return case
+    return None
 
 
 def medcat_export_json_to_regression_yml(mct_export_file: str,
