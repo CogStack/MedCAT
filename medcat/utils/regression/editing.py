@@ -11,6 +11,24 @@ logger = logging.getLogger(__name__)
 
 
 def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False, ignore_identicals: bool = True) -> dict:
+    """Combine two dictionaries that define RegressionCheckers.
+
+    The idea is to combine them into one that defines cases from both.
+
+    If two cases have identical filters, their phrases are combined.
+
+    If an additional case has the same name as one in the base dict,
+    its name is changed before adding it.
+
+    Args:
+        base_dict (dict): The base dict to which we shall add
+        add_dict (dict): The additional dict
+        in_place (bool, optional): Whether or not to modify the existing (base) dict. Defaults to False.
+        ignore_identicals (bool, optional): Whether to ignore identical cases (otherwise they get duplicated). Defaults to True.
+
+    Returns:
+        dict: The combined dict
+    """
     base = RegressionChecker.from_dict(base_dict)
     add = RegressionChecker.from_dict(add_dict)
     name_preserver = UniqueNamePreserver()
@@ -44,6 +62,18 @@ def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False, ignor
 
 
 def combine_contents(base_yaml: str, add_yaml: str, ignore_identicals: bool = True) -> str:
+    """Combined the contents of two yaml strings that describe RegressionCheckers.
+
+    This method simply loads in teh yamls and uses the `combine_dicts` method.
+
+    Args:
+        base_yaml (str): The yaml of the base checker
+        add_yaml (str): The yaml of the additional checker
+        ignore_identicals (bool, optional): Whether or not to ignore identical cases. Defaults to True.
+
+    Returns:
+        str: The combined yaml contents
+    """
     base_dict = yaml.safe_load(base_yaml)
     add_dict = yaml.safe_load(add_yaml)
     combined_dict = combine_dicts(
@@ -52,6 +82,21 @@ def combine_contents(base_yaml: str, add_yaml: str, ignore_identicals: bool = Tr
 
 
 def combine_yamls(base_file: str, add_file: str, new_file: Optional[str] = None, ignore_identicals: bool = True) -> str:
+    """Combined the contents of two yaml files that describe RegressionCheckers.
+
+    This method simply reads the data and uses the `combined_contents` method.
+
+    The results are saved into the new_file (if specified) or to the base_file otherwise.
+
+    Args:
+        base_file (str): The base file
+        add_file (str): The additional file
+        new_file (Optional[str], optional): The new file name. Defaults to None.
+        ignore_identicals (bool, optional): Whether or not to ignore identical cases. Defaults to True.
+
+    Returns:
+        str: The new file name
+    """
     base_yaml = Path(base_file).read_text()
     add_yaml = Path(add_file).read_text()
     combined_yaml = combine_contents(
