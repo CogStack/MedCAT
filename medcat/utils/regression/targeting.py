@@ -1,4 +1,3 @@
-
 from enum import Enum
 import logging
 from typing import Dict, Iterable, Iterator, List, Set, Any, Tuple, Union
@@ -137,7 +136,7 @@ class TranslationLayer:
         """
         found_parents = []
         for found_cui in found_cuis:
-            if self.get_children_of(set([cui]), found_cui, depth=depth):
+            if self.get_children_of({cui}, found_cui, depth=depth):
                 # TODO - the intermediate results may get lost here
                 # i.e if found_cui is grandparent of the specified one,
                 # the direct parent is not listed

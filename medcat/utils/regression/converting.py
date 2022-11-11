@@ -1,4 +1,3 @@
-
 import json
 import logging
 import re
@@ -22,7 +21,7 @@ class ContextSelector:
         text = re.sub(' +', ' ', text)  # remove duplicate spaces
         # remove 1-letter words that are not a valid character
         return [word for word in text.split() if (
-            len(word) > 1 or re.match('\w', word))]
+            len(word) > 1 or re.match(r'\w', word))]
 
     def make_replace_safe(self, text: str) -> str:
         """Make the text replace-safe.
@@ -87,7 +86,7 @@ class PerSentenceSelector(ContextSelector):
     """Context selector that selects a sentence as context.
     Sentences are said to end with either ".", "?" or "!".
     """
-    stoppers = '\.+|\?+|!+'
+    stoppers = r'\.+|\?+|!+'
 
     def get_context(self, text: str, start: int, end: int, leave_concept: bool = False) -> str:
         text_before = text[:start]
@@ -179,7 +178,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
     Returns:
         str: Extracted regression cases in YAML form
     """
-    with open(mct_export_file, 'r') as f:
+    with open(mct_export_file) as f:
         data = json.load(f)
     fo = FilterOptions(strategy=FilterStrategy.ALL, onlyprefnames=False)
     test_cases: List[RegressionCase] = []
