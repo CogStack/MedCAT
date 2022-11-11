@@ -1,4 +1,3 @@
-
 import logging
 from pathlib import Path
 from typing import Optional
@@ -32,8 +31,8 @@ def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False, ignor
     base = RegressionChecker.from_dict(base_dict)
     add = RegressionChecker.from_dict(add_dict)
     name_preserver = UniqueNamePreserver()
-    name_preserver.unique_names = set(
-        base_case.name for base_case in base.cases)
+    name_preserver.unique_names = {
+        base_case.name for base_case in base.cases}
     for case in add.cases:
         existing = get_matching_case(base.cases, case.filters)
         if existing:

@@ -1,5 +1,3 @@
-
-
 from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, cast
 import yaml
 import logging
@@ -345,6 +343,6 @@ class RegressionChecker:
         Returns:
             RegressionChecker: The constructed regression checker
         """
-        with open(file_name, 'r') as f:
+        with open(file_name) as f:
             data = yaml.safe_load(f)
         return RegressionChecker.from_dict(data)
