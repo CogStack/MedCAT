@@ -9,24 +9,24 @@ from medcat.utils.regression.targeting import TranslationLayer
 # failed to work and/or which ones weren't found
 
 
-class FailReason(Enum):
-    CONCEPT_NOT_ANNOTATED = 1
+class FailReason(str, Enum):
+    CONCEPT_NOT_ANNOTATED = 'CONCEPT_NOT_ANNOTATED'
     """The concept was not annotated by the model"""
-    INCORRECT_CUI_FOUND = 2
+    INCORRECT_CUI_FOUND = 'INCORRECT_CUI_FOUND'
     """A different CUI with the same name was found"""
-    INCORRECT_SPAN_BIG = 3
+    INCORRECT_SPAN_BIG = 'INCORRECT_SPAN_BIG'
     """The concept was a part of an annotation made by the model"""
-    INCORRECT_SPAN_SMALL = 4
+    INCORRECT_SPAN_SMALL = 'INCORRECT_SPAN_SMALL'
     """Only a part of the concept was annotated"""
-    CUI_NOT_FOUND = 5
+    CUI_NOT_FOUND = 'CUI_NOT_FOUND'
     """The CUI was not found in the context database"""
-    CUI_PARENT_FOUND = 6
+    CUI_PARENT_FOUND = 'CUI_PARENT_FOUND'
     """The CUI annotated was the parent of the concept"""
-    CUI_CHILD_FOUND = 7
+    CUI_CHILD_FOUND = 'CUI_CHILD_FOUND'
     """The CUI annotated was a child of the concept"""
-    NAME_NOT_FOUND = 8
+    NAME_NOT_FOUND = 'NAME_NOT_FOUND'
     """The name specified was not found in the context database"""
-    UNKNOWN = -1
+    UNKNOWN = 'UNKNOWN'
     """Unknown reason for failure"""
 
 
