@@ -197,7 +197,7 @@ class CAT(object):
                 version.history.append(version['id'])
             version.id = m
             version.last_modified = date.today().strftime("%d %B %Y")
-            version.cdb_info = self.cdb._make_stats()
+            version.cdb_info = self.cdb.make_stats()
             version.meta_cats = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version.medcat_version = __version__
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
@@ -256,7 +256,8 @@ class CAT(object):
 
         # Add a model card also, why not
         model_card_path = os.path.join(save_dir_path, "model_card.json")
-        json.dump(self.get_model_card(as_dict=True), open(model_card_path, 'w'), indent=2)
+        with open(model_card_path, 'w') as f:
+            json.dump(self.get_model_card(as_dict=True), f, indent=2)
 
         # Zip everything
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
