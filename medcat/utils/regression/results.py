@@ -38,6 +38,18 @@ class FailDescriptor(pydantic.BaseModel):
 
     @classmethod
     def get_reason_for(cls, cui: str, name: str, res: dict, translation: TranslationLayer) -> 'FailDescriptor':
+        """Get the fail reason for the failure of finding the specifeid CUI and name
+        where the resulting entities are presented.
+
+        Args:
+            cui (str): The cui that was expected
+            name (str): The name that was expected
+            res (dict): The entities that were annotated
+            translation (TranslationLayer): The translation layer
+
+        Returns:
+            FailDescriptor: The corresponding fail descriptor
+        """
         def format_matching(matches: List[Tuple[str, str]]) -> str:
             return 'Found: ' + ', '.join(f'{mcui}|{mname}' for mcui, mname in matches)
         fail_reason: FailReason = FailReason.UNKNOWN  # should never remain unknown
