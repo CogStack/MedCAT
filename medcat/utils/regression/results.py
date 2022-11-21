@@ -4,10 +4,6 @@ import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer
 
-# TODO - add more comprohensive report
-# i.e save to file and include information such as which name-cui pairs
-# failed to work and/or which ones weren't found
-
 
 class FailReason(str, Enum):
     CONCEPT_NOT_ANNOTATED = 'CONCEPT_NOT_ANNOTATED'
