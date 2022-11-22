@@ -92,12 +92,12 @@ class MixingConfig(FakeDict):
     """
 
     def save(self, save_path: str) -> None:
-        r''' Save the config into a .json file
+        """Save the config into a .json file
 
         Args:
             save_path (`str`):
                 Where to save the created json file
-        '''
+        """
         # We want to save the dict here, not the whole class
         json_string = jsonpickle.encode(
             {field: getattr(self, field) for field in self.fields()})
@@ -106,12 +106,12 @@ class MixingConfig(FakeDict):
             f.write(json_string)
 
     def merge_config(self, config_dict: Dict) -> None:
-        r''' Merge a config_dict with the existing config object.
+        """Merge a config_dict with the existing config object.
 
         Args:
             config_dict (`dict`):
                 A dictionary which key/values should be added to this class.
-        '''
+        """
         for key in config_dict.keys():
             if hasattr(self, key):
                 attr = getattr(self, key)
@@ -130,7 +130,7 @@ class MixingConfig(FakeDict):
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
-        r'''
+        """
         Parses a configuration file in text format. Must be like:
                 cat.<variable>.<key> = <value>
                 ...
@@ -138,7 +138,7 @@ class MixingConfig(FakeDict):
             - variable: linking, general, ner, ...
             - key: a key in the config dict e.g. subsample_after for linking
             - value: the value for the key, will be parsed with `eval`
-        '''
+        """
         with open(path, 'r') as f:
             for line in f:
                 if line.strip() and line.startswith("cat."):
@@ -181,14 +181,14 @@ class MixingConfig(FakeDict):
 
     @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
-        r''' Load config from a json file, note that fields that
+        """Load config from a json file, note that fields that
         did not exist in the old config but do exist in the current
         version of the ConfigMetaCAT class will be kept.
 
         Args:
             save_path (`str`):
                 Path to the json file to load
-        '''
+        """
         config = cls()
 
         # Read the jsonpickle string

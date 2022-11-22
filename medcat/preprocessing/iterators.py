@@ -8,7 +8,7 @@ FAST_SPLIT = re.compile("[^A-Za-z0-9]")
 
 
 class EmbMimicCSV(object):
-    """ Iterate over MIMIC data in CSV format
+    """Iterate over MIMIC data in CSV format
 
     csv_paths:  paths to csv files containing the mimic data
     """
@@ -43,7 +43,7 @@ class EmbMimicCSV(object):
 
 
 class BertEmbMimicCSV(object):
-    """ Iterate over MIMIC data in CSV format
+    """Iterate over MIMIC data in CSV format
 
     csv_paths:  paths to csv files containing the mimic data
     """
@@ -72,7 +72,7 @@ class BertEmbMimicCSV(object):
 
 
 class BaseEmbMimicCSV(object):
-    """ Iterate over MIMIC data in CSV format
+    """Iterate over MIMIC data in CSV format
 
     csv_paths:  paths to csv files containing the mimic data
     """
@@ -113,7 +113,7 @@ class BaseEmbMimicCSV(object):
 
 
 class RawCSV(object):
-    """ Iterate over MIMIC data in CSV format
+    """Iterate over MIMIC data in CSV format
 
     csv_paths:  paths to csv files containing the mimic data
     """
@@ -129,7 +129,7 @@ class RawCSV(object):
 
 
 class FastEmbMimicCSV(object):
-    """ Iterate over MIMIC data in CSV format
+    """Iterate over MIMIC data in CSV format
 
     csv_paths:  paths to csv files containing the mimic data
     """

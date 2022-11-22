@@ -1,4 +1,4 @@
-""" Text cleaners of various levels, from removing only garbage to
+"""Text cleaners of various levels, from removing only garbage to
 pretty much everything that is not a word.
 """
 import re
@@ -8,7 +8,7 @@ from medcat.config import Config
 
 
 def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> Dict:
-    r''' Generates different forms of a name. Will edit the provided `names` dictionary
+    """Generates different forms of a name. Will edit the provided `names` dictionary
     and add information generated from the `name`.
 
     Args:
@@ -23,7 +23,7 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
     Return:
         names (`dict`):
             The new dictionary of prepared names.
-    '''
+    """
     sc_name = nlp(raw_name)
 
     for version in config.cdb_maker['name_versions']:
@@ -64,7 +64,7 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
 
 
 def basic_clean(text: str) -> str:
-    """ Remove almost everything from text
+    """Remove almost everything from text
 
     text:  text to be cleaned
     """
@@ -92,7 +92,7 @@ def basic_clean(text: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """ Remove almost everything from text
+    """Remove almost everything from text
 
     text:  text to be cleaned
     """

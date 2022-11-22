@@ -3,7 +3,7 @@ import logging
 
 
 def normalize_date(date, id_, start, end):
-    """ Normalizes different dates encountered in the clinical notes.
+    """Normalizes different dates encountered in the clinical notes.
     Current accepted formats:
         28 Feb 2913 04:50
         Thu 28 Feb 2013 04:50
@@ -27,7 +27,7 @@ def normalize_date(date, id_, start, end):
 
 
 def split_one_note(id_, text):
-    """ Splits the text of one note by date.
+    """Splits the text of one note by date.
 
     Return:
         split_note (List[Dict]):
@@ -66,7 +66,7 @@ def split_one_note(id_, text):
 
 
 def split_clinical_notes(clinical_notes):
-    """ Splits clinical notes.
+    """Splits clinical notes.
 
     Args:
         clinical_notes(dict):

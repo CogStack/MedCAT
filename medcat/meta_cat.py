@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 
 
 class MetaCAT(PipeRunner):
-    r"""
-    The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
+    """The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
     concept annotations. These are also known as properties or attributes of recognise entities
     in similar tools such as MetaMap and cTakes.
 
@@ -80,8 +79,7 @@ class MetaCAT(PipeRunner):
         return model
 
     def get_hash(self):
-        r""" A partial hash trying to catch differences between models
-        """
+        """A partial hash trying to catch differences between models."""
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.train['last_train_on'] is None:
@@ -91,7 +89,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
-        r""" Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
@@ -214,7 +212,7 @@ class MetaCAT(PipeRunner):
         return result
 
     def save(self, save_dir_path: str) -> None:
-        r""" Save all components of this class to a file
+        """Save all components of this class to a file
 
         Args:
             save_dir_path(`str`):
@@ -239,7 +237,7 @@ class MetaCAT(PipeRunner):
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
-        r""" Load a meta_cat object.
+        """Load a meta_cat object.
 
         Args:
             save_dir_path (`str`):
@@ -284,9 +282,7 @@ class MetaCAT(PipeRunner):
         return meta_cat
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
-        r"""
-
-        Args:
+        """Args:
             doc - spacy
             input_ids
             offset_mapping
@@ -360,7 +356,7 @@ class MetaCAT(PipeRunner):
 
     # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
-        r""" Process many documents at once.
+        """Process many documents at once.
 
         Args:
             stream (Iterable[spacy.tokens.Doc]):
@@ -443,7 +439,7 @@ class MetaCAT(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        """ Process one document, used in the spacy pipeline for sequential
+        """Process one document, used in the spacy pipeline for sequential
         document processing.
 
         Args:
@@ -477,8 +473,8 @@ class MetaCAT(PipeRunner):
             return json.dumps(card, indent=2, sort_keys=False)
 
     def __repr__(self):
-        """
-        Prints the model_card for this MetaCAT instance.
+        """Prints the model_card for this MetaCAT instance.
+
         Returns:
             the 'Model Card' for this MetaCAT instance. This includes NER+L config and any MetaCATs
         """

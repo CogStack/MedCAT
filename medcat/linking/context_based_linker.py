@@ -16,13 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 class Linker(PipeRunner):
-    r''' Link to a biomedical database.
+    """Link to a biomedical database.
 
     Args:
         cdb
         vocab
         config
-    '''
+    """
 
     # Custom pipeline component name
     name = 'cat_linker'
@@ -39,7 +39,7 @@ class Linker(PipeRunner):
 
     def _train(self, cui: str, entity: Span, doc: Doc, add_negative: bool = True) -> None:
         name = "{} - {}".format(entity._.detected_name, cui)
-        """ TODO: Disable for now
+        """TODO: Disable for now
         if self.train_counter.get(name, 0) > self.config.linking['subsample_after']:
             if random.random() < 1 / math.sqrt(self.train_counter.get(name) - self.config.linking['subsample_after']):
                 self.context_model.train(cui, entity, doc, negative=False)
@@ -56,8 +56,6 @@ class Linker(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        r'''
-        '''
         doc.ents = [] # Reset main entities, will be recreated later
         cnf_l = self.config.linking
         linked_entities = []

@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config: Config, label: str = 'concept') -> Optional[Span]:
-    r''' Given a name it will check should it be annotated based on config rules. If yes
+    """Given a name it will check should it be annotated based on config rules. If yes
     the annotation will be added to the doc._.ents array.
 
     Args:
@@ -27,7 +27,7 @@ def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config
             Global config for medcat.
         label (`str`):
             Label for this name (usually `concept` if we are using a vocab based approach).
-    '''
+    """
 
     logger.debug("Maybe annotating name: %s", name)
 

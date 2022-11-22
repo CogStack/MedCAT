@@ -44,13 +44,13 @@ class TokenizerWrapperBase(ABC):
 
 
 class TokenizerWrapperBPE(TokenizerWrapperBase):
-    ''' Wrapper around a huggingface tokenizer so that it works with the
+    """Wrapper around a huggingface tokenizer so that it works with the
     MetaCAT models.
 
     Args:
         hf_tokenizers (`tokenizers.ByteLevelBPETokenizer`):
             A huggingface BBPE tokenizer.
-    '''
+    """
     name = 'bbpe'
 
     def __init__(self, hf_tokenizers: Optional[ByteLevelBPETokenizer] = None) -> None:
@@ -67,7 +67,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
     def __call__(self, text: List[str]) -> List[Dict]: ...
 
     def __call__(self, text: Union[str, List[str]]) -> Union[Dict, List[Dict]]:
-        r''' Tokenize some text
+        """Tokenize some text
 
         Args:
             text (`Union(str, List[str])`):
@@ -77,8 +77,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
             res (`Union(dict, List[dict])`):
                 Dictionary/ies containing `offset_mapping`, `input_ids` and `tokens` corresponding to the
                 input text/s.
-
-        '''
+        """
         self.hf_tokenizers = self.ensure_tokenizer()
 
         if isinstance(text, str):
@@ -137,13 +136,13 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
 
 
 class TokenizerWrapperBERT(TokenizerWrapperBase):
-    ''' Wrapper around a huggingface BERT tokenizer so that it works with the
+    """Wrapper around a huggingface BERT tokenizer so that it works with the
     MetaCAT models.
 
     Args:
         hf_tokenizers (`transformers.models.bert.tokenization_bert_fast.BertTokenizerFast`):
             A huggingface Fast BERT.
-    '''
+    """
     name = 'bert-tokenizer'
 
     def __init__(self, hf_tokenizers: Optional[BertTokenizerFast] = None) -> None:

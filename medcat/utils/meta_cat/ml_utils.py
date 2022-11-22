@@ -24,7 +24,7 @@ def set_all_seeds(seed: int) -> None:
 
 
 def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: torch.device, pad_id: int) -> Tuple:
-    r''' Creates a batch given data and start/end that denote batch size, will also add
+    """Creates a batch given data and start/end that denote batch size, will also add
     padding and move to the right device.
 
     Args:
@@ -45,8 +45,7 @@ def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: to
             Same as data, but subsetted and as a tensor
         cpos ():
             Center positions for the data
-
-    '''
+    """
     max_seq_len = max([len(x[0]) for x in data])
     x = [x[0][0:max_seq_len] + [pad_id]*max(0, max_seq_len - len(x[0])) for x in data[start_ind:end_ind]]
     cpos = [x[1] for x in data[start_ind:end_ind]]
@@ -62,7 +61,7 @@ def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: to
 
 
 def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
-    r''' Predict on data used in the meta_cat.pipe
+    """Predict on data used in the meta_cat.pipe
 
     Args:
         data (List[List[List[int], int]]):
@@ -75,7 +74,7 @@ def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
             For each row of input data a prediction
         confidence (List[float]):
             For each prediction a confidence value
-    '''
+    """
 
     pad_id = config.model['padding_idx']
     batch_size = config.general['batch_size_eval']
@@ -107,13 +106,13 @@ def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
 
 
 def split_list_train_test(data: List, test_size: int, shuffle: bool = True) -> Tuple:
-    r''' Shuffle and randomply split data
+    """Shuffle and randomply split data
 
     Args:
         data
         test_size
         shuffle
-    '''
+    """
     if shuffle:
         random.shuffle(data)
 
@@ -125,7 +124,7 @@ def split_list_train_test(data: List, test_size: int, shuffle: bool = True) -> T
 
 
 def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name: str = 'Train') -> None:
-    r''' Prints some basic stats during training
+    """Prints some basic stats during training
 
     Args:
         epoch
@@ -133,20 +132,20 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         all_logits
         y
         name
-    '''
+    """
     if all_logits:
         logger.info('Epoch: %d %s %s', epoch, "*"*50, name)
         logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
 
 def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
-    r''' Trains a LSTM model (for now) with autocheckpoints
+    """Trains a LSTM model (for now) with autocheckpoints
 
     Args:
         data
         config
         save_dir_path
-    '''
+    """
     # Get train/test from data
     train_data, test_data = split_list_train_test(data, test_size=config.train['test_size'], shuffle=config.train['shuffle_data'])
     device = torch.device(config.general['device']) # Create a torch device
@@ -230,14 +229,13 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
 
 def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: TokenizerWrapperBase) -> Dict:
-    r''' Evaluate a trained model on the provided data
+    """Evaluate a trained model on the provided data
 
     Args:
         model
         data
         config
-
-    '''
+    """
     device = torch.device(config.general['device']) # Create a torch device
     batch_size_eval = config.general['batch_size_eval']
     pad_id = config.model['padding_idx']

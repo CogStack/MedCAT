@@ -30,9 +30,7 @@ logger = logging.getLogger(__name__)
 
 
 class TransformersNER(object):
-    r''' TODO: Add documentation
-    '''
-
+    """TODO: Add documentation"""
 
     # Custom pipeline component name
     name = 'transformers_ner'
@@ -83,8 +81,7 @@ class TransformersNER(object):
         self.ner_pipe.device = self.model.device
 
     def get_hash(self):
-        r''' A partial hash trying to catch differences between models
-        '''
+        """A partial hash trying to catch differences between models."""
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.general['last_train_on'] is None:
@@ -141,7 +138,7 @@ class TransformersNER(object):
         return out_path
 
     def train(self, json_path: Union[str, list, None]=None, ignore_extra_labels=False, dataset=None, meta_requirements=None):
-        r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
@@ -152,7 +149,7 @@ class TransformersNER(object):
             ignore_extra_labels:
                 Makes only sense when an existing deid model was loaded and from the new data we want to ignore
                  labels that did not exist in the old model.
-        '''
+        """
 
         if dataset is None and json_path is not None:
             # Load the medcattrainer export
@@ -249,12 +246,12 @@ class TransformersNER(object):
         return df, examples
 
     def save(self, save_dir_path: str) -> None:
-        r''' Save all components of this class to a file
+        """Save all components of this class to a file
 
         Args:
             save_dir_path(`str`):
                 Path to the directory where everything will be saved.
-        '''
+        """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
 
@@ -275,7 +272,7 @@ class TransformersNER(object):
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "TransformersNER":
-        r''' Load a meta_cat object.
+        """Load a meta_cat object.
 
         Args:
             save_dir_path (`str`):
@@ -287,7 +284,7 @@ class TransformersNER(object):
         Returns:
             meta_cat (`medcat.MetaCAT`):
                 You don't say
-        '''
+        """
 
         # Load config
         config = cast(ConfigTransformersNER, ConfigTransformersNER.load(os.path.join(save_dir_path, 'cat_config.json')))
@@ -323,12 +320,12 @@ class TransformersNER(object):
             yield docs
 
     def pipe(self, stream: Iterable[Union[Doc, None]], *args, **kwargs) -> Iterator[Doc]:
-        r''' Process many documents at once.
+        """Process many documents at once.
 
         Args:
             stream (Iterable[spacy.tokens.Doc]):
                 List of spacy documents.
-        '''
+        """
         # Just in case
         if stream is None or not stream:
             return stream
@@ -376,13 +373,13 @@ class TransformersNER(object):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        ''' Process one document, used in the spacy pipeline for sequential
+        """Process one document, used in the spacy pipeline for sequential
         document processing.
 
         Args:
             doc (spacy.tokens.Doc):
                 A spacy document
-        '''
+        """
 
         # Just call the pipe method
         doc = next(self.pipe(iter([doc])))

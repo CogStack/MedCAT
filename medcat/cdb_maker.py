@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class CDBMaker(object):
-    r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
+    """Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
     updates an exisitng one.
 
     Args:
@@ -29,7 +29,7 @@ class CDBMaker(object):
             If set the `CDBMaker` will updat the existing `CDB` with new concepts in the CSV.
         name_max_words (`int`, defaults to `20`):
             Names with more words will be skipped during the build of a CDB
-    '''
+    """
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
@@ -58,7 +58,7 @@ class CDBMaker(object):
                      index_col: bool = False,
                      full_build: bool = False,
                      only_existing_cuis: bool = False, **kwargs) -> CDB:
-        r''' Compile one or multiple CSVs into a CDB.
+        r"""Compile one or multiple CSVs into a CDB.
 
         Args:
             csv_paths (`Union[pd.DataFrame, List[str]]`):
@@ -87,7 +87,7 @@ class CDBMaker(object):
                 Will be passed to pandas for CSV reading
             csv:
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)
-        '''
+        """
 
         useful_columns = ['cui', 'name', 'ontologies', 'name_status', 'type_ids', 'description']
         name_status_options = {'A', 'P', 'N'}

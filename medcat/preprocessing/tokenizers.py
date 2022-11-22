@@ -144,8 +144,6 @@ class SpacyHFDoc(object):
 
 
 class TokenizerWrapperBPE(object):
-    '''
-    '''
 
     def __init__(self, hf_tokenizers: Any) -> None:
         self.hf_tokenizers = hf_tokenizers
@@ -174,8 +172,6 @@ class TokenizerWrapperBPE(object):
 
 
 class TokenizerWrapperBERT(object):
-    '''
-    '''
 
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers

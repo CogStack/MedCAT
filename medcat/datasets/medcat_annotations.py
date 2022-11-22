@@ -28,7 +28,7 @@ Where entities is the output from medcat.get_entities(<...>)['entities']
 
 
 class MedCATAnnotationsConfig(datasets.BuilderConfig):
-    """ BuilderConfig for MedCATAnnotations.
+    """BuilderConfig for MedCATAnnotations.
 
         Args:
           **kwargs: keyword arguments forwarded to super.

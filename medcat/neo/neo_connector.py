@@ -49,14 +49,14 @@ class NeoConnector:
         data['entities'] = new_stream
 
     def get_all_patients(self, concepts, limit=1000, require_time=False, ignore_meta=False):
-        r''' Return all patients having all concepts
+        """Return all patients having all concepts
 
         Args:
             concepts
             limit
             require_time:
                 If set only concepts that have the timestamp property will be used.
-        '''
+        """
 
         q = "WITH [{}] AS cs ".format(",".join(["'{}'".format(c) for c in concepts]))
         if not require_time:
@@ -83,9 +83,9 @@ class NeoConnector:
 
     def get_all_concepts_from(self, patient_id=None, document_id=None,
             limit=1000, bucket_size_seconds=None, min_count=0, meta_requirements=None, require_time=True):
-        r''' Returns all concepts belonging to a document or patient
+        """Returns all concepts belonging to a document or patient
         given the concept type (if none all are retruned).
-        '''
+        """
 
         if patient_id is not None:
             q = 'MATCH (patient:Patient {patientId: "%s"})-[:HAS]->' % patient_id \
@@ -129,7 +129,7 @@ class NeoConnector:
         return out, q
 
     def get_all_patients_descend(self, concepts, limit=1000, require_time=False):
-        r''' Return all patients having all descendant concepts under the ancestor concept
+        """Return all patients having all descendant concepts under the ancestor concept
 
         Args:
             concepts - ancestor top-level concepts
@@ -138,7 +138,7 @@ class NeoConnector:
                 If set only concepts that have the timestamp property will be used.
         Output:
             lists of patients with attached SNOMED concepts
-        '''
+        """
 
         q = "WITH [{}] AS ancestor ".format(",".join(["'{}'".format(c) for c in concepts]))
         if not require_time:
