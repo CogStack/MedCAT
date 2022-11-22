@@ -43,7 +43,7 @@ def mrconso_to_csv(mrconso_path, column_names=None, sep='|', lng='ENG', output_p
 
 
 def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None, sep='|', lng='ENG', output_path=None, use_umls_primary_names=False, **kwargs):
-    r''' Prepare the MRCONSO.RRF to be used for extansion of SNOMED. Will output a CSV that can
+    """Prepare the MRCONSO.RRF to be used for extansion of SNOMED. Will output a CSV that can
     be used with cdb_maker (use the snomed_cdb.dat as the base one and extend with this).
 
     Args:
@@ -66,7 +66,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     Return:
         df (pandas.DataFrame):
             Dataframe with UMLS names and SNOMED CUIs.
-    '''
+    """
     if column_names is None:
         column_names = ['CUI', 'LAT', 'TS', 'LUI', 'STT', 'SUI', 'ISPREF', 'AUI', 'SAUI', 'SCUI', 'SDUI', 'SAB', 'TTY', 'CODE', 'STR', 'SRL', 'SUPPRESS', 'CVF', 'unk']
     df = pd.read_csv(mrconso_path, names=column_names, sep=sep, dtype=str, **kwargs)
@@ -111,7 +111,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
 
 
 def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', output_path=None, output_path_type_names=None, strip_fqn=True, na_filter=False, **kwargs):
-    r''' Given paths to the snomed files with concepts e.g. `sct2_Concept_Snapshot_INT_20180731.txt` this will
+    r"""Given paths to the snomed files with concepts e.g. `sct2_Concept_Snapshot_INT_20180731.txt` this will
     build a CSV required by the cdb_maker.py
 
     Args:
@@ -137,7 +137,7 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
         Touple[snomed_cdb_df (pandas.DataFrame), type_id2name (Dict)]:
             - snomed_cdb_df - Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
             - type_id2name - map from type_id to name, can be used to extend a CDB.
-    '''
+    """
 
     # Process terms
     snomed_terms = [pd.read_csv(path, sep=sep, dtype=str, **kwargs) for path in snomed_term_paths]

@@ -10,7 +10,7 @@ def prepare_from_json(data: Dict,
                       replace_center: Optional[str] = None,
                       prerequisites: Dict = {},
                       lowercase: bool = True) -> Dict:
-    """ Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
+    """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
     working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
@@ -107,7 +107,7 @@ def prepare_from_json(data: Dict,
 
 
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None) -> Tuple:
-    r''' Converts the category values in the data outputed by `prepare_from_json`
+    """Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
 
     Args:
@@ -121,7 +121,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             New data with integeres inplace of strings for categry values.
         category_value2id (`dict`):
             Map rom category value to ID for all categories in the data.
-    '''
+    """
     data = list(data)
     if existing_category_value2id is not None:
         category_value2id = existing_category_value2id
@@ -141,7 +141,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
 
 def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
-    r''' Creates a generator of fake spacy documents, used for running
+    """Creates a generator of fake spacy documents, used for running
     meta_cat pipe separately from main cat pipeline.
 
     Args:
@@ -153,7 +153,7 @@ def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
     Returns:
         generator:
             Generator of spacy like documents that can be feed into meta_cat.pipe
-    '''
+    """
     for id_ in data.keys():
         ents = data[id_]['entities'].values()
 

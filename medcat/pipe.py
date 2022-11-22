@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__) # different logger from the package-level o
 
 
 class Pipe(object):
-    r""" A wrapper around the standard spacy pipeline.
+    """A wrapper around the standard spacy pipeline.
 
     Args:
         tokenizer (`spacy.tokenizer.Tokenizer`):
@@ -48,7 +48,7 @@ class Pipe(object):
         logger.setLevel(self.config.general.log_level)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
-        r""" Add any kind of a tagger for tokens.
+        """Add any kind of a tagger for tokens.
 
         Args:
             tagger (`object/function`):
@@ -82,9 +82,8 @@ class Pipe(object):
         Token.set_extension('norm', default=None, force=True)
 
     def add_ner(self, ner: NER, name: Optional[str] = None) -> None:
-        r""" Add NER from CAT to the pipeline, will also add the necessary fields
+        """Add NER from CAT to the pipeline, will also add the necessary fields
         to the document and Span objects.
-
         """
         component_name = spacy.util.get_object_name(ner)
         name = name if name is not None else component_name
@@ -101,7 +100,7 @@ class Pipe(object):
         Span.set_extension('link_candidates', default=None, force=True)
 
     def add_linker(self, linker: Linker, name: Optional[str] = None) -> None:
-        r""" Add entity linker to the pipeline, will also add the necessary fields
+        """Add entity linker to the pipeline, will also add the necessary fields
         to Span object.
 
         linker (object/function):
@@ -145,7 +144,7 @@ class Pipe(object):
                             texts: Iterable[str],
                             n_process: Optional[int] = None,
                             batch_size: Optional[int] = None) -> Iterable[Doc]:
-        r""" Batch process a list of texts in parallel.
+        """Batch process a list of texts in parallel.
 
         Args:
             texts (`Iterable[str]`):
@@ -219,8 +218,7 @@ class Pipe(object):
 
     @property
     def spacy_nlp(self) -> Language:
-        """ The spaCy Language object
-        """
+        """The spaCy Language object."""
         return self._nlp
 
     @staticmethod

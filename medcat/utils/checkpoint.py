@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 
 
 class Checkpoint(object):
-    r""" The base class of checkpoint objects
+    """The base class of checkpoint objects
 
     Args:
         dir_path (str):
@@ -65,15 +65,14 @@ class Checkpoint(object):
 
     @classmethod
     def from_latest(cls: Type[T], dir_path: str) -> T:
-        r'''
-        Retrieve the latest checkpoint from the parent directory.
+        """Retrieve the latest checkpoint from the parent directory.
 
         Args:
             dir_path (string):
                 The path to the directory containing checkpoint files
         Returns:
             A new checkpoint object
-        '''
+        """
         if not os.path.isdir(dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
         ckpt_file_paths = cls._get_ckpt_file_paths(dir_path)
@@ -89,15 +88,14 @@ class Checkpoint(object):
         return checkpoint
 
     def save(self, cdb: CDB, count: int) -> None:
-        r'''
-        Save the CDB as the latest checkpoint.
+        """Save the CDB as the latest checkpoint.
 
         Args:
             cdb (medcat.CDB):
                 The MedCAT CDB object to be checkpointed
             count (count):
                 The number of the finished steps
-        '''
+        """
         ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-%s-%s" % (self.steps, count))
         while len(self._file_paths) >= self._max_to_keep:
             to_remove = self._file_paths.pop(0)
@@ -108,13 +106,12 @@ class Checkpoint(object):
         self._count = count
 
     def restore_latest_cdb(self) -> CDB:
-        r'''
-        Restore the CDB from the latest checkpoint.
+        """Restore the CDB from the latest checkpoint.
 
         Returns:
             cdb (medcat.CDB):
                 The MedCAT CDB object
-        '''
+        """
         if not os.path.isdir(self._dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
         ckpt_file_paths = self._get_ckpt_file_paths(self._dir_path)
@@ -148,8 +145,7 @@ class CheckpointConfig(object):
 
 
 class CheckpointManager(object):
-    r"""
-    The class for managing checkpoints of specific training type and their configuration
+    """The class for managing checkpoints of specific training type and their configuration
 
     Args:
         name (str):
@@ -162,8 +158,7 @@ class CheckpointManager(object):
         self.checkpoint_config = checkpoint_config
 
     def create_checkpoint(self, dir_path: Optional[str] = None) -> "Checkpoint":
-        r'''
-        Create a new checkpoint inside the checkpoint base directory.
+        """Create a new checkpoint inside the checkpoint base directory.
 
         Args:
             dir_path (str):
@@ -171,15 +166,14 @@ class CheckpointManager(object):
 
         Returns:
             A checkpoint object
-        '''
+        """
         dir_path = dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name, str(int(time.time())))
         return Checkpoint(dir_path,
                           steps=self.checkpoint_config.steps,
                           max_to_keep=self.checkpoint_config.max_to_keep)
 
     def get_latest_checkpoint(self, base_dir_path: Optional[str] = None) -> "Checkpoint":
-        r'''
-        Retrieve the latest checkpoint from the checkpoint base directory.
+        """Retrieve the latest checkpoint from the checkpoint base directory.
 
         Args:
             base_dir_path (string):
@@ -187,7 +181,7 @@ class CheckpointManager(object):
 
         Returns:
             A checkpoint object
-        '''
+        """
         base_dir_path = base_dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name)
         ckpt_dir_path = self.get_latest_training_dir(base_dir_path=base_dir_path)
         checkpoint = Checkpoint.from_latest(dir_path=ckpt_dir_path)
@@ -197,15 +191,14 @@ class CheckpointManager(object):
 
     @classmethod
     def get_latest_training_dir(cls, base_dir_path: str) -> str:
-        r'''
-        Retrieve the latest training directory containing all checkpoints.
+        """Retrieve the latest training directory containing all checkpoints.
 
         Args:
             base_dir_path (string):
                 The path to the directory containing all checkpointed trainings
         Returns:
             The path to the latest training directory containing all checkpoints.
-        '''
+        """
         if not os.path.isdir(base_dir_path):
             raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")
         ckpt_dir_paths = os.listdir(base_dir_path)

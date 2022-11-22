@@ -113,8 +113,7 @@ def json2html(doc):
 
 
 def prepare_name(cat, name, version='CLEAN'):
-    """ Cleans up the name
-    """
+    """Cleans up the name."""
     name = clean_name(name)
 
     if version.lower() == 'clean':
@@ -181,8 +180,7 @@ def tkns_from_doc(spacy_doc, start, end):
 
 
 def filter_cdb_by_icd10(cdb: CDB) -> CDB:
-    """
-    Filters an existing CDB to only contain concepts that have an associated ICD-10 code.
+    """Filters an existing CDB to only contain concepts that have an associated ICD-10 code.
     Can be used for snomed orr UMLS CDBs.
     :return: filtered CDB
     """
@@ -279,8 +277,7 @@ def umls_to_icd10(cdb, csv_path):
 
 
 def umls_to_snomed(cdb, pickle_path):
-    """ Map UMLS CDB to SNOMED concepts
-    """
+    """Map UMLS CDB to SNOMED concepts."""
     import pickle
 
     data = pickle.load(open(pickle_path, 'rb'))
@@ -301,8 +298,7 @@ def umls_to_snomed(cdb, pickle_path):
 
 
 def snomed_to_umls(cdb, pickle_path):
-    """ Map SNOMED CDB to UMLS concepts
-    """
+    """Map SNOMED CDB to UMLS concepts."""
     import pickle
 
     data = pickle.load(open(pickle_path, 'rb'))
@@ -323,8 +319,7 @@ def snomed_to_umls(cdb, pickle_path):
 
 
 def snomed_to_icd10(cdb, csv_path):
-    """ Add map from cui to icd10 for concepts
-    """
+    """Add map from cui to icd10 for concepts."""
     import pandas as pd
     df = pd.read_csv(csv_path)
 
@@ -348,8 +343,7 @@ def snomed_to_icd10(cdb, csv_path):
 
 
 def snomed_to_desc(cdb, csv_path):
-    """ Add descriptions to the concepts
-    """
+    """Add descriptions to the concepts."""
     import pandas as pd
     df = pd.read_csv(csv_path)
 

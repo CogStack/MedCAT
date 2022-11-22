@@ -4,7 +4,7 @@ from typing import Optional, List, Dict
 
 
 class Vocab(object):
-    r''' Vocabulary used to store word embeddings for context similarity
+    """Vocabulary used to store word embeddings for context similarity
     calculation. Also used by the spell checker - but not for fixing the spelling
     only for checking is something correct.
 
@@ -17,7 +17,7 @@ class Vocab(object):
             Same as index2word but only words that have vectors
         unigram_table (dict):
             Negative sampling.
-    '''
+    """
     def __init__(self) -> None:
         self.vocab: Dict = {}
         self.index2word: Dict = {}
@@ -25,7 +25,7 @@ class Vocab(object):
         self.unigram_table: np.ndarray = np.array([])
 
     def inc_or_add(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None):
-        r''' Add a word or incrase its count.
+        """Add a word or incrase its count.
 
         Args:
             word (str):
@@ -35,27 +35,26 @@ class Vocab(object):
                 should it be set if a new word.
             vec (numpy.ndarray):
                 Word vector
-        '''
+        """
         if word not in self.vocab:
             self.add_word(word, cnt, vec)
         else:
             self.inc_wc(word, cnt)
 
     def remove_all_vectors(self) -> None:
-        r''' Remove all stored vector representations
-        '''
+        """Remove all stored vector representations."""
         self.vec_index2word = {}
 
         for word in self.vocab:
             self.vocab[word]['vec'] = None
 
     def remove_words_below_cnt(self, cnt: int) -> None:
-        r''' Remove all words with frequency below cnt.
+        """Remove all words with frequency below cnt.
 
         Args:
             cnt (int):
                 Word count limit.
-        '''
+        """
         for word in list(self.vocab.keys()):
             if self.vocab[word]['cnt'] < cnt:
                 del self.vocab[word]
@@ -72,25 +71,25 @@ class Vocab(object):
                 self.vec_index2word[ind] = word
 
     def inc_wc(self, word: str, cnt: int = 1):
-        r''' Incraese word count by cnt.
+        """Incraese word count by cnt.
 
         Args:
             word (str):
                 For which word to increase the count
             cnt (int):
                 By how muhc to incrase the count
-        '''
+        """
         self.item(word)['cnt'] += cnt
 
     def add_vec(self, word: str, vec: np.ndarray) -> None:
-        r''' Add vector to a word.
+        """Add vector to a word.
 
         Args:
             word (str):
                 To which word to add the vector.
             vec (numpy.ndarray):
                 The vector to add.
-        '''
+        """
         self.vocab[word]['vec'] = vec
 
         ind = self.vocab[word]['ind']
@@ -98,22 +97,22 @@ class Vocab(object):
             self.vec_index2word[ind] = word
 
     def reset_counts(self, cnt: int = 1) -> None:
-        r''' Reset the count for all word to cnt.
+        """Reset the count for all word to cnt.
 
         Args:
             cnt (int):
                 New count for all words in the vocab.
-        '''
+        """
         for word in self.vocab.keys():
             self.vocab[word]['cnt'] = cnt
 
     def update_counts(self, tokens: List[str]) -> None:
-        r''' Given a list of tokens update counts for words in the vocab.
+        """Given a list of tokens update counts for words in the vocab.
 
         Args:
             tokens (List[str]):
                 Usually a large block of text split into tokens/words.
-        '''
+        """
         for token in tokens:
             if token in self:
                 self.inc_wc(token, 1)
@@ -174,9 +173,9 @@ class Vocab(object):
                 self.add_word(word, cnt, vec, replace)
 
     def make_unigram_table(self, table_size: int = 100000000) -> None:
-        r''' Make unigram table for negative sampling, look at the paper if interested
+        """Make unigram table for negative sampling, look at the paper if interested
         in details.
-        '''
+        """
         freqs = []
         unigram_table = []
 
@@ -197,7 +196,7 @@ class Vocab(object):
         self.unigram_table = np.array(unigram_table)
 
     def get_negative_samples(self, n: int = 6, ignore_punct_and_num: bool = False) -> List[int]:
-        r''' Get N negative samples.
+        """Get N negative samples.
 
         Args:
             n (int):
@@ -207,7 +206,7 @@ class Vocab(object):
         Returns:
             inds (List[int]):
                 Indices for words in this vocabulary.
-        '''
+        """
         if len(self.unigram_table) == 0:
             raise Exception("No unigram table present, please run the function vocab.make_unigram_table() first.")
         inds = np.random.randint(0, len(self.unigram_table), n)

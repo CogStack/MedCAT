@@ -56,9 +56,7 @@ class CogStackConn(object):
 
     def get_docs_generator(self, query: Dict, index: Union[str, List[str]],
                            es_gen_size: int = 800, request_timeout: int = 300, **kwargs):
-        """
-
-        :param query: search query body
+        """:param query: search query body
         :param index: Can be a single index name str or List of ES indices to search.
         :param es_gen_size: Size of the generator object
         :param request_timeout: set to 840000 for large searches
@@ -73,8 +71,7 @@ class CogStackConn(object):
 
     def cogstack2df(self, query: Dict, index: Union[str, List[str]], column_headers=None,
                     es_gen_size: int = 800, request_timeout: int = 300):
-        """
-        Returns DataFrame from a CogStack search
+        """Returns DataFrame from a CogStack search
 
         :param query: search query body
         :param index: str index name or list of indices
@@ -107,8 +104,7 @@ class CogStackConn(object):
         return df
 
     def DataFrame(self, index: Optional[str]):
-        """
-        Special function to return a pandas-like DataFrame that remains in CogStack and not in memory. See cogstack2df func
+        """Special function to return a pandas-like DataFrame that remains in CogStack and not in memory. See cogstack2df func
          to retrieve data to memory.
         :param index: List of indices
         :return: A DataFrame object

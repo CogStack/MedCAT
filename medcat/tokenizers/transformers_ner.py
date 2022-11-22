@@ -4,9 +4,7 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 
 
 class TransformersTokenizerNER(object):
-    r'''
-
-    Args:
+    """Args:
         hf_tokenizer
             Must be able to return token offsets
         max_len:
@@ -16,7 +14,7 @@ class TransformersTokenizerNER(object):
                 a subword or the start/full word. For BERT 'start' is everything that does not begin with ##
         cui2name:
             Map from CUI to full name for labels.
-    '''
+    """
 
     def __init__(self,
                  hf_tokenizer: Optional[PreTrainedTokenizerBase] = None,
@@ -36,7 +34,7 @@ class TransformersTokenizerNER(object):
                     self.label_map[cui] = len(self.label_map)
 
     def encode(self, examples: Dict, ignore_subwords: bool = False) -> Dict:
-        r''' Used with huggingface datasets map function to convert medcat_ner dataset into the
+        """Used with huggingface datasets map function to convert medcat_ner dataset into the
         appropriate form for NER with BERT. It will split long text segments into max_len sequences.
 
         Args:
@@ -44,7 +42,7 @@ class TransformersTokenizerNER(object):
                 Stream of examples
             ignore_subwords:
                 If set to `True` subwords of any token will get the special label `X`
-        '''
+        """
         self.hf_tokenizer = self.ensure_tokenizer()
         old_ids = examples['id']
         old_names = examples['name']

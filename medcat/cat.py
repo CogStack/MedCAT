@@ -46,8 +46,7 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 
 
 class CAT(object):
-    r"""
-    The main MedCAT class used to annotate documents, it is built on top of spaCy
+    """The main MedCAT class used to annotate documents, it is built on top of spaCy
     and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
     be used as a spacy nlp model.
 
@@ -135,12 +134,12 @@ class CAT(object):
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
-        """ Returns the spacy pipeline with MedCAT
+        """Returns the spacy pipeline with MedCAT
         """
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        r""" Will not be a deep hash but will try to catch all the changing parts during training.
+        """Will not be a deep hash but will try to catch all the changing parts during training.
         """
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
@@ -156,8 +155,7 @@ class CAT(object):
         return hasher.hexdigest()
 
     def get_model_card(self, as_dict=False):
-        """
-        A minimal model card for MedCAT model packs.
+        """A minimal model card for MedCAT model packs.
 
         Args:
             as_dict: return the model card as a dictionary instead of a str.
@@ -203,7 +201,7 @@ class CAT(object):
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
-        r""" Will crete a .zip file containing all the models in the current running instance
+        """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
         model_pack_name - an id will be appended to this name
@@ -268,7 +266,7 @@ class CAT(object):
 
     @classmethod
     def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
-        r"""Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
+        """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
         (if present)
 
         Args:
@@ -329,7 +327,7 @@ class CAT(object):
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
-        r"""
+        """
         Push the text through the pipeline.
 
         Args:
@@ -355,8 +353,7 @@ class CAT(object):
             return self.pipe(text)
 
     def __repr__(self):
-        """
-        Prints the model_card for this CAT instance.
+        """Prints the model_card for this CAT instance.
         Returns:
             the 'Model Card' for this CAT instance. This includes NER+L config and any MetaCATs
         """
@@ -370,7 +367,7 @@ class CAT(object):
                      use_cui_doc_limit: bool = False,
                      use_groups: bool = False,
                      extra_cui_filter: Optional[Set] = None) -> Tuple:
-        r""" TODO: Refactor and make nice
+        """TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
         Args:
@@ -615,7 +612,7 @@ class CAT(object):
               progress_print: int = 1000,
               checkpoint: Optional[Checkpoint] = None,
               is_resumed: bool = False) -> None:
-        """ Runs training on the data, note that the maximum length of a line
+        """Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
         Args:
@@ -662,8 +659,7 @@ class CAT(object):
         self.config.linking.train = False
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
-        r"""
-        Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
+        """Adds a CUI to a group, will appear in cdb.addl_info['cui2group']
 
         Args:
             cui (str):
@@ -680,8 +676,7 @@ class CAT(object):
         self.cdb.addl_info['cui2group'][cui] = group_name
 
     def unlink_concept_name(self, cui: str, name: str, preprocessed_name: bool = False) -> None:
-        r"""
-        Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
+        """Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
         the Concept Database (CDB). As a consequence medcat will never again link the `name`
         to this CUI - meaning the name will not be detected as a concept in the future.
 
@@ -724,7 +719,7 @@ class CAT(object):
                               negative: bool = False,
                               devalue_others: bool = False,
                               do_add_concept: bool = True) -> None:
-        r""" Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
+        r"""Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
         training if spacy_entity and spacy_doc are set.
 
         Args:
@@ -785,7 +780,7 @@ class CAT(object):
                          extra_cui_filter: Optional[Set] = None,
                          checkpoint: Optional[Checkpoint] = None,
                          is_resumed: bool = False) -> Tuple:
-        r""" TODO: Refactor, left from old
+        """TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
 
@@ -987,7 +982,7 @@ class CAT(object):
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
                      batch_size: Optional[int] = None) -> List[Dict]:
-        r""" Get entities
+        """Get entities
         text:  text to be annotated
         return:  entities
         """
@@ -1028,7 +1023,7 @@ class CAT(object):
         return out
 
     def get_json(self, text: str, only_cui: bool = False, addl_info=['cui2icd10', 'cui2ontologies']) -> str:
-        """ Get output in json format
+        """Get output in json format
 
         text:  text to be annotated
         return:  json with fields {'entities': <>, 'text': text}
@@ -1070,8 +1065,7 @@ class CAT(object):
         return nn_components
 
     def _run_nn_components(self, docs: Dict, nn_components: List, id2text: Dict) -> None:
-        r""" This will add meta_anns in-place to the docs dict.
-        """
+        """This will add meta_anns in-place to the docs dict."""
         logger.debug("Running GPU components separately")
 
         # First convert the docs into the fake spacy doc format
@@ -1122,7 +1116,7 @@ class CAT(object):
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
-        r""" Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
+        r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
         Args:
@@ -1242,7 +1236,7 @@ class CAT(object):
                                addl_info: List[str] = [],
                                nn_components: List = [],
                                min_free_memory: int = 0) -> Dict:
-        r""" Run multiprocessing on one batch
+        """Run multiprocessing on one batch
 
         Args:
             data:
@@ -1312,7 +1306,7 @@ class CAT(object):
                              addl_info: List[str] = [],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        r""" Run multiprocessing NOT FOR TRAINING
+        """Run multiprocessing NOT FOR TRAINING
 
         in_data:  a list with format: [(id, text), (id, text), ...]
         nproc:  the number of processors
