@@ -21,10 +21,11 @@ class Snomed:
             Specification of a SNOMED UK extension after 2021 to process the divergent release format.
     """
 
-    def __init__(self, data_path, uk_ext=False):
+    def __init__(self, data_path, uk_ext=False, uk_drug_ext=False):
         self.data_path = data_path
         self.release = data_path[-16:-8]
         self.uk_ext = uk_ext
+        self.uk_drug_ext = uk_drug_ext
 
     def to_concept_df(self):
         """
@@ -56,6 +57,17 @@ class Snomed:
                 if "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKCLSnapshot"
                     description_snapshot = "sct2_Description_UKCLSnapshot-en"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    description_snapshot = "sct2_Description_UKEDSnapshot-en"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
+                    description_snapshot = "sct2_Description_UKDGSnapshot-en"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKEDSnapshot"
                     description_snapshot = "sct2_Description_UKEDSnapshot-en"
@@ -148,6 +160,17 @@ class Snomed:
                     continue
                 else:
                     pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
 
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
@@ -199,6 +222,18 @@ class Snomed:
                     continue
                 else:
                     pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
+                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
                 if m:
@@ -214,7 +249,8 @@ class Snomed:
                     relationship[_].append(v['sourceId'])
                 else:
                     pass
-            output_dict.update(relationship)
+            output_dict = {key: output_dict.get(key, []) + relationship.get(key, []) for key in
+                           set(list(output_dict.keys()) + list(relationship.keys()))}
         with open(output_jsonfile, 'w') as json_file:
             json.dump(output_dict, json_file)
         return
@@ -247,6 +283,15 @@ class Snomed:
                     icd10_ref_set = "der2_iisssccRefset_ExtendedMapUKCLSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     icd10_ref_set = "der2_iisssccRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
                     continue
                 else:
@@ -289,6 +334,15 @@ class Snomed:
                     continue
                 elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
                     opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
+                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
+                    continue
+                else:
+                    pass
+            if self.uk_drug_ext:
+                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
+                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
                     opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
