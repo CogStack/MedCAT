@@ -44,6 +44,7 @@ setuptools.setup(
         # the following are not direct dependencies of MedCAT but needed for docs/building
         'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
         'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
+        'joblib~=1.2', 
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
