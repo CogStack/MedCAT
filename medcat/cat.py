@@ -797,6 +797,12 @@ class CAT(object):
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
 
+        When filtering, the filters within the CAT model are used first,
+        then the ones from MedCATtrainer (MCT) export filters,
+        and finally the extra_cui_filter (if set).
+        That is to say, the expectation is:
+        extra_cui_filter ⊆ MCT filter ⊆ Model/config filter.
+
         Args:
             data_path (str):
                 The path to the json file that we get from MedCATtrainer on export.
