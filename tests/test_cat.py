@@ -247,10 +247,10 @@ class CATTests(unittest.TestCase):
         for step in range(1, (nepochs_train + nepochs_retrain) * num_of_documents):
             self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
 
-    def test_train_supervised_does_not_retain_MCT_filters_default(self):
+    def test_train_supervised_does_not_retain_MCT_filters_default(self, extra_cui_filter=None):
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
         before = str(self.undertest.config.linking.filters)
-        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True)
+        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, extra_cui_filter=extra_cui_filter)
         after = str(self.undertest.config.linking.filters)
         self.assertEqual(before, after)
 
@@ -267,6 +267,9 @@ class CATTests(unittest.TestCase):
         for filtered_cui in filtered_cuis:
             with self.subTest(f'CUI: {filtered_cui}'):
                 self.assertTrue(filtered_cui in self.undertest.config.linking.filters.cuis)
+
+    def test_train_supervised_no_leak_extra_cui_filters(self):
+        self.test_train_supervised_does_not_retain_MCT_filters_default(extra_cui_filter={'C123', 'C111'})
 
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)
