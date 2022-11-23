@@ -404,6 +404,20 @@ _DEFAULT_PARTIAL = _DefPartial()
 
 
 class LinkingFilters(MixingConfig, BaseModel):
+    """These describe the linking filters used alongside the model.
+
+    When no CUIs nor exlcuded CUIs are specified (the sets are empty),
+    all CUIs are accepted.
+    If there are CUIs specified then only those will be accepted.
+    If there are excluded CUIs specified, they are excluded.
+
+    In some cases, there are extra filters as well as MedCATtrainer (MCT) export filters.
+    These are expcted to follow the following:
+    extra_cui_filter ⊆ MCT filter ⊆ Model/config filter
+
+    While any other CUIs can be included in the the extra CUI filter or the MCT filter,
+    they would not have any real effect.
+    """
     cuis: Set[str] = set()
     cuis_exclude: Set[str] = set()
 
