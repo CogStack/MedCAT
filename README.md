@@ -13,14 +13,17 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 
 ## Available Models
 
-We have 3 public models available:
+We have 4 public models available:
 1) UMLS Small (A modelpack containing a subset of UMLS (disorders, symptoms, medications...). Trained on MIMIC-III)
 2) SNOMED International (Full SNOMED modelpack trained on MIMIC-III)
-3) UMLS Dutch v 1.10 (UMLS Dutch (A Dutch UMLS model pack trained on Dutch medical Wikipedia articles and EMC Dutch Clinical Corpus. Provided by Sander Tan, UMC Utrecht, more info at https://github.com/umcu/dutch-umls))
+3) UMLS Dutch v1.10 (a modelpack provided by UMC Utrecht containing [UMLS entities with Dutch names](https://github.com/umcu/dutch-umls) trained on Dutch medical wikipedia articles and a negation detection model [repository](https://github.com/umcu/negation-detection/)/[paper](https://doi.org/10.48550/arxiv.2209.00470) trained on EMC Dutch Clinical Corpus).
+4) UMLS Full. >4MM concepts trained self-supervsied on MIMIC-III. v2022AA of UMLS.
 
 To download any of these models, please [follow this link](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) and sign into your NIH profile / UMLS license. You will then be redirected to the MedCAT model download form. Please complete this form and you will be provided a download link.
 
 ## News
+- **New Paper using MedCAT \[21. October 2022\]**: [A New Public Corpus for Clinical Section Identification: MedSecId.](https://aclanthology.org/2022.coling-1.326.pdf)
+- **Major Change to the Permissions of Use \[4. August 2022\]** MedCAT now uses the [Elastic License 2.0](https://github.com/CogStack/MedCAT/pull/271/commits/c9f4e86116ec751a97c618c97dadaa23e1feb6bc). For further information please click [here.](https://www.elastic.co/licensing/elastic-license)
 - **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
 - **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT.

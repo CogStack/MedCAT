@@ -25,7 +25,7 @@ setuptools.setup(
         'transformers~=4.19.2',
         'torch>=1.0',
         'tqdm>=4.27',
-        'sklearn~=0.0',
+        'scikit-learn<1.2.0',
         'elasticsearch>=8.3,<9',  # Check if this is compatible with opensearch otherwise: 'elasticsearch>=7.10,<8.0.0',
         'eland>=8.3.0,<9',
         'dill~=0.3.4,<0.3.5', # less than 0.3.5 due to datasets requirement
@@ -44,6 +44,7 @@ setuptools.setup(
         # the following are not direct dependencies of MedCAT but needed for docs/building
         'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
         'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
+        'joblib~=1.2', 
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

@@ -550,21 +550,21 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
 
-    def _make_stats(self):
+    def make_stats(self):
         stats = {}
         stats["Number of concepts"] = len(self.cui2names)
         stats["Number of names"] = len(self.name2cuis)
         stats["Number of concepts that received training"] = len([cui for cui in self.cui2count_train if self.cui2count_train[cui] > 0])
         stats["Number of seen training examples in total"] = sum(self.cui2count_train.values())
-        stats["Average training examples per concept"] = np.average(
-                [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0])
+        positive_count_trains = [self.cui2count_train[cui] for cui in self.cui2count_train if self.cui2count_train[cui] > 0]
+        stats["Average training examples per concept"] = np.average(positive_count_trains) if positive_count_trains else 0.0
 
         return stats
 
     def print_stats(self) -> None:
         r'''Print basic statistics for the CDB.
         '''
-        logger.info(json.dumps(self._make_stats(), indent=2))
+        logger.info(json.dumps(self.make_stats(), indent=2))
 
     def reset_concept_similarity(self) -> None:
         r''' Reset concept similarity matrix.
