@@ -103,11 +103,11 @@ class MetaCAT(PipeRunner):
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
-            json_path (`str` or `list`):
+            json_path (Union[str, list]):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
-            save_dir_path (`str`, optional, defaults to `None`):
+            save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
-                we need to set a save path.
+                we need to set a save path. Defaults to `None`.
         """
         g_config = self.config.general
         t_config = self.config.train

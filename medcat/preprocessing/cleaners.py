@@ -12,16 +12,16 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
     and add information generated from the `name`.
 
     Args:
-        nlp (`spacy.lang.<lng>`):
+        nlp (spacy.lang.<lng>):
             Spacy nlp model.
-        names (`dict`):
+        names (Dict):
             Dictionary of existing names for this concept in this row of a CSV. The new generated
             name versions and other required information will be added here.
-        config (`medcat.config.Config`):
+        config (medcat.config.Config):
             Global config for medcat.
 
     Return:
-        names (`dict`):
+        names (Dict):
             The new dictionary of prepared names.
     """
     sc_name = nlp(raw_name)

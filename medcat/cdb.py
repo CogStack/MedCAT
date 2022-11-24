@@ -321,10 +321,11 @@ class CDB(object):
             context_type - is usually one of: ['long', 'medium', 'short']
         negative (bool):
             Is this negative context of positive (Default Value `False`).
-        lr (`int`, optional):
+        lr (int):
             If set it will override the base value from the config file.
-        cui_count (`int`, defaults to 0):
+        cui_count (int):
             The learning rate will be calculated based on the count for the provided CUI + cui_count.
+            Defaults to 0.
         """
         if cui not in self.cui2context_vectors:
             self.cui2context_vectors[cui] = {}
