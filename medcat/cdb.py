@@ -595,7 +595,7 @@ class CDB(object):
             force_build (bool):
                 Do not use cached sim matrix (Default value False)
 
-        Return:
+        Returns:
             results (Dict):
                 A dictionary with topn results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'type_name': <type_name>,
                                                               'type_id': <type_id>, 'cnt': <number of training examples the concept has seen>}, ...}
