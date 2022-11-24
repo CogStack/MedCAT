@@ -28,13 +28,13 @@ class Vocab(object):
         """Add a word or incrase its count.
 
         Args:
-            word (str):
+            word(str):
                 Word to be added
-            cnt (int):
-                By how much should the count be increased, or to wha
-                should it be set if a new word.
-            vec (numpy.ndarray):
-                Word vector
+            cnt(int, optional):
+                By how much should the count be increased, or to what
+                should it be set if a new word. (Default value = 1)
+            vec(Optional[np.ndarray], optional):
+                Word vector (Default value = None)
         """
         if word not in self.vocab:
             self.add_word(word, cnt, vec)
@@ -52,7 +52,7 @@ class Vocab(object):
         """Remove all words with frequency below cnt.
 
         Args:
-            cnt (int):
+            cnt(int):
                 Word count limit.
         """
         for word in list(self.vocab.keys()):
@@ -74,10 +74,10 @@ class Vocab(object):
         """Incraese word count by cnt.
 
         Args:
-            word (str):
+            word(str):
                 For which word to increase the count
-            cnt (int):
-                By how muhc to incrase the count
+            cnt(int, optional):
+                By how muhc to incrase the count (Default value = 1)
         """
         self.item(word)['cnt'] += cnt
 
@@ -85,9 +85,9 @@ class Vocab(object):
         """Add vector to a word.
 
         Args:
-            word (str):
+            word(str):
                 To which word to add the vector.
-            vec (numpy.ndarray):
+            vec(np.ndarray):
                 The vector to add.
         """
         self.vocab[word]['vec'] = vec
@@ -100,8 +100,8 @@ class Vocab(object):
         """Reset the count for all word to cnt.
 
         Args:
-            cnt (int):
-                New count for all words in the vocab.
+            cnt(int, optional):
+                New count for all words in the vocab. (Default value = 1)
         """
         for word in self.vocab.keys():
             self.vocab[word]['cnt'] = cnt
@@ -110,7 +110,7 @@ class Vocab(object):
         """Given a list of tokens update counts for words in the vocab.
 
         Args:
-            tokens (List[str]):
+            tokens(List[str]):
                 Usually a large block of text split into tokens/words.
         """
         for token in tokens:
@@ -121,14 +121,14 @@ class Vocab(object):
         """Add a word to the vocabulary
 
         Args:
-            word (str):
-                the word to be added, it should be lemmatized and lowercased
-            cnt (int):
-                count of this word in your dataset
-            vec (numpy.ndarray):
-                the vector representation of the word
-            replace (bool):
-                will replace old vector representation
+            word(str):
+                The word to be added, it should be lemmatized and lowercased
+            cnt(int, optional):
+                Count of this word in your dataset (Default value = 1)
+            vec(Optional[np.ndarray], optional):
+                The vector representation of the word (Default value = None)
+            replace(bool, optional):
+                Will replace old vector representation (Default value = True)
         """
         if word not in self.vocab:
             ind = len(self.index2word)
@@ -156,10 +156,10 @@ class Vocab(object):
             house   34444   0.3232 0.123213 1.231231
 
         Args:
-            path (str):
+            path(str):
                 path to the file with words and vectors
-            replace (bool):
-                existing words in the vocabulary will be replaced
+            replace(bool, optional):
+                existing words in the vocabulary will be replaced (Default value = True)
         """
         with open(path) as f:
             for line in f:
@@ -175,6 +175,10 @@ class Vocab(object):
     def make_unigram_table(self, table_size: int = 100000000) -> None:
         """Make unigram table for negative sampling, look at the paper if interested
         in details.
+
+        Args:
+            table_size(int, optional):
+                The size of the table (Defaults to 100 000 000)
         """
         freqs = []
         unigram_table = []
@@ -199,12 +203,13 @@ class Vocab(object):
         """Get N negative samples.
 
         Args:
-            n (int):
-                How many words to return
-            ignore_punct_and_num (bool):
-                When returing words shold we skip punctuation and numbers.
+            n(int, optional):
+                How many words to return (Default value = 6)
+            ignore_punct_and_num(bool, optional):
+                Whether to ignore punctuation and numbers. (Default value = False)
+
         Returns:
-            inds (List[int]):
+            List[int]:
                 Indices for words in this vocabulary.
         """
         if len(self.unigram_table) == 0:
