@@ -790,6 +790,7 @@ class CAT(object):
                          never_terminate: bool = False,
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
+                         retain_extra_cui_filter: bool = False,
                          checkpoint: Optional[Checkpoint] = None,
                          retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
@@ -839,6 +840,9 @@ class CAT(object):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
+            retain_extra_cui_filter(bool):
+                Whether to retain the extra filters instead of the MedCATtrainer export filters.
+                This will only have an effect if/when retain_filters is set to True. Defaults to False.
             checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
                 The MedCAT CheckpointST object
             retain_filters (bool):
@@ -924,8 +928,20 @@ class CAT(object):
             for idx_project in trange(current_project, len(train_set['projects']), initial=current_project, total=len(train_set['projects']), desc='Project', leave=False):
                 project = train_set['projects'][idx_project]
 
-                # Set filters in case we are using the train_from_fp
-                self._set_project_filters(local_filters, project, extra_cui_filter, use_filters)
+                # if retain filters, but not the extra_cui_filters (and they exist),
+                # then we need to do project filters alone, then retain, and only
+                # then add the extra CUI filters
+                if retain_filters and extra_cui_filter and not retain_extra_cui_filter:
+                    # adding project filters without extra_cui_filters
+                    self._set_project_filters(local_filters, project, set(), use_filters)
+                    self.config.linking.filters.merge_with(local_filters)
+                    # adding extra_cui_filters, but NOT project filters
+                    self._set_project_filters(local_filters, project, extra_cui_filter, False)
+                    # refrain from doing it again for subsequent epochs
+                    retain_filters = False
+                else:
+                    # Set filters in case we are using the train_from_fp
+                    self._set_project_filters(local_filters, project, extra_cui_filter, use_filters)
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
@@ -962,6 +978,7 @@ class CAT(object):
                     latest_trained_step += 1
                     if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
+                # if retaining MCT filters AND (if they exist) extra_cui_filters
                 if retain_filters:
                     self.config.linking.filters.merge_with(local_filters)
                     # refrain from doing it again for subsequent epochs
