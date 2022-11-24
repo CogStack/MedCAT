@@ -1262,7 +1262,7 @@ class CAT(object):
                                addl_info: List[str] = [],
                                nn_components: List = [],
                                min_free_memory: int = 0) -> Dict:
-        """Run multiprocessing on one batch
+        """Run multiprocessing on one batch.
 
         Args:
             data:
