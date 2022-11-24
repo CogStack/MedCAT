@@ -134,13 +134,11 @@ class CAT(object):
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
-        """Returns the spacy pipeline with MedCAT
-        """
+        """Returns the spacy pipeline with MedCAT"""
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        """Will not be a deep hash but will try to catch all the changing parts during training.
-        """
+        """Will not be a deep hash but will try to catch all the changing parts during training."""
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
 
@@ -154,14 +152,19 @@ class CAT(object):
 
         return hasher.hexdigest()
 
-    def get_model_card(self, as_dict=False):
+    def get_model_card(self, as_dict: bool = False):
         """A minimal model card for MedCAT model packs.
 
         Args:
-            as_dict: return the model card as a dictionary instead of a str.
+            as_dict (bool):
+                Whether to return the model card as a dictionary instead of a str (Default value False).
 
         Returns:
-            By default a str - indented JSON object.
+            str:
+                The string representation of the JSON object.
+            OR
+            dict:
+                The dict JSON object.
         """
         card = {
                 'Model ID': self.config.version.id,
@@ -204,10 +207,15 @@ class CAT(object):
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
-        model_pack_name - an id will be appended to this name
+        Args:
+            save_dir_path (str):
+                An id will be appended to this name
+            model_pack_name (str, optional):
+                The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
 
-        returns:
-            Model pack name
+        Returns:
+            str:
+                Model pack name
         """
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
@@ -270,11 +278,12 @@ class CAT(object):
         (if present)
 
         Args:
-            zip_path:
-                path to model pack zip.
-            meta_cat_config_dict:
+            zip_path (str):
+                The path to model pack zip.
+            meta_cat_config_dict (Optional[Dict]):
                 A config dict that will overwrite existing configs in meta_cat.
-                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
         """
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -327,19 +336,20 @@ class CAT(object):
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
-        """
-        Push the text through the pipeline.
+        """Push the text through the pipeline.
 
         Args:
-            text (string):
+            text (Optional[str]):
                 The text to be annotated, if the text length is longer than
                 self.config.preprocessing['max_document_length'] it will be trimmed to that length.
-            do_train (bool, defaults to `False`):
+            do_train (bool):
                 This causes so many screwups when not there, so I'll force training
                 to False. To run training it is much better to use the self.train() function
                 but for some special cases I'm leaving it here also.
+                Defaults to `False`.
         Returns:
-            A single spacy document or multiple spacy documents with the extracted entities
+            Optional[Doc]:
+                A single spacy document or multiple spacy documents with the extracted entities
         """
         # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
@@ -391,21 +401,21 @@ class CAT(object):
 
         Returns:
             fps (dict):
-                False positives for each CUI
+                False positives for each CUI.
             fns (dict):
-                False negatives for each CUI
+                False negatives for each CUI.
             tps (dict):
-                True positives for each CUI
+                True positives for each CUI.
             cui_prec (dict):
-                Precision for each CUI
+                Precision for each CUI.
             cui_rec (dict):
-                Recall for each CUI
+                Recall for each CUI.
             cui_f1 (dict):
-                F1 for each CUI
+                F1 for each CUI.
             cui_counts (dict):
-                Number of occurrence for each CUI
+                Number of occurrence for each CUI.
             examples (dict):
-                Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>]
+                Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
         """
         tp = 0
         fp = 0
@@ -663,9 +673,9 @@ class CAT(object):
 
         Args:
             cui (str):
-                The concept to be added
+                The concept to be added.
             group_name (str):
-                The group to whcih the concept will be added
+                The group to whcih the concept will be added.
 
         Examples:
 
@@ -682,9 +692,9 @@ class CAT(object):
 
         Args:
             cui (str):
-                The CUI from which the `name` will be removed
+                The CUI from which the `name` will be removed.
             name (str):
-                The span of text to be removed from the linking dictionary
+                The span of text to be removed from the linking dictionary.
         Examples:
 
             >>> # To never again link C0020538 to HTN
@@ -724,7 +734,7 @@ class CAT(object):
 
         Args:
             cui (str):
-                CUI of the concept
+                CUI of the concept.
             name (str):
                 Name to be linked to the concept (in the case of MedCATtrainer this is simply the
                 selected value in text, no preprocessing or anything needed).
@@ -826,21 +836,21 @@ class CAT(object):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
             fp (dict):
-                False positives for each CUI
+                False positives for each CUI.
             fn (dict):
-                False negatives for each CUI
+                False negatives for each CUI.
             tp (dict):
-                True positives for each CUI
+                True positives for each CUI.
             p (dict):
-                Precision for each CUI
+                Precision for each CUI.
             r (dict):
-                Recall for each CUI
+                Recall for each CUI.
             f1 (dict):
-                F1 for each CUI
+                F1 for each CUI.
             cui_counts (dict):
-                Number of occurrence for each CUI
+                Number of occurrence for each CUI.
             examples (dict):
-                FP/FN examples of sentences for each CUI
+                FP/FN examples of sentences for each CUI.
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
@@ -983,8 +993,16 @@ class CAT(object):
                      n_process: Optional[int] = None,
                      batch_size: Optional[int] = None) -> List[Dict]:
         """Get entities
-        text:  text to be annotated
-        return:  entities
+
+        Args:
+            texts (Union[Iterable[str], Iterable[Tuple]]): Text to be annotated
+            only_cui (bool, optional): Whether to only return CUIs. Defaults to False.
+            addl_info (List[str], optional): Additional info. Defaults to ['cui2icd10', 'cui2ontologies', 'cui2snomed'].
+            n_process (Optional[int], optional): Number of processes. Defaults to None.
+            batch_size (Optional[int], optional): The size of a batch. Defaults to None.
+
+        Returns:
+            List[Dict]: List of entity documents.
         """
         out: List[Dict] = []
 
@@ -1025,8 +1043,13 @@ class CAT(object):
     def get_json(self, text: str, only_cui: bool = False, addl_info=['cui2icd10', 'cui2ontologies']) -> str:
         """Get output in json format
 
-        text:  text to be annotated
-        return:  json with fields {'entities': <>, 'text': text}
+        Args:
+            text (str): Text to be annotated
+            only_cui (bool, optional): Whether to only get CUIs. Defaults to False.
+            addl_info (list, optional): Additional info. Defaults to ['cui2icd10', 'cui2ontologies'].
+
+        Returns:
+            str: Json with fields {'entities': <>, 'text': text}.
         """
         ents = self.get_entities(text, only_cui, addl_info=addl_info)['entities']
         out = {'annotations': ents, 'text': text}
@@ -1122,30 +1145,33 @@ class CAT(object):
         Args:
             data:
                 Iterator or array with format: [(id, text), (id, text), ...]
-            nproc (`int`, defaults to 8):
-                Number of processors
-            batch_size_chars (`int`, defaults to 1000000):
-                Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200
-            separate_nn_components (`bool`, defaults to True):
+            nproc (int):
+                Number of processors. Defaults to 8.
+            batch_size_chars (int):
+                Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200.
+                Defaults to 1000000.
+            separate_nn_components (bool):
                 If set the medcat pipe will be broken up into NN and not-NN components and
                 they will be run sequentially. This is useful as the NN components
                 have batching and like to process many docs at once, while the rest of the pipeline
-                runs the documents one by one.
-            out_split_size_chars (`int`, None):
+                runs the documents one by one. Defaults to True.
+            out_split_size_chars (Optional[int]):
                 If set once more than out_split_size_chars are annotated
                 they will be saved to a file (save_dir_path) and the memory cleared. Recommended
                 value is 20*batch_size_chars.
-            save_dir_path(`str`, defaults to the current working directory):
-                Where to save the annotated documents if splitting.
-            min_free_memory(`float`, defaults to 0.1):
+            save_dir_path(str):
+                Where to save the annotated documents if splitting. Defaults to the current working directory.
+            min_free_memory(float):
                 If set a process will not start unless there is at least this much RAM memory left,
                 should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
                 very large datasets because spacy is not the best with memory management and multiprocessing.
+                Defaults to 0.1.
 
         Returns:
-            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
-            the last batch will be returned while that and all previous batches will be
-            written to disk (out_save_dir).
+            Dict:
+                {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
+                the last batch will be returned while that and all previous batches will be
+                written to disk (out_save_dir).
         """
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
@@ -1240,14 +1266,15 @@ class CAT(object):
 
         Args:
             data:
-                Iterator or array with format: [(id, text), (id, text), ...]
+                Iterator or array with format: [(id, text), (id, text), ...].
             nproc (`int`, defaults to 8):
-                Number of processors
+                Number of processors.
             batch_size_chars (`int`, defaults to 1000000):
-                Size of a batch in number of characters
+                Size of a batch in number of characters.
 
         Returns:
-            A dictionary: {id: doc_json, id2: doc_json2, ...}
+            Dict:
+                {id: doc_json, id2: doc_json2, ...}
         """
         # Create the input output for MP
         with Manager() as manager:
@@ -1308,12 +1335,22 @@ class CAT(object):
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         """Run multiprocessing NOT FOR TRAINING
 
-        in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors
-        batch_size: the number of texts to buffer
-        return_dict: a flag for returning either a dict or a list of tuples
+        Args:
+            in_data (Union[List[Tuple], Iterable[Tuple]]): List with format: [(id, text), (id, text), ...]
+            nproc (Optional[int], optional): The number of processors. Defaults to None.
+            batch_size (Optional[int], optional): The number of texts to buffer. Defaults to None.
+            only_cui (bool, optional): Whether to get only CUIs. Defaults to False.
+            addl_info (List[str], optional): Additional info. Defaults to [].
+            return_dict (bool, optional): Flag for returning either a dict or a list of tuples. Defaults to True.
+            batch_factor (int, optional): Batch factor. Defaults to 2.
 
-        return:  a dict: {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
+        Raises:
+            ValueError:
+                When number of processes is 0.
+
+        Returns:
+            Union[List[Tuple], Dict]:
+                {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
         out: Union[Dict, List[Tuple]]
 
