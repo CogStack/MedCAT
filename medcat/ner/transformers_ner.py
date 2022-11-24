@@ -142,13 +142,13 @@ class TransformersNER(object):
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
-            json_path (`str` or `list`):
+            json_path (str or list):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
-            train_arguments(`str`, optional, defaults to `None`):
-                HF TrainingArguments. If None the default will be used
+            train_arguments(str):
+                HF TrainingArguments. If None the default will be used. Defaults to `None`.
             ignore_extra_labels:
                 Makes only sense when an existing deid model was loaded and from the new data we want to ignore
-                 labels that did not exist in the old model.
+                labels that did not exist in the old model.
         """
 
         if dataset is None and json_path is not None:
@@ -249,7 +249,7 @@ class TransformersNER(object):
         """Save all components of this class to a file
 
         Args:
-            save_dir_path(`str`):
+            save_dir_path(str):
                 Path to the directory where everything will be saved.
         """
         # Create dirs if they do not exist
@@ -275,9 +275,9 @@ class TransformersNER(object):
         """Load a meta_cat object.
 
         Args:
-            save_dir_path (`str`):
+            save_dir_path (str):
                 The directory where all was saved.
-            config_dict (`dict`):
+            config_dict (dict):
                 This can be used to overwrite saved parameters for this meta_cat
                 instance. Why? It is needed in certain cases where we autodeploy stuff.
 
