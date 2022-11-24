@@ -39,7 +39,10 @@ def create_main_ann(cdb: CDB, doc: Doc, tuis: Optional[List] = None) -> None:
     """Creates annotation in the spacy ents list
     from all the annotations for this document.
 
-    doc:  spacy document
+    Args:
+        cdb (CDB): The Context Databse.
+        doc (Doc): Spacy document.
+        tuis (Optional[List], optional): The type IDs. Defaults to None.
     """
     doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
 

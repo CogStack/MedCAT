@@ -17,13 +17,13 @@ class Checkpoint(object):
 
     Args:
         dir_path (str):
-            The path to the parent directory of checkpoint files
+            The path to the parent directory of checkpoint files.
         steps (int):
             The number of processed sentences/documents before a checkpoint is saved
-            (N.B.: A small number could result in error "no space left on device")
+            (N.B.: A small number could result in error "no space left on device"),
         max_to_keep (int):
             The maximum number of checkpoints to keep
-            (N.B.: A large number could result in error "no space left on device")
+            (N.B.: A large number could result in error "no space left on device").
     """
     DEFAULT_STEP = 1000
     DEFAULT_MAX_TO_KEEP = 1
@@ -69,9 +69,9 @@ class Checkpoint(object):
 
         Args:
             dir_path (string):
-                The path to the directory containing checkpoint files
+                The path to the directory containing checkpoint files.
         Returns:
-            A new checkpoint object
+            T: A new checkpoint object.
         """
         if not os.path.isdir(dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
@@ -92,9 +92,9 @@ class Checkpoint(object):
 
         Args:
             cdb (medcat.CDB):
-                The MedCAT CDB object to be checkpointed
+                The MedCAT CDB object to be checkpointed.
             count (count):
-                The number of the finished steps
+                The number of the finished steps.
         """
         ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-%s-%s" % (self.steps, count))
         while len(self._file_paths) >= self._max_to_keep:
@@ -110,7 +110,7 @@ class Checkpoint(object):
 
         Returns:
             cdb (medcat.CDB):
-                The MedCAT CDB object
+                The MedCAT CDB object.
         """
         if not os.path.isdir(self._dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
@@ -162,10 +162,10 @@ class CheckpointManager(object):
 
         Args:
             dir_path (str):
-                The path to the checkpoint directory
+                The path to the checkpoint directory.
 
         Returns:
-            A checkpoint object
+            CheckPoint: A checkpoint object.
         """
         dir_path = dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name, str(int(time.time())))
         return Checkpoint(dir_path,
@@ -177,10 +177,10 @@ class CheckpointManager(object):
 
         Args:
             base_dir_path (string):
-                The path to the directory containing checkpoint files
+                The path to the directory containing checkpoint files.
 
         Returns:
-            A checkpoint object
+            CheckPoint: A checkpoint object
         """
         base_dir_path = base_dir_path or os.path.join(os.path.abspath(os.getcwd()), self.checkpoint_config.output_dir, self.name)
         ckpt_dir_path = self.get_latest_training_dir(base_dir_path=base_dir_path)
@@ -195,9 +195,9 @@ class CheckpointManager(object):
 
         Args:
             base_dir_path (string):
-                The path to the directory containing all checkpointed trainings
+                The path to the directory containing all checkpointed trainings.
         Returns:
-            The path to the latest training directory containing all checkpoints.
+            str: The path to the latest training directory containing all checkpoints.
         """
         if not os.path.isdir(base_dir_path):
             raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")

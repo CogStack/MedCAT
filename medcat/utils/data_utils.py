@@ -407,9 +407,7 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
     data_path:
         Output from MedCATtrainer - projects containig the same documents must have the same name.
     out_path:
-        The consolidated data will be saved here - usually only annotations where both annotators agre
-            out_path:
-            The consolidated data will be saved here - usually only annotations where both annotators agreee
+        The consolidated data will be saved here - usually only annotations where both annotators agree
     require_double (boolean):
         If True everything must be double annotated, meaning there have to be two projects of the same name for each name. Else, it will
             also use projects that do not have double annotiations. If this is False, projects that do not have double anns will be
@@ -677,9 +675,9 @@ class MetaAnnotationDS(torch.utils.data.Dataset):
     def __init__(self, data: Dict, category_map: Dict):
         """Args:
             data:
-                Dictionary of data values
+                Dictionary of data values.
             category_map:
-                Map from category naem to id
+                Map from category naem to id.
         """
         self.data = data
         self.category_map = category_map
@@ -729,13 +727,17 @@ def prepare_from_json_chars(data: Dict,
                             replace_center: Optional[Dict] = None) -> Dict:
     """Convert the data from a json format into a CSV-like format for training.
 
-    data:  json file from MedCAT
-    cntx_left:  size of the context
-    cntx_right:  size of the context
-    tokenizer:  instance of the <FastTokenizer> class from huggingface
-    replace_center:  if not None the center word (concept) will be replaced with whatever is set
+    Args:
+        data (Dict): The json file from MedCAT.
+        cntx_left (int): The size of the context.
+        cntx_right (int): The size of the context.
+        tokenizer (Any): The instance of the <FastTokenizer> class from huggingface.
+        cui_filter (Optional[Dict], optional): The CUI filter. Defaults to None.
+        replace_center (Optional[Dict], optional): If not None the center word (concept) will be
+            replaced with whatever is set. Defaults to None.
 
-    return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
+    Returns:
+        Dict: {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
     """
     out_data: Dict = {}
 

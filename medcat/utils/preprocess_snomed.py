@@ -302,10 +302,15 @@ class Snomed:
             df2merge.append(icd_mappings)
         return pd.concat(df2merge)
 
-    def map_snomed2opcs4(self):
-        """
+    def map_snomed2opcs4(self) -> pd.DataFrame:
+        """Map SNOMED to OPSC4.
 
-        :return: SNOMED to OPSC4 mapping DataFrame which includes all metadata
+        Raises:
+            FileNotFoundError: In case of incorrect path to SNOMED CT directory.
+            FileNotFoundError: If OPCS mapping files not found.
+
+        Returns:
+            pd.DataFrame: SNOMED to OPSC4 mapping DataFrame which includes all metadata.
         """
         snomed_releases = []
         paths = []

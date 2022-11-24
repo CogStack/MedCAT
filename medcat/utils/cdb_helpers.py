@@ -134,7 +134,7 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
         kwargs:
             Will be forwarded to pandas.read_csv
     Return:
-        Touple[snomed_cdb_df (pandas.DataFrame), type_id2name (Dict)]:
+        Tuple[snomed_cdb_df (pandas.DataFrame), type_id2name (Dict)]:
             - snomed_cdb_df - Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
             - type_id2name - map from type_id to name, can be used to extend a CDB.
     """
