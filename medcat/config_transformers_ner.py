@@ -2,6 +2,7 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
 class General(MixingConfig, BaseModel):
+    """The general part of the Transformers NER config"""
     name: str = 'deid'
     model_name: str = 'roberta-base'
     """Can be path also"""
@@ -22,6 +23,7 @@ class General(MixingConfig, BaseModel):
 
 
 class ConfigTransformersNER(MixingConfig, BaseModel):
+    """The transformer NER config"""
     general: General = General()
 
     class Config:
