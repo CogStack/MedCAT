@@ -70,10 +70,10 @@ class WordpieceTokenizer(object):
           input = "unaffable"
           output = ["un", "##aff", "##able"]
         Args:
-          text: A single token or whitespace separated tokens. This should have
-          already been passed through `BasicTokenizer.
+          text: A single token or whitespace separated tokens. This should have.
+            already been passed through `BasicTokenizer.
         Returns:
-          A list of wordpiece tokens.
+          List: A list of wordpiece tokens.
         """
 
         # Why is convert_to_unicode undefined?

@@ -66,7 +66,11 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
 def basic_clean(text: str) -> str:
     """Remove almost everything from text
 
-    text:  text to be cleaned
+    Args:
+        text (str): Text to be cleaned.
+
+    Returns:
+        str: The cleaned text.
     """
     # Add spaces around numbers
     text = re.sub("([\.,%:\d\-]*[\d]+[\.,%:\d\-]*)", r' \1 ', text)
@@ -94,7 +98,11 @@ def basic_clean(text: str) -> str:
 def clean_text(text: str) -> str:
     """Remove almost everything from text
 
-    text:  text to be cleaned
+    Args:
+        text (str): Text to be cleaned.
+
+    Returns:
+        str: The cleaned text.
     """
     # Remove everything that is inside of []
     text = re.sub("\[.*\]", "", text)
