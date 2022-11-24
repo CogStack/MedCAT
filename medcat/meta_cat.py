@@ -69,6 +69,16 @@ class MetaCAT(PipeRunner):
         self.model = self.get_model(embeddings=self.embeddings)
 
     def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
+        """Get the model
+
+        Args:
+            embeddings (Optional[Tensor]):
+                The embedding densor
+
+        Returns:
+            nn.Modile:
+                The module
+        """
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -181,6 +191,22 @@ class MetaCAT(PipeRunner):
         return report
 
     def eval(self, json_path: str) -> Dict:
+        """Evaluate from json.
+
+        Args:
+            json_path (str):
+                The json file ath
+
+        Returns:
+            Dict:
+                The resulting model dict
+
+        Raises:
+            AssertionError:
+                If self.tokenizer
+            Exception:
+                If the category name does not exist
+        """
         g_config = self.config.general
         t_config = self.config.train
 
@@ -215,8 +241,12 @@ class MetaCAT(PipeRunner):
         """Save all components of this class to a file
 
         Args:
-            save_dir_path(`str`):
+            save_dir_path (str):
                 Path to the directory where everything will be saved.
+
+        Raises:
+            AssertionError:
+                If self.tokenizer is None
         """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
@@ -240,15 +270,15 @@ class MetaCAT(PipeRunner):
         """Load a meta_cat object.
 
         Args:
-            save_dir_path (`str`):
+            save_dir_path (str):
                 The directory where all was saved.
-            config_dict (`dict`):
+            config_dict (Optional[Dict], optional):
                 This can be used to overwrite saved parameters for this meta_cat
-                instance. Why? It is needed in certain cases where we autodeploy stuff.
+                instance. Why? It is needed in certain cases where we autodeploy stuff. (Default value = None)
 
         Returns:
-            meta_cat (`medcat.MetaCAT`):
-                You don't say
+            MetaCAT:
+                The MetaCAT instance
         """
 
         # Load config
@@ -282,10 +312,23 @@ class MetaCAT(PipeRunner):
         return meta_cat
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
-        """Args:
-            doc - spacy
-            input_ids
-            offset_mapping
+        """Prepares document.
+
+        Args:
+            doc (Doc):
+                The document
+            input_ids (List):
+                Input ids
+            offset_mapping (List):
+                Offset mapings
+            lowercase (bool):
+                Whether to use lower case replace center
+
+        Returns:
+            Dict:
+                Entity id to index mapping
+            List:
+                Samples
         """
         config = self.config
         cntx_left = config.general['cntx_left']
@@ -339,6 +382,18 @@ class MetaCAT(PipeRunner):
 
     @staticmethod
     def batch_generator(stream: Iterable[Doc], batch_size_chars: int) -> Iterable[List[Doc]]:
+        """Generator for batch of documents.
+
+        Args:
+            stream (Iterable[Doc]):
+                The document stream
+            batch_size_chars (int):
+                Number of characters per batch
+
+        Returns:
+            Generator[List[Dic]]:
+                The document generator
+        """
         docs = []
         char_count = 0
         for doc in stream:
@@ -359,8 +414,14 @@ class MetaCAT(PipeRunner):
         """Process many documents at once.
 
         Args:
-            stream (Iterable[spacy.tokens.Doc]):
+            stream (Iterable[Union[Doc, FakeDoc]]):
                 List of spacy documents.
+            *args: Unused arguments (due to override)
+            **kwargs: Unused keyword arguments (due to override)
+
+        Returns:
+            Generator[Doc]:
+                The document generator
         """
         # Just in case
         if stream is None or not stream:
@@ -456,10 +517,15 @@ class MetaCAT(PipeRunner):
         """A minimal model card.
 
         Args:
-            as_dict (bool): return the model card as a dictionary instead of a str.
+            as_dict (bool, optional):
+                return the model card as a dictionary instead of a str. (Default value = False)
 
         Returns:
-            By default a str - indented JSON object.
+            str:
+                An indented JSON object.
+            OR
+            Dict:
+                A JSON object in dict form
         """
         card = {
             'Category Name': self.config.general['category_name'],
