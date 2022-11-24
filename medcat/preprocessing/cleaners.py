@@ -20,7 +20,7 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
         config (medcat.config.Config):
             Global config for medcat.
 
-    Return:
+    Returns:
         names (Dict):
             The new dictionary of prepared names.
     """
