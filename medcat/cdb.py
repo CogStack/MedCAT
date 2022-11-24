@@ -22,36 +22,36 @@ class CDB(object):
     """Concept DataBase - holds all information necessary for NER+L.
 
     Properties:
-        name2cuis (`Dict[str, List[str]]`):
+        name2cuis (Dict[str, List[str]]):
             Map fro concept name to CUIs - one name can map to multiple CUIs.
-        name2cuis2status (`Dict[str, Dict[str, str]]`):
+        name2cuis2status (Dict[str, Dict[str, str]]):
             What is the status for a given name and cui pair - each name can be:
                 P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
-        snames (`Set[str]`):
+        snames (Set[str]):
             All possible subnames for all concepts
-        cui2names (`Dict[str, Set[str]]`):
+        cui2names (Dict[str, Set[str]]):
             From cui to all names assigned to it. Mainly used for subsetting (maybe even only).
-        cui2snames (`Dict[str, Set[str]]`):
+        cui2snames (Dict[str, Set[str]]):
             From cui to all sub-names assigned to it. Only used for subsetting.
-        cui2context_vectors (`Dict[str, Dict[str, np.array]]`):
+        cui2context_vectors (Dict[str, Dict[str, np.array]]):
             From cui to a dictionary of different kinds of context vectors. Normally you would have here
             a short and a long context vector - they are calculated separately.
-        cui2count_train (`Dict[str, int]`):
+        cui2count_train (Dict[str, int]):
             From CUI to the number of training examples seen.
-        cui2tags (`Dict[str, List[str]]`):
+        cui2tags (Dict[str, List[str]]):
             From CUI to a list of tags. This can be used to tag concepts for grouping of whatever.
-        cui2type_ids (`Dict[str, Set[str]]`):
+        cui2type_ids (Dict[str, Set[str]]):
             From CUI to type id (e.g. TUI in UMLS).
-        cui2preferred_name (`Dict[str, str]`):
+        cui2preferred_name (Dict[str, str]):
             From CUI to the preferred name for this concept.
-        cui2average_confidence(`Dict[str, str]`):
+        cui2average_confidence (Dict[str, str]):
             Used for dynamic thresholding. Holds the average confidence for this CUI given the training examples.
-        name2count_train(`Dict[str, str]`):
+        name2count_train (Dict[str, str]):
             Counts how often did a name appear during training.
-        addl_info (`Dict[str, Dict[]]`):
+        addl_info (Dict[str, Dict[]]):
             Any additional maps that are not part of the core CDB. These are usually not needed
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
-        vocab (`Dict[str, int]`):
+        vocab (Dict[str, int]):
             Stores all the words tha appear in this CDB and the count for each one.
     """
 
@@ -118,9 +118,9 @@ class CDB(object):
         could also be useful to keep the removed names in e.g. cui2names.
 
         Args:
-            cui (`str`):
+            cui (str):
                 Concept ID or unique identifer in this database.
-            names (`Dict[str, Dict]`):
+            names (Dict[str, Dict]):
                 Names to be removed, should look like: `{'name': {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
         """
         for name in names.keys():
@@ -150,17 +150,18 @@ class CDB(object):
         """Adds a name to an existing concept.
 
         Args:
-            cui (`str`):
+            cui (str):
                 Concept ID or unique identifer in this database, all concepts that have
                 the same CUI will be merged internally.
-            names (`Dict[str, Dict]`):
+            names (Dict[str, Dict]):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
                 Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
-            name_status (`str`):
+            name_status (str):
                 One of `P`, `N`, `A`
-            full_build (`bool`, defaults to `False`):
+            full_build (bool)):
                 If True the dictionary self.addl_info will also be populated, contains a lot of extra information
-                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
+                about concepts, but can be very memory consuming. This is not necessary
+                for normal functioning of MedCAT (Default value `False`).
         """
         name_status = name_status.upper()
         if name_status not in ['P', 'A', 'N']:
@@ -181,23 +182,24 @@ class CDB(object):
         this will add a large number of properties for each concept.
 
         Args:
-            cui (`str`):
+            cui (str):
                 Concept ID or unique identifier in this database, all concepts that have
                 the same CUI will be merged internally.
-            names (`Dict[str, Dict]`):
+            names (Dict[str, Dict]):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
                 Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
-            ontologies(`Set[str]`):
+            ontologies (Set[str]):
                 ontologies in which the concept exists (e.g. SNOMEDCT, HPO)
-            name_status (`str`):
+            name_status (str):
                 One of `P`, `N`, `A`
-            type_ids (`Set[str]`):
+            type_ids (Set[str]):
                 Semantic type identifier (have a look at TUIs in UMLS or SNOMED-CT)
-            description (`str`):
+            description (str):
                 Description of this concept.
-            full_build (`bool`, defaults to `False`):
+            full_build (bool):
                 If True the dictionary self.addl_info will also be populated, contains a lot of extra information
-                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
+                about concepts, but can be very memory consuming. This is not necessary
+                for normal functioning of MedCAT (Default Value `False`).
         """
         # Add CUI to the required dictionaries
         if cui not in self.cui2names:
@@ -292,11 +294,11 @@ class CDB(object):
         not directly access the addl_info dictionary.
 
         Args:
-            name (`str`):
+            name (str):
                 What key should be used in the `addl_info` dictionary.
-            data (`Dict[<whatever>]`):
+            data (Dict[<whatever>]):
                 What will be added as the value for the key `name`
-            reset_existing (`bool`):
+            reset_existing (bool):
                 Should old data be removed if it exists
         """
         if reset_existing:
@@ -312,13 +314,13 @@ class CDB(object):
                               cui_count: int = 0) -> None:
         """Add the vector representation of a context for this CUI.
 
-        cui (`str`):
+        cui (str):
             The concept in question.
-        vectors (`Dict[str, numpy.ndarray]`):
+        vectors (Dict[str, numpy.ndarray]):
             Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
             context_type - is usually one of: ['long', 'medium', 'short']
-        negative (`bool`, defaults to `False`):
-            Is this negative context of positive.
+        negative (bool):
+            Is this negative context of positive (Default Value `False`).
         lr (`int`, optional):
             If set it will override the base value from the config file.
         cui_count (`int`, defaults to 0):
@@ -372,7 +374,7 @@ class CDB(object):
         """Saves model to file (in fact it saves variables of this class).
 
         Args:
-            path (`str`):
+            path (str):
                 Path to a file where the model will be saved
         """
         with open(path, 'wb') as f:
@@ -386,7 +388,7 @@ class CDB(object):
         """Async version of saving model to file (in fact it saves variables of this class).
 
         Args:
-            path (`str`):
+            path (str):
                 Path to a file where the model will be saved
         """
         async with aiofiles.open(path, 'wb') as f:
@@ -401,7 +403,7 @@ class CDB(object):
         """Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
-            path (`str`):
+            path (str):
                 Path to a `cdb.dat` from which to load data.
             config_dict:
                 A dictionary that will be used to overwrite existing fields in the config of this CDB
@@ -432,11 +434,11 @@ class CDB(object):
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 
         Args:
-            cdb (`medcat.cdb.CDB`):
+            cdb (medcat.cdb.CDB):
                 Concept database from which to import training vectors
-            overwrite (`bool`, defaults to `True`):
+            overwrite (bool):
                 If True all training data in the existing CDB will be overwritten, else
-                the average between the two training vectors will be taken.
+                the average between the two training vectors will be taken (Default value `True`).
 
         Examples:
 
@@ -459,8 +461,8 @@ class CDB(object):
         or for suppervised with annealing.
 
         Args:
-            n (`int`, optional, defaults to 10):
-                This will be set as the CUI count for all cuis in this CDB.
+            n (int):
+                This will be set as the CUI count for all cuis in this CDB (Default value 10).
 
         Examples:
 
@@ -486,7 +488,7 @@ class CDB(object):
         unknown structure.
 
         Args:
-            cuis_to_keep (`List[str]`):
+            cuis_to_keep (List[str]):
                 CUIs that will be kept, the rest will be removed (not completely, look above).
         """
 
@@ -578,20 +580,20 @@ class CDB(object):
         embedding.
 
         Args:
-            cui (`str`):
+            cui (str):
                 The concept ID for the base concept for which you want to get the most similar concepts.
-            context_type (`str`):
+            context_type (str):
                 On what vector type from the cui2context_vectors map will the similarity be calculated.
-            type_id_filter (`List[str]`):
+            type_id_filter (List[str]):
                 A list of type_ids that will be used to filterout the returned results. Using this it is possible
                 to limit the similarity calculation to only disorders/symptoms/drugs/...
-            min_cnt (`int`):
+            min_cnt (int):
                 Minimum training examples (unsupervised+supervised) that a concept must have to be considered
                 for the similarity calculation.
-            topn (`int`):
+            topn (int):
                 How many results to return
-            force_build (`bool`, defaults to `False`):
-                Do not use cached sim matrix
+            force_build (bool):
+                Do not use cached sim matrix (Default value False)
 
         Return:
             results (Dict):
