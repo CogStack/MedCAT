@@ -52,10 +52,9 @@ class NeoConnector:
         """Return all patients having all concepts
 
         Args:
-            concepts
-            limit
-            require_time:
-                If set only concepts that have the timestamp property will be used.
+            concepts: The concepts
+            limit: The maximum number of results. Defaults to 1000.
+            require_time: If set only concepts that have the timestamp property will be used.
         """
 
         q = "WITH [{}] AS cs ".format(",".join(["'{}'".format(c) for c in concepts]))
@@ -132,12 +131,12 @@ class NeoConnector:
         """Return all patients having all descendant concepts under the ancestor concept
 
         Args:
-            concepts - ancestor top-level concepts
-            limit
-            require_time:
-                If set only concepts that have the timestamp property will be used.
-        Output:
-            lists of patients with attached SNOMED concepts
+            concepts: Ancestor top-level concepts
+            limit: The maximum number of results. Defaults to 1000.
+            require_time: If set only concepts that have the timestamp property will be used.
+                Defaults to False
+        Returns:
+            List: Patients with attached SNOMED concepts
         """
 
         q = "WITH [{}] AS ancestor ".format(",".join(["'{}'".format(c) for c in concepts]))
