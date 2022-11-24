@@ -1267,10 +1267,10 @@ class CAT(object):
         Args:
             data:
                 Iterator or array with format: [(id, text), (id, text), ...].
-            nproc (`int`, defaults to 8):
-                Number of processors.
-            batch_size_chars (`int`, defaults to 1000000):
-                Size of a batch in number of characters.
+            nproc (int):
+                Number of processors. Defaults to 8.
+            batch_size_chars (int):
+                Size of a batch in number of characters. Fefaults to 1 000 000.
 
         Returns:
             Dict:

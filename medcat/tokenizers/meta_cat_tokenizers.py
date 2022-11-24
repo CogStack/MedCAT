@@ -70,7 +70,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         """Tokenize some text
 
         Args:
-            text (`Union(str, List[str])`):
+            text (Union(str, List[str])):
                 Text/texts to be tokenized.
 
         Returns:

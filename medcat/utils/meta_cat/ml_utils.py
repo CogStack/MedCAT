@@ -31,13 +31,13 @@ def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: to
         data (List[List[int], int, Optional[int]]):
             Data in the format: [[<[input_ids]>, <cpos>, Optional[int]], ...], the third column is optional
             and represents the output label
-        start_ind (`int`):
+        start_ind (int):
             Start index of this batch
-        end_ind (`int`):
+        end_ind (int):
             End index of this batch
-        device (`torch.device`):
+        device (torch.device):
             Where to move the data
-        pad_id (`int`):
+        pad_id (int):
             Padding index
 
     Returns:

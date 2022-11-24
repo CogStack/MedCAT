@@ -47,24 +47,25 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
     be used with cdb_maker (use the snomed_cdb.dat as the base one and extend with this).
 
     Args:
-        mrconso_path (`str`):
+        mrconso_path (str):
             Path to the MRCONSO.RRF file from UMLS.
-        snomed_codes (`Set[str]`):
+        snomed_codes (Set[str]):
             SNOMED codes that you want to extend with UMLS names.
-        column_names (`str`, optional):
+        column_names (Optional[str]):
             Column names in the UMLS, leave blank and it will be autofiled.
-        sep (`str`, defaults to `|`):
-            Separator for the mrconso CSV (RRF is also a CSV)
-        lng (`str`, defaults to `ENG`):
-            What language to keep from the MRCONSO file
-        output_path (`str`, optional):
-            Where to save the built CSV - fullpath
-        kwargs
-            Will be forwarded to pandas.read_csv
-        use_umls_primary_names (`bool`, defaults to False):
+        sep (str):
+            Separator for the mrconso CSV (RRF is also a CSV). Defaults to `|`.
+        lng (str):
+            What language to keep from the MRCONSO file. defaults to `ENG`.
+        output_path (Optional[str]):
+            Where to save the built CSV - fullpath.
+        kwargs:
+            Will be forwarded to pandas.read_csv.
+        use_umls_primary_names (bool):
             If True the default names from UMLS will be used to inform medcat later once the CDB is built.
+            Defaults to False.
     Return:
-        df (pandas.DataFrame):
+        pandas.DataFrame:
             Dataframe with UMLS names and SNOMED CUIs.
     """
     if column_names is None:
@@ -115,24 +116,25 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
     build a CSV required by the cdb_maker.py
 
     Args:
-        snomed_term_paths (`List[str]`):
-            One or many paths to the different `sct2_Concept_Snapshot_*` files
-        snomed_desc_paths (`List[str]`):
-            One or many paths to the different `sct2_Description_Snapshot_*` files
-        sep (`str`, defaults to '\t'):
-            The separator used in the snomed files.
-        output_path (`str`, optional):
-            Where to save the built CSV - fullpath
-        output_path_type_names (`str`, optional):
-            Where to save the dictionary that maps from type_id to name
-        strip_fqn (bool, defaults to `True`):
+        snomed_term_paths (List[str]):
+            One or many paths to the different `sct2_Concept_Snapshot_*` files.
+        snomed_desc_paths (List[str]):
+            One or many paths to the different `sct2_Description_Snapshot_*` files.
+        sep (str):
+            The separator used in the snomed files. Defaults to '\t'.
+        output_path (str):
+            Where to save the built CSV - fullpath.
+        output_path_type_names (str):
+            Where to save the dictionary that maps from type_id to name.
+        strip_fqn (bool):
             If True all Fully Qualified Names will be striped of the semantic type e.g. (disorder)
-            and that cleaned name will be appended as an additional row in the CSV.
-        na_filter (bool, defaults to `False`):
+            and that cleaned name will be appended as an additional row in the CSV. Defaults to `True`.
+        na_filter (bool):
             If True, Pandas will apply its default detection of "missing" values and replace them with nan.
-            This is usually undesirable because some SNOMED concepts match the patterns considered as missing (e.g. "N/A")
+            This is usually undesirable because some SNOMED concepts match the patterns considered as missing (e.g. "N/A").
+            Defaults to `False`.
         kwargs:
-            Will be forwarded to pandas.read_csv
+            Will be forwarded to pandas.read_csv.
     Return:
         Tuple[snomed_cdb_df (pandas.DataFrame), type_id2name (Dict)]:
             - snomed_cdb_df - Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
