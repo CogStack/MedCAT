@@ -6,12 +6,12 @@ from transformers.tokenization_utils_base import PreTrainedTokenizerBase
 class TransformersTokenizerNER(object):
     """Args:
         hf_tokenizer
-            Must be able to return token offsets
+            Must be able to return token offsets.
         max_len:
-            Max sequence length, if longer it will be split into multiple examples
+            Max sequence length, if longer it will be split into multiple examples.
         id2type:
             Can be ignored in most cases, should be a map from token to 'start' or 'sub' meaning is the token
-                a subword or the start/full word. For BERT 'start' is everything that does not begin with ##
+                a subword or the start/full word. For BERT 'start' is everything that does not begin with ##.
         cui2name:
             Map from CUI to full name for labels.
     """
@@ -39,9 +39,9 @@ class TransformersTokenizerNER(object):
 
         Args:
             examples:
-                Stream of examples
+                Stream of examples.
             ignore_subwords:
-                If set to `True` subwords of any token will get the special label `X`
+                If set to `True` subwords of any token will get the special label `X`.
         """
         self.hf_tokenizer = self.ensure_tokenizer()
         old_ids = examples['id']
