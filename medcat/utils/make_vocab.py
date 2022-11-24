@@ -16,7 +16,7 @@ class MakeVocab(object):
 
     Args:
         config (medcat.config.Config):
-            Global configuration for medcat
+            Global configuration for medcat.
         cdb (medcat.cdb.CDB):
             The concept database that will be added ontop of the Vocab built from the text file.
         vocab (medcat.vocab.Vocab, optional):
@@ -69,9 +69,9 @@ class MakeVocab(object):
             iter_data (Iterator):
                 An iterator over sentences or documents. Can also be a simple array of text documents/sentences.
             out_folder (string):
-                A path to a folder where all the results will be saved
+                A path to a folder where all the results will be saved.
             join_cdb (bool):
-                Should the words from the CDB be added to the Vocab. Default: True
+                Should the words from the CDB be added to the Vocab. Default: True.
             normalize_tokens (bool, defaults to True):
                 If set tokens will be lematized - tends to work better in some cases where the difference
                 between e.g. plural/singular should be ignored. But in general not so important if the dataset is big enough.

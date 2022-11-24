@@ -182,7 +182,12 @@ def tkns_from_doc(spacy_doc, start, end):
 def filter_cdb_by_icd10(cdb: CDB) -> CDB:
     """Filters an existing CDB to only contain concepts that have an associated ICD-10 code.
     Can be used for snomed orr UMLS CDBs.
-    :return: filtered CDB
+
+    Args:
+        CDB: The input CDB
+
+    Returns:
+        CDB: The filtered CDB
     """
     cuis_to_keep = [cui for cui in cdb.cui2names.keys() if 'icd10' in cdb.cui2info[cui]]
     cdb.filter_by_cui(cuis_to_keep)

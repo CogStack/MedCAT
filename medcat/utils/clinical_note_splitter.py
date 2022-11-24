@@ -29,8 +29,8 @@ def normalize_date(date, id_, start, end):
 def split_one_note(id_, text):
     """Splits the text of one note by date.
 
-    Return:
-        split_note (List[Dict]):
+    Returns:
+        List[Dict]:
             Returns a list of dictionary in the format: {'start': <start char of the specific note in the big one>,
                                                          'end': <end char of the specifc note in the big one>,
                                                          'text': <text of the specific note>,
@@ -70,7 +70,11 @@ def split_clinical_notes(clinical_notes):
 
     Args:
         clinical_notes(dict):
-            Dictionary in the form {<clinical_note_id>: <text>, ...}
+            Dictionary in the form {<clinical_note_id>: <text>, ...}.
+
+    Returns:
+        Dict:
+            The split notes.
     """
     split_notes = {}
     for id_text, text in clinical_notes.items():
