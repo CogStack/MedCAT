@@ -78,7 +78,7 @@ class CDBMaker(object):
             only_existing_cuis bool):
                 If True no new CUIs will be added, but only linked names will be extended. Mainly used when
                 enriching names of a CDB (e.g. SNOMED with UMLS terms) (Default value `False`).
-        Return:
+        Returns:
             medcat.cdb.CDB: CDB with the new concepts added.
 
         Note:
