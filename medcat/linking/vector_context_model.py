@@ -17,9 +17,9 @@ class ContextModel(object):
     """Used to learn embeddings for concepts and calculate similarities in new documents.
 
     Args:
-        cdb
-        vocab
-        config
+        cdb (CDB): The Context Database
+        vocab (Vocab): The vocabulary
+        config (Config): The config to be used
     """
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
@@ -32,9 +32,9 @@ class ContextModel(object):
         is marked as skip in token._.to_skip
 
         Args:
-            entity
-            doc
-            size
+            entity (Span): The entity to look for.
+            doc (Doc): The document look in.
+            size (int): The size of the entity.
         """
         start_ind = entity[0].i
         end_ind = entity[-1].i
@@ -54,8 +54,12 @@ class ContextModel(object):
         given entity.
 
         Args:
-            entity
-            doc
+            entity (Span): The entity to look for.
+            doc (Doc): The document to look in.
+            cui (Any): The CUI.
+
+        Returns:
+            Dict: The context vector.
         """
         vectors = {}
 
@@ -91,9 +95,12 @@ class ContextModel(object):
         in the given `doc`.
 
         Args:
-            cui
-            entity
-            doc
+            cui (str): The CUI.
+            entity (Span): The entity to look for.
+            doc (Doc): The document to look in.
+
+        Returns:
+            float: The simularity.
         """
         vectors = self.get_context_vectors(entity, doc)
         sim = self._similarity(cui, vectors)

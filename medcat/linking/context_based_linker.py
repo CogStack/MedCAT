@@ -19,9 +19,9 @@ class Linker(PipeRunner):
     """Link to a biomedical database.
 
     Args:
-        cdb
-        vocab
-        config
+        cdb (CDB): The Context Database.
+        vocab (Vocab): The vocabulary.
+        config (Config): The config.
     """
 
     # Custom pipeline component name
