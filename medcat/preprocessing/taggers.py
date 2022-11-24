@@ -7,13 +7,16 @@ from medcat.pipeline.pipe_runner import PipeRunner
 def tag_skip_and_punct(nlp: Language, name: str, config: Config) -> "_Tagger":
     """Detects and tags spacy tokens that are punctuation and that should be skipped.
 
-     Args:
-         nlp (spacy.language.<lng>):
-             The base spacy NLP pipeline.
-         name (`str`):
-             The component instance name.
-         config (`medcat.config.Config`):
-             Global config for medcat.
+    Args:
+        nlp (spacy.language.<lng>):
+            The base spacy NLP pipeline.
+        name (str):
+            The component instance name.
+        config (medcat.config.Config):
+            Global config for medcat.
+
+    Returns:
+        _Tagger: The tagger
     """
     return _Tagger(nlp, name, config)
 

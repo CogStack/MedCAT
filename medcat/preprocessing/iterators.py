@@ -12,6 +12,7 @@ class EmbMimicCSV(object):
 
     csv_paths:  paths to csv files containing the mimic data
     """
+
     def __init__(self, csv_paths: List[str], tokenizer: Any, emb_dict: Optional[Dict] = None) -> None:
         self.csv_paths = csv_paths
         self.tokenizer = tokenizer
