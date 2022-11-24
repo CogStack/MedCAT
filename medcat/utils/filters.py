@@ -5,7 +5,7 @@ def check_filters(cui, filters):
         cui
         filters
 
-    Return:
+    Returns:
         bool:
             True if in filters else False
     """

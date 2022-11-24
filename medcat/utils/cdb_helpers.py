@@ -64,7 +64,7 @@ def umls_to_snomed_name_extension(mrconso_path, snomed_codes, column_names=None,
         use_umls_primary_names (bool):
             If True the default names from UMLS will be used to inform medcat later once the CDB is built.
             Defaults to False.
-    Return:
+    Returns:
         pandas.DataFrame:
             Dataframe with UMLS names and SNOMED CUIs.
     """
@@ -135,7 +135,7 @@ def snomed_source_to_csv(snomed_term_paths=[], snomed_desc_paths=[], sep='\t', o
             Defaults to `False`.
         kwargs:
             Will be forwarded to pandas.read_csv.
-    Return:
+    Returns:
         Tuple[snomed_cdb_df (pandas.DataFrame), type_id2name (Dict)]:
             - snomed_cdb_df - Dataframe with SNOMED concepts ready to be used with medcat.cdb_maker.
             - type_id2name - map from type_id to name, can be used to extend a CDB.
