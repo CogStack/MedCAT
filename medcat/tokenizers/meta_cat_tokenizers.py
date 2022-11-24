@@ -48,7 +48,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
     MetaCAT models.
 
     Args:
-        hf_tokenizers (`tokenizers.ByteLevelBPETokenizer`):
+        tokenizers.ByteLevelBPETokenizer:
             A huggingface BBPE tokenizer.
     """
     name = 'bbpe'
@@ -74,7 +74,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
                 Text/texts to be tokenized.
 
         Returns:
-            res (`Union(dict, List[dict])`):
+            Union(dict, List[dict]):
                 Dictionary/ies containing `offset_mapping`, `input_ids` and `tokens` corresponding to the
                 input text/s.
         """
@@ -140,7 +140,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
     MetaCAT models.
 
     Args:
-        hf_tokenizers (`transformers.models.bert.tokenization_bert_fast.BertTokenizerFast`):
+        transformers.models.bert.tokenization_bert_fast.BertTokenizerFast:
             A huggingface Fast BERT.
     """
     name = 'bert-tokenizer'
