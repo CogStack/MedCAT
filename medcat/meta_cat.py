@@ -76,7 +76,7 @@ class MetaCAT(PipeRunner):
                 The embedding densor
 
         Returns:
-            nn.Modile:
+            nn.Module:
                 The module
         """
         config = self.config
