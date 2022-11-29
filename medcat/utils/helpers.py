@@ -10,27 +10,27 @@ logger = logging.getLogger(__name__)
 
 def get_important_config_parameters(config):
     cnf = {
-            "config.ner['min_name_len']": {
+            "config.ner.min_name_len": {
                 'value': config.ner.min_name_len,
                 'description': "Minimum detection length (found terms/mentions shorter than this will not be detected)."
                 },
-            "config.ner['upper_case_limit_len']": {
+            "config.ner.upper_case_limit_len": {
                 'value': config.ner.upper_case_limit_len,
                 'description': "All detected terms shorter than this value have to be uppercase, otherwise they will be ignored."
                 },
-            "config.linking['similarity_threshold']": {
+            "config.linking.similarity_threshold": {
                 'value': config.linking.similarity_threshold,
                 'description': "If the confidence of the model is lower than this a detection will be ignore."
                 },
-            "config.linking['filters']['cuis']": {
-                'value': len(config.linking.filters['cuis']),
+            "config.linking.filters.cuis": {
+                'value': len(config.linking.filters.cuis),
                 'description': "Length of the CUIs filter to be included in outputs. If this is not 0 (i.e. not empty) its best to check what is included before using the model"
             },
-            "config.general['spell_check']": {
+            "config.general.spell_check": {
                 'value': config.general.spell_check,
                 'description': "Is spell checking enabled."
                 },
-            "config.general['spell_check_len_limit']": {
+            "config.general.spell_check_len_limit": {
                 'value': config.general.spell_check_len_limit,
                 'description': "Words shorter than this will not be spell checked."
                 },
