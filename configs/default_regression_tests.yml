@@ -1,0 +1,79 @@
+# # Example of some test cases
+# # They will try to cover as many possible use cases as possible
+# # The idea is that the CUI corresponding to the name is expected to be
+# # obtained by MedCAT
+# # Only the 'filters' under 'targeting' and the 'phrases' under
+# # the test case are the two required sections, the rest is optional 
+#
+# test-case-name-1: # name of this test case
+#   targeting: # info regarding targets of this test case
+#     strategy: "ALL" # the strategy for dealing with the filters below
+#                     # so "ALL" means the targets need to match all the below filters
+#                     # and "ANY" means that the targets need to match at least one of the filters
+#                     # if only one type of target it specified, this is irrelevant
+#                     # the default value is "ALL" if not specified
+#     prefname-only: False # set to True if only prefered names should be checked (defaults to False)
+#     targfiltersets: # the filters for this specific test case
+#                     # there has to be one type of target, but multiple can be specified
+#                     # if multiple types are target, the strategy defined above is taken into affect
+#                     # each type can specify one or multiple values
+#                     #  this example shows has one values 
+#                     #  the next example (below) will have multiple values
+#       type_id: "0123" # type_id or type_ids
+#       cui: "01230" # the target CUI (or list of CUIS)
+#       name: "name0" # the target names
+#                      # all specified names need to exist within the CDB
+#   phrases: "The quick brown %s jumped over the lazy cat" # the phrases to go through
+#                                                          # for each phrases, '%s' is replaced
+#                                                          # by each name that is to be tested
+# test-case-name-2: # name of this test case
+#   targeting:
+#     filters:
+#       type_id: # multiple target type IDs
+#       - "123"
+#       - "223"
+#       cui: # multiple target CUI
+#       - "1234"
+#       - "2234"
+#       name: # multiple names
+#       - "name1"
+#       - "name2"
+#       cui_and_children: # an example with CUI and children
+#         cui: '111' # the CUI (or CUIs)
+#         depth: 2   # and the depth of children
+#   phrases:
+#   - "The %s was measured"
+#   - "The %s was not measured"
+#
+# # The following example was (rather arbitrarily) created and should work for
+# # the included SNOMED models
+test-case-1:
+  targeting:
+    strategy: "ALL"
+    filters:
+      type_id: "2680757"
+  phrases:
+  - "The %s was measured"
+test-case-2:
+  targeting:
+    filters:
+      type_id: "9090192"
+  phrases:
+  - "Patient presented with %s"
+  - "No %s was present"
+test-case-3:
+  targeting:
+    filters:
+      type_id: "67667581"
+  phrases:
+  - "The patient has been diagnosed with %s"
+  - "There are no signs of %s"
+test-case-4:
+  targeting:
+    strategy: "ALL"
+    filters:
+      cui_and_children:
+       cui: "364075005" # 'heart rate'
+       depth: 4         # and children 4 deep
+  phrases:
+  - "The patient's %s was 82 bps"
