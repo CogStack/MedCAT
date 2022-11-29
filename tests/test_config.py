@@ -59,7 +59,6 @@ class ConfigTests(unittest.TestCase):
         bc1 = Config()
         bc1.general.spacy_model = 'smth'
         bc2 = Config()
-        print(bc2.general.spacy_model, 'vs', bc1.general.spacy_model)
         self.assertNotEqual(bc2.general.spacy_model, bc1.general.spacy_model)
 
     def test_config_get_hash_gets_same_value_on_each_pass(self):

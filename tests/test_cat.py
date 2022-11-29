@@ -25,6 +25,7 @@ class CATTests(unittest.TestCase):
         cls.cdb.config.linking.disamb_length_limit = 5
         cls.cdb.config.general.full_unlink = True
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab)
+        cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -32,6 +33,8 @@ class CATTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         self.cdb.config.annotation_output.include_text_in_output = False
+        # need to make sure linking filters are not retained beyond a test scope
+        self.undertest.config.linking.filters = self._linkng_filters.copy_of()
 
     def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
@@ -246,6 +249,40 @@ class CATTests(unittest.TestCase):
         self.assertEqual((nepochs_train + nepochs_retrain) * num_of_documents, len(checkpoints))
         for step in range(1, (nepochs_train + nepochs_retrain) * num_of_documents):
             self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
+
+    def test_train_supervised_does_not_retain_MCT_filters_default(self, extra_cui_filter=None):
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
+        before = str(self.undertest.config.linking.filters)
+        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, extra_cui_filter=extra_cui_filter)
+        after = str(self.undertest.config.linking.filters)
+        self.assertEqual(before, after)
+
+    def test_train_supervised_can_retain_MCT_filters(self, extra_cui_filter=None, retain_extra_cui_filter=False):
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
+        before = str(self.undertest.config.linking.filters)
+        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, retain_filters=True,
+                                        extra_cui_filter=extra_cui_filter, retain_extra_cui_filter=retain_extra_cui_filter)
+        after = str(self.undertest.config.linking.filters)
+        self.assertNotEqual(before, after)
+        with open(data_path, 'r') as f:
+            project0 = json.load(f)['projects'][0]
+        filtered_cuis = project0['cuis'].split(',')
+        if extra_cui_filter and retain_extra_cui_filter:
+            # in case of extra_cui_filter and its retention, only it is retained
+            filtered_cuis = extra_cui_filter
+        self.assertGreater(len(filtered_cuis), 0)
+        for filtered_cui in filtered_cuis:
+            with self.subTest(f'CUI: {filtered_cui}'):
+                self.assertTrue(filtered_cui in self.undertest.config.linking.filters.cuis)
+
+    def test_train_supervised_no_leak_extra_cui_filters(self):
+        self.test_train_supervised_does_not_retain_MCT_filters_default(extra_cui_filter={'C123', 'C111'})
+
+    def test_train_supervised_no_leak_extra_cui_filters_along_MCT_filters(self):
+        self.test_train_supervised_can_retain_MCT_filters(extra_cui_filter={'C0037284'})
+
+    def test_train_supervised_can_retain_extra_cui_filters_along_MCT_filters(self):
+        self.test_train_supervised_can_retain_MCT_filters(extra_cui_filter={'C0037284'}, retain_extra_cui_filter=True)
 
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)
