@@ -25,7 +25,7 @@ setuptools.setup(
         'transformers~=4.19.2',
         'torch>=1.0',
         'tqdm>=4.27',
-        'sklearn~=0.0',
+        'scikit-learn<1.2.0',
         'elasticsearch>=7.10,<8.0.0',
         'dill~=0.3.4',
         'datasets~=2.2.2',
