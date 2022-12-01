@@ -2,7 +2,7 @@ name: production
 
 on:
   push:
-    branches: [ production ]
+    branches: [ production, "v[0-9]+.[0-9]+.post" ]
   release:
     types: [ published ]
 
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout production
         uses: actions/checkout@v2
         with:
-          ref: 'production'
+          ref: ${{ github.event.release.target_commitish }}
           fetch-depth: 0
 
       - name: Set up Python 3.9
