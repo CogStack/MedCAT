@@ -4,37 +4,30 @@ The idea is to move away from saving medcat files using the dill/pickle.
 And to save as well as load them in some other way.
 """
 import os
-from typing import cast, Dict, Optional  # , List, Set, Tuple
+import logging
+from typing import cast, Dict, Optional, Union
 import dill
 import shelve
-# import marshal
 import json
-# from scipy.io import loadmat, savemat
-
-# import pydantic
 
 from medcat.cdb import CDB
 from medcat.config import Config
-
-
-_SAVEMAT_MAX_CHAR = 31
+logger = logging.getLogger(__name__)
 
 
 __SPECIALITY_NAMES_CUI = set(["cui2names", "cui2snames", "cui2type_ids"])
 __SPECIALITY_NAMES_NAME = set(
     ["name2cuis", "name2cuis2status", "name_isupper"])
-__SPECIALITY_NAMES_OTHER = set()  # none for now
-__SPECIALITY_NAMES_BUILDABLE = set(["snames"])  # these are ignored altogether
-SPECIALITY_NAMES = __SPECIALITY_NAMES_CUI | __SPECIALITY_NAMES_NAME | __SPECIALITY_NAMES_OTHER | __SPECIALITY_NAMES_BUILDABLE
-__SPECIALITY_SAVE_NAMES = dict(
-    (name, name[:_SAVEMAT_MAX_CHAR]) for name in SPECIALITY_NAMES)
-# __SPECIALITY_LOAD_NAMES = dict((val, key)
-#                                for key, val in __SPECIALITY_SAVE_NAMES.items())
-if len(set(__SPECIALITY_SAVE_NAMES.values())) != len(__SPECIALITY_SAVE_NAMES):
-    raise ValueError("Some ambiguous names would be saved")
+__SPECIALITY_NAMES_OTHER = set(["snames"])
+SPECIALITY_NAMES = __SPECIALITY_NAMES_CUI | __SPECIALITY_NAMES_NAME | __SPECIALITY_NAMES_OTHER
 
 
 class SetEncode(json.JSONEncoder):
+    """JSONEncoder (and decoder) for sets.
+
+    Generally, JSON doesn't support serializing of sets natively.
+    This encoder adds a set identifier to the data when being serialized
+    and provides a method to read said identifier upon decoding."""
     SET_IDENTIFIER = '==SET=='
 
     def default(self, obj):
@@ -43,14 +36,24 @@ class SetEncode(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
     @staticmethod
-    def set_decode(dct: dict) -> dict:
+    def set_decode(dct: dict) -> Union[dict, set]:
+        """Decode sets from input dicts.
+
+        Args:
+            dct (dict): The input dict
+
+        Returns:
+            Union[dict, set]: The original dict if this was not a serialized set, the set otherwise
+        """
         if SetEncode.SET_IDENTIFIER in dct:
             return set(dct[SetEncode.SET_IDENTIFIER])
         return dct
 
 
 class JsonSetSerializer:
-    """Dumper for special case"""
+    """JSON serializer with set comprehension.
+
+    This serializer allows serializing and deserializing sets through JSON"""
 
     def __init__(self, folder: str, name: str) -> None:
         self.name = name
@@ -65,27 +68,51 @@ class JsonSetSerializer:
         self.shelves: Dict[str, shelve.Shelf] = {}
 
     def write(self, d: dict) -> None:
+        """Write the specified dictionary to the this serializer's file.
+
+        Args:
+            d (dict): The dict to write on file.
+        """
         with open(self.file_name, 'w') as f:
             json.dump(d, f, cls=SetEncode)
 
     def read(self) -> dict:
+        """Read the json file specified by this serializer.
+
+        Returns:
+            dict: The dict represented by this json file.
+        """
         with open(self.file_name, 'r') as f:
-            # data = json.load(f, cls=SetDecode)
             data = json.load(f, object_hook=SetEncode.set_decode)
         return data
 
 
 class CDBSerializer:
+    """A (potentially) semi-JSON based serializer for CDB.
+
+    The parts that take up the most space within a CDB can be saved in JSON files.
+    That is the following attributes of a CDB:
+        - name2cuis
+        - name2cuis2status
+        - snames
+        - cui2names
+        - cui2snames
+        - cui2type_ids
+        - name_isupper
+    These are specified at the top of the module (in `SPECIALITY_NAMES`).
+
+    The rest of the information (i.e config and other less memory intensive parts) will
+    still be saved using dill like they have been before.
+
+    The objects of this class can be used for both serializing as well as deserializing.
+    If the `json_path` parameter is passed, the JSON (de)serialization will be performed.
+
+    Args:
+        main_path (str): The path for the main part (i.e config and other less memory intensive parts)
+        json_path (str, optional): The JSON. Defaults to None.
+    """
 
     def __init__(self, main_path: str, json_path: str = None) -> None:
-        """_summary_
-
-        Args:
-            path (str): The raw file path
-            shelve_path (str, optional): The shelf path for more memory intensive parts. 
-                Defaults to None, in which case everything is expected to be within the path.
-        """
-        # self.has_shelf = shelve_path is not None
         self.main_path = main_path
         self.json_path = json_path
         self.jsons: Optional[Dict[str, JsonSetSerializer]] = {}
@@ -96,35 +123,39 @@ class CDBSerializer:
             self.jsons = None
 
     def serialize(self, cdb: CDB, overwrite: bool = False) -> None:
-        """Used to dump CDB to a file or two files.
+        """Used to dump CDB to a file or or multiple files.
 
-        This will generally use dill.dump for most things.
-        However, some parts are taken care of separately
-        since they take up the vast majority of the space on disk
-        and time on read.
-        These are:
-            - name2cuis
-            - name2cuis2status
-            - snames
-            - cui2names
-            - cui2snames
-            - cui2type_ids
-            - name_isupper
-        # TODO - describe how they are dealt with, in some way
+        If `json_path` was specified to the constructor, this will serialize
+        some of the parts that take up more memory in JSON files in said directory.
+        In that case, the rest of the info is saved into the `main_path` passed to
+        the consturctor
+        Otherwise, everything is saved to the `main_path` using `dill.dump`
+        just like in previous cases.
 
         Args:
             cdb (CDB): The context database (CDB)
-            target (str): The file to serialize to
-            overwrite (bool, optional): _description_. Defaults to False.
+            overwrite (bool, optional): Whether to allow overwriting existing files. Defaults to False.
+
+        Raises:
+            ValueError: If file(s) exist(s) and overwrite if `False`
         """
         if not overwrite and os.path.exists(self.main_path):
             raise ValueError(
                 f'Cannot overwrite file "{self.main_path}" - specify overwrite=True if you wish to overwrite')
+        if self.jsons is not None:
+            for name in SPECIALITY_NAMES:
+                ser = self.jsons[name]
+                if not overwrite and os.path.exists(ser.file_name):
+                    raise ValueError(
+                        f'Cannot overwrite file {ser.file_name} - specify overwrite=True if you wish to overwrite')
         if self.jsons is not None and os.path.exists(self.json_path) and not overwrite:
             raise ValueError(f'Unable to overwrite shelf path "{self.json_path}"'
                              ' - specify overrwrite=True if you wish to overwrite')
         to_save = {}
         to_save['config'] = cdb.config.asdict()
+        # This uses different names so as to not be ambiguous
+        # when looking at files whether the json parts should
+        # exist separately or not
         to_save['cdb_main' if self.jsons is not None else 'cdb'] = dict(
             ((key, val) for key, val in cdb.__dict__.items() if
              key != 'config' and
@@ -136,6 +167,15 @@ class CDBSerializer:
                 self.jsons[name].write(cdb.__dict__[name])
 
     def deserialize(self) -> CDB:
+        """Deserializes the json in the specified file info a CDB.
+
+        If the `json_path` was specified to the constructor,
+        the JSON serialized files are used.
+        Otherwise, everything is loaded from the `main_path` file.
+
+        Returns:
+            CDB: The resulting CDB.
+        """
         with open(self.main_path, 'rb') as f:
             data = dill.load(f)
         config = cast(Config, Config.from_dict(data['config']))
