@@ -71,6 +71,7 @@ class JsonSetSerializer:
         Args:
             d (dict): The dict to write on file.
         """
+        logger.info('Writing data for "%s" into "%s"', self.name, self.file_name)
         with open(self.file_name, 'w') as f:
             json.dump(d, f, cls=SetEncode)
 
@@ -158,6 +159,7 @@ class CDBSerializer:
             ((key, val) for key, val in cdb.__dict__.items() if
              key != 'config' and
              (self.jsons is None or key not in SPECIALITY_NAMES)))
+        logger.info('Dumping CDB to %s', self.main_path)
         with open(self.main_path, 'wb') as f:
             dill.dump(to_save, f)
         if self.jsons is not None:
