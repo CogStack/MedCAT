@@ -8,7 +8,6 @@ import math
 import time
 import psutil
 from time import sleep
-from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
@@ -32,11 +31,11 @@ from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
-from medcat.utils.filters import get_project_filters, check_filters
+from medcat.utils.filters import get_project_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
-from medcat.config import Config
+from medcat.config import Config, LinkingFilters
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
@@ -431,24 +430,13 @@ class CAT(object):
 
         fp_docs: Set = set()
         fn_docs: Set = set()
-        # reset and back up filters
-        _filters = deepcopy(self.config.linking.filters)
-        filters = self.config.linking.filters
+
+        local_filters = self.config.linking.filters.copy_of()
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            filters['cuis'] = set()
+            local_filters.cuis = set()
 
             # Add extra filter if set
-            if isinstance(extra_cui_filter, set):
-                filters['cuis'] = extra_cui_filter
-
-            if use_project_filters:
-                project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                     type_ids=project.get('tuis', None),
-                                                     cdb=self.cdb,
-                                                     project=project)
-                # Intersect project filter with existing if it has something
-                if project_filter:
-                    filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+            self._set_project_filters(local_filters, project, extra_cui_filter, use_project_filters)
 
             for dind, doc in tqdm(
                 enumerate(project["documents"]),
@@ -462,9 +450,9 @@ class CAT(object):
                 if use_cui_doc_limit:
                     _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
+                        local_filters.cuis = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
-                        filters['cuis'] = {'empty'}
+                        local_filters.cuis = {'empty'}
 
                 spacy_doc: Doc = self(doc['text'])
 
@@ -479,7 +467,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if check_filters(cui, filters):
+                    if local_filters.check_filters(cui):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
@@ -591,10 +579,30 @@ class CAT(object):
         except Exception:
             traceback.print_exc()
 
-        # restore filters to original state
-        self.config.linking.filters = _filters
-
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
+
+    def _set_project_filters(self, local_filters: LinkingFilters, project: dict,
+             extra_cui_filter: Optional[Set], use_project_filters: bool):
+        """Set the project filters to a LinkingFilters object based on
+        the specified project.
+
+        Args:
+            local_filters (LinkingFilters): The linking filters instance
+            project (dict): The project
+            extra_cui_filter (Optional[Set]): Extra CUIs (if specified)
+            use_project_filters (bool): Whether to use per-project filters
+        """
+        if isinstance(extra_cui_filter, set):
+            local_filters.cuis = extra_cui_filter
+
+        if use_project_filters:
+            project_filter = get_project_filters(cuis=project.get('cuis', None),
+                                                    type_ids=project.get('tuis', None),
+                                                    cdb=self.cdb,
+                                                    project=project)
+            # Intersect project filter with existing if it has something
+            if project_filter:
+                local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
 
     def _init_ckpts(self, is_resumed, checkpoint):
         if self.config.general.checkpoint.steps is not None or checkpoint is not None:
@@ -788,11 +796,19 @@ class CAT(object):
                          never_terminate: bool = False,
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
+                         retain_extra_cui_filter: bool = False,
                          checkpoint: Optional[Checkpoint] = None,
+                         retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
         """TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
+
+        When filtering, the filters within the CAT model are used first,
+        then the ones from MedCATtrainer (MCT) export filters,
+        and finally the extra_cui_filter (if set).
+        That is to say, the expectation is:
+        extra_cui_filter ⊆ MCT filter ⊆ Model/config filter.
 
         Args:
             data_path (str):
@@ -830,8 +846,16 @@ class CAT(object):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
+            retain_extra_cui_filter(bool):
+                Whether to retain the extra filters instead of the MedCATtrainer export filters.
+                This will only have an effect if/when retain_filters is set to True. Defaults to False.
             checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
                 The MedCAT CheckpointST object
+            retain_filters (bool):
+                If True, retain the filters in the MedCATtrainer export within this CAT instance. In other words, the
+                filters defined in the input file will henseforth be saved within config.linking.filters .
+                This only makes sense if there is only one project in the input data. If that is not the case,
+                a ValueError is raised. The merging is done in the first epoch.
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
@@ -854,14 +878,18 @@ class CAT(object):
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
-        # Backup filters
-        _filters = deepcopy(self.config.linking.filters)
-        filters = self.config.linking.filters
+        local_filters = self.config.linking.filters.copy_of()
 
         fp = fn = tp = p = r = f1 = examples = {}
         with open(data_path) as f:
             data = json.load(f)
         cui_counts = {}
+
+        if retain_filters:
+            # TODO - allow specifying number of project to retain?
+            if len(data['projects']) > 1:
+                raise ValueError('Cannot retain multiple (potentially) different filters from multiple projects')
+            # will merge with local when loading in project
 
         if test_size == 0:
             logger.info("Running without a test set, or train==test")
@@ -906,19 +934,20 @@ class CAT(object):
             for idx_project in trange(current_project, len(train_set['projects']), initial=current_project, total=len(train_set['projects']), desc='Project', leave=False):
                 project = train_set['projects'][idx_project]
 
-                # Set filters in case we are using the train_from_fp
-                filters['cuis'] = set()
-                if isinstance(extra_cui_filter, set):
-                    filters['cuis'] = extra_cui_filter
-
-                if use_filters:
-                    project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                         type_ids=project.get('tuis', None),
-                                                         cdb=self.cdb,
-                                                         project=project)
-
-                    if project_filter:
-                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+                # if retain filters, but not the extra_cui_filters (and they exist),
+                # then we need to do project filters alone, then retain, and only
+                # then add the extra CUI filters
+                if retain_filters and extra_cui_filter and not retain_extra_cui_filter:
+                    # adding project filters without extra_cui_filters
+                    self._set_project_filters(local_filters, project, set(), use_filters)
+                    self.config.linking.filters.merge_with(local_filters)
+                    # adding extra_cui_filters, but NOT project filters
+                    self._set_project_filters(local_filters, project, extra_cui_filter, False)
+                    # refrain from doing it again for subsequent epochs
+                    retain_filters = False
+                else:
+                    # Set filters in case we are using the train_from_fp
+                    self._set_project_filters(local_filters, project, extra_cui_filter, use_filters)
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
@@ -933,12 +962,13 @@ class CAT(object):
                             end = ann['end']
                             spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
                             deleted = ann.get('deleted', False)
-                            self.add_and_train_concept(cui=cui,
-                                                       name=ann['value'],
-                                                       spacy_doc=spacy_doc,
-                                                       spacy_entity=spacy_entity,
-                                                       negative=deleted,
-                                                       devalue_others=devalue_others)
+                            if local_filters.check_filters(cui):
+                                self.add_and_train_concept(cui=cui,
+                                                        name=ann['value'],
+                                                        spacy_doc=spacy_doc,
+                                                        spacy_entity=spacy_entity,
+                                                        negative=deleted,
+                                                        devalue_others=devalue_others)
                     if train_from_false_positives:
                         fps: List[Span] = get_false_positives(doc, spacy_doc)
 
@@ -954,6 +984,11 @@ class CAT(object):
                     latest_trained_step += 1
                     if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
+                # if retaining MCT filters AND (if they exist) extra_cui_filters
+                if retain_filters:
+                    self.config.linking.filters.merge_with(local_filters)
+                    # refrain from doing it again for subsequent epochs
+                    retain_filters = False
 
             if terminate_last and not never_terminate:
                 # Remove entities that were terminated, but after all training is done
@@ -972,9 +1007,6 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
-
-        # Set the filters again
-        self.config.linking.filters = _filters
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
