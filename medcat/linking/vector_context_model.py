@@ -13,13 +13,13 @@ logger = logging.getLogger(__name__)
 
 
 class ContextModel(object):
-    r''' Used to learn embeddings for concepts and calculate similarities in new documents.
+    """Used to learn embeddings for concepts and calculate similarities in new documents.
 
     Args:
-        cdb
-        vocab
-        config
-    '''
+        cdb (CDB): The Context Database
+        vocab (Vocab): The vocabulary
+        config (Config): The config to be used
+    """
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb
@@ -27,14 +27,14 @@ class ContextModel(object):
         self.config = config
 
     def get_context_tokens(self, entity: Span, doc: Doc, size: int) -> Tuple:
-        r''' Get context tokens for an entity, this will skip anything that
+        """Get context tokens for an entity, this will skip anything that
         is marked as skip in token._.to_skip
 
         Args:
-            entity
-            doc
-            size
-        '''
+            entity (Span): The entity to look for.
+            doc (Doc): The document look in.
+            size (int): The size of the entity.
+        """
         start_ind = entity[0].i
         end_ind = entity[-1].i
 
@@ -49,13 +49,17 @@ class ContextModel(object):
         return tokens_left, tokens_center, tokens_right
 
     def get_context_vectors(self, entity: Span, doc: Doc, cui=None) -> Dict:
-        r''' Given an entity and the document it will return the context representation for the
+        """Given an entity and the document it will return the context representation for the
         given entity.
 
         Args:
-            entity
-            doc
-        '''
+            entity (Span): The entity to look for.
+            doc (Doc): The document to look in.
+            cui (Any): The CUI.
+
+        Returns:
+            Dict: The context vector.
+        """
         vectors = {}
 
         for context_type in self.config.linking['context_vector_sizes'].keys():
@@ -86,26 +90,29 @@ class ContextModel(object):
         return vectors
 
     def similarity(self, cui: str, entity: Span, doc: Doc) -> float:
-        r''' Calculate the similarity between the learnt context for this CUI and the context
+        """Calculate the similarity between the learnt context for this CUI and the context
         in the given `doc`.
 
         Args:
-            cui
-            entity
-            doc
-        '''
+            cui (str): The CUI.
+            entity (Span): The entity to look for.
+            doc (Doc): The document to look in.
+
+        Returns:
+            float: The simularity.
+        """
         vectors = self.get_context_vectors(entity, doc)
         sim = self._similarity(cui, vectors)
 
         return sim
 
     def _similarity(self, cui: str, vectors: Dict) -> float:
-        r''' Calculate similarity once we have vectors and a cui.
+        """Calculate similarity once we have vectors and a cui.
 
         Args:
             cui
             vectors
-        '''
+        """
 
         cui_vectors = self.cdb.cui2context_vectors.get(cui, {})
 
@@ -172,13 +179,13 @@ class ContextModel(object):
             return None, 0
 
     def train(self, cui: str, entity: Span, doc: Doc, negative: bool = False, names: Union[List[str], Dict] = []) -> None:
-        r''' Update the context representation for this CUI, given it's correct location (entity)
+        """Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
 
         Args:
             names (List[str]/Dict):
                 Optionally used to update the `status` of a name-cui pair in the CDB.
-        '''
+        """
         # Context vectors to be calculated
         if len(entity) > 0: # Make sure there is something
             vectors = self.get_context_vectors(entity, doc, cui=cui)

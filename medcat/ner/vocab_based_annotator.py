@@ -1,4 +1,4 @@
-""" I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
+"""I would just ignore this whole class, it's just a lot of rules that work nicely for CDB
 once the software is trained the main thing are the context vectors.
 """
 import logging
@@ -11,23 +11,23 @@ logger = logging.getLogger(__name__)
 
 
 def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config: Config, label: str = 'concept') -> Optional[Span]:
-    r''' Given a name it will check should it be annotated based on config rules. If yes
+    """Given a name it will check should it be annotated based on config rules. If yes
     the annotation will be added to the doc._.ents array.
 
     Args:
-        name (`str`):
+        name (str):
             The name found in the text of the document.
-        tkns (`List[spacy.tokens.Token]`):
+        tkns (List[spacy.tokens.Token]):
             Tokens that belong to this name in the spacy document.
-        doc (`spacy.tokens.Doc`):
+        doc (spacy.tokens.Doc):
             Spacy document to be annotated with named entities.
-        cdb (`medcat.cdb.CDB`):
+        cdb (medcat.cdb.CDB):
             Concept database.
-        config (`medcat.config.Config`):
+        config (medcat.config.Config):
             Global config for medcat.
-        label (`str`):
+        label (str):
             Label for this name (usually `concept` if we are using a vocab based approach).
-    '''
+    """
 
     logger.debug("Maybe annotating name: %s", name)
 

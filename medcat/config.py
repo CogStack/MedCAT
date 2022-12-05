@@ -25,8 +25,7 @@ def workers(workers_override: Optional[int] = None) -> int:
 
 
 class FakeDict:
-    """FakeDict that allows the use of the __getitem__ and __setitem__ method for legacy access.
-    """
+    """FakeDict that allows the use of the __getitem__ and __setitem__ method for legacy access."""
 
     def __getitem__(self, arg: str) -> Any:
         return getattr(self, arg)
@@ -57,7 +56,7 @@ class ValueExtractor:
         """Extracts value and its alternatives based on the alternative generators defined.
 
         Args:
-            rhs (str): The parsable right hand side
+            rhs(str): The parsable right hand side
 
         Returns:
             Tuple[str, List[str]]: The main value and the (potentially many) alternatives
@@ -93,12 +92,11 @@ class MixingConfig(FakeDict):
     """
 
     def save(self, save_path: str) -> None:
-        r''' Save the config into a .json file
+        """Save the config into a .json file
 
         Args:
-            save_path (`str`):
-                Where to save the created json file
-        '''
+            save_path(str): Where to save the created json file
+        """
         # We want to save the dict here, not the whole class
         json_string = jsonpickle.encode(
             {field: getattr(self, field) for field in self.fields()})
@@ -107,12 +105,11 @@ class MixingConfig(FakeDict):
             f.write(json_string)
 
     def merge_config(self, config_dict: Dict) -> None:
-        r''' Merge a config_dict with the existing config object.
+        """Merge a config_dict with the existing config object.
 
         Args:
-            config_dict (`dict`):
-                A dictionary which key/values should be added to this class.
-        '''
+            config_dict(Dict): A dictionary which key/values should be added to this class.
+        """
         for key in config_dict.keys():
             if hasattr(self, key):
                 attr = getattr(self, key)
@@ -131,15 +128,18 @@ class MixingConfig(FakeDict):
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
-        r'''
-        Parses a configuration file in text format. Must be like:
+        """Parses a configuration file in text format. Must be like:
                 cat.<variable>.<key> = <value>
                 ...
 
             - variable: linking, general, ner, ...
             - key: a key in the config dict e.g. subsample_after for linking
             - value: the value for the key, will be parsed with `eval`
-        '''
+
+        Args:
+            path(str): the path to the config file
+            extractor(ValueExtractor, optional):  (Default value = _DEFAULT_EXTRACTOR)
+        """
         with open(path, 'r') as f:
             for line in f:
                 if line.strip() and line.startswith("cat."):
@@ -182,14 +182,16 @@ class MixingConfig(FakeDict):
 
     @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
-        r''' Load config from a json file, note that fields that
+        """Load config from a json file, note that fields that
         did not exist in the old config but do exist in the current
         version of the ConfigMetaCAT class will be kept.
 
         Args:
-            save_path (`str`):
-                Path to the json file to load
-        '''
+            save_path(str): Path to the json file to load
+
+        Returns:
+            MixingConfig: The loaded config
+        """
         config = cls()
 
         # Read the jsonpickle string
@@ -205,7 +207,7 @@ class MixingConfig(FakeDict):
         """Generate a MixingConfig (of an extending type) from a a dictionary.
 
         Args:
-            config_dict (Dict): The dictionary to create the config from
+            config_dict(Dict): The dictionary to create the config from
 
         Returns:
             MixingConfig: The resulting config
@@ -232,6 +234,7 @@ class MixingConfig(FakeDict):
 
 
 class VersionInfo(MixingConfig, BaseModel):
+    """The version info part of the config"""
     history: list = []
     """Populated automatically"""
     meta_cats: Any = {}
@@ -258,6 +261,7 @@ class VersionInfo(MixingConfig, BaseModel):
 
 
 class CDBMaker(MixingConfig, BaseModel):
+    """The Context Database (CDB) making part of the config"""
     name_versions: list = ['LOWER', 'CLEAN']
     """Name versions to be generated."""
     multi_separator: str = '|'
@@ -275,6 +279,7 @@ class CDBMaker(MixingConfig, BaseModel):
 
 
 class AnnotationOutput(MixingConfig, BaseModel):
+    """The annotation output part of the config"""
     doc_extended_info: bool = False
     context_left: int = -1
     context_right: int = -1
@@ -287,6 +292,7 @@ class AnnotationOutput(MixingConfig, BaseModel):
 
 
 class CheckPoint(MixingConfig, BaseModel):
+    """The checkpoint part of the config"""
     output_dir: str = 'checkpoints'
     """When doing training this is the name of the directory where checkpoints will be saved"""
     steps: Optional[int] = None
@@ -300,6 +306,7 @@ class CheckPoint(MixingConfig, BaseModel):
 
 
 class General(MixingConfig, BaseModel):
+    """The general part of the config"""
     spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
                                        'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                        'merge_entities', 'merge_subtokens']
@@ -344,6 +351,7 @@ class General(MixingConfig, BaseModel):
 
 
 class Preprocessing(MixingConfig, BaseModel):
+    """The preprocessing part of the config"""
     words_to_skip: set = {'nos'}
     """This words will be completly ignored from concepts and from the text (must be a Set)"""
     keep_punct: set = {'.', ':'}
@@ -368,6 +376,7 @@ class Preprocessing(MixingConfig, BaseModel):
 
 
 class Ner(MixingConfig, BaseModel):
+    """The NER part of the config"""
     min_name_len: int = 3
     """Do not detect names below this limit, skip them"""
     max_skip_tokens: int = 2
@@ -387,8 +396,7 @@ class Ner(MixingConfig, BaseModel):
 
 
 class _DefPartial:
-    """This is a helper class to make it possible to check equality of two default Linking instances
-    """
+    """This is a helper class to make it possible to check equality of two default Linking instances"""
 
     def __init__(self):
         self.fun = partial(weighted_average, factor=0.0004)
@@ -457,6 +465,7 @@ class LinkingFilters(MixingConfig, BaseModel):
 
 
 class Linking(MixingConfig, BaseModel):
+    """The linking part of the config"""
     optim: dict = {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005}
     """Linear anneal"""
     # optim: dict = {'type': 'standard', 'lr': 1}
@@ -512,6 +521,7 @@ class Linking(MixingConfig, BaseModel):
 
 
 class Config(MixingConfig, BaseModel):
+    """The MedCAT config"""
     version: VersionInfo = VersionInfo()
     cdb_maker: CDBMaker = CDBMaker()
     annotation_output: AnnotationOutput = AnnotationOutput()

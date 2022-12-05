@@ -42,8 +42,7 @@ medcat_csv_mapper: dict = {
 
 
 class UMLS:
-    r"""
-    Pre-process UMLS release files:
+    """Pre-process UMLS release files:
     Args:
         main_file_name (str):
             Path to the main file name (probably MRCONSO.RRF)

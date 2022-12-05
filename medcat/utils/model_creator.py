@@ -22,7 +22,7 @@ def create_cdb(concept_csv_file, medcat_config):
         medcat_config (medcat.config.Config):
             MedCAT configuration file.
     Returns:
-        cdb (medcat.cdb.CDB):
+        medcat.cdb.CDB:
             MedCAT concept database containing list of entities and synonyms, without context embeddings.
     """
     logger.info('Creating concept database from concept table')
@@ -47,7 +47,7 @@ def create_vocab(cdb, training_data_list, medcat_config, output_dir, unigram_tab
             Size of unigram table to be initialized before creating vocabulary.
 
     Returns:
-        vocab (medcat.vocab.Vocab):
+        medcat.vocab.Vocab:
             MedCAT vocabulary created from CDB and training documents.
     """
     logger.info('Creating and saving vocabulary')
@@ -76,7 +76,7 @@ def train_unsupervised(cdb, vocab, config, output_dir, training_data_list):
             List of example documents.
 
     Returns:
-        cdb (medcat.cdb.CDB):
+        medcat.cdb.CDB:
             MedCAT concept database containing list of entities and synonyms, as well as context embeddings.
     """
     # Create MedCAT pipeline
@@ -101,8 +101,8 @@ def create_models(config_file):
             Location of model creator configuration file to specify input, output and MedCAT configuration.
 
     Returns:
-        cat (medcat.cat.CAT):
-            Containing CDB, Vocab and Config
+        medcat.cat.CAT:
+            Containing CDB, Vocab and Config.
     """
 
     # Load model creator configuration
