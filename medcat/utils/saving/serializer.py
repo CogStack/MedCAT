@@ -71,7 +71,8 @@ class JsonSetSerializer:
         Args:
             d (dict): The dict to write on file.
         """
-        logger.info('Writing data for "%s" into "%s"', self.name, self.file_name)
+        logger.info('Writing data for "%s" into "%s"',
+                    self.name, self.file_name)
         with open(self.file_name, 'w') as f:
             json.dump(d, f, cls=SetEncode)
 
@@ -186,7 +187,14 @@ class CDBSerializer:
             cdb_main = data['cdb']
         else:
             cdb_main = data['cdb_main']
-        cdb.__dict__.update(cdb_main)
+
+        # Load data into the new cdb instance
+        for k in cdb.__dict__:
+            if k in cdb_main:
+                cdb.__dict__[k] = cdb_main[k]
+
+        # Load data into new CDB from additional JSON files
+        # if applicable
         if self.jsons is not None:
             for name in SPECIALITY_NAMES:
                 cdb.__dict__[name] = self.jsons[name].read()
