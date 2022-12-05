@@ -22,7 +22,7 @@ Takes as input a json export from medcattrainer."""
 
 
 class MedCATAnnotationsConfig(datasets.BuilderConfig):
-    """ BuilderConfig for MedCATNER.
+    """BuilderConfig for MedCATNER.
 
         Args:
           **kwargs: keyword arguments forwarded to super.

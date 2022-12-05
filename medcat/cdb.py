@@ -1,4 +1,4 @@
-""" Representation class for CDB data
+"""Representation class for CDB data
 """
 import dill
 import json
@@ -19,39 +19,39 @@ logger = logging.getLogger(__name__)
 
 
 class CDB(object):
-    """ Concept DataBase - holds all information necessary for NER+L.
+    """Concept DataBase - holds all information necessary for NER+L.
 
     Properties:
-        name2cuis (`Dict[str, List[str]]`):
+        name2cuis (Dict[str, List[str]]):
             Map fro concept name to CUIs - one name can map to multiple CUIs.
-        name2cuis2status (`Dict[str, Dict[str, str]]`):
+        name2cuis2status (Dict[str, Dict[str, str]]):
             What is the status for a given name and cui pair - each name can be:
                 P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
-        snames (`Set[str]`):
+        snames (Set[str]):
             All possible subnames for all concepts
-        cui2names (`Dict[str, Set[str]]`):
+        cui2names (Dict[str, Set[str]]):
             From cui to all names assigned to it. Mainly used for subsetting (maybe even only).
-        cui2snames (`Dict[str, Set[str]]`):
+        cui2snames (Dict[str, Set[str]]):
             From cui to all sub-names assigned to it. Only used for subsetting.
-        cui2context_vectors (`Dict[str, Dict[str, np.array]]`):
+        cui2context_vectors (Dict[str, Dict[str, np.array]]):
             From cui to a dictionary of different kinds of context vectors. Normally you would have here
             a short and a long context vector - they are calculated separately.
-        cui2count_train (`Dict[str, int]`):
+        cui2count_train (Dict[str, int]):
             From CUI to the number of training examples seen.
-        cui2tags (`Dict[str, List[str]]`):
+        cui2tags (Dict[str, List[str]]):
             From CUI to a list of tags. This can be used to tag concepts for grouping of whatever.
-        cui2type_ids (`Dict[str, Set[str]]`):
+        cui2type_ids (Dict[str, Set[str]]):
             From CUI to type id (e.g. TUI in UMLS).
-        cui2preferred_name (`Dict[str, str]`):
+        cui2preferred_name (Dict[str, str]):
             From CUI to the preferred name for this concept.
-        cui2average_confidence(`Dict[str, str]`):
+        cui2average_confidence (Dict[str, str]):
             Used for dynamic thresholding. Holds the average confidence for this CUI given the training examples.
-        name2count_train(`Dict[str, str]`):
+        name2count_train (Dict[str, str]):
             Counts how often did a name appear during training.
-        addl_info (`Dict[str, Dict[]]`):
+        addl_info (Dict[str, Dict[]]):
             Any additional maps that are not part of the core CDB. These are usually not needed
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
-        vocab (`Dict[str, int]`):
+        vocab (Dict[str, int]):
             Stores all the words tha appear in this CDB and the count for each one.
     """
 
@@ -92,13 +92,12 @@ class CDB(object):
         self._optim_params = None
 
     def get_name(self, cui: str) -> str:
-        r''' Returns preferred name if it exists, otherwise it will return
+        """Returns preferred name if it exists, otherwise it will return
         the logest name assigend to the concept.
 
         Args:
             cui
-        '''
-
+        """
         name = cui # In case we do not find anything it will just return the CUI
 
         if cui in self.cui2preferred_name and self.cui2preferred_name[cui]:
@@ -113,17 +112,17 @@ class CDB(object):
                                             (self.cui2count_train.get(cui, 0) + 1)
 
     def remove_names(self, cui: str, names: Dict) -> None:
-        r''' Remove names from an existing concept - efect is this name will never again be used to link to this concept.
+        """Remove names from an existing concept - efect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
         could also be useful to keep the removed names in e.g. cui2names.
 
         Args:
-            cui (`str`):
+            cui (str):
                 Concept ID or unique identifer in this database.
-            names (`Dict[str, Dict]`):
+            names (Dict[str, Dict]):
                 Names to be removed, should look like: `{'name': {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
-        '''
+        """
         for name in names.keys():
             if name in self.name2cuis:
                 if cui in self.name2cuis[name]:
@@ -148,21 +147,22 @@ class CDB(object):
                             self.name2cuis2status[name][_cui] = 'PD'
 
     def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:
-        r''' Adds a name to an existing concept.
+        """Adds a name to an existing concept.
 
         Args:
-            cui (`str`):
+            cui (str):
                 Concept ID or unique identifer in this database, all concepts that have
                 the same CUI will be merged internally.
-            names (`Dict[str, Dict]`):
+            names (Dict[str, Dict]):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
                 Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
-            name_status (`str`):
+            name_status (str):
                 One of `P`, `N`, `A`
-            full_build (`bool`, defaults to `False`):
+            full_build (bool)):
                 If True the dictionary self.addl_info will also be populated, contains a lot of extra information
-                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
-        '''
+                about concepts, but can be very memory consuming. This is not necessary
+                for normal functioning of MedCAT (Default value `False`).
+        """
         name_status = name_status.upper()
         if name_status not in ['P', 'A', 'N']:
             # Name status must be one of the three
@@ -178,29 +178,29 @@ class CDB(object):
                     type_ids: Set[str],
                     description: str,
                     full_build: bool = False) -> None:
-        r'''
-        Add a concept to internal Concept Database (CDB). Depending on what you are providing
+        """Add a concept to internal Concept Database (CDB). Depending on what you are providing
         this will add a large number of properties for each concept.
 
         Args:
-            cui (`str`):
+            cui (str):
                 Concept ID or unique identifier in this database, all concepts that have
                 the same CUI will be merged internally.
-            names (`Dict[str, Dict]`):
+            names (Dict[str, Dict]):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
                 Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
-            ontologies(`Set[str]`):
+            ontologies (Set[str]):
                 ontologies in which the concept exists (e.g. SNOMEDCT, HPO)
-            name_status (`str`):
+            name_status (str):
                 One of `P`, `N`, `A`
-            type_ids (`Set[str]`):
+            type_ids (Set[str]):
                 Semantic type identifier (have a look at TUIs in UMLS or SNOMED-CT)
-            description (`str`):
+            description (str):
                 Description of this concept.
-            full_build (`bool`, defaults to `False`):
+            full_build (bool):
                 If True the dictionary self.addl_info will also be populated, contains a lot of extra information
-                about concepts, but can be very memory consuming. This is not necessary for normal functioning of MedCAT.
-        '''
+                about concepts, but can be very memory consuming. This is not necessary
+                for normal functioning of MedCAT (Default Value `False`).
+        """
         # Add CUI to the required dictionaries
         if cui not in self.cui2names:
             # Create placeholders
@@ -290,17 +290,17 @@ class CDB(object):
                     self.addl_info['type_id2cuis'][type_id] = {cui}
 
     def add_addl_info(self, name: str, data: Dict, reset_existing: bool = False) -> None:
-        r''' Add data to the addl_info dictionary. This is done in a function to
+        """Add data to the addl_info dictionary. This is done in a function to
         not directly access the addl_info dictionary.
 
         Args:
-            name (`str`):
+            name (str):
                 What key should be used in the `addl_info` dictionary.
-            data (`Dict[<whatever>]`):
+            data (Dict[<whatever>]):
                 What will be added as the value for the key `name`
-            reset_existing (`bool`):
+            reset_existing (bool):
                 Should old data be removed if it exists
-        '''
+        """
         if reset_existing:
             self.addl_info[name] = {}
 
@@ -312,20 +312,21 @@ class CDB(object):
                               negative: bool = False,
                               lr: Optional[float] = None,
                               cui_count: int = 0) -> None:
-        r''' Add the vector representation of a context for this CUI.
+        """Add the vector representation of a context for this CUI.
 
-        cui (`str`):
+        cui (str):
             The concept in question.
-        vectors (`Dict[str, numpy.ndarray]`):
+        vectors (Dict[str, numpy.ndarray]):
             Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
             context_type - is usually one of: ['long', 'medium', 'short']
-        negative (`bool`, defaults to `False`):
-            Is this negative context of positive.
-        lr (`int`, optional):
+        negative (bool):
+            Is this negative context of positive (Default Value `False`).
+        lr (int):
             If set it will override the base value from the config file.
-        cui_count (`int`, defaults to 0):
+        cui_count (int):
             The learning rate will be calculated based on the count for the provided CUI + cui_count.
-        '''
+            Defaults to 0.
+        """
         if cui not in self.cui2context_vectors:
             self.cui2context_vectors[cui] = {}
             self.cui2count_train[cui] = 0
@@ -371,12 +372,12 @@ class CDB(object):
             self.cui2count_train[cui] += 1
 
     def save(self, path: str) -> None:
-        r''' Saves model to file (in fact it saves variables of this class).
+        """Saves model to file (in fact it saves variables of this class).
 
         Args:
-            path (`str`):
+            path (str):
                 Path to a file where the model will be saved
-        '''
+        """
         with open(path, 'wb') as f:
             # No idea how to this correctly
             to_save = {}
@@ -385,12 +386,12 @@ class CDB(object):
             dill.dump(to_save, f)
 
     async def save_async(self, path: str) -> None:
-        r''' Async version of saving model to file (in fact it saves variables of this class).
+        """Async version of saving model to file (in fact it saves variables of this class).
 
         Args:
-            path (`str`):
+            path (str):
                 Path to a file where the model will be saved
-        '''
+        """
         async with aiofiles.open(path, 'wb') as f:
             to_save = {
                 'config': self.config.__dict__,
@@ -400,14 +401,14 @@ class CDB(object):
 
     @classmethod
     def load(cls, path: str, config_dict: Optional[Dict] = None) -> "CDB":
-        r''' Load and return a CDB. This allows partial loads in probably not the right way at all.
+        """Load and return a CDB. This allows partial loads in probably not the right way at all.
 
         Args:
-            path (`str`):
+            path (str):
                 Path to a `cdb.dat` from which to load data.
             config_dict:
                 A dictionary that will be used to overwrite existing fields in the config of this CDB
-        '''
+        """
         with open(path, 'rb') as f:
             # Again no idea
             data = dill.load(f)
@@ -430,20 +431,20 @@ class CDB(object):
         return cdb
 
     def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
-        r''' This will import vector embeddings from another CDB. No new concepts will be added.
+        """This will import vector embeddings from another CDB. No new concepts will be added.
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 
         Args:
-            cdb (`medcat.cdb.CDB`):
+            cdb (medcat.cdb.CDB):
                 Concept database from which to import training vectors
-            overwrite (`bool`, defaults to `True`):
+            overwrite (bool):
                 If True all training data in the existing CDB will be overwritten, else
-                the average between the two training vectors will be taken.
+                the average between the two training vectors will be taken (Default value `True`).
 
         Examples:
 
             >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
-        '''
+        """
         # Import vectors and counts
         for cui in cdb.cui2context_vectors:
             if cui in self.cui2names:
@@ -457,40 +458,40 @@ class CDB(object):
                 self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
 
     def reset_cui_count(self, n: int = 10) -> None:
-        r''' Reset the CUI count for all concepts that received training, used when starting new unsupervised training
+        """Reset the CUI count for all concepts that received training, used when starting new unsupervised training
         or for suppervised with annealing.
 
         Args:
-            n (`int`, optional, defaults to 10):
-                This will be set as the CUI count for all cuis in this CDB.
+            n (int):
+                This will be set as the CUI count for all cuis in this CDB (Default value 10).
 
         Examples:
 
             >>> cdb.reset_cui_count()
-        '''
+        """
         for cui in self.cui2count_train.keys():
             self.cui2count_train[cui] = n
 
     def reset_training(self) -> None:
-        r''' Will remove all training efforts - in other words all embeddings that are learnt
+        """Will remove all training efforts - in other words all embeddings that are learnt
         for concepts in the current CDB. Please note that this does not remove synonyms (names) that were
         potentially added during supervised/online learning.
-        '''
+        """
         self.cui2count_train = {}
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
 
     def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
-        ''' Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
+        """Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
         find all CUIs that link to those names and keep all of them.
         This also will not remove any data from cdb.addl_info - as this field can contain data of
         unknown structure.
 
         Args:
-            cuis_to_keep (`List[str]`):
+            cuis_to_keep (List[str]):
                 CUIs that will be kept, the rest will be removed (not completely, look above).
-        '''
+        """
 
         if not self.cui2snames:
             raise Exception("This CDB does not support subsetting - most likely because it is a `small/medium` version of a CDB")
@@ -562,13 +563,11 @@ class CDB(object):
         return stats
 
     def print_stats(self) -> None:
-        r'''Print basic statistics for the CDB.
-        '''
+        """Print basic statistics for the CDB."""
         logger.info(json.dumps(self.make_stats(), indent=2))
 
     def reset_concept_similarity(self) -> None:
-        r''' Reset concept similarity matrix.
-        '''
+        """Reset concept similarity matrix."""
         self.addl_info['similarity'] = {}
 
     def most_similar(self,
@@ -578,31 +577,31 @@ class CDB(object):
                      min_cnt: int = 0,
                      topn: int = 50,
                      force_build: bool = False) -> Dict:
-        r''' Given a concept it will calculate what other concepts in this CDB have the most similar
+        """Given a concept it will calculate what other concepts in this CDB have the most similar
         embedding.
 
         Args:
-            cui (`str`):
+            cui (str):
                 The concept ID for the base concept for which you want to get the most similar concepts.
-            context_type (`str`):
+            context_type (str):
                 On what vector type from the cui2context_vectors map will the similarity be calculated.
-            type_id_filter (`List[str]`):
+            type_id_filter (List[str]):
                 A list of type_ids that will be used to filterout the returned results. Using this it is possible
                 to limit the similarity calculation to only disorders/symptoms/drugs/...
-            min_cnt (`int`):
+            min_cnt (int):
                 Minimum training examples (unsupervised+supervised) that a concept must have to be considered
                 for the similarity calculation.
-            topn (`int`):
+            topn (int):
                 How many results to return
-            force_build (`bool`, defaults to `False`):
-                Do not use cached sim matrix
+            force_build (bool):
+                Do not use cached sim matrix (Default value False)
 
-        Return:
+        Returns:
             results (Dict):
                 A dictionary with topn results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'type_name': <type_name>,
                                                               'type_id': <type_id>, 'cnt': <number of training examples the concept has seen>}, ...}
 
-        '''
+        """
 
         if 'similarity' in self.addl_info:
             if context_type not in self.addl_info['similarity']:

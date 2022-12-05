@@ -1,4 +1,4 @@
-""" Text cleaners of various levels, from removing only garbage to
+"""Text cleaners of various levels, from removing only garbage to
 pretty much everything that is not a word.
 """
 import re
@@ -8,22 +8,22 @@ from medcat.config import Config
 
 
 def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> Dict:
-    r''' Generates different forms of a name. Will edit the provided `names` dictionary
+    """Generates different forms of a name. Will edit the provided `names` dictionary
     and add information generated from the `name`.
 
     Args:
-        nlp (`spacy.lang.<lng>`):
+        nlp (spacy.lang.<lng>):
             Spacy nlp model.
-        names (`dict`):
+        names (Dict):
             Dictionary of existing names for this concept in this row of a CSV. The new generated
             name versions and other required information will be added here.
-        config (`medcat.config.Config`):
+        config (medcat.config.Config):
             Global config for medcat.
 
-    Return:
-        names (`dict`):
+    Returns:
+        names (Dict):
             The new dictionary of prepared names.
-    '''
+    """
     sc_name = nlp(raw_name)
 
     for version in config.cdb_maker['name_versions']:
@@ -64,9 +64,13 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
 
 
 def basic_clean(text: str) -> str:
-    """ Remove almost everything from text
+    """Remove almost everything from text
 
-    text:  text to be cleaned
+    Args:
+        text (str): Text to be cleaned.
+
+    Returns:
+        str: The cleaned text.
     """
     # Add spaces around numbers
     text = re.sub("([\.,%:\d\-]*[\d]+[\.,%:\d\-]*)", r' \1 ', text)
@@ -92,9 +96,13 @@ def basic_clean(text: str) -> str:
 
 
 def clean_text(text: str) -> str:
-    """ Remove almost everything from text
+    """Remove almost everything from text
 
-    text:  text to be cleaned
+    Args:
+        text (str): Text to be cleaned.
+
+    Returns:
+        str: The cleaned text.
     """
     # Remove everything that is inside of []
     text = re.sub("\[.*\]", "", text)
