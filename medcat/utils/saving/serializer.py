@@ -7,7 +7,6 @@ import os
 import logging
 from typing import cast, Dict, Optional, Union
 import dill
-import shelve
 import json
 
 from medcat.cdb import CDB
@@ -65,7 +64,6 @@ class JsonSetSerializer:
         if os.path.isdir(self.file_name):
             raise ValueError(
                 f'Expected file, found folder: {self.file_name}')
-        self.shelves: Dict[str, shelve.Shelf] = {}
 
     def write(self, d: dict) -> None:
         """Write the specified dictionary to the this serializer's file.
@@ -112,7 +110,7 @@ class CDBSerializer:
         json_path (str, optional): The JSON. Defaults to None.
     """
 
-    def __init__(self, main_path: str, json_path: str = None) -> None:
+    def __init__(self, main_path: str, json_path: Optional[str] = None) -> None:
         self.main_path = main_path
         self.json_path = json_path
         self.jsons: Optional[Dict[str, JsonSetSerializer]] = {}
@@ -148,7 +146,7 @@ class CDBSerializer:
                 if not overwrite and os.path.exists(ser.file_name):
                     raise ValueError(
                         f'Cannot overwrite file {ser.file_name} - specify overwrite=True if you wish to overwrite')
-        if self.jsons is not None and os.path.exists(self.json_path) and not overwrite:
+        if self.json_path and os.path.exists(self.json_path) and not overwrite:
             raise ValueError(f'Unable to overwrite shelf path "{self.json_path}"'
                              ' - specify overrwrite=True if you wish to overwrite')
         to_save = {}
