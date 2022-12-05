@@ -81,6 +81,7 @@ class JsonSetSerializer:
         Returns:
             dict: The dict represented by this json file.
         """
+        logger.info('Reading data for %s from %s', self.name, self.file_name)
         with open(self.file_name, 'r') as f:
             data = json.load(f, object_hook=SetEncode.set_decode)
         return data
@@ -176,6 +177,7 @@ class CDBSerializer:
         Returns:
             CDB: The resulting CDB.
         """
+        logger.info('Reading CDB data from %s', self.main_path)
         with open(self.main_path, 'rb') as f:
             data = dill.load(f)
         config = cast(Config, Config.from_dict(data['config']))
