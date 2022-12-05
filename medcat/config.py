@@ -2,7 +2,7 @@ from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
 from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
 from pydantic.fields import ModelField
-from typing import List, Tuple, cast
+from typing import List, Set, Tuple, cast
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -10,6 +10,7 @@ from functools import partial
 import re
 
 from medcat.utils.hasher import Hasher
+from medcat.utils.matutils import intersect_nonempty_set
 
 
 logger = logging.getLogger(__name__)
@@ -410,6 +411,59 @@ class _DefPartial:
 _DEFAULT_PARTIAL = _DefPartial()
 
 
+class LinkingFilters(MixingConfig, BaseModel):
+    """These describe the linking filters used alongside the model.
+
+    When no CUIs nor exlcuded CUIs are specified (the sets are empty),
+    all CUIs are accepted.
+    If there are CUIs specified then only those will be accepted.
+    If there are excluded CUIs specified, they are excluded.
+
+    In some cases, there are extra filters as well as MedCATtrainer (MCT) export filters.
+    These are expcted to follow the following:
+    extra_cui_filter ⊆ MCT filter ⊆ Model/config filter
+
+    While any other CUIs can be included in the the extra CUI filter or the MCT filter,
+    they would not have any real effect.
+    """
+    cuis: Set[str] = set()
+    cuis_exclude: Set[str] = set()
+
+    def check_filters(self, cui: str) -> bool:
+        """Checks is a CUI in the filters
+
+        Args:
+            cui (str): The CUI in question
+
+        Returns:
+            bool: True if the CUI is allowed
+        """
+        if cui in self.cuis or not self.cuis:
+            return cui not in self.cuis_exclude
+        else:
+            return False
+
+    def merge_with(self, other: 'LinkingFilters') -> None:
+        """Merge CUIs and excluded CUIs within two filters.
+        The data will be kept within this filter (and not the other).
+
+        Args:
+            other (LinkingFilters): The other filter to merge with
+        """
+        self.cuis = intersect_nonempty_set(other.cuis, self.cuis)
+        self.cuis_exclude.update(other.cuis_exclude) # TODO - something different?
+
+    def copy_of(self) -> 'LinkingFilters':
+        """Create a copy of this LinkingFilters.
+        This copy will describe an identical filter but will refer to
+        different sets so they can be mutated separately.
+
+        Returns:
+            LinkingFilters: A copy of the original filters.
+        """
+        return LinkingFilters(cuis=set(self.cuis), cuis_exclude=set(self.cuis_exclude))
+
+
 class Linking(MixingConfig, BaseModel):
     """The linking part of the config"""
     optim: dict = {'type': 'linear', 'base_lr': 1, 'min_lr': 0.00005}
@@ -420,7 +474,7 @@ class Linking(MixingConfig, BaseModel):
     """Context vector sizes that will be calculated and used for linking"""
     context_vector_weights: dict = {'xlong': 0.1, 'long': 0.4, 'medium': 0.4, 'short': 0.1}
     """Weight of each vector in the similarity score - make trainable at some point. Should add up to 1."""
-    filters: dict = {'cuis': set(), } # CUIs in this filter will be included, everything else excluded, must be a set, if empty all cuis will be included
+    filters: LinkingFilters = LinkingFilters()
     """Filters"""
     train: bool = True
     """Should it train or not, this is set automatically ignore in 99% of cases and do not set manually"""

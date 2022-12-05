@@ -3,7 +3,6 @@ import logging
 
 from spacy.tokens import Span, Doc
 from typing import Dict
-from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.cdb import CDB
@@ -118,7 +117,7 @@ class Linker(PipeRunner):
                         cui, context_similarity = self.context_model.disambiguate(entity._.link_candidates, entity, 'unk-unk', doc)
 
                     # Add the annotation if it exists and if above threshold and in filters
-                    if cui and check_filters(cui, self.config.linking.filters):
+                    if cui and self.config.linking.filters.check_filters(cui):
                         th_type = self.config.linking.similarity_threshold_type
                         if (th_type == 'static' and context_similarity >= self.config.linking.similarity_threshold) or \
                            (th_type == 'dynamic' and context_similarity >= self.cdb.cui2average_confidence[cui] * self.config.linking.similarity_threshold):

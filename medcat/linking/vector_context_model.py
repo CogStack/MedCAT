@@ -3,7 +3,6 @@ import logging
 from typing import Tuple, Dict, List, Union
 from spacy.tokens import Span, Doc
 from medcat.utils.matutils import unitvec
-from medcat.utils.filters import check_filters
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config import Config
@@ -144,7 +143,7 @@ class ContextModel(object):
             logger.debug("Is trainer, subsetting CUIs")
             logger.debug("CUIs before: %s", cuis)
 
-            cuis = [cui for cui in cuis if check_filters(cui, filters)]
+            cuis = [cui for cui in cuis if filters.check_filters(cui)]
             # DEBUG
             logger.debug("CUIs after: %s", cuis)
 
