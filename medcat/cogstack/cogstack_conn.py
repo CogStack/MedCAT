@@ -56,13 +56,16 @@ class CogStackConn(object):
 
     def get_docs_generator(self, query: Dict, index: Union[str, List[str]],
                            es_gen_size: int = 800, request_timeout: int = 300, **kwargs):
-        """
+        """Get document generator.
 
-        :param query: search query body
-        :param index: Can be a single index name str or List of ES indices to search.
-        :param es_gen_size: Size of the generator object
-        :param request_timeout: set to 840000 for large searches
-        :return: search generator object
+        Args:
+            query (Dict): search query body
+            index (Union[str, List[str]]): Can be a single index name str or List of ES indices to search.
+            es_gen_size (int, optional): Set to 840000 for large searches. Defaults to 800.
+            request_timeout (int, optional): _description_. Defaults to 300.
+
+        Returns:
+            ?: search generator object
         """
         docs_generator = elasticsearch.helpers.scan(self.elastic,
                                                     query=query,
@@ -73,15 +76,17 @@ class CogStackConn(object):
 
     def cogstack2df(self, query: Dict, index: Union[str, List[str]], column_headers=None,
                     es_gen_size: int = 800, request_timeout: int = 300):
-        """
-        Returns DataFrame from a CogStack search
+        """Returns DataFrame from a CogStack search
 
-        :param query: search query body
-        :param index: str index name or list of indices
-        :param column_headers: specify column headers to only retrieve those columns
-        :param es_gen_size: Size of the generator to construct df
-        :param request_timeout: set to 840000 for large searches
-        :return: DataFrame
+        Args:
+            query (Dict): Search query body.
+            index (Union[str, List[str]]): Index name or list of indices.
+            column_headers (_type_, optional): Specify column headers to only retrieve those columns. Defaults to None.
+            es_gen_size (int, optional): Size of the generator to construct df. Defaults to 800.
+            request_timeout (int, optional): Set to 840000 for large searches. Defaults to 300.
+
+        Returns:
+            DataFrame: The resulting dataframe.
         """
         docs_generator = elasticsearch.helpers.scan(self.elastic,
                                                     query=query,
@@ -107,11 +112,14 @@ class CogStackConn(object):
         return df
 
     def DataFrame(self, index: Optional[str]):
-        """
-        Special function to return a pandas-like DataFrame that remains in CogStack and not in memory. See cogstack2df func
-         to retrieve data to memory.
-        :param index: List of indices
-        :return: A DataFrame object
+        """Special function to return a pandas-like DataFrame that remains in CogStack and not in memory. See cogstack2df func
+        to retrieve data to memory.
+
+        Args:
+            index (Optional[str]): List of indices
+
+        Returns:
+            ed.DataFrame: A DataFrame object
         """
         return ed.DataFrame(es_client=self.elastic, es_index_pattern=index)
 

@@ -3,8 +3,7 @@ import pandas as pd
 
 
 def get_index_queries():
-    r''' Run before everything to speed up things
-    '''
+    """Run before everything to speed up things."""
     return ['CREATE INDEX patientId FOR (p:Patient) ON (p.patientId);',
             'CREATE INDEX conceptId FOR (c:Concept) ON (c.conceptId);',
             'CREATE INDEX documentId FOR (d:Document) ON (d.documentId);']
@@ -12,18 +11,18 @@ def get_index_queries():
 
 def create_neo_csv(data, columns, output_dir='/etc/lib/neo4j/import/',
                    base_name='patients'):
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
-            A dataframe or path to a dataframe with the required data
+            A dataframe or path to a dataframe with the required data.
         columns:
-            What data to use from the dataframe
+            What data to use from the dataframe.
         output_dir:
-            Where to save the CSVs, should be the neo4j imports path if possible
+            Where to save the CSVs, should be the neo4j imports path if possible.
         base_name:
-            Name of the csv
-    '''
+            Name of the csv.
+    """
     if isinstance(data, pd.DataFrame):
         df = data
     else:
@@ -39,16 +38,19 @@ def create_neo_csv(data, columns, output_dir='/etc/lib/neo4j/import/',
 
 def create_patients_csv(data, output_dir='/etc/lib/neo4j/import/',
                         base_name='patients'):
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
             A dataframe or path to a dataframe with the required data: patientId,
-            sex, ethnicity, dob
+            sex, ethnicity, dob.
         output_dir:
             Where to save the CSVs, should be the neo4j imports path if possible,
-            but writing there could be only admin
-    '''
+            but writing there could be only admin.
+
+    Returns:
+        str: The query.
+    """
     query = (
         'USING PERIODIC COMMIT 100000 \n'
         f'LOAD CSV WITH HEADERS FROM  "file:///{base_name}.csv" AS row \n'
@@ -66,14 +68,17 @@ def create_patients_csv(data, output_dir='/etc/lib/neo4j/import/',
 
 def create_documents_csv(data, output_dir='/etc/lib/neo4j/import/',
                          base_name='documents'):
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
-            A dataframe or path to a dataframe with the required data: documentId
+            A dataframe or path to a dataframe with the required data: documentId.
         output_dir:
-            Where to save the CSVs, should be the neo4j imports path if possible
-    '''
+            Where to save the CSVs, should be the neo4j imports path if possible.
+
+    Returns:
+        str: The query.
+    """
     query = (
         'USING PERIODIC COMMIT 100000 \n'
         f'LOAD CSV WITH HEADERS FROM  "file:///{base_name}.csv" AS row \n'
@@ -88,15 +93,15 @@ def create_documents_csv(data, output_dir='/etc/lib/neo4j/import/',
 
 def create_concepts_csv(data, output_dir='/etc/lib/neo4j/import/',
                          base_name='concepts'):
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
             A dataframe or path to a dataframe with the required data: conceptId,
-            name and type
+            name and type.
         output_dir:
-            Where to save the CSVs, should be the neo4j imports path if possible
-    '''
+            Where to save the CSVs, should be the neo4j imports path if possible.
+    """
     query = (
         'USING PERIODIC COMMIT 100000 \n'
         f'LOAD CSV WITH HEADERS FROM  "file:///{base_name}.csv" AS row \n'
@@ -114,15 +119,15 @@ def create_concepts_csv(data, output_dir='/etc/lib/neo4j/import/',
 def create_document2patient_csv(data, output_dir='/etc/lib/neo4j/import/',
                                 base_name='document2patient'):
 
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
             A dataframe or path to a dataframe with the required data: patientId and
-            documentId
+            documentId.
         output_dir:
-            Where to save the CSVs, should be the neo4j imports path if possible
-    '''
+            Where to save the CSVs, should be the neo4j imports path if possible.
+    """
     query = (
         'USING PERIODIC COMMIT 100000 \n'
         f'LOAD CSV WITH HEADERS FROM  "file:///{base_name}.csv" AS row \n'
@@ -140,14 +145,14 @@ def create_document2patient_csv(data, output_dir='/etc/lib/neo4j/import/',
 def create_concept_ontology_csv(data, output_dir='/etc/lib/neo4j/import/',
                                 base_name='concept_ontology'):
 
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
-            A dataframe or path to a dataframe with the required data: child, parent
+            A dataframe or path to a dataframe with the required data: child, parent.
         output_dir:
-            Where to save the CSVs, should be the neo4j imports path if possible
-    '''
+            Where to save the CSVs, should be the neo4j imports path if possible.
+    """
     query = (
         'USING PERIODIC COMMIT 100000 \n'
         f'LOAD CSV WITH HEADERS FROM  "file:///{base_name}.csv" AS row \n'
@@ -164,16 +169,16 @@ def create_concept_ontology_csv(data, output_dir='/etc/lib/neo4j/import/',
 
 def create_document2concept_csv(data, output_dir='/etc/lib/neo4j/import/',
                          base_name='document2concepts'):
-    r''' Creates a patients CSV for neo4j load csv function
+    """Creates a patients CSV for neo4j load csv function
 
     Args:
         data:
             A dataframe or path to a dataframe with the required data: 'conceptId',
             'documentId', 'contextSimilarity', 'start', 'end', 'timestamp',
-            'metaSubject', 'metaPresence', 'metaTime'
+            'metaSubject', 'metaPresence', 'metaTime'.
         output_dir:
-            Where to save the CSVs, should be the neo4j imports path if possible
-    '''
+            Where to save the CSVs, should be the neo4j imports path if possible.
+    """
     query = (
         'USING PERIODIC COMMIT 100000 \n'
         f'LOAD CSV WITH HEADERS FROM  "file:///{base_name}.csv" AS row \n'

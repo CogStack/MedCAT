@@ -1,16 +1,16 @@
 def check_filters(cui, filters):
-    r''' Checks is a CUI in the filters
+    """Checks is a CUI in the filters
 
     Args:
         cui
         filters
 
-    Return:
+    Returns:
         bool:
             True if in filters else False
-    '''
-    if cui in filters.get('cuis', {}) or not filters.get('cuis', {}):
-        return cui not in filters.get('cuis_exclude', {})
+    """
+    if cui in filters.cuis or not filters.cuis:
+        return cui not in filters.cuis_exclude
     else:
         return False
 

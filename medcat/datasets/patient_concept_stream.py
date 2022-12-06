@@ -24,7 +24,7 @@ Takes as input a pickled dict of pt2stream. The format should be:
 
 
 class PatientConceptStreamConfig(datasets.BuilderConfig):
-    """ BuilderConfig for PatientConceptStream.
+    """BuilderConfig for PatientConceptStream.
 
         Args:
             **kwargs: keyword arguments forwarded to super.

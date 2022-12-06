@@ -10,27 +10,27 @@ logger = logging.getLogger(__name__)
 
 def get_important_config_parameters(config):
     cnf = {
-            "config.ner['min_name_len']": {
+            "config.ner.min_name_len": {
                 'value': config.ner.min_name_len,
                 'description': "Minimum detection length (found terms/mentions shorter than this will not be detected)."
                 },
-            "config.ner['upper_case_limit_len']": {
+            "config.ner.upper_case_limit_len": {
                 'value': config.ner.upper_case_limit_len,
                 'description': "All detected terms shorter than this value have to be uppercase, otherwise they will be ignored."
                 },
-            "config.linking['similarity_threshold']": {
+            "config.linking.similarity_threshold": {
                 'value': config.linking.similarity_threshold,
                 'description': "If the confidence of the model is lower than this a detection will be ignore."
                 },
-            "config.linking['filters']['cuis']": {
-                'value': len(config.linking.filters['cuis']),
+            "config.linking.filters.cuis": {
+                'value': len(config.linking.filters.cuis),
                 'description': "Length of the CUIs filter to be included in outputs. If this is not 0 (i.e. not empty) its best to check what is included before using the model"
             },
-            "config.general['spell_check']": {
+            "config.general.spell_check": {
                 'value': config.general.spell_check,
                 'description': "Is spell checking enabled."
                 },
-            "config.general['spell_check_len_limit']": {
+            "config.general.spell_check_len_limit": {
                 'value': config.general.spell_check_len_limit,
                 'description': "Words shorter than this will not be spell checked."
                 },
@@ -113,8 +113,7 @@ def json2html(doc):
 
 
 def prepare_name(cat, name, version='CLEAN'):
-    """ Cleans up the name
-    """
+    """Cleans up the name."""
     name = clean_name(name)
 
     if version.lower() == 'clean':
@@ -181,10 +180,14 @@ def tkns_from_doc(spacy_doc, start, end):
 
 
 def filter_cdb_by_icd10(cdb: CDB) -> CDB:
-    """
-    Filters an existing CDB to only contain concepts that have an associated ICD-10 code.
+    """Filters an existing CDB to only contain concepts that have an associated ICD-10 code.
     Can be used for snomed orr UMLS CDBs.
-    :return: filtered CDB
+
+    Args:
+        CDB: The input CDB
+
+    Returns:
+        CDB: The filtered CDB
     """
     cuis_to_keep = [cui for cui in cdb.cui2names.keys() if 'icd10' in cdb.cui2info[cui]]
     cdb.filter_by_cui(cuis_to_keep)
@@ -279,8 +282,7 @@ def umls_to_icd10(cdb, csv_path):
 
 
 def umls_to_snomed(cdb, pickle_path):
-    """ Map UMLS CDB to SNOMED concepts
-    """
+    """Map UMLS CDB to SNOMED concepts."""
     import pickle
 
     data = pickle.load(open(pickle_path, 'rb'))
@@ -301,8 +303,7 @@ def umls_to_snomed(cdb, pickle_path):
 
 
 def snomed_to_umls(cdb, pickle_path):
-    """ Map SNOMED CDB to UMLS concepts
-    """
+    """Map SNOMED CDB to UMLS concepts."""
     import pickle
 
     data = pickle.load(open(pickle_path, 'rb'))
@@ -323,8 +324,7 @@ def snomed_to_umls(cdb, pickle_path):
 
 
 def snomed_to_icd10(cdb, csv_path):
-    """ Add map from cui to icd10 for concepts
-    """
+    """Add map from cui to icd10 for concepts."""
     import pandas as pd
     df = pd.read_csv(csv_path)
 
@@ -348,8 +348,7 @@ def snomed_to_icd10(cdb, csv_path):
 
 
 def snomed_to_desc(cdb, csv_path):
-    """ Add descriptions to the concepts
-    """
+    """Add descriptions to the concepts."""
     import pandas as pd
     df = pd.read_csv(csv_path)
 
