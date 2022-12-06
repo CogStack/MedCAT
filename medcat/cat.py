@@ -240,6 +240,7 @@ class CAT(object):
             json_path = save_dir_path # in the same folder!
         else:
             json_path = None # use dill formating
+        logger.info('Saving model pack with %s format', format)
 
         # expand user path to make this work with '~'
         os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
@@ -318,6 +319,7 @@ class CAT(object):
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
         has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= len(SPECIALITY_NAMES)
         json_path = model_pack_path if has_jsons else None
+        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
         cdb = CDB.load(cdb_path, json_path)
 
         # TODO load addl_ner
