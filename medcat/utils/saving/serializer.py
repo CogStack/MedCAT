@@ -56,6 +56,8 @@ class JsonSetSerializer:
     def __init__(self, folder: str, name: str) -> None:
         self.name = name
         self.file_name = os.path.join(folder, name)
+        if not self.file_name.endswith('.json'):
+            self.file_name = self.file_name + '.json'
         if not os.path.exists(folder):
             os.makedirs(folder)
         elif not os.path.isdir(folder):
