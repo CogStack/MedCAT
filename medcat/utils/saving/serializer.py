@@ -9,7 +9,6 @@ from typing import cast, Dict, Optional, Union
 import dill
 import json
 
-from medcat.cdb import CDB
 from medcat.config import Config
 logger = logging.getLogger(__name__)
 
@@ -123,7 +122,7 @@ class CDBSerializer:
         else:
             self.jsons = None
 
-    def serialize(self, cdb: CDB, overwrite: bool = False) -> None:
+    def serialize(self, cdb, overwrite: bool = False) -> None:
         """Used to dump CDB to a file or or multiple files.
 
         If `json_path` was specified to the constructor, this will serialize
@@ -168,7 +167,7 @@ class CDBSerializer:
             for name in SPECIALITY_NAMES:
                 self.jsons[name].write(cdb.__dict__[name])
 
-    def deserialize(self) -> CDB:
+    def deserialize(self, cdb_cls):
         """Deserializes the json in the specified file info a CDB.
 
         If the `json_path` was specified to the constructor,
@@ -182,7 +181,7 @@ class CDBSerializer:
         with open(self.main_path, 'rb') as f:
             data = dill.load(f)
         config = cast(Config, Config.from_dict(data['config']))
-        cdb = CDB(config=config)
+        cdb = cdb_cls(config=config)
         if self.jsons is None:
             cdb_main = data['cdb']
         else:
