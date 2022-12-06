@@ -372,7 +372,7 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save(self, path: str, json_path: str = None, overwrite: bool = True) -> None:
+    def save(self, path: str, json_path: Optional[str] = None, overwrite: bool = True) -> None:
         """Saves model to file (in fact it saves variables of this class).
 
         If a `json_path` is specified, the JSON serialization is used for some of the data.
@@ -380,8 +380,8 @@ class CDB(object):
         Args:
             path (str):
                 Path to a file where the model will be saved
-            json_path (str):
-                If specified, json serialisation is used.
+            json_path (Optional[str]):
+                If specified, json serialisation is used. Defaults to None.
             overwrite (bool):
                 Whether or not to overwrite existing file(s).
         """
@@ -421,7 +421,7 @@ class CDB(object):
                 A dictionary that will be used to overwrite existing fields in the config of this CDB
         """
         ser = CDBSerializer(path, json_path)
-        cdb = ser.deserialize()
+        cdb = ser.deserialize(CDB)
         cls._check_medcat_version(cdb.config.asdict())
         cls._ensure_backward_compatibility(cdb.config)
 

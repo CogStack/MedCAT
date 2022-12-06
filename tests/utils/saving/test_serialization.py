@@ -37,7 +37,7 @@ class CDBSerializationTests(unittest.TestCase):
 
     def test_round_trip(self):
         self.ser.serialize(self.cdb, overwrite=True)
-        cdb = self.ser.deserialize()
+        cdb = self.ser.deserialize(CDB)
         for name in SPECIALITY_NAMES:
             with self.subTest(name):
                 orig = getattr(self.cdb, name)
