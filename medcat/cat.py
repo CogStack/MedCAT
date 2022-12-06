@@ -8,7 +8,6 @@ import math
 import time
 import psutil
 from time import sleep
-from copy import deepcopy
 from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
 from multiprocess.synchronize import Lock
@@ -32,11 +31,11 @@ from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
-from medcat.utils.filters import get_project_filters, check_filters
+from medcat.utils.filters import get_project_filters
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.meta_cat import MetaCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
-from medcat.config import Config
+from medcat.config import Config, LinkingFilters
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
@@ -46,8 +45,7 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 
 
 class CAT(object):
-    r"""
-    The main MedCAT class used to annotate documents, it is built on top of spaCy
+    """The main MedCAT class used to annotate documents, it is built on top of spaCy
     and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
     be used as a spacy nlp model.
 
@@ -135,13 +133,11 @@ class CAT(object):
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
-        """ Returns the spacy pipeline with MedCAT
-        """
+        """Returns the spacy pipeline with MedCAT"""
         return self.pipe.spacy_nlp
 
     def get_hash(self):
-        r""" Will not be a deep hash but will try to catch all the changing parts during training.
-        """
+        """Will not be a deep hash but will try to catch all the changing parts during training."""
         hasher = Hasher()
         hasher.update(self.cdb.get_hash())
 
@@ -155,15 +151,19 @@ class CAT(object):
 
         return hasher.hexdigest()
 
-    def get_model_card(self, as_dict=False):
-        """
-        A minimal model card for MedCAT model packs.
+    def get_model_card(self, as_dict: bool = False):
+        """A minimal model card for MedCAT model packs.
 
         Args:
-            as_dict: return the model card as a dictionary instead of a str.
+            as_dict (bool):
+                Whether to return the model card as a dictionary instead of a str (Default value False).
 
         Returns:
-            By default a str - indented JSON object.
+            str:
+                The string representation of the JSON object.
+            OR
+            dict:
+                The dict JSON object.
         """
         card = {
                 'Model ID': self.config.version.id,
@@ -203,13 +203,18 @@ class CAT(object):
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME) -> str:
-        r""" Will crete a .zip file containing all the models in the current running instance
+        """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
-        model_pack_name - an id will be appended to this name
+        Args:
+            save_dir_path (str):
+                An id will be appended to this name
+            model_pack_name (str, optional):
+                The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
 
-        returns:
-            Model pack name
+        Returns:
+            str:
+                Model pack name
         """
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
@@ -268,15 +273,16 @@ class CAT(object):
 
     @classmethod
     def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
-        r"""Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
+        """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
         (if present)
 
         Args:
-            zip_path:
-                path to model pack zip.
-            meta_cat_config_dict:
+            zip_path (str):
+                The path to model pack zip.
+            meta_cat_config_dict (Optional[Dict]):
                 A config dict that will overwrite existing configs in meta_cat.
-                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
         """
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -329,19 +335,20 @@ class CAT(object):
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
-        r"""
-        Push the text through the pipeline.
+        """Push the text through the pipeline.
 
         Args:
-            text (string):
+            text (Optional[str]):
                 The text to be annotated, if the text length is longer than
                 self.config.preprocessing['max_document_length'] it will be trimmed to that length.
-            do_train (bool, defaults to `False`):
+            do_train (bool):
                 This causes so many screwups when not there, so I'll force training
                 to False. To run training it is much better to use the self.train() function
                 but for some special cases I'm leaving it here also.
+                Defaults to `False`.
         Returns:
-            A single spacy document or multiple spacy documents with the extracted entities
+            Optional[Doc]:
+                A single spacy document or multiple spacy documents with the extracted entities
         """
         # Should we train - do not use this for training, unless you know what you are doing. Use the
         #self.train() function
@@ -355,8 +362,7 @@ class CAT(object):
             return self.pipe(text)
 
     def __repr__(self):
-        """
-        Prints the model_card for this CAT instance.
+        """Prints the model_card for this CAT instance.
         Returns:
             the 'Model Card' for this CAT instance. This includes NER+L config and any MetaCATs
         """
@@ -370,7 +376,7 @@ class CAT(object):
                      use_cui_doc_limit: bool = False,
                      use_groups: bool = False,
                      extra_cui_filter: Optional[Set] = None) -> Tuple:
-        r""" TODO: Refactor and make nice
+        """TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
         Args:
@@ -394,21 +400,21 @@ class CAT(object):
 
         Returns:
             fps (dict):
-                False positives for each CUI
+                False positives for each CUI.
             fns (dict):
-                False negatives for each CUI
+                False negatives for each CUI.
             tps (dict):
-                True positives for each CUI
+                True positives for each CUI.
             cui_prec (dict):
-                Precision for each CUI
+                Precision for each CUI.
             cui_rec (dict):
-                Recall for each CUI
+                Recall for each CUI.
             cui_f1 (dict):
-                F1 for each CUI
+                F1 for each CUI.
             cui_counts (dict):
-                Number of occurrence for each CUI
+                Number of occurrence for each CUI.
             examples (dict):
-                Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>]
+                Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
         """
         tp = 0
         fp = 0
@@ -424,24 +430,13 @@ class CAT(object):
 
         fp_docs: Set = set()
         fn_docs: Set = set()
-        # reset and back up filters
-        _filters = deepcopy(self.config.linking.filters)
-        filters = self.config.linking.filters
+
+        local_filters = self.config.linking.filters.copy_of()
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
-            filters['cuis'] = set()
+            local_filters.cuis = set()
 
             # Add extra filter if set
-            if isinstance(extra_cui_filter, set):
-                filters['cuis'] = extra_cui_filter
-
-            if use_project_filters:
-                project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                     type_ids=project.get('tuis', None),
-                                                     cdb=self.cdb,
-                                                     project=project)
-                # Intersect project filter with existing if it has something
-                if project_filter:
-                    filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+            self._set_project_filters(local_filters, project, extra_cui_filter, use_project_filters)
 
             for dind, doc in tqdm(
                 enumerate(project["documents"]),
@@ -455,9 +450,9 @@ class CAT(object):
                 if use_cui_doc_limit:
                     _cuis = set([ann['cui'] for ann in anns])
                     if _cuis:
-                        filters['cuis'] = intersect_nonempty_set(_cuis, extra_cui_filter)
+                        local_filters.cuis = intersect_nonempty_set(_cuis, extra_cui_filter)
                     else:
-                        filters['cuis'] = {'empty'}
+                        local_filters.cuis = {'empty'}
 
                 spacy_doc: Doc = self(doc['text'])
 
@@ -472,7 +467,7 @@ class CAT(object):
                 anns_norm_cui = []
                 for ann in anns:
                     cui = ann['cui']
-                    if check_filters(cui, filters):
+                    if local_filters.check_filters(cui):
                         if use_groups:
                             cui = self.cdb.addl_info['cui2group'].get(cui, cui)
 
@@ -584,10 +579,30 @@ class CAT(object):
         except Exception:
             traceback.print_exc()
 
-        # restore filters to original state
-        self.config.linking.filters = _filters
-
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
+
+    def _set_project_filters(self, local_filters: LinkingFilters, project: dict,
+             extra_cui_filter: Optional[Set], use_project_filters: bool):
+        """Set the project filters to a LinkingFilters object based on
+        the specified project.
+
+        Args:
+            local_filters (LinkingFilters): The linking filters instance
+            project (dict): The project
+            extra_cui_filter (Optional[Set]): Extra CUIs (if specified)
+            use_project_filters (bool): Whether to use per-project filters
+        """
+        if isinstance(extra_cui_filter, set):
+            local_filters.cuis = extra_cui_filter
+
+        if use_project_filters:
+            project_filter = get_project_filters(cuis=project.get('cuis', None),
+                                                    type_ids=project.get('tuis', None),
+                                                    cdb=self.cdb,
+                                                    project=project)
+            # Intersect project filter with existing if it has something
+            if project_filter:
+                local_filters.cuis = intersect_nonempty_set(project_filter, local_filters.cuis)
 
     def _init_ckpts(self, is_resumed, checkpoint):
         if self.config.general.checkpoint.steps is not None or checkpoint is not None:
@@ -615,7 +630,7 @@ class CAT(object):
               progress_print: int = 1000,
               checkpoint: Optional[Checkpoint] = None,
               is_resumed: bool = False) -> None:
-        """ Runs training on the data, note that the maximum length of a line
+        """Runs training on the data, note that the maximum length of a line
         or document is 1M characters. Anything longer will be trimmed.
 
         Args:
@@ -662,14 +677,13 @@ class CAT(object):
         self.config.linking.train = False
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
-        r"""
-        Ads a CUI to a group, will appear in cdb.addl_info['cui2group']
+        """Adds a CUI to a group, will appear in cdb.addl_info['cui2group']
 
         Args:
             cui (str):
-                The concept to be added
+                The concept to be added.
             group_name (str):
-                The group to whcih the concept will be added
+                The group to whcih the concept will be added.
 
         Examples:
 
@@ -680,16 +694,15 @@ class CAT(object):
         self.cdb.addl_info['cui2group'][cui] = group_name
 
     def unlink_concept_name(self, cui: str, name: str, preprocessed_name: bool = False) -> None:
-        r"""
-        Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
+        """Unlink a concept name from the CUI (or all CUIs if full_unlink), removes the link from
         the Concept Database (CDB). As a consequence medcat will never again link the `name`
         to this CUI - meaning the name will not be detected as a concept in the future.
 
         Args:
             cui (str):
-                The CUI from which the `name` will be removed
+                The CUI from which the `name` will be removed.
             name (str):
-                The span of text to be removed from the linking dictionary
+                The span of text to be removed from the linking dictionary.
         Examples:
 
             >>> # To never again link C0020538 to HTN
@@ -724,12 +737,12 @@ class CAT(object):
                               negative: bool = False,
                               devalue_others: bool = False,
                               do_add_concept: bool = True) -> None:
-        r""" Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
+        r"""Add a name to an existing concept, or add a new concept, or do not do anything if the name or concept already exists. Perform
         training if spacy_entity and spacy_doc are set.
 
         Args:
             cui (str):
-                CUI of the concept
+                CUI of the concept.
             name (str):
                 Name to be linked to the concept (in the case of MedCATtrainer this is simply the
                 selected value in text, no preprocessing or anything needed).
@@ -783,11 +796,19 @@ class CAT(object):
                          never_terminate: bool = False,
                          train_from_false_positives: bool = False,
                          extra_cui_filter: Optional[Set] = None,
+                         retain_extra_cui_filter: bool = False,
                          checkpoint: Optional[Checkpoint] = None,
+                         retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
-        r""" TODO: Refactor, left from old
+        """TODO: Refactor, left from old
         Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
         online training then supervised.
+
+        When filtering, the filters within the CAT model are used first,
+        then the ones from MedCATtrainer (MCT) export filters,
+        and finally the extra_cui_filter (if set).
+        That is to say, the expectation is:
+        extra_cui_filter ⊆ MCT filter ⊆ Model/config filter.
 
         Args:
             data_path (str):
@@ -825,38 +846,50 @@ class CAT(object):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
+            retain_extra_cui_filter(bool):
+                Whether to retain the extra filters instead of the MedCATtrainer export filters.
+                This will only have an effect if/when retain_filters is set to True. Defaults to False.
             checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
                 The MedCAT CheckpointST object
+            retain_filters (bool):
+                If True, retain the filters in the MedCATtrainer export within this CAT instance. In other words, the
+                filters defined in the input file will henseforth be saved within config.linking.filters .
+                This only makes sense if there is only one project in the input data. If that is not the case,
+                a ValueError is raised. The merging is done in the first epoch.
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
         Returns:
             fp (dict):
-                False positives for each CUI
+                False positives for each CUI.
             fn (dict):
-                False negatives for each CUI
+                False negatives for each CUI.
             tp (dict):
-                True positives for each CUI
+                True positives for each CUI.
             p (dict):
-                Precision for each CUI
+                Precision for each CUI.
             r (dict):
-                Recall for each CUI
+                Recall for each CUI.
             f1 (dict):
-                F1 for each CUI
+                F1 for each CUI.
             cui_counts (dict):
-                Number of occurrence for each CUI
+                Number of occurrence for each CUI.
             examples (dict):
-                FP/FN examples of sentences for each CUI
+                FP/FN examples of sentences for each CUI.
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
-        # Backup filters
-        _filters = deepcopy(self.config.linking.filters)
-        filters = self.config.linking.filters
+        local_filters = self.config.linking.filters.copy_of()
 
         fp = fn = tp = p = r = f1 = examples = {}
         with open(data_path) as f:
             data = json.load(f)
         cui_counts = {}
+
+        if retain_filters:
+            # TODO - allow specifying number of project to retain?
+            if len(data['projects']) > 1:
+                raise ValueError('Cannot retain multiple (potentially) different filters from multiple projects')
+            # will merge with local when loading in project
 
         if test_size == 0:
             logger.info("Running without a test set, or train==test")
@@ -901,19 +934,20 @@ class CAT(object):
             for idx_project in trange(current_project, len(train_set['projects']), initial=current_project, total=len(train_set['projects']), desc='Project', leave=False):
                 project = train_set['projects'][idx_project]
 
-                # Set filters in case we are using the train_from_fp
-                filters['cuis'] = set()
-                if isinstance(extra_cui_filter, set):
-                    filters['cuis'] = extra_cui_filter
-
-                if use_filters:
-                    project_filter = get_project_filters(cuis=project.get('cuis', None),
-                                                         type_ids=project.get('tuis', None),
-                                                         cdb=self.cdb,
-                                                         project=project)
-
-                    if project_filter:
-                        filters['cuis'] = intersect_nonempty_set(project_filter, filters['cuis'])
+                # if retain filters, but not the extra_cui_filters (and they exist),
+                # then we need to do project filters alone, then retain, and only
+                # then add the extra CUI filters
+                if retain_filters and extra_cui_filter and not retain_extra_cui_filter:
+                    # adding project filters without extra_cui_filters
+                    self._set_project_filters(local_filters, project, set(), use_filters)
+                    self.config.linking.filters.merge_with(local_filters)
+                    # adding extra_cui_filters, but NOT project filters
+                    self._set_project_filters(local_filters, project, extra_cui_filter, False)
+                    # refrain from doing it again for subsequent epochs
+                    retain_filters = False
+                else:
+                    # Set filters in case we are using the train_from_fp
+                    self._set_project_filters(local_filters, project, extra_cui_filter, use_filters)
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
@@ -928,12 +962,13 @@ class CAT(object):
                             end = ann['end']
                             spacy_entity = tkns_from_doc(spacy_doc=spacy_doc, start=start, end=end)
                             deleted = ann.get('deleted', False)
-                            self.add_and_train_concept(cui=cui,
-                                                       name=ann['value'],
-                                                       spacy_doc=spacy_doc,
-                                                       spacy_entity=spacy_entity,
-                                                       negative=deleted,
-                                                       devalue_others=devalue_others)
+                            if local_filters.check_filters(cui):
+                                self.add_and_train_concept(cui=cui,
+                                                        name=ann['value'],
+                                                        spacy_doc=spacy_doc,
+                                                        spacy_entity=spacy_entity,
+                                                        negative=deleted,
+                                                        devalue_others=devalue_others)
                     if train_from_false_positives:
                         fps: List[Span] = get_false_positives(doc, spacy_doc)
 
@@ -949,6 +984,11 @@ class CAT(object):
                     latest_trained_step += 1
                     if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
+                # if retaining MCT filters AND (if they exist) extra_cui_filters
+                if retain_filters:
+                    self.config.linking.filters.merge_with(local_filters)
+                    # refrain from doing it again for subsequent epochs
+                    retain_filters = False
 
             if terminate_last and not never_terminate:
                 # Remove entities that were terminated, but after all training is done
@@ -968,9 +1008,6 @@ class CAT(object):
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
 
-        # Set the filters again
-        self.config.linking.filters = _filters
-
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
     def get_entities(self,
@@ -987,9 +1024,17 @@ class CAT(object):
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                      n_process: Optional[int] = None,
                      batch_size: Optional[int] = None) -> List[Dict]:
-        r""" Get entities
-        text:  text to be annotated
-        return:  entities
+        """Get entities
+
+        Args:
+            texts (Union[Iterable[str], Iterable[Tuple]]): Text to be annotated
+            only_cui (bool, optional): Whether to only return CUIs. Defaults to False.
+            addl_info (List[str], optional): Additional info. Defaults to ['cui2icd10', 'cui2ontologies', 'cui2snomed'].
+            n_process (Optional[int], optional): Number of processes. Defaults to None.
+            batch_size (Optional[int], optional): The size of a batch. Defaults to None.
+
+        Returns:
+            List[Dict]: List of entity documents.
         """
         out: List[Dict] = []
 
@@ -1028,10 +1073,15 @@ class CAT(object):
         return out
 
     def get_json(self, text: str, only_cui: bool = False, addl_info=['cui2icd10', 'cui2ontologies']) -> str:
-        """ Get output in json format
+        """Get output in json format
 
-        text:  text to be annotated
-        return:  json with fields {'entities': <>, 'text': text}
+        Args:
+            text (str): Text to be annotated
+            only_cui (bool, optional): Whether to only get CUIs. Defaults to False.
+            addl_info (list, optional): Additional info. Defaults to ['cui2icd10', 'cui2ontologies'].
+
+        Returns:
+            str: Json with fields {'entities': <>, 'text': text}.
         """
         ents = self.get_entities(text, only_cui, addl_info=addl_info)['entities']
         out = {'annotations': ents, 'text': text}
@@ -1070,8 +1120,7 @@ class CAT(object):
         return nn_components
 
     def _run_nn_components(self, docs: Dict, nn_components: List, id2text: Dict) -> None:
-        r""" This will add meta_anns in-place to the docs dict.
-        """
+        """This will add meta_anns in-place to the docs dict."""
         logger.debug("Running GPU components separately")
 
         # First convert the docs into the fake spacy doc format
@@ -1122,36 +1171,39 @@ class CAT(object):
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
-        r""" Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
+        r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
         Args:
             data:
                 Iterator or array with format: [(id, text), (id, text), ...]
-            nproc (`int`, defaults to 8):
-                Number of processors
-            batch_size_chars (`int`, defaults to 1000000):
-                Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200
-            separate_nn_components (`bool`, defaults to True):
+            nproc (int):
+                Number of processors. Defaults to 8.
+            batch_size_chars (int):
+                Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200.
+                Defaults to 1000000.
+            separate_nn_components (bool):
                 If set the medcat pipe will be broken up into NN and not-NN components and
                 they will be run sequentially. This is useful as the NN components
                 have batching and like to process many docs at once, while the rest of the pipeline
-                runs the documents one by one.
-            out_split_size_chars (`int`, None):
+                runs the documents one by one. Defaults to True.
+            out_split_size_chars (Optional[int]):
                 If set once more than out_split_size_chars are annotated
                 they will be saved to a file (save_dir_path) and the memory cleared. Recommended
                 value is 20*batch_size_chars.
-            save_dir_path(`str`, defaults to the current working directory):
-                Where to save the annotated documents if splitting.
-            min_free_memory(`float`, defaults to 0.1):
+            save_dir_path(str):
+                Where to save the annotated documents if splitting. Defaults to the current working directory.
+            min_free_memory(float):
                 If set a process will not start unless there is at least this much RAM memory left,
                 should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
                 very large datasets because spacy is not the best with memory management and multiprocessing.
+                Defaults to 0.1.
 
         Returns:
-            A dictionary: {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
-            the last batch will be returned while that and all previous batches will be
-            written to disk (out_save_dir).
+            Dict:
+                {id: doc_json, id2: doc_json2, ...}, in case out_split_size_chars is used
+                the last batch will be returned while that and all previous batches will be
+                written to disk (out_save_dir).
         """
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
@@ -1242,18 +1294,19 @@ class CAT(object):
                                addl_info: List[str] = [],
                                nn_components: List = [],
                                min_free_memory: int = 0) -> Dict:
-        r""" Run multiprocessing on one batch
+        """Run multiprocessing on one batch.
 
         Args:
             data:
-                Iterator or array with format: [(id, text), (id, text), ...]
-            nproc (`int`, defaults to 8):
-                Number of processors
-            batch_size_chars (`int`, defaults to 1000000):
-                Size of a batch in number of characters
+                Iterator or array with format: [(id, text), (id, text), ...].
+            nproc (int):
+                Number of processors. Defaults to 8.
+            batch_size_chars (int):
+                Size of a batch in number of characters. Fefaults to 1 000 000.
 
         Returns:
-            A dictionary: {id: doc_json, id2: doc_json2, ...}
+            Dict:
+                {id: doc_json, id2: doc_json2, ...}
         """
         # Create the input output for MP
         with Manager() as manager:
@@ -1312,14 +1365,24 @@ class CAT(object):
                              addl_info: List[str] = [],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        r""" Run multiprocessing NOT FOR TRAINING
+        """Run multiprocessing NOT FOR TRAINING
 
-        in_data:  a list with format: [(id, text), (id, text), ...]
-        nproc:  the number of processors
-        batch_size: the number of texts to buffer
-        return_dict: a flag for returning either a dict or a list of tuples
+        Args:
+            in_data (Union[List[Tuple], Iterable[Tuple]]): List with format: [(id, text), (id, text), ...]
+            nproc (Optional[int], optional): The number of processors. Defaults to None.
+            batch_size (Optional[int], optional): The number of texts to buffer. Defaults to None.
+            only_cui (bool, optional): Whether to get only CUIs. Defaults to False.
+            addl_info (List[str], optional): Additional info. Defaults to [].
+            return_dict (bool, optional): Flag for returning either a dict or a list of tuples. Defaults to True.
+            batch_factor (int, optional): Batch factor. Defaults to 2.
 
-        return:  a dict: {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
+        Raises:
+            ValueError:
+                When number of processes is 0.
+
+        Returns:
+            Union[List[Tuple], Dict]:
+                {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
         out: Union[Dict, List[Tuple]]
 

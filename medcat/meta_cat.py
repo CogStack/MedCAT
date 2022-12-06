@@ -25,8 +25,7 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 
 
 class MetaCAT(PipeRunner):
-    r"""
-    The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
+    """The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
     concept annotations. These are also known as properties or attributes of recognise entities
     in similar tools such as MetaMap and cTakes.
 
@@ -70,6 +69,16 @@ class MetaCAT(PipeRunner):
         self.model = self.get_model(embeddings=self.embeddings)
 
     def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
+        """Get the model
+
+        Args:
+            embeddings (Optional[Tensor]):
+                The embedding densor
+
+        Returns:
+            nn.Module:
+                The module
+        """
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -80,8 +89,7 @@ class MetaCAT(PipeRunner):
         return model
 
     def get_hash(self):
-        r""" A partial hash trying to catch differences between models
-        """
+        """A partial hash trying to catch differences between models."""
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.train['last_train_on'] is None:
@@ -91,15 +99,15 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
-        r""" Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
-            json_path (`str` or `list`):
+            json_path (Union[str, list]):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
-            save_dir_path (`str`, optional, defaults to `None`):
+            save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
-                we need to set a save path.
+                we need to set a save path. Defaults to `None`.
         """
         g_config = self.config.general
         t_config = self.config.train
@@ -183,6 +191,22 @@ class MetaCAT(PipeRunner):
         return report
 
     def eval(self, json_path: str) -> Dict:
+        """Evaluate from json.
+
+        Args:
+            json_path (str):
+                The json file ath
+
+        Returns:
+            Dict:
+                The resulting model dict
+
+        Raises:
+            AssertionError:
+                If self.tokenizer
+            Exception:
+                If the category name does not exist
+        """
         g_config = self.config.general
         t_config = self.config.train
 
@@ -214,11 +238,15 @@ class MetaCAT(PipeRunner):
         return result
 
     def save(self, save_dir_path: str) -> None:
-        r""" Save all components of this class to a file
+        """Save all components of this class to a file
 
         Args:
-            save_dir_path(`str`):
+            save_dir_path (str):
                 Path to the directory where everything will be saved.
+
+        Raises:
+            AssertionError:
+                If self.tokenizer is None
         """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
@@ -239,18 +267,18 @@ class MetaCAT(PipeRunner):
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
-        r""" Load a meta_cat object.
+        """Load a meta_cat object.
 
         Args:
-            save_dir_path (`str`):
+            save_dir_path (str):
                 The directory where all was saved.
-            config_dict (`dict`):
+            config_dict (Optional[Dict], optional):
                 This can be used to overwrite saved parameters for this meta_cat
-                instance. Why? It is needed in certain cases where we autodeploy stuff.
+                instance. Why? It is needed in certain cases where we autodeploy stuff. (Default value = None)
 
         Returns:
-            meta_cat (`medcat.MetaCAT`):
-                You don't say
+            MetaCAT:
+                The MetaCAT instance
         """
 
         # Load config
@@ -284,12 +312,23 @@ class MetaCAT(PipeRunner):
         return meta_cat
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
-        r"""
+        """Prepares document.
 
         Args:
-            doc - spacy
-            input_ids
-            offset_mapping
+            doc (Doc):
+                The document
+            input_ids (List):
+                Input ids
+            offset_mapping (List):
+                Offset mapings
+            lowercase (bool):
+                Whether to use lower case replace center
+
+        Returns:
+            Dict:
+                Entity id to index mapping
+            List:
+                Samples
         """
         config = self.config
         cntx_left = config.general['cntx_left']
@@ -343,6 +382,18 @@ class MetaCAT(PipeRunner):
 
     @staticmethod
     def batch_generator(stream: Iterable[Doc], batch_size_chars: int) -> Iterable[List[Doc]]:
+        """Generator for batch of documents.
+
+        Args:
+            stream (Iterable[Doc]):
+                The document stream
+            batch_size_chars (int):
+                Number of characters per batch
+
+        Returns:
+            Generator[List[Dic]]:
+                The document generator
+        """
         docs = []
         char_count = 0
         for doc in stream:
@@ -360,11 +411,17 @@ class MetaCAT(PipeRunner):
 
     # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
-        r""" Process many documents at once.
+        """Process many documents at once.
 
         Args:
-            stream (Iterable[spacy.tokens.Doc]):
+            stream (Iterable[Union[Doc, FakeDoc]]):
                 List of spacy documents.
+            *args: Unused arguments (due to override)
+            **kwargs: Unused keyword arguments (due to override)
+
+        Returns:
+            Generator[Doc]:
+                The document generator
         """
         # Just in case
         if stream is None or not stream:
@@ -443,7 +500,7 @@ class MetaCAT(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        """ Process one document, used in the spacy pipeline for sequential
+        """Process one document, used in the spacy pipeline for sequential
         document processing.
 
         Args:
@@ -460,10 +517,15 @@ class MetaCAT(PipeRunner):
         """A minimal model card.
 
         Args:
-            as_dict (bool): return the model card as a dictionary instead of a str.
+            as_dict (bool, optional):
+                return the model card as a dictionary instead of a str. (Default value = False)
 
         Returns:
-            By default a str - indented JSON object.
+            str:
+                An indented JSON object.
+            OR
+            Dict:
+                A JSON object in dict form
         """
         card = {
             'Category Name': self.config.general['category_name'],
@@ -477,8 +539,8 @@ class MetaCAT(PipeRunner):
             return json.dumps(card, indent=2, sort_keys=False)
 
     def __repr__(self):
-        """
-        Prints the model_card for this MetaCAT instance.
+        """Prints the model_card for this MetaCAT instance.
+
         Returns:
             the 'Model Card' for this MetaCAT instance. This includes NER+L config and any MetaCATs
         """

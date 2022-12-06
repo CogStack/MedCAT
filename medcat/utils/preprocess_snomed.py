@@ -12,8 +12,7 @@ def parse_file(filename, first_row_header=True, columns=None):
 
 
 class Snomed:
-    r"""
-    Pre-process SNOMED CT release files:
+    """Pre-process SNOMED CT release files:
     Args:
         data_path:
             Path to the unzipped SNOMED CT folder
@@ -28,8 +27,7 @@ class Snomed:
         self.uk_drug_ext = uk_drug_ext
 
     def to_concept_df(self):
-        """
-        Please remember to specify if the version is a SNOMED UK extension released after 2021.
+        """Please remember to specify if the version is a SNOMED UK extension released after 2021.
         This can be done prior to this step: Snomed.uk_ext = True.
         This step is not required for UK extension releases pre-2021.
 
@@ -123,8 +121,7 @@ class Snomed:
         return pd.concat(df2merge).reset_index(drop=True)
 
     def list_all_relationships(self):
-        """
-        SNOMED CT provides a rich set of inter-relationships between concepts.
+        """SNOMED CT provides a rich set of inter-relationships between concepts.
 
         :return: List of all SNOMED CT relationships
         """
@@ -184,9 +181,7 @@ class Snomed:
         return all_rela
 
     def relationship2json(self, relationshipcode, output_jsonfile):
-        """
-
-        :param relationshipcode: A single SCTID or unique concept identifier of the relationship type
+        """:param relationshipcode: A single SCTID or unique concept identifier of the relationship type
         :param output_jsonfile: Name of json file output. Tip: include SNOMED edition to avoid downstream confusions
         :return: json file  of relationship mapping
         """
@@ -307,10 +302,15 @@ class Snomed:
             df2merge.append(icd_mappings)
         return pd.concat(df2merge)
 
-    def map_snomed2opcs4(self):
-        """
+    def map_snomed2opcs4(self) -> pd.DataFrame:
+        """Map SNOMED to OPSC4.
 
-        :return: SNOMED to OPSC4 mapping DataFrame which includes all metadata
+        Raises:
+            FileNotFoundError: In case of incorrect path to SNOMED CT directory.
+            FileNotFoundError: If OPCS mapping files not found.
+
+        Returns:
+            pd.DataFrame: SNOMED to OPSC4 mapping DataFrame which includes all metadata.
         """
         snomed_releases = []
         paths = []

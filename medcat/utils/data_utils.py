@@ -35,12 +35,10 @@ def count_annotations_project(project: Dict, cnt_per_cui=None) -> Tuple[int, Any
 
 
 def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann: bool = True) -> Dict:
-    r'''
-
-    Args:
+    """Args:
         require_annotations:
             This will require anns but on project level, any doc in a project needs anns.
-    '''
+    """
     data_candidates = json.load(open(data_path))
     if require_annotations:
         data: Dict = {'projects': []}
@@ -404,14 +402,12 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
 
 
 def consolidate_double_annotations(data_path: str, out_path: str, require_double: bool = True, require_double_inner: bool = False, meta_anns_to_match: List = []) -> Dict:
-    """ Consolidated a dataset that was multi-annotated (same documents two times).
+    """Consolidated a dataset that was multi-annotated (same documents two times).
 
     data_path:
         Output from MedCATtrainer - projects containig the same documents must have the same name.
     out_path:
-        The consolidated data will be saved here - usually only annotations where both annotators agre
-            out_path:
-            The consolidated data will be saved here - usually only annotations where both annotators agreee
+        The consolidated data will be saved here - usually only annotations where both annotators agree
     require_double (boolean):
         If True everything must be double annotated, meaning there have to be two projects of the same name for each name. Else, it will
             also use projects that do not have double annotiations. If this is False, projects that do not have double anns will be
@@ -492,8 +488,7 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
 
 
 def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only: bool = False, ignore_if_already_done: bool = False) -> None:
-    """ Please just ignore this function, I'm afraid to even look at it
-    """
+    """Please just ignore this function, I'm afraid to even look at it."""
     data: Dict = json.load(open(data_path))
     name2cui: Dict = {}
     cui2status: Dict = {}
@@ -678,14 +673,12 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
 
 class MetaAnnotationDS(torch.utils.data.Dataset):
     def __init__(self, data: Dict, category_map: Dict):
-        r'''
-
-        Args:
+        """Args:
             data:
-                Dictionary of data values
+                Dictionary of data values.
             category_map:
-                Map from category naem to id
-        '''
+                Map from category naem to id.
+        """
         self.data = data
         self.category_map = category_map
 
@@ -732,15 +725,19 @@ def prepare_from_json_chars(data: Dict,
                             tokenizer: Any,
                             cui_filter: Optional[Dict] = None,
                             replace_center: Optional[Dict] = None) -> Dict:
-    """ Convert the data from a json format into a CSV-like format for training.
+    """Convert the data from a json format into a CSV-like format for training.
 
-    data:  json file from MedCAT
-    cntx_left:  size of the context
-    cntx_right:  size of the context
-    tokenizer:  instance of the <FastTokenizer> class from huggingface
-    replace_center:  if not None the center word (concept) will be replaced with whatever is set
+    Args:
+        data (Dict): The json file from MedCAT.
+        cntx_left (int): The size of the context.
+        cntx_right (int): The size of the context.
+        tokenizer (Any): The instance of the <FastTokenizer> class from huggingface.
+        cui_filter (Optional[Dict], optional): The CUI filter. Defaults to None.
+        replace_center (Optional[Dict], optional): If not None the center word (concept) will be
+            replaced with whatever is set. Defaults to None.
 
-    return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
+    Returns:
+        Dict: {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
     """
     out_data: Dict = {}
 
@@ -795,8 +792,7 @@ def prepare_from_json_chars(data: Dict,
 
 
 def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
-    """ This is a disaster
-    """
+    """This is a disaster."""
     cnts: Dict = {}
     total_anns = 0
     # Count all CUIs

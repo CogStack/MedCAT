@@ -4,6 +4,7 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
 class General(MixingConfig, BaseModel):
+    """The General part of the MetaCAT config"""
     device: str = 'cpu'
     disable_component_lock: bool = False
     seed: int = 13
@@ -43,6 +44,7 @@ class General(MixingConfig, BaseModel):
 
 
 class Model(MixingConfig, BaseModel):
+    """The model part of the metaCAT config"""
     model_name: str = 'lstm'
     num_layers: int = 2
     input_size: int = 300
@@ -64,6 +66,7 @@ class Model(MixingConfig, BaseModel):
 
 
 class Train(MixingConfig, BaseModel):
+    """The train part of the metaCAT config"""
     batch_size: int = 100
     nepochs: int = 50
     lr: float = 0.001
@@ -89,6 +92,7 @@ class Train(MixingConfig, BaseModel):
 
 
 class ConfigMetaCAT(MixingConfig, BaseModel):
+    """The MetaCAT part of the config"""
     general: General = General()
     model: Model = Model()
     train: Train = Train()

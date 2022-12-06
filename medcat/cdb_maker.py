@@ -19,17 +19,16 @@ logger = logging.getLogger(__name__)
 
 
 class CDBMaker(object):
-    r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
+    """Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
     updates an exisitng one.
 
     Args:
-        config (`medcat.config.Config`):
+        config (medcat.config.Config):
             Global config for MedCAT.
-        cdb (`medcat.cdb.CDB`, optional):
-            If set the `CDBMaker` will updat the existing `CDB` with new concepts in the CSV.
-        name_max_words (`int`, defaults to `20`):
-            Names with more words will be skipped during the build of a CDB
-    '''
+        cdb (medcat.cdb.CDB):
+            If set the `CDBMaker` will updat the existing `CDB` with
+            new concepts in the CSV (Default value `None`).
+    """
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
@@ -58,36 +57,36 @@ class CDBMaker(object):
                      index_col: bool = False,
                      full_build: bool = False,
                      only_existing_cuis: bool = False, **kwargs) -> CDB:
-        r''' Compile one or multiple CSVs into a CDB.
+        r"""Compile one or multiple CSVs into a CDB.
 
         Args:
-            csv_paths (`Union[pd.DataFrame, List[str]]`):
+            csv_paths (Union[pd.DataFrame, List[str]]):
                 An array of paths to the csv files that should be processed. Can also be an array of pd.DataFrames
-            full_build (`bool`, defaults to `True`):
+            full_build (bool):
                 If False only the core portions of the CDB will be built (the ones required for
                 the functioning of MedCAT). If True, everything will be added to the CDB - this
                 usually includes concept descriptions, various forms of names etc (take care that
-                this option produces a much larger CDB).
-            sep (`str`, defaults to `,`):
-                If necessary a custom separator for the csv files
-            encoding (`str`, optional):
-                Encoding to be used for reading the CSV file
-            escapechar (`str`, optional):
-                Escape char for the CSV
-            index_col (`bool`, defaults_to `False`):
-                Index column for pandas read_csv
-            only_existing_cuis (`bool`, defaults to False):
+                this option produces a much larger CDB) (Default value False).
+            sep (str):
+                If necessary a custom separator for the csv files (Default value ',').
+            encoding (str):
+                Encoding to be used for reading the CSV file (Default value `None`).
+            escapechar (str):
+                Escape char for the CSV (Default value None).
+            index_col (bool):
+                Index column for pandas read_csv (Default value False).
+            only_existing_cuis bool):
                 If True no new CUIs will be added, but only linked names will be extended. Mainly used when
-                enriching names of a CDB (e.g. SNOMED with UMLS terms).
-        Return:
-            `medcat.cdb.CDB` with the new concepts added.
+                enriching names of a CDB (e.g. SNOMED with UMLS terms) (Default value `False`).
+        Returns:
+            medcat.cdb.CDB: CDB with the new concepts added.
 
         Note:
             \*\*kwargs:
                 Will be passed to pandas for CSV reading
             csv:
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)
-        '''
+        """
 
         useful_columns = ['cui', 'name', 'ontologies', 'name_status', 'type_ids', 'description']
         name_status_options = {'A', 'P', 'N'}
