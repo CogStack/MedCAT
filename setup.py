@@ -25,7 +25,7 @@ setuptools.setup(
         # and they've implemented 3.11 support in thir dervelopmnet branch
         # however, there's not been a release yet
         # so this will install the tested github state of the package
-        'git+https://github.com/RaRe-Technologies/gensim@ca8e4e8378bc489b0dda087dd9c0ed8f933ca3e2',
+        'git+https://github.com/RaRe-Technologies/gensim.git@ca8e4e8378bc489b0dda087dd9c0ed8f933ca3e2#egg=gensim',
         'spacy>=3.1.0,<3.1.4', # later versions seem to have en_core_web_md differences
         'scipy~=1.9.2', # first to support 3.11
         'transformers>=4.19.2',
