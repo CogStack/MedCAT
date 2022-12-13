@@ -72,7 +72,7 @@ class A_NERTests(unittest.TestCase):
         target_result = {'S-229004': {'movar~viruse', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         from platform import python_version
         major, minor, patch = python_version().split('.')
-        if major == 3 and minor == 11:
+        if major == '3' and minor == '11':
             print("Fixing 'movar~viruse' -> 'movar-virus' for newere en_core_web_md")
             target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         self.assertEqual(self.cdb.cui2names, target_result)
