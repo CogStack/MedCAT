@@ -26,7 +26,9 @@ setuptools.setup(
         # however, there's not been a release yet
         # so this will install the tested github state of the package
         'gensim@git+ssh://git@github.com/RaRe-Technologies/gensim.git@ca8e4e8378bc489b0dda087dd9c0ed8f933ca3e2',
-        'spacy>=3.1.0,<3.1.4', # later versions seem to have en_core_web_md differences
+        # seems like we need the en_core_web_md from version 3.1.3
+        # but overall, 3.4.3 works the best, mostly becasue before that pydantic 1.10 is not supported
+        'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
         'transformers>=4.19.2',
         'torch>=1.13.0', # first to support 3.11
