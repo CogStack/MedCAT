@@ -70,6 +70,11 @@ class A_NERTests(unittest.TestCase):
 
     def test_aa_cdb_names_output(self):
         target_result = {'S-229004': {'movar~viruse', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
+        from platform import python_version
+        major, minor, patch = python_version()
+        if major == 3 and minor == 11:
+            print("Fixing 'movar~viruse' -> 'movar-virus' for newere en_core_web_md")
+            target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         self.assertEqual(self.cdb.cui2names, target_result)
 
     def test_ab_entities_length(self):
