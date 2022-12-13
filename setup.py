@@ -40,7 +40,7 @@ setuptools.setup(
         'psutil<6.0.0,>=5.8.0',
         # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
         'multiprocess~=0.70.12',  # 0.70.14 seemed to work just fine
-        'py2neo~=2021.2.3'
+        'py2neo~=2021.2.3',
         'aiofiles>=0.8.0', # allow later versions, tested with 22.1.0
         'ipywidgets>=7.6.5', # allow later versions, tested with 0.8.0
         'xxhash>=3.0.0', # allow later versions, tested with 3.1.0
