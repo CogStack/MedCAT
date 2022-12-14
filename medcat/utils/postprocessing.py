@@ -31,7 +31,7 @@ def make_pretty_labels(cdb: CDB, doc: Doc, style: Optional[LabelStyle] = None) -
             setattr(n_ent._, attr, getattr(ent._, attr))
         n_ents.append(n_ent)
 
-    doc.ents = n_ents
+    doc.ents = n_ents  # type: ignore
 
 
 def create_main_ann(cdb: CDB, doc: Doc, tuis: Optional[List] = None) -> None:
@@ -59,4 +59,4 @@ def create_main_ann(cdb: CDB, doc: Doc, tuis: Optional[List] = None) -> None:
                     tkns_in.add(tkn)
                 main_anns.append(ent)
 
-    doc.ents = list(doc.ents) + main_anns
+    doc.ents = list(doc.ents) + main_anns  # type: ignore

@@ -139,7 +139,7 @@ class Pipe(object):
     def add_addl_ner(self, addl_ner: TransformersNER, name: Optional[str] = None) -> None:
         component_name = spacy.util.get_object_name(addl_ner)
         name = name if name is not None else component_name
-        Language.component(name=component_name, func=addl_ner)
+        Language.component(name=component_name, func=addl_ner)  # type: ignore
         self._nlp.add_pipe(component_name, name=name, last=True)
 
         Doc.set_extension('ents', default=[], force=True)
@@ -176,7 +176,7 @@ class Pipe(object):
             self._nlp.get_pipe(instance_name)
         except KeyError:
             component_name = spacy.util.get_object_name(self._ensure_serializable)
-            Language.component(name=component_name, func=self._ensure_serializable)
+            Language.component(name=component_name, func=self._ensure_serializable)  # type: ignore
             self._nlp.add_pipe(component_name, name=instance_name, last=True)
 
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
@@ -238,7 +238,7 @@ class Pipe(object):
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
-            return self._nlp(text) if len(text) > 0 else None
+            return self._nlp(text) if len(text) > 0 else None  # type: ignore
         elif isinstance(text, Iterable):
             docs = []
             for t in text if isinstance(text, types.GeneratorType) else tqdm(text, total=len(list(text))):
@@ -249,7 +249,7 @@ class Pipe(object):
                     logger.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
-            return docs
+            return docs  # type: ignore
         else:
             logger.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
             return None

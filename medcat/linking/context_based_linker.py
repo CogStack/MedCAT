@@ -55,7 +55,8 @@ class Linker(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        doc.ents = [] # Reset main entities, will be recreated later
+        # Reset main entities, will be recreated later  
+        doc.ents = []  # type: ignore
         cnf_l = self.config.linking
         linked_entities = []
 
