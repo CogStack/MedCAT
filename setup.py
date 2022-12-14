@@ -25,7 +25,7 @@ setuptools.setup(
         # and they've implemented 3.11 support in thir dervelopmnet branch
         # however, there's not been a release yet
         # so this will install the tested github state of the package
-        'gensim@git+ssh://git@github.com/RaRe-Technologies/gensim.git@ca8e4e8378bc489b0dda087dd9c0ed8f933ca3e2',
+        'gensim@git+https://github.com/RaRe-Technologies/gensim.git@ca8e4e8378bc489b0dda087dd9c0ed8f933ca3e2',
         # seems like we need the en_core_web_md from version 3.1.3
         # but overall, 3.4.3 works the best, mostly becasue before that pydantic 1.10 is not supported
         'spacy>=3.1.0',
