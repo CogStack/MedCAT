@@ -700,8 +700,8 @@ which may or may not work. If you experience any compatibility issues, please re
 or download the compatible model."""
             )
 
-    def get_hash(self):
-        if self._hash and not self.is_dirty:
+    def get_hash(self, force_recalc: bool = False):
+        if not force_recalc and self._hash and not self.is_dirty:
             return self._hash
         self.is_dirty = False
         return self.calculate_hash()

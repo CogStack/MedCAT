@@ -136,10 +136,20 @@ class CAT(object):
         """Returns the spacy pipeline with MedCAT"""
         return self.pipe.spacy_nlp
 
-    def get_hash(self):
-        """Will not be a deep hash but will try to catch all the changing parts during training."""
+    def get_hash(self, force_recalc: bool = False) -> str:
+        """Will not be a deep hash but will try to catch all the changing parts during training.
+
+        Able to force recalculation of hash. This is relevant for CDB
+        the hash for which is otherwise only recalculated if it has changed.
+
+        Args:
+            force_recalc (bool, optional): Whether to force recalculation. Defaults to False.
+
+        Returns:
+            str: The resulting hash
+        """
         hasher = Hasher()
-        hasher.update(self.cdb.get_hash())
+        hasher.update(self.cdb.get_hash(force_recalc))
 
         hasher.update(self.config.get_hash())
 
