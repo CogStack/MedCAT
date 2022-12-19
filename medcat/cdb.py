@@ -53,6 +53,8 @@ class CDB(object):
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
         vocab (Dict[str, int]):
             Stores all the words tha appear in this CDB and the count for each one.
+        is_dirty (bool):
+            Whether or not the CDB has been changed since it was loaded or created
     """
 
     def __init__(self, config: Union[Config, None] = None) -> None:
@@ -90,6 +92,8 @@ class CDB(object):
                 }
         self.vocab: Dict = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
+        self.is_dirty = False
+        self._hash: Optional[str] = None
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -110,6 +114,7 @@ class CDB(object):
     def update_cui2average_confidence(self, cui: str, new_sim: float) -> None:
         self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim) / \
                                             (self.cui2count_train.get(cui, 0) + 1)
+        self.is_dirty = True
 
     def remove_names(self, cui: str, names: Dict) -> None:
         """Remove names from an existing concept - efect is this name will never again be used to link to this concept.
@@ -145,6 +150,7 @@ class CDB(object):
                             self.name2cuis2status[name][_cui] = 'N'
                         elif self.name2cuis2status[name][_cui] == 'P':
                             self.name2cuis2status[name][_cui] = 'PD'
+        self.is_dirty = True
 
     def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:
         """Adds a name to an existing concept.
@@ -288,6 +294,7 @@ class CDB(object):
                     self.addl_info['type_id2cuis'][type_id].add(cui)
                 else:
                     self.addl_info['type_id2cuis'][type_id] = {cui}
+        self.is_dirty = True
 
     def add_addl_info(self, name: str, data: Dict, reset_existing: bool = False) -> None:
         """Add data to the addl_info dictionary. This is done in a function to
@@ -305,6 +312,7 @@ class CDB(object):
             self.addl_info[name] = {}
 
         self.addl_info[name].update(data)
+        self.is_dirty = True
 
     def update_context_vector(self,
                               cui: str,
@@ -370,6 +378,7 @@ class CDB(object):
         if not negative:
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
+        self.is_dirty = True
 
     def save(self, path: str) -> None:
         """Saves model to file (in fact it saves variables of this class).
@@ -692,6 +701,12 @@ or download the compatible model."""
             )
 
     def get_hash(self):
+        if self._hash and not self.is_dirty:
+            return self._hash
+        self.is_dirty = False
+        return self.calculate_hash()
+
+    def calculate_hash(self):
         hasher = Hasher()
 
         for k,v in self.__dict__.items():
@@ -700,4 +715,5 @@ or download the compatible model."""
             elif k != 'config':
                 hasher.update(v, length=True)
 
-        return hasher.hexdigest()
+        self._hash = hasher.hexdigest()
+        return self._hash

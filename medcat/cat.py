@@ -653,6 +653,9 @@ class CAT(object):
             self.cdb.reset_training()
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
+        # cache train state
+        _prev_train = self.config.linking.train
+
         latest_trained_step = checkpoint.count if checkpoint is not None else 0
         epochal_data_iterator = chain.from_iterable(repeat(data_iterator, nepochs))
         for line in islice(epochal_data_iterator, latest_trained_step, None):
@@ -674,7 +677,7 @@ class CAT(object):
             if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                 checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
-        self.config.linking.train = False
+        self.config.linking.train = _prev_train
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
         """Adds a CUI to a group, will appear in cdb.addl_info['cui2group']
