@@ -712,6 +712,11 @@ or download the compatible model."""
         for k,v in self.__dict__.items():
             if k in ['cui2countext_vectors', 'name2cuis']:
                 hasher.update(v, length=False)
+            elif k in ['_hash', 'is_dirty']:
+                # ignore _hash since if it previously didn't exist, the
+                # new hash would be different when the value does exist
+                # and ignore is_dirty so that we get the same hash as previously
+                continue
             elif k != 'config':
                 hasher.update(v, length=True)
 

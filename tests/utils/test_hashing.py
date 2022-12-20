@@ -7,6 +7,19 @@ from medcat.cdb import CDB
 from medcat.vocab import Vocab
 
 
+class CDBHashingTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+
+    def test_recalc_hash_same(self):
+        h1 = self.cdb.get_hash(force_recalc=True)
+        h2 = self.cdb.get_hash(force_recalc=True)
+        self.assertEqual(h1, h2)
+
+
 class BaseCATHashingTests(unittest.TestCase):
 
     @classmethod
@@ -36,6 +49,18 @@ class CATHashingTestsWithFakeHash(BaseCATHashingTests):
 
     def tearDown(self) -> None:
         self.undertest.cdb._hash = None  # TODO what if under test has a hash?
+
+
+class CATHashingTestsWithoutChangeRecalc(CATHashingTestsWithFakeHash):
+
+    def test_no_changes_can_recalc(self):
+        h = self.undertest.get_hash(force_recalc=True)
+        self.assertIsInstance(h, str)
+
+    def test_no_changes_recalc_same(self):
+        h1 = self.undertest.get_hash(force_recalc=True)
+        h2 = self.undertest.get_hash(force_recalc=True)
+        self.assertEqual(h1, h2)
 
 
 class CATHashingTestsWithoutChange(CATHashingTestsWithFakeHash):
