@@ -380,13 +380,18 @@ class CDB(object):
             self.cui2count_train[cui] += 1
         self.is_dirty = True
 
-    def save(self, path: str) -> None:
+    def save(self, path: str, calc_hash_if_missing: bool = False) -> None:
         """Saves model to file (in fact it saves variables of this class).
 
         Args:
             path (str):
                 Path to a file where the model will be saved
+            calc_hash_if_missing (bool):
+                Calculate the hash if it's missing. Defaults to `False`
         """
+        if calc_hash_if_missing and not self._hash:
+            # get instead of calculate so that the CDB is marked as not dirty if it was dirty
+            self.get_hash()
         with open(path, 'wb') as f:
             # No idea how to this correctly
             to_save = {}
