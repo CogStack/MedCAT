@@ -1,4 +1,5 @@
 import os
+import tempfile
 import unittest
 import unittest.mock
 
@@ -8,6 +9,7 @@ from medcat.vocab import Vocab
 
 
 class CDBHashingTests(unittest.TestCase):
+    temp_dir = tempfile.TemporaryDirectory()
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -18,6 +20,14 @@ class CDBHashingTests(unittest.TestCase):
         h1 = self.cdb.get_hash(force_recalc=True)
         h2 = self.cdb.get_hash(force_recalc=True)
         self.assertEqual(h1, h2)
+
+    def test_CDB_hash_saves_on_disk(self):
+        h = self.cdb.get_hash(force_recalc=True)  # make sure there's a hash
+        temp_file = os.path.join(self.temp_dir.name, 'cdb.dat')
+        self.cdb.save(temp_file)
+
+        cdb = CDB.load(temp_file)
+        self.assertEqual(h, cdb._hash)
 
 
 class BaseCATHashingTests(unittest.TestCase):
