@@ -702,11 +702,13 @@ or download the compatible model."""
 
     def get_hash(self, force_recalc: bool = False):
         if not force_recalc and self._hash and not self.is_dirty:
+            logger.info("Resuing old hash of CDB since the CDB has not changed: %s", self._hash)
             return self._hash
         self.is_dirty = False
         return self.calculate_hash()
 
     def calculate_hash(self):
+        logger.info("Recalculating hash for CDB, this may take a while")
         hasher = Hasher()
 
         for k,v in self.__dict__.items():
@@ -721,4 +723,5 @@ or download the compatible model."""
                 hasher.update(v, length=True)
 
         self._hash = hasher.hexdigest()
+        logger.info("Found new CDB hash: %s", self._hash)
         return self._hash
