@@ -20,14 +20,7 @@ setuptools.setup(
     install_requires=[
         'numpy>=1.22.0', # first to support 3.11
         'pandas>=1.4.2', # first to support 3.11
-        # note from 13.12.2022:
-        # gensim has python 3.11 support for pre 4.0.0 versions
-        # and they've implemented 3.11 support in thir dervelopmnet branch
-        # however, there's not been a release yet
-        # so this will install the tested github state of the package
-        'gensim@git+https://github.com/RaRe-Technologies/gensim.git@ca8e4e8378bc489b0dda087dd9c0ed8f933ca3e2',
-        # seems like we need the en_core_web_md from version 3.1.3
-        # but overall, 3.4.3 works the best, mostly becasue before that pydantic 1.10 is not supported
+        'gensim>=4.3.0', # first to support 3.11
         'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
         'transformers>=4.19.2',
