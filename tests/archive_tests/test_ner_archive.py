@@ -15,6 +15,8 @@ from medcat.linking.vector_context_model import ContextModel
 from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
 
+from ..helper import VocabDownloader
+
 
 class NerArchiveTests(unittest.TestCase):
 
@@ -35,12 +37,9 @@ class NerArchiveTests(unittest.TestCase):
         # Check
         #assert cdb.cui2names == {'S-229004': {'movar', 'movarvirus', 'movarviruses'}, 'S-229005': {'cdb'}}
 
-        self.vocab_path = "./tmp_vocab.dat"
-        if not os.path.exists(self.vocab_path):
-            import requests
-            tmp = requests.get("https://medcat.rosalind.kcl.ac.uk/media/vocab.dat")
-            with open(self.vocab_path, 'wb') as f:
-                f.write(tmp.content)
+        downloader = VocabDownloader()
+        self.vocab_path = downloader.vocab_path
+        downloader.check_or_download()
 
         vocab = Vocab.load(self.vocab_path)
         # Make the pipeline
