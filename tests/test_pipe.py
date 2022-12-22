@@ -1,7 +1,5 @@
 import unittest
 import logging
-import os
-import requests
 from spacy.language import Language
 from medcat.cdb import CDB
 from medcat.vocab import Vocab

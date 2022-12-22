@@ -3,7 +3,6 @@ from medcat.config import Config, weighted_average
 from functools import partial
 import numpy as np
 import logging
-import os
 
 from ..helper import VocabDownloader
 
