@@ -18,10 +18,10 @@ setuptools.setup(
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.ner', 'medcat.utils.regression'],
     install_requires=[
         'numpy>=1.21.4',
-        'pandas<=1.4.2,>=1.1.5',
+        'pandas>=1.1.5',
         'gensim~=4.1.2',
         'spacy<3.1.4,>=3.1.0',
-        'scipy<=1.8.1,>=1.5.4',
+        'scipy>=1.5.4',
         'transformers~=4.19.2',
         'torch>=1.0',
         'tqdm>=4.27',
@@ -31,7 +31,7 @@ setuptools.setup(
         'dill~=0.3.4,<0.3.5', # less than 0.3.5 due to datasets requirement
         'datasets~=2.2.2',
         'jsonpickle~=2.0.0',
-        'psutil<6.0.0,>=5.8.0',
+        'psutil>=5.8.0',
         # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
         'multiprocess==0.70.12',  # seems to work better than standard mp
         'py2neo==2021.2.3',
