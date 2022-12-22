@@ -1,6 +1,4 @@
 import logging
-import os
-import requests
 import unittest
 from spacy.lang.en import English
 from medcat.preprocessing.tokenizers import spacy_split_all
