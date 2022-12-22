@@ -1,5 +1,9 @@
 import unittest
 
+import numpy as np
+
+from medcat.vocab import Vocab
+
 
 class AsyncMock(unittest.mock.MagicMock):
     async def __call__(self, *args, **kwargs):
