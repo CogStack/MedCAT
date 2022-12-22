@@ -66,7 +66,7 @@ class VocabDownloader:
         if tmp.content == ERROR_503:
             print('Rosalind server unavailable')
             if self._has_simple:
-                print('Local simple vocab already presetn')
+                print('Local simple vocab already present')
                 return
             print('Generating local simple vocab instead')
             v = generate_simple_vocab()
