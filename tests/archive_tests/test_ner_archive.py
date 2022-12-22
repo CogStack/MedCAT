@@ -1,5 +1,4 @@
 import logging
-import os
 import unittest
 import numpy as np
 from timeit import default_timer as timer
