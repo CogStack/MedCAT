@@ -1,6 +1,4 @@
 import logging
-import os
-import requests
 import unittest
 from spacy.lang.en import English
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -14,6 +12,8 @@ from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
 from medcat.cdb import CDB
 
+from .helper import VocabDownloader
+
 
 class A_NERTests(unittest.TestCase):
     @classmethod
@@ -25,11 +25,9 @@ class A_NERTests(unittest.TestCase):
         cls.cdb = CDB(config=cls.config)
 
         print("Set up Vocab")
-        vocab_path = "./tmp_vocab.dat"
-        if not os.path.exists(vocab_path):
-            tmp = requests.get("https://medcat.rosalind.kcl.ac.uk/media/vocab.dat")
-            with open(vocab_path, 'wb') as f:
-                f.write(tmp.content)
+        downloader = VocabDownloader()
+        vocab_path = downloader.vocab_path
+        downloader.check_or_download()
 
         cls.vocab = Vocab.load(vocab_path)
 
