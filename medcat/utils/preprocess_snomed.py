@@ -303,6 +303,7 @@ class Snomed:
         return pd.concat(df2merge)
 
     def map_snomed2opcs4(self) -> pd.DataFrame:
+        # TODO: Explore why these also contains ICD10 codes too in UK ext.
         """Map SNOMED to OPSC4.
 
         Raises:
