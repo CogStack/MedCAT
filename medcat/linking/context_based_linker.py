@@ -3,7 +3,6 @@ import logging
 
 from spacy.tokens import Span, Doc
 from typing import Dict
-from medcat.utils.filters import check_filters
 from medcat.linking.vector_context_model import ContextModel
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.cdb import CDB
@@ -16,13 +15,13 @@ logger = logging.getLogger(__name__)
 
 
 class Linker(PipeRunner):
-    r''' Link to a biomedical database.
+    """Link to a biomedical database.
 
     Args:
-        cdb
-        vocab
-        config
-    '''
+        cdb (CDB): The Context Database.
+        vocab (Vocab): The vocabulary.
+        config (Config): The config.
+    """
 
     # Custom pipeline component name
     name = 'cat_linker'
@@ -39,7 +38,7 @@ class Linker(PipeRunner):
 
     def _train(self, cui: str, entity: Span, doc: Doc, add_negative: bool = True) -> None:
         name = "{} - {}".format(entity._.detected_name, cui)
-        """ TODO: Disable for now
+        """TODO: Disable for now
         if self.train_counter.get(name, 0) > self.config.linking['subsample_after']:
             if random.random() < 1 / math.sqrt(self.train_counter.get(name) - self.config.linking['subsample_after']):
                 self.context_model.train(cui, entity, doc, negative=False)
@@ -56,8 +55,6 @@ class Linker(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        r'''
-        '''
         doc.ents = [] # Reset main entities, will be recreated later
         cnf_l = self.config.linking
         linked_entities = []
@@ -120,7 +117,7 @@ class Linker(PipeRunner):
                         cui, context_similarity = self.context_model.disambiguate(entity._.link_candidates, entity, 'unk-unk', doc)
 
                     # Add the annotation if it exists and if above threshold and in filters
-                    if cui and check_filters(cui, self.config.linking.filters):
+                    if cui and self.config.linking.filters.check_filters(cui):
                         th_type = self.config.linking.similarity_threshold_type
                         if (th_type == 'static' and context_similarity >= self.config.linking.similarity_threshold) or \
                            (th_type == 'dynamic' and context_similarity >= self.cdb.cui2average_confidence[cui] * self.config.linking.similarity_threshold):

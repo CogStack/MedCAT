@@ -23,12 +23,13 @@ logger = logging.getLogger(__name__) # different logger from the package-level o
 
 
 class Pipe(object):
-    r""" A wrapper around the standard spacy pipeline.
+    """A wrapper around the standard spacy pipeline.
 
     Args:
-        tokenizer (`spacy.tokenizer.Tokenizer`):
-            What will be used to split text into tokens, can be anything built as a spacy tokenizer.
-        config (`medcat.config.Config`):
+        tokenizer (spacy.tokenizer.Tokenizer):
+            What will be used to split text into tokens,
+            can be anything built as a spacy tokenizer.
+        config (medcat.config.Config):
             Global config for medcat.
 
     Properties:
@@ -48,16 +49,16 @@ class Pipe(object):
         logger.setLevel(self.config.general.log_level)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
-        r""" Add any kind of a tagger for tokens.
+        """Add any kind of a tagger for tokens.
 
         Args:
-            tagger (`object/function`):
+            tagger(Callable):
                 Any object/function that takes a spacy doc as an input, does something
                 and returns the same doc.
-            name (`str`):
-                Name for this component in the pipeline.
-            additional_fields (`List[str]`):
-                Fields to be added to the `_` properties of a token.
+            name(Optional[str], optional):
+                Name for this component in the pipeline. (Default value = None)
+            additional_fields(List[str], optional):
+                Fields to be added to the `_` properties of a token. (Default value = [])
         """
         component_factory_name = spacy.util.get_object_name(tagger)
         name = name if name is not None else component_factory_name
@@ -82,9 +83,14 @@ class Pipe(object):
         Token.set_extension('norm', default=None, force=True)
 
     def add_ner(self, ner: NER, name: Optional[str] = None) -> None:
-        r""" Add NER from CAT to the pipeline, will also add the necessary fields
+        """Add NER from CAT to the pipeline, will also add the necessary fields
         to the document and Span objects.
 
+        Args:
+            ner(NER):
+                The NER instance
+            name(Optional[str], optional):
+                The pipeline name (Default value = None)
         """
         component_name = spacy.util.get_object_name(ner)
         name = name if name is not None else component_name
@@ -101,12 +107,15 @@ class Pipe(object):
         Span.set_extension('link_candidates', default=None, force=True)
 
     def add_linker(self, linker: Linker, name: Optional[str] = None) -> None:
-        r""" Add entity linker to the pipeline, will also add the necessary fields
+        """Add entity linker to the pipeline, will also add the necessary fields
         to Span object.
 
-        linker (object/function):
-            Any object/function created based on the requirements for a spaCy pipeline components. Have
-            a look at https://spacy.io/usage/processing-pipelines#custom-components
+        Args:
+            linker(Linker):
+                Any object/function created based on the requirements for a spaCy pipeline components. Have
+                a look at https://spacy.io/usage/processing-pipelines#custom-components
+            name(Optional[str], optional):
+                The component name (Default value = None)
         """
         component_name = spacy.util.get_object_name(linker)
         name = name if name is not None else component_name
@@ -145,19 +154,20 @@ class Pipe(object):
                             texts: Iterable[str],
                             n_process: Optional[int] = None,
                             batch_size: Optional[int] = None) -> Iterable[Doc]:
-        r""" Batch process a list of texts in parallel.
+        """Batch process a list of texts in parallel.
 
         Args:
-            texts (`Iterable[str]`):
+            texts (Iterable[str]):
                 The input sequence of texts to process.
-            n_process (`int`):
-                The number of processes running in parallel. Defaults to max(mp.cpu_count() - 1, 1).
-            batch_size (`int`):
+            n_process (int):
+                The number of processes running in parallel.
+                Defaults to max(mp.cpu_count() - 1, 1).
+            batch_size (int):
                 The number of texts to buffer. Defaults to 1000.
-            total (`int`):
+            total (int):
                 The number of texts in total.
 
-        Return:
+        Returns:
             Generator[Doc]:
                 The output sequence of spacy documents with the extracted entities
         """
@@ -219,8 +229,7 @@ class Pipe(object):
 
     @property
     def spacy_nlp(self) -> Language:
-        """ The spaCy Language object
-        """
+        """The spaCy Language object."""
         return self._nlp
 
     @staticmethod

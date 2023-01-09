@@ -36,10 +36,13 @@ def make_pretty_labels(cdb: CDB, doc: Doc, style: Optional[LabelStyle] = None) -
 
 def create_main_ann(cdb: CDB, doc: Doc, tuis: Optional[List] = None) -> None:
     # TODO: Separate into another piece of the pipeline
-    """ Creates annotation in the spacy ents list
+    """Creates annotation in the spacy ents list
     from all the annotations for this document.
 
-    doc:  spacy document
+    Args:
+        cdb (CDB): The Context Databse.
+        doc (Doc): Spacy document.
+        tuis (Optional[List], optional): The type IDs. Defaults to None.
     """
     doc._.ents.sort(key=lambda x: len(x.text), reverse=True)
 
