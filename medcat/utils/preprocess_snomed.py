@@ -12,12 +12,11 @@ def parse_file(filename, first_row_header=True, columns=None):
 
 
 class Snomed:
-    """Pre-process SNOMED CT release files:
-    Args:
-        data_path:
-            Path to the unzipped SNOMED CT folder
-        uk_ext: bool
-            Specification of a SNOMED UK extension after 2021 to process the divergent release format.
+    """
+    The Snomed class is used to pre-process SNOMED CT release files. It takes two arguments:
+    data_path: the path to the unzipped SNOMED CT folder
+    uk_ext: a bool specifying whether the version is a SNOMED UK extension released after 2021.
+    It has several methods, which is used to create a SNOMED CT concept DataFrame ready for MedCAT CDB creation.
     """
 
     def __init__(self, data_path, uk_ext=False, uk_drug_ext=False):
@@ -27,11 +26,11 @@ class Snomed:
         self.uk_drug_ext = uk_drug_ext
 
     def to_concept_df(self):
-        """Please remember to specify if the version is a SNOMED UK extension released after 2021.
-        This can be done prior to this step: Snomed.uk_ext = True.
-        This step is not required for UK extension releases pre-2021.
-
-        :return: SNOMED CT concept DataFrame ready for MEDCAT CDB creation
+        """
+        Create a SNOMED CT concept DataFrame ready for MEDCAT CDB creation.
+        it also checks if the version is a UK extension release and sets the correct file names for the concept and description snapshots accordingly.
+        Additionally, it has a uk_drug_ext variable to handle the divergent release format of the UK Drug Extension >v2021.
+        :return: SNOMED CT concept DataFrame
         """
         snomed_releases = []
         paths = []
@@ -252,7 +251,7 @@ class Snomed:
 
     def map_snomed2icd10(self):
         """
-
+        Creates a DataFrame of snomed ct mapping to ICD10
         :return: SNOMED to ICD10 mapping DataFrame which includes all metadata
         """
         snomed_releases = []
@@ -304,7 +303,7 @@ class Snomed:
 
     def map_snomed2opcs4(self) -> pd.DataFrame:
         # TODO: Explore why these also contains ICD10 codes too in UK ext.
-        """Map SNOMED to OPSC4.
+        """Creates a Dataframe Map of SNOMED UK ext of ICD10 and OPSC4.
 
         Raises:
             FileNotFoundError: In case of incorrect path to SNOMED CT directory.
@@ -362,3 +361,4 @@ class Snomed:
                 drop=True)
             df2merge.append(icd_mappings)
         return pd.concat(df2merge)
+
