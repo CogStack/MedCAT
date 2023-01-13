@@ -10,6 +10,28 @@ def parse_file(filename, first_row_header=True, columns=None):
         entities = [[n.strip() for n in line.split('\t')] for line in f]
         return pd.DataFrame(entities[1:], columns=entities[0] if first_row_header else columns)
 
+def get_all_children(sctid, pt2ch): 
+    """
+    Retrieves all the children of a given SNOMED CT ID (SCTID) from a given parent-to-child mapping (pt2ch) via the "IS A" relationship.
+    pt2ch can be found in a MedCAT model in the additional info via the call: cat.cdb.addl_info['pt2ch']
+    
+    Parameters:
+        sctid (int): The SCTID whose children need to be retrieved.
+        pt2ch (dict): A dictionary containing the parent-to-child relationships in the form {parent_sctid: [list of child sctids]}.
+        
+    Returns:
+        list: A list of unique SCTIDs that are children of the given SCTID.
+    """
+    result = [] 
+    stack = [sctid] 
+    while len(stack) != 0: 
+        # remove the last element from the stack
+        current_snomed = stack.pop()
+        current_snomed_parent = pt2ch.get(current_snomed, [])
+        stack.extend(current_snomed_parent)
+        result.append(current_snomed)
+    result = list(set(result))
+    return result
 
 class Snomed:
     """
