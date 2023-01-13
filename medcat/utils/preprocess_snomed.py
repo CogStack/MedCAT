@@ -32,18 +32,7 @@ class Snomed:
         Additionally, it has a uk_drug_ext variable to handle the divergent release format of the UK Drug Extension >v2021.
         :return: SNOMED CT concept DataFrame
         """
-        snomed_releases = []
-        paths = []
-        if "Snapshot" in os.listdir(self.data_path):
-            paths.append(self.data_path)
-            snomed_releases.append(self.release)
-        else:
-            for folder in os.listdir(self.data_path):
-                if "SnomedCT" in folder:
-                    paths.append(os.path.join(self.data_path, folder))
-                    snomed_releases.append(folder[-16:-8])
-        if len(paths) == 0:
-            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
+        paths, snomed_releases = self._check_path_and_release()
 
         df2merge = []
         for i, snomed_release in enumerate(snomed_releases):
@@ -124,19 +113,7 @@ class Snomed:
 
         :return: List of all SNOMED CT relationships
         """
-        snomed_releases = []
-        paths = []
-        if "Snapshot" in os.listdir(self.data_path):
-            paths.append(self.data_path)
-            snomed_releases.append(self.release)
-        else:
-            for folder in os.listdir(self.data_path):
-                if "SnomedCT" in folder:
-                    paths.append(os.path.join(self.data_path, folder))
-                    snomed_releases.append(folder[-16:-8])
-        if len(paths) == 0:
-            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
-
+        paths, snomed_releases = self._check_path_and_release()
         all_rela = []
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
@@ -184,19 +161,7 @@ class Snomed:
         :param output_jsonfile: Name of json file output. Tip: include SNOMED edition to avoid downstream confusions
         :return: json file  of relationship mapping
         """
-        snomed_releases = []
-        paths = []
-        if "Snapshot" in os.listdir(self.data_path):
-            paths.append(self.data_path)
-            snomed_releases.append(self.release)
-        else:
-            for folder in os.listdir(self.data_path):
-                if "SnomedCT" in folder:
-                    paths.append(os.path.join(self.data_path, folder))
-                    snomed_releases.append(folder[-16:-8])
-        if len(paths) == 0:
-            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
-
+        paths, snomed_releases = self._check_path_and_release()
         output_dict = {}
         for i, snomed_release in enumerate(snomed_releases):
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
@@ -251,8 +216,44 @@ class Snomed:
 
     def map_snomed2icd10(self):
         """
-        Creates a DataFrame of snomed ct mapping to ICD10
-        :return: SNOMED to ICD10 mapping DataFrame which includes all metadata
+        This function maps SNOMED CT concepts to ICD-10 codes using the refset mappings provided in the SNOMED CT release package.
+
+        Returns:
+            dict: A dictionary containing the SNOMED CT to ICD-10 mappings including metadata.
+        """
+        snomed2icd10df = self._map_snomed2refset()
+        if self.uk_ext is True:
+            return self._refset_df2dict(snomed2icd10df[0])
+        else:
+            return self._refset_df2dict(snomed2icd10df)
+
+    def map_snomed2opcs4(self):
+        """
+        This function maps SNOMED CT concepts to OPCS-4 codes using the refset mappings provided in the SNOMED CT release package.
+
+        Then it calls the internal function _map_snomed2refset() to get the DataFrame containing the OPCS-4 mappings.
+        The function then converts the DataFrame to a dictionary using the internal function _refset_df2dict()
+
+        Returns:
+            dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
+        """
+        if self.uk_ext is not True:
+            raise AttributeError("OPCS-4 mapping does not exist in this edition")
+        snomed2opcs4df = self._map_snomed2refset()[1]
+        return self._refset_df2dict(snomed2opcs4df)
+    
+    def _check_path_and_release(self):
+        """
+        This function checks the path and release of the SNOMED CT data provided.
+        It looks for the "Snapshot" folder within the data path, and if it's not found, it looks for any folder containing the name "SnomedCT".
+        It then stores the path and release in separate lists.
+        If no valid paths are found, it raises a FileNotFoundError.
+
+        Returns:
+            tuple: a tuple containing two lists, the first one is a list of the paths where the data is located and the second is a list of the releases of the data.
+
+        Raises:
+            FileNotFoundError: If the path to the SNOMED CT directory is incorrect.
         """
         snomed_releases = []
         paths = []
@@ -266,17 +267,51 @@ class Snomed:
                     snomed_releases.append(folder[-16:-8])
         if len(paths) == 0:
             raise FileNotFoundError('Incorrect path to SNOMED CT directory')
-        df2merge = []
+        return paths, snomed_releases
+
+    def _refset_df2dict(refset_df:pd.DataFrame)-> dict:
+        """
+        This function takes a SNOMED refset DataFrame as an input and converts it into a dictionary.
+        The DataFrame should contain the columns 'referencedComponentId','mapTarget','mapGroup','mapPriority','mapRule','mapAdvice'.
+
+        Parameters:
+            refset_df (pd.DataFrame) : DataFrame containing the refset data
+    
+        Returns:
+            dict : mapping from SNOMED CT codes as key and the refset metadata list of dictionaries as values.
+        """
+        refset_dict = refset_df.groupby('referencedComponentId').apply(lambda group: [{'code': row['mapTarget'],
+                                                                                                'mapGroup': row['mapPriority'],
+                                                                                                'mapPriority': row['mapPriority'],
+                                                                                                'mapRule': row['mapRule'],
+                                                                                                'mapAdvice': row['mapAdvice']} for _, row in group.iterrows()]).to_dict()
+        return refset_dict
+
+    def _map_snomed2refset(self):
+        """
+        This function maps SNOMED CT concepts using the refset mappings provided in the SNOMED CT release package. 
+        It looks for the refset mappings in the Snapshot/Refset/Map directory and it can either be ICD-10 codes in international releases,
+         or when available, other classification systems such as OPCS4 codes for SNOMED UK_extension.
+        If the uk_ext flag is set to true it returns a tuple with two dataframes, one for ICD-10 codes and another for OPCS4 codes.
+
+        Returns:
+            dict or tuple of DataFrames: A dict or tuple of dataframes containing the SNOMED CT to refset mappings including metadata.
+
+        Raises:
+            FileNotFoundError: If the path to the SNOMED CT directory is incorrect.
+        """
+        paths, snomed_releases = self._check_path_and_release()
+        dfs2merge = []
         for i, snomed_release in enumerate(snomed_releases):
             refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
             icd10_ref_set = 'der2_iisssccRefset_ExtendedMapSnapshot'
             if self.uk_ext:
                 if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssccRefset_ExtendedMapSnapshot"
+                    continue
                 elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssccRefset_ExtendedMapUKCLSnapshot"
+                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
                 elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssccRefset_ExtendedMapUKEDSnapshot"
+                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
                 elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
                     continue
                 else:
@@ -298,67 +333,13 @@ class Snomed:
             mappings = mappings[mappings.active == '1']
             icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
                 drop=True)
-            df2merge.append(icd_mappings)
-        return pd.concat(df2merge)
-
-    def map_snomed2opcs4(self) -> pd.DataFrame:
-        # TODO: Explore why these also contains ICD10 codes too in UK ext.
-        """Creates a Dataframe Map of SNOMED UK ext of ICD10 and OPSC4.
-
-        Raises:
-            FileNotFoundError: In case of incorrect path to SNOMED CT directory.
-            FileNotFoundError: If OPCS mapping files not found.
-
-        Returns:
-            pd.DataFrame: SNOMED to OPSC4 mapping DataFrame which includes all metadata.
-        """
-        snomed_releases = []
-        paths = []
-        if "Snapshot" in os.listdir(self.data_path):
-            paths.append(self.data_path)
-            snomed_releases.append(self.release)
+            dfs2merge.append(icd_mappings)
+        mapping_df = pd.concat(dfs2merge)
+        del dfs2merge
+        if self.uk_ext or self.uk_drug_ext:
+            opcs_df = mapping_df[mapping_df['refsetId']=='1126441000000105']
+            icd10_df = mapping_df[mapping_df['refsetId']=='999002271000000101']
+            return icd10_df, opcs_df
         else:
-            for folder in os.listdir(self.data_path):
-                if "SnomedCT" in folder:
-                    paths.append(os.path.join(self.data_path, folder))
-                    snomed_releases.append(folder[-16:-8])
-        if len(paths) == 0:
-            raise FileNotFoundError('Incorrect path to SNOMED CT directory')
-        df2merge = []
-        for i, snomed_release in enumerate(snomed_releases):
-            refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
-            snomed_v = ''
-            opcs4_ref_set = 'der2_iisssccRefset_ExtendedMapSnapshot'
-            if self.uk_ext:
-                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
-                    continue
-                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
-                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
-            if self.uk_drug_ext:
-                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
-                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    opcs4_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
-            for f in os.listdir(refset_terminology):
-                m = re.search(f'{opcs4_ref_set}'+r'_(.*)_\d*.txt', f)
-                if m:
-                    snomed_v = m.group(1)
-            if snomed_v == '':
-                raise FileNotFoundError("This SNOMED release does not contain OPCS mapping files")
-            mappings = parse_file(f'{refset_terminology}/{opcs4_ref_set}_{snomed_v}_{snomed_release}.txt')
-            mappings = mappings[mappings.active == '1']
-            icd_mappings = mappings.sort_values(by=['referencedComponentId', 'mapPriority', 'mapGroup']).reset_index(
-                drop=True)
-            df2merge.append(icd_mappings)
-        return pd.concat(df2merge)
+            return mapping_df
 
