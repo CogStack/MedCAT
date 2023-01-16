@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 __SPECIALITY_NAMES_CUI = set(["cui2names", "cui2snames", "cui2type_ids"])
 __SPECIALITY_NAMES_NAME = set(
     ["name2cuis", "name2cuis2status", "name_isupper"])
-__SPECIALITY_NAMES_OTHER = set(["snames"])
+__SPECIALITY_NAMES_OTHER = set(["snames", "addl_info"])
 SPECIALITY_NAMES = __SPECIALITY_NAMES_CUI | __SPECIALITY_NAMES_NAME | __SPECIALITY_NAMES_OTHER
 
 
