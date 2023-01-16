@@ -76,7 +76,7 @@ class ModelCreationTests(unittest.TestCase):
 
     def test_dill_to_json(self):
         model_pack_path = self.undertest.create_model_pack(
-            self.json_model_pack.name, format='json')
+            self.json_model_pack.name, cdb_format='json')
         model_pack_folder = os.path.join(
             self.json_model_pack.name, model_pack_path)
         json_path = os.path.join(model_pack_folder, "*.json")

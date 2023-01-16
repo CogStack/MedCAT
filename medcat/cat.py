@@ -205,7 +205,7 @@ class CAT(object):
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
     def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME,
-            format: str = 'dill') -> str:
+            cdb_format: str = 'dill') -> str:
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
@@ -214,8 +214,8 @@ class CAT(object):
                 An id will be appended to this name
             model_pack_name (str, optional):
                 The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
-            format (str):
-                The format of the saved model pack.
+            cdb_format (str):
+                The format of the saved CDB in the model pack.
                 The available formats are:
                 - dill
                 - json
@@ -236,11 +236,11 @@ class CAT(object):
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
         # Check format
-        if format.lower() == 'json':
+        if cdb_format.lower() == 'json':
             json_path = save_dir_path # in the same folder!
         else:
             json_path = None # use dill formating
-        logger.info('Saving model pack with %s format', format)
+        logger.info('Saving model pack with CDB in %s format', cdb_format)
 
         # expand user path to make this work with '~'
         os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
