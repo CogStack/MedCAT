@@ -101,6 +101,7 @@ class CDBSerializer:
         - cui2snames
         - cui2type_ids
         - name_isupper
+        - addl_info
     These are specified at the top of the module (in `SPECIALITY_NAMES`).
 
     The rest of the information (i.e config and other less memory intensive parts) will
