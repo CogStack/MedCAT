@@ -9,7 +9,7 @@ from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from sklearn.metrics import classification_report, precision_recall_fscore_support
+from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
 
 import logging
 
@@ -270,6 +270,7 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     score_average = config.train['score_average']
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
+    confusion = confusion_matrix(y_eval, predictions, labels=list(config.general['category_value2id'].values()))
 
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
@@ -289,4 +290,4 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         else:
             examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
 
-    return {'precision': precision, 'recall': recall, 'f1': f1, 'examples': examples}
+    return {'precision': precision, 'recall': recall, 'f1': f1, 'examples': examples, 'confusion matrix': confusion}
