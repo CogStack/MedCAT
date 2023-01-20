@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 def run_conversion(modelpack: str, format: str, target: str, overwrite: bool) -> None:
     cat = CAT.load_model_pack(modelpack)
     cat.create_model_pack(os.path.dirname(
-        target), os.path.basename(target), format=format)
+        target), os.path.basename(target), cdb_format=format)
 
 
 def main():

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 __SPECIALITY_NAMES_CUI = set(["cui2names", "cui2snames", "cui2type_ids"])
 __SPECIALITY_NAMES_NAME = set(
     ["name2cuis", "name2cuis2status", "name_isupper"])
-__SPECIALITY_NAMES_OTHER = set(["snames"])
+__SPECIALITY_NAMES_OTHER = set(["snames", "addl_info"])
 SPECIALITY_NAMES = __SPECIALITY_NAMES_CUI | __SPECIALITY_NAMES_NAME | __SPECIALITY_NAMES_OTHER
 
 
@@ -101,6 +101,7 @@ class CDBSerializer:
         - cui2snames
         - cui2type_ids
         - name_isupper
+        - addl_info
     These are specified at the top of the module (in `SPECIALITY_NAMES`).
 
     The rest of the information (i.e config and other less memory intensive parts) will
