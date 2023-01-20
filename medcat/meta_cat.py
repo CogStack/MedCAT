@@ -432,17 +432,17 @@ class MetaCAT(PipeRunner):
         batch_size_chars = config.general['pipe_batch_size_in_chars']
 
         if config.general['device'] == 'cpu' or config.general['disable_component_lock']:
-            yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
+            yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)  # type: ignore
         else:
             with MetaCAT._component_lock:
-                yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
+                yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)  # type: ignore
 
     def _set_meta_anns(self,
                        stream: Iterable[Union[Doc, FakeDoc]],
                        batch_size_chars: int,
                        config: ConfigMetaCAT,
                        id2category_value: Dict) -> Iterator[Optional[Doc]]:
-        for docs in self.batch_generator(stream, batch_size_chars):
+        for docs in self.batch_generator(stream, batch_size_chars):  # type: ignore
             try:
                 if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
                     if config.general['lowercase']:

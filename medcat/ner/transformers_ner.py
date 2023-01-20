@@ -331,19 +331,19 @@ class TransformersNER(object):
             return stream
 
         batch_size_chars = self.config.general['pipe_batch_size_in_chars']
-        yield from self._process(stream, batch_size_chars)
+        yield from self._process(stream, batch_size_chars)  # type: ignore
 
     def _process(self,
                  stream: Iterable[Union[Doc, None]],
                  batch_size_chars: int) -> Iterator[Optional[Doc]]:
-        for docs in self.batch_generator(stream, batch_size_chars):
+        for docs in self.batch_generator(stream, batch_size_chars):  # type: ignore
             #all_text = [doc.text for doc in docs]
             #all_text_processed = self.tokenizer.encode_eval(all_text)
             # For now we will process the documents one by one, should be improved in the future to use batching
             for doc in docs:
                 try:
                     res = self.ner_pipe(doc.text, aggregation_strategy=self.config.general['ner_aggregation_strategy'])
-                    doc.ents = []
+                    doc.ents = []  # type: ignore
                     for r in res:
                         inds = []
                         for ind, word in enumerate(doc):
