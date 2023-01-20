@@ -3,7 +3,9 @@ from medcat.config import Config, weighted_average
 from functools import partial
 import numpy as np
 import logging
-import os
+
+from ..helper import VocabDownloader
+
 
 config = Config()
 config.general['log_level'] = logging.INFO
@@ -21,12 +23,9 @@ from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.cat import CAT
 
-vocab_path = "./tmp_vocab.dat"
-if not os.path.exists(vocab_path):
-    import requests
-    tmp = requests.get("https://s3-eu-west-1.amazonaws.com/zkcl/vocab.dat")
-    with open(vocab_path, 'wb') as f:
-        f.write(tmp.content)
+downloader = VocabDownloader()
+vocab_path = downloader.vocab_path
+downloader.check_or_download()
 
 config = Config()
 cdb = CDB.load("./tmp_cdb.dat", config=config)

@@ -1,7 +1,5 @@
 import unittest
 import logging
-import os
-import requests
 from spacy.language import Language
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
@@ -17,6 +15,8 @@ from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 from transformers import AutoTokenizer
 
 
+from .helper import VocabDownloader
+
 
 class PipeTests(unittest.TestCase):
 
@@ -30,11 +30,9 @@ class PipeTests(unittest.TestCase):
         cls.config.linking['disamb_length_limit'] = 2
         cls.cdb = CDB(config=cls.config)
 
-        vocab_path = "./tmp_vocab.dat"
-        if not os.path.exists(vocab_path):
-            tmp = requests.get("https://medcat.rosalind.kcl.ac.uk/media/vocab.dat")
-            with open(vocab_path, 'wb') as f:
-                f.write(tmp.content)
+        downloader = VocabDownloader()
+        vocab_path = downloader.vocab_path
+        downloader.check_or_download()
 
         cls.vocab = Vocab.load(vocab_path)
         cls.spell_checker = BasicSpellChecker(cdb_vocab=cls.cdb.vocab, config=cls.config, data_vocab=cls.vocab)

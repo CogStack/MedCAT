@@ -1,4 +1,5 @@
 import os
+import glob
 import shutil
 import pickle
 import traceback
@@ -39,6 +40,7 @@ from medcat.config import Config, LinkingFilters
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
+from medcat.utils.saving.serializer import SPECIALITY_NAMES
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
@@ -212,7 +214,8 @@ class CAT(object):
             version.medcat_version = __version__
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False) -> str:
+    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False,
+            cdb_format: str = 'dill') -> str:
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
@@ -223,6 +226,12 @@ class CAT(object):
                 The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
             force_rehash (bool, optional):
                 Force recalculation of hash. Defaults to `False`.
+            cdb_format (str):
+                The format of the saved CDB in the model pack.
+                The available formats are:
+                - dill
+                - json
+                Defaults to 'dill'
 
         Returns:
             str:
@@ -238,6 +247,13 @@ class CAT(object):
         _save_dir_path = save_dir_path
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
+        # Check format
+        if cdb_format.lower() == 'json':
+            json_path = save_dir_path # in the same folder!
+        else:
+            json_path = None # use dill formating
+        logger.info('Saving model pack with CDB in %s format', cdb_format)
+
         # expand user path to make this work with '~'
         os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
 
@@ -250,7 +266,7 @@ class CAT(object):
 
         # Save the CDB
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
-        self.cdb.save(cdb_path)
+        self.cdb.save(cdb_path, json_path)
 
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
@@ -313,7 +329,10 @@ class CAT(object):
 
         # Load the CDB
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        cdb = CDB.load(cdb_path)
+        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= len(SPECIALITY_NAMES)
+        json_path = model_pack_path if has_jsons else None
+        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
+        cdb = CDB.load(cdb_path, json_path)
 
         # TODO load addl_ner
 
