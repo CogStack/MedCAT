@@ -5,7 +5,7 @@ import json
 import logging
 import aiofiles
 import numpy as np
-from typing import Dict, Set, Optional, List, Union, cast
+from typing import Dict, Set, Optional, List, Union
 from functools import partial
 
 from medcat import __version__
@@ -13,6 +13,7 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
+from medcat.utils.saving.serializer import CDBSerializer
 
 
 logger = logging.getLogger(__name__)
@@ -371,22 +372,27 @@ class CDB(object):
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
 
-    def save(self, path: str) -> None:
+    def save(self, path: str, json_path: Optional[str] = None, overwrite: bool = True) -> None:
         """Saves model to file (in fact it saves variables of this class).
+
+        If a `json_path` is specified, the JSON serialization is used for some of the data.
 
         Args:
             path (str):
                 Path to a file where the model will be saved
+            json_path (Optional[str]):
+                If specified, json serialisation is used. Defaults to None.
+            overwrite (bool):
+                Whether or not to overwrite existing file(s).
         """
-        with open(path, 'wb') as f:
-            # No idea how to this correctly
-            to_save = {}
-            to_save['config'] = self.config.asdict()
-            to_save['cdb'] = {k:v for k,v in self.__dict__.items() if k != 'config'}
-            dill.dump(to_save, f)
+        ser = CDBSerializer(path, json_path)
+        ser.serialize(self, overwrite=overwrite)
 
+    # TODO - add JSON serialization to async save
     async def save_async(self, path: str) -> None:
         """Async version of saving model to file (in fact it saves variables of this class).
+
+        This method does not (currently) support the new JSON serialization.
 
         Args:
             path (str):
@@ -400,33 +406,28 @@ class CDB(object):
             await f.write(dill.dumps(to_save))
 
     @classmethod
-    def load(cls, path: str, config_dict: Optional[Dict] = None) -> "CDB":
+    def load(cls, path: str, json_path: Optional[str] = None, config_dict: Optional[Dict] = None) -> "CDB":
         """Load and return a CDB. This allows partial loads in probably not the right way at all.
+
+        If `json_path` is specified, the JSON serialization is assumed to be present.
+        Otherwise, it is assumed not to be present.
 
         Args:
             path (str):
                 Path to a `cdb.dat` from which to load data.
+            json_path (str):
+                Path to the JSON serialized folder
             config_dict:
                 A dictionary that will be used to overwrite existing fields in the config of this CDB
         """
-        with open(path, 'rb') as f:
-            # Again no idea
-            data = dill.load(f)
-            cls._check_medcat_version(data['config'])
-            config = cast(Config, Config.from_dict(data['config']))
-            cls._ensure_backward_compatibility(config)
+        ser = CDBSerializer(path, json_path)
+        cdb = ser.deserialize(CDB)
+        cls._check_medcat_version(cdb.config.asdict())
+        cls._ensure_backward_compatibility(cdb.config)
 
-            # Create an instance of the CDB (empty)
-            cdb = cls(config=config)
-
-            # Load data into the new cdb instance
-            for k in cdb.__dict__:
-                if k in data['cdb']:
-                    cdb.__dict__[k] = data['cdb'][k]
-
-            # Overwrite the config with new data
-            if config_dict is not None:
-                cdb.config.merge_config(config_dict)
+        # Overwrite the config with new data
+        if config_dict is not None:
+            cdb.config.merge_config(config_dict)
 
         return cdb
 
