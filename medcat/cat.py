@@ -378,7 +378,7 @@ class CAT(object):
             return None
         else:
             text = self._get_trimmed_text(str(text))
-            return self.pipe(text)
+            return self.pipe(text)  # type: ignore
 
     def __repr__(self):
         """Prints the model_card for this CAT instance.
@@ -473,7 +473,7 @@ class CAT(object):
                     else:
                         local_filters.cuis = {'empty'}
 
-                spacy_doc: Doc = self(doc['text'])
+                spacy_doc: Doc = self(doc['text'])  # type: ignore
 
                 if use_overlaps:
                     p_anns = spacy_doc._.ents
@@ -786,7 +786,7 @@ class CAT(object):
 
         if spacy_entity is not None and spacy_doc is not None:
             # Train Linking
-            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative, names=names)
+            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative, names=names)  # type: ignore
 
             if not negative and devalue_others:
                 # Find all cuis
@@ -798,7 +798,7 @@ class CAT(object):
                     cuis.remove(cui)
                 # Add negative training for all other CUIs that link to these names
                 for _cui in cuis:
-                    self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
+                    self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
     def train_supervised(self,
                          data_path: str,
@@ -970,7 +970,7 @@ class CAT(object):
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
-                    spacy_doc: Doc = self(doc['text'])
+                    spacy_doc: Doc = self(doc['text'])  # type: ignore
 
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
@@ -991,8 +991,8 @@ class CAT(object):
                     if train_from_false_positives:
                         fps: List[Span] = get_false_positives(doc, spacy_doc)
 
-                        for fp in fps:
-                            fp_: Span = fp
+                        for fp in fps:  # type: ignore
+                            fp_: Span = fp  # type: ignore
                             self.add_and_train_concept(cui=fp_._.cui,
                                                        name=fp_.text,
                                                        spacy_doc=spacy_doc,
@@ -1034,7 +1034,7 @@ class CAT(object):
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed']) -> Dict:
         doc = self(text)
-        out = self._doc_to_out(doc, only_cui, addl_info)
+        out = self._doc_to_out(doc, only_cui, addl_info)  # type: ignore
         return out
 
     def get_entities_multi_texts(self,
@@ -1060,7 +1060,7 @@ class CAT(object):
         if n_process is None:
             texts_ = self._generate_trimmed_texts(texts)
             for text in texts_:
-                out.append(self._doc_to_out(self(text), only_cui, addl_info))
+                out.append(self._doc_to_out(self(text), only_cui, addl_info))  # type: ignore
         else:
             self.pipe.set_error_handler(self._pipe_error_handler)
             try:
@@ -1077,9 +1077,9 @@ class CAT(object):
                     logger.warning("Found at least one failed batch and set output for enclosed texts to empty")
                     for i, text in enumerate(texts_):
                         if i == len(out):
-                            out.append(self._doc_to_out(None, only_cui, addl_info))
+                            out.append(self._doc_to_out(None, only_cui, addl_info))  # type: ignore
                         elif out[i].get('text', '') != text:
-                            out.insert(i, self._doc_to_out(None, only_cui, addl_info))
+                            out.insert(i, self._doc_to_out(None, only_cui, addl_info))  # type: ignore
 
                 cnf_annotation_output = self.config.annotation_output
                 if not(cnf_annotation_output.include_text_in_output):
@@ -1487,7 +1487,7 @@ class CAT(object):
                         entity._.meta_anns = _ent['meta_anns']
                     _ents.append(entity)
             else:
-                _ents = doc.ents
+                _ents = doc.ents  # type: ignore
 
             if cnf_annotation_output.lowercase_context:
                 doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
@@ -1570,10 +1570,10 @@ class CAT(object):
 
     @staticmethod
     def _get_doc_annotations(doc: Doc):
-        if type(doc['annotations']) == list:
-            return doc['annotations']
-        if type(doc['annotations']) == dict:
-            return doc['annotations'].values()
+        if type(doc['annotations']) == list:  # type: ignore
+            return doc['annotations']  # type: ignore
+        if type(doc['annotations']) == dict:  # type: ignore
+            return doc['annotations'].values()  # type: ignore
         return None
 
     def destroy_pipe(self):
