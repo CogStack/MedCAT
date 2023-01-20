@@ -470,6 +470,7 @@ class CDB(object):
 
                 # Increase the vector count
                 self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
+        self.is_dirty = True
 
     def reset_cui_count(self, n: int = 10) -> None:
         """Reset the CUI count for all concepts that received training, used when starting new unsupervised training
@@ -485,6 +486,7 @@ class CDB(object):
         """
         for cui in self.cui2count_train.keys():
             self.cui2count_train[cui] = n
+        self.is_dirty = True
 
     def reset_training(self) -> None:
         """Will remove all training efforts - in other words all embeddings that are learnt
@@ -494,6 +496,7 @@ class CDB(object):
         self.cui2count_train = {}
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
+        self.is_dirty = True
 
     def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         """Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
@@ -564,6 +567,7 @@ class CDB(object):
         self.cui2tags = new_cui2tags
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
+        self.is_dirty = True
 
     def make_stats(self):
         stats = {}
@@ -583,6 +587,7 @@ class CDB(object):
     def reset_concept_similarity(self) -> None:
         """Reset concept similarity matrix."""
         self.addl_info['similarity'] = {}
+        self.is_dirty = True
 
     def most_similar(self,
                      cui: str,
