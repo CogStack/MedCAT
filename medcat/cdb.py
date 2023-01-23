@@ -54,6 +54,8 @@ class CDB(object):
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
         vocab (Dict[str, int]):
             Stores all the words tha appear in this CDB and the count for each one.
+        is_dirty (bool):
+            Whether or not the CDB has been changed since it was loaded or created
     """
 
     def __init__(self, config: Union[Config, None] = None) -> None:
@@ -91,6 +93,8 @@ class CDB(object):
                 }
         self.vocab: Dict = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
+        self.is_dirty = False
+        self._hash: Optional[str] = None
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -111,6 +115,7 @@ class CDB(object):
     def update_cui2average_confidence(self, cui: str, new_sim: float) -> None:
         self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim) / \
                                             (self.cui2count_train.get(cui, 0) + 1)
+        self.is_dirty = True
 
     def remove_names(self, cui: str, names: Dict) -> None:
         """Remove names from an existing concept - efect is this name will never again be used to link to this concept.
@@ -146,6 +151,7 @@ class CDB(object):
                             self.name2cuis2status[name][_cui] = 'N'
                         elif self.name2cuis2status[name][_cui] == 'P':
                             self.name2cuis2status[name][_cui] = 'PD'
+        self.is_dirty = True
 
     def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:
         """Adds a name to an existing concept.
@@ -289,6 +295,7 @@ class CDB(object):
                     self.addl_info['type_id2cuis'][type_id].add(cui)
                 else:
                     self.addl_info['type_id2cuis'][type_id] = {cui}
+        self.is_dirty = True
 
     def add_addl_info(self, name: str, data: Dict, reset_existing: bool = False) -> None:
         """Add data to the addl_info dictionary. This is done in a function to
@@ -306,6 +313,7 @@ class CDB(object):
             self.addl_info[name] = {}
 
         self.addl_info[name].update(data)
+        self.is_dirty = True
 
     def update_context_vector(self,
                               cui: str,
@@ -371,8 +379,10 @@ class CDB(object):
         if not negative:
             # Increase counter only for positive examples
             self.cui2count_train[cui] += 1
+        self.is_dirty = True
 
-    def save(self, path: str, json_path: Optional[str] = None, overwrite: bool = True) -> None:
+    def save(self, path: str, json_path: Optional[str] = None, overwrite: bool = True,
+            calc_hash_if_missing: bool = False) -> None:
         """Saves model to file (in fact it saves variables of this class).
 
         If a `json_path` is specified, the JSON serialization is used for some of the data.
@@ -384,7 +394,12 @@ class CDB(object):
                 If specified, json serialisation is used. Defaults to None.
             overwrite (bool):
                 Whether or not to overwrite existing file(s).
+            calc_hash_if_missing (bool):
+                Calculate the hash if it's missing. Defaults to `False`
         """
+        if calc_hash_if_missing and not self._hash:
+            # get instead of calculate so that the CDB is marked as not dirty if it was dirty
+            self.get_hash()
         ser = CDBSerializer(path, json_path)
         ser.serialize(self, overwrite=overwrite)
 
@@ -457,6 +472,7 @@ class CDB(object):
 
                 # Increase the vector count
                 self.cui2count_train[cui] = self.cui2count_train.get(cui, 0) + cdb.cui2count_train[cui]
+        self.is_dirty = True
 
     def reset_cui_count(self, n: int = 10) -> None:
         """Reset the CUI count for all concepts that received training, used when starting new unsupervised training
@@ -472,6 +488,7 @@ class CDB(object):
         """
         for cui in self.cui2count_train.keys():
             self.cui2count_train[cui] = n
+        self.is_dirty = True
 
     def reset_training(self) -> None:
         """Will remove all training efforts - in other words all embeddings that are learnt
@@ -481,6 +498,7 @@ class CDB(object):
         self.cui2count_train = {}
         self.cui2context_vectors = {}
         self.reset_concept_similarity()
+        self.is_dirty = True
 
     def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         """Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
@@ -551,6 +569,7 @@ class CDB(object):
         self.cui2tags = new_cui2tags
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
+        self.is_dirty = True
 
     def make_stats(self):
         stats = {}
@@ -570,6 +589,7 @@ class CDB(object):
     def reset_concept_similarity(self) -> None:
         """Reset concept similarity matrix."""
         self.addl_info['similarity'] = {}
+        self.is_dirty = True
 
     def most_similar(self,
                      cui: str,
@@ -692,13 +712,28 @@ which may or may not work. If you experience any compatibility issues, please re
 or download the compatible model."""
             )
 
-    def get_hash(self):
+    def get_hash(self, force_recalc: bool = False):
+        if not force_recalc and self._hash and not self.is_dirty:
+            logger.info("Reusing old hash of CDB since the CDB has not changed: %s", self._hash)
+            return self._hash
+        self.is_dirty = False
+        return self.calculate_hash()
+
+    def calculate_hash(self):
+        logger.info("Recalculating hash for CDB, this may take a while")
         hasher = Hasher()
 
         for k,v in self.__dict__.items():
             if k in ['cui2countext_vectors', 'name2cuis']:
                 hasher.update(v, length=False)
+            elif k in ['_hash', 'is_dirty']:
+                # ignore _hash since if it previously didn't exist, the
+                # new hash would be different when the value does exist
+                # and ignore is_dirty so that we get the same hash as previously
+                continue
             elif k != 'config':
                 hasher.update(v, length=True)
 
-        return hasher.hexdigest()
+        self._hash = hasher.hexdigest()
+        logger.info("Found new CDB hash: %s", self._hash)
+        return self._hash
