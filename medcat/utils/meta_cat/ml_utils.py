@@ -3,6 +3,7 @@ import random
 import math
 import torch
 import numpy as np
+import pandas as pd
 import torch.optim as optim
 from typing import List, Optional, Tuple, Any, Dict
 from torch import nn
@@ -270,7 +271,14 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     score_average = config.train['score_average']
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
-    confusion = confusion_matrix(y_eval, predictions, labels=list(config.general['category_value2id'].values()))
+
+    labels = [name for (name, index) in sorted(model.config.general['category_value2id'].items(), key=lambda x:x[1])]
+    confusion = pd.DataFrame(
+        data= confusion_matrix(y_eval, predictions,),
+        columns=["true " + label for label in labels],
+        index=["predicted " + label for label in labels],
+    )
+
 
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
