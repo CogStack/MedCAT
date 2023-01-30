@@ -14,7 +14,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
-    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
+    packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.ner',
               'medcat.utils.saving', 'medcat.utils.regression'],
     install_requires=[
@@ -27,8 +27,6 @@ setuptools.setup(
         'torch>=1.13.0', # first to support 3.11
         'tqdm>=4.27',
         'scikit-learn>=1.1.3', # first to supporrt 3.11
-        'elasticsearch>=8.3,<9',  # Check if this is compatible with opensearch otherwise: 'elasticsearch>=7.10,<8.0.0',
-        'eland>=8.3.0,<9',
         'dill>=0.3.4', # allow later versions with later versions of datasets (tested with 0.3.6)
         'datasets>=2.2.2', # allow later versions, tested with 2.7.1
         'jsonpickle>=2.0.0', # allow later versions, tested with 3.0.0
