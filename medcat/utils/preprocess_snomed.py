@@ -16,7 +16,7 @@ def get_all_children(sctid, pt2ch):
     Retrieves all the children of a given SNOMED CT ID (SCTID) from a given parent-to-child mapping (pt2ch) via the "IS A" relationship.
     pt2ch can be found in a MedCAT model in the additional info via the call: cat.cdb.addl_info['pt2ch']
 
-    Parameters:
+    Args:
         sctid (int): The SCTID whose children need to be retrieved.
         pt2ch (dict): A dictionary containing the parent-to-child relationships in the form {parent_sctid: [list of child sctids]}.
 
@@ -28,8 +28,8 @@ def get_all_children(sctid, pt2ch):
     while len(stack) != 0:
         # remove the last element from the stack
         current_snomed = stack.pop()
-        current_snomed_parent = pt2ch.get(current_snomed, [])
-        stack.extend(current_snomed_parent)
+        current_snomed_children = pt2ch.get(current_snomed, [])
+        stack.extend(current_snomed_children)
         result.append(current_snomed)
     result = list(set(result))
     return result
@@ -37,10 +37,15 @@ def get_all_children(sctid, pt2ch):
 
 class Snomed:
     """
-    The Snomed class is used to pre-process SNOMED CT release files. It takes two arguments:
-    data_path: the path to the unzipped SNOMED CT folder
-    uk_ext: a bool specifying whether the version is a SNOMED UK extension released after 2021.
-    It has several methods, which is used to create a SNOMED CT concept DataFrame ready for MedCAT CDB creation.
+    Pre-process SNOMED CT release files.
+
+    This class is used to create a SNOMED CT concept DataFrame ready for MedCAT CDB creation.
+
+    Attributes:
+        data_path (str): Path to the unzipped SNOMED CT folder.
+        release (str): Release of SNOMED CT folder.
+        uk_ext (bool, optional): Specifies whether the version is a SNOMED UK extension released after 2021. Defaults to False.
+        uk_drug_ext (bool, optional): Specifies whether the version is a SNOMED UK drug extension. Defaults to False.
     """
 
     def __init__(self, data_path, uk_ext=False, uk_drug_ext=False):
@@ -51,10 +56,14 @@ class Snomed:
 
     def to_concept_df(self):
         """
-        Create a SNOMED CT concept DataFrame ready for MEDCAT CDB creation.
-        it also checks if the version is a UK extension release and sets the correct file names for the concept and description snapshots accordingly.
-        Additionally, it has a uk_drug_ext variable to handle the divergent release format of the UK Drug Extension >v2021.
-        :return: SNOMED CT concept DataFrame
+        Create a SNOMED CT concept DataFrame.
+
+        Creates a SNOMED CT concept DataFrame ready for MEDCAT CDB creation.
+        Checks if the version is a UK extension release and sets the correct file names for the concept and description snapshots accordingly.
+        Additionally, handles the divergent release format of the UK Drug Extension >v2021 with the `uk_drug_ext` variable.
+
+        Returns:
+            pandas.DataFrame: SNOMED CT concept DataFrame.
         """
         paths, snomed_releases = self._check_path_and_release()
 
@@ -142,9 +151,13 @@ class Snomed:
         return pd.concat(df2merge).reset_index(drop=True)
 
     def list_all_relationships(self):
-        """SNOMED CT provides a rich set of inter-relationships between concepts.
+        """
+        List all SNOMED CT relationships.
 
-        :return: List of all SNOMED CT relationships
+        SNOMED CT provides a rich set of inter-relationships between concepts.
+
+        Returns:
+            list: List of all SNOMED CT relationships.
         """
         paths, snomed_releases = self._check_path_and_release()
         all_rela = []
@@ -192,9 +205,16 @@ class Snomed:
         return all_rela
 
     def relationship2json(self, relationshipcode, output_jsonfile):
-        """:param relationshipcode: A single SCTID or unique concept identifier of the relationship type
-        :param output_jsonfile: Name of json file output. Tip: include SNOMED edition to avoid downstream confusions
-        :return: json file  of relationship mapping
+        """
+        Convert a single relationship map structure to JSON file.
+
+        Args:
+            relationshipcode (str): A single SCTID or unique concept identifier
+                of the relationship type.
+            output_jsonfile (str): Name of JSON file output.
+
+        Returns:
+            file: JSON file of relationship mapping.
         """
         paths, snomed_releases = self._check_path_and_release()
         output_dict = {}
@@ -312,11 +332,11 @@ class Snomed:
         This function takes a SNOMED refset DataFrame as an input and converts it into a dictionary.
         The DataFrame should contain the columns 'referencedComponentId','mapTarget','mapGroup','mapPriority','mapRule','mapAdvice'.
 
-        Parameters:
+        Args:
             refset_df (pd.DataFrame) : DataFrame containing the refset data
 
         Returns:
-            dict : mapping from SNOMED CT codes as key and the refset metadata list of dictionaries as values.
+            dict: mapping from SNOMED CT codes as key and the refset metadata list of dictionaries as values.
         """
         refset_dict = refset_df.groupby('referencedComponentId').apply(lambda group: [{'code': row['mapTarget'],
                                                                                        'mapGroup': row['mapPriority'],
@@ -327,13 +347,15 @@ class Snomed:
 
     def _map_snomed2refset(self):
         """
-        This function maps SNOMED CT concepts using the refset mappings provided in the SNOMED CT release package. 
-        It looks for the refset mappings in the Snapshot/Refset/Map directory and it can either be ICD-10 codes in international releases,
-         or when available, other classification systems such as OPCS4 codes for SNOMED UK_extension.
-        If the uk_ext flag is set to true it returns a tuple with two dataframes, one for ICD-10 codes and another for OPCS4 codes.
+        Maps SNOMED CT concepts to refset mappings provided in the SNOMED CT release package.
+
+        This function maps SNOMED CT concepts using the refset mappings in the Snapshot/Refset/Map directory.
+        The refset mappings can either be ICD-10 codes in international releases or OPCS4 codes for SNOMED UK_extension, if available.
 
         Returns:
-            dict or tuple of DataFrames: A dict or tuple of dataframes containing the SNOMED CT to refset mappings including metadata.
+            pd.DataFrame: Dataframe containing SNOMED CT to refset mappings and metadata.
+            OR
+            tuple: Tuple of dataframes containing SNOMED CT to refset mappings and metadata (ICD-10, OPCS4), if uk_ext is True.
 
         Raises:
             FileNotFoundError: If the path to the SNOMED CT directory is incorrect.
