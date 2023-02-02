@@ -448,7 +448,7 @@ class RegressionChecker:
             case = RegressionCase.from_dict(case_name, details)
             cases.append(case)
         if 'meta' not in in_dict:
-            logger.warn(f"Loading regression suite without any meta data")
+            logger.warn("Loading regression suite without any meta data")
             metadata = MetaData.unknown()
         else:
             metadata = MetaData.parse_obj(in_dict['meta'])
