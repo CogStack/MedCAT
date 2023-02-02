@@ -4,7 +4,7 @@ import re
 from typing import List, Optional, Set
 import tqdm
 
-from medcat.utils.regression.checking import RegressionCase, RegressionChecker
+from medcat.utils.regression.checking import RegressionCase, RegressionChecker, MetaData
 from medcat.utils.regression.results import ResultDescriptor
 from medcat.utils.regression.targeting import FilterOptions, FilterStrategy, FilterType, TypedFilter
 
@@ -167,13 +167,15 @@ def get_matching_case(cases: List[RegressionCase], filters: List[TypedFilter]) -
 
 
 def medcat_export_json_to_regression_yml(mct_export_file: str,
-                                         cont_sel: ContextSelector = PerSentenceSelector()) -> str:
+                                         cont_sel: ContextSelector = PerSentenceSelector(),
+                                         model_card: Optional[dict] = None) -> str:
     """Extract regression test cases from a MedCATtrainer export yaml.
     This is done based on the context selector specified.
 
     Args:
         mct_export_file (str): The MCT export file path
         cont_sel (ContextSelector, optional): The context selector. Defaults to PerSentenceSelector().
+        model_card (Optional[dict]): The optional model card for generating metadata
 
     Returns:
         str: Extracted regression cases in YAML form
@@ -217,5 +219,9 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
                                             phrase, ],
                                         report=ResultDescriptor(name=case_name))
                     test_cases.append(rc)
-    checker = RegressionChecker(cases=test_cases)
+    if model_card:
+        metadata = MetaData.from_modelcard(model_card)
+    else:
+        metadata = MetaData.unknown()
+    checker = RegressionChecker(cases=test_cases, metadata=metadata)
     return checker.to_yaml()
