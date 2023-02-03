@@ -1,11 +1,16 @@
 from abc import ABC, abstractmethod
 from enum import auto, Enum
+import os
 from typing import Any, List, Dict, Optional, Set
 import yaml
+import logging
 
 import pydantic
 
-from medcat.utils.regression.checking import RegressionChecker, RegressionCase, FilterType, TypedFilter
+from medcat.utils.regression.checking import RegressionChecker, RegressionCase, FilterType, TypedFilter, MetaData
+
+
+logger = logging.getLogger(__name__)
 
 
 class CategoryDescription(pydantic.BaseModel):
@@ -322,6 +327,18 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
         for case in checker.cases:
             self.find_categories_for(case)
 
+    def save(self, prefix: str, metadata: MetaData, overwrite: bool = False) -> None:
+        for category, cases in self.strategy.observer.separated.items():
+            rc = RegressionChecker(list(cases), metadata=metadata)
+            yaml_str = rc.to_yaml()
+            yaml_file_name = f"{prefix}_{category.name}.yml"
+            if not overwrite and os.path.exists(yaml_file_name):
+                raise ValueError(f"File already exists: {yaml_file_name}. "
+                                 "Pass overwrite=True to overwrite")
+            logger.info("Writing %d cases to %s", len(cases), yaml_file_name)
+            with open(yaml_file_name) as f:
+                f.write(yaml_str)
+
 
 def get_strategy(strategy_type: StartegyType) -> SeparatorStrategy:
     """Get the separator strategy from the strategy type.
@@ -430,3 +447,12 @@ def read_categories(yaml_file: str) -> List[Category]:
         d = yaml.safe_load(f)
     cat_part = d['categories']
     return [get_category(cat_name, cat_part[cat_name]) for cat_name in cat_part]
+
+
+def separate_categories(category_yaml: str, strategy_type: StartegyType,
+                        regression_suite_yaml: str, target_file_prefix: str, overwrite: bool = False) -> None:
+    separator = get_separator(read_categories(category_yaml), strategy_type)
+    checker = RegressionChecker.from_yaml(regression_suite_yaml)
+    separator.separate(checker)
+    metadata = checker.metadata  # TODO - allow using different metadata?
+    separator.save(target_file_prefix, metadata, overwrite=overwrite)
