@@ -210,7 +210,7 @@ class SeparationObserver:
         self.cases: Dict[RegressionCase, Set[Category]] = {}
 
 
-class StartegyType(Enum):
+class StrategyType(Enum):
     """Describes the types of strategies one can can employ for strategy."""
     FIRST = auto
     ALL = auto
@@ -358,11 +358,11 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
                 f.write(yaml_str)
 
 
-def get_strategy(strategy_type: StartegyType) -> SeparatorStrategy:
+def get_strategy(strategy_type: StrategyType) -> SeparatorStrategy:
     """Get the separator strategy from the strategy type.
 
     Args:
-        strategy_type (StartegyType): The type of strategy
+        strategy_type (StrategyType): The type of strategy
 
     Raises:
         ValueError: If an unknown strategy is provided
@@ -371,20 +371,20 @@ def get_strategy(strategy_type: StartegyType) -> SeparatorStrategy:
         SeparatorStrategy: The resulting separator strategys
     """
     observer = SeparationObserver()
-    if strategy_type == StartegyType.FIRST:
+    if strategy_type == StrategyType.FIRST:
         return SeparateToFirst(observer)
-    elif strategy_type == StartegyType.ALL:
+    elif strategy_type == StrategyType.ALL:
         return SeparateToAll(observer)
     else:
         raise ValueError(f"Unknown strategy type {strategy_type}")
 
 
-def get_separator(categories: List[Category], strategy_type: StartegyType) -> RegressionCheckerSeparator:
+def get_separator(categories: List[Category], strategy_type: StrategyType) -> RegressionCheckerSeparator:
     """Get the regression checker separator for the list of categories and the specified strategy.
 
     Args:
         categories (List[Category]): The list of categories to include
-        strategy_type (StartegyType): The strategy for separation
+        strategy_type (StrategyType): The strategy for separation
 
     Returns:
         RegressionCheckerSeparator: The resulting separator
@@ -467,7 +467,7 @@ def read_categories(yaml_file: str) -> List[Category]:
     return [get_category(cat_name, cat_part[cat_name]) for cat_name in cat_part]
 
 
-def separate_categories(category_yaml: str, strategy_type: StartegyType,
+def separate_categories(category_yaml: str, strategy_type: StrategyType,
                         regression_suite_yaml: str, target_file_prefix: str, overwrite: bool = False) -> None:
     """Separate categories based on simple input.
 
@@ -478,7 +478,7 @@ def separate_categories(category_yaml: str, strategy_type: StartegyType,
 
     Args:
         category_yaml (str): The name of the YAML file describing the categories
-        strategy_type (StartegyType): The strategy for separation
+        strategy_type (StrategyType): The strategy for separation
         regression_suite_yaml (str): The regression suite YAML
         target_file_prefix (str): The target file prefix
         overwrite (bool, optional): Whether to overwrite file(s) if/when needed. Defaults to False.
