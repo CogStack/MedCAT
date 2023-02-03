@@ -23,6 +23,7 @@ class CategoryDescriptionTests(unittest.TestCase):
     def setUp(self) -> None:
         self.cd = CategoryDescription(
             target_cuis=set(self.CUIS), target_names=set(self.NAMES), target_tuis=set(self.TUIS))
+        self.anything = CategoryDescription.anything_goes()
 
     def test_initiates(self):
         self.assertIsNotNone(self.cd)
@@ -74,6 +75,33 @@ class CategoryDescriptionTests(unittest.TestCase):
 
     def test_does_NOT_recognize_wrong_TUIS(self):
         self.helper_does_not_recognize(self.NAMES, 'tui', self.cd.has_tui_from)
+
+    def test_anythong_goes_recognizes_anything_cui4cui(self):
+        self.helper_recognizes(self.CUIS, 'cui', self.anything.has_cui_from)
+
+    def test_anythong_goes_recognizes_anything_tui4cui(self):
+        self.helper_recognizes(self.TUIS, 'cui', self.anything.has_cui_from)
+
+    def test_anythong_goes_recognizes_anything_name4cui(self):
+        self.helper_recognizes(self.NAMES, 'cui', self.anything.has_cui_from)
+
+    def test_anythong_goes_recognizes_anything_tui4tui(self):
+        self.helper_recognizes(self.TUIS, 'tui', self.anything.has_tui_from)
+
+    def test_anythong_goes_recognizes_anything_cui4tui(self):
+        self.helper_recognizes(self.CUIS, 'tui', self.anything.has_tui_from)
+
+    def test_anythong_goes_recognizes_anything_name4tui(self):
+        self.helper_recognizes(self.NAMES, 'tui', self.anything.has_tui_from)
+
+    def test_anythong_goes_recognizes_anything_name4name(self):
+        self.helper_recognizes(self.NAMES, 'name', self.anything.has_name_from)
+
+    def test_anythong_goes_recognizes_anything_cui4name(self):
+        self.helper_recognizes(self.CUIS, 'name', self.anything.has_name_from)
+
+    def test_anythong_goes_recognizes_anything_tui4name(self):
+        self.helper_recognizes(self.TUIS, 'name', self.anything.has_name_from)
 
 
 def get_case(cui, tui, name):
