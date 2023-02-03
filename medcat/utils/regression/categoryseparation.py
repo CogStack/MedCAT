@@ -92,7 +92,7 @@ class CategoryDescription(pydantic.BaseModel):
 
     @classmethod
     def anything_goes(cls) -> 'CategoryDescription':
-        s = set()
+        s: Set[str] = set()
         return CategoryDescription(target_cuis=s, target_tuis=s, target_names=s, allow_everything=True)
 
 
@@ -197,10 +197,10 @@ class SeparationObserver:
             case (RegressionCase): The regression case to observe
             category (Category): The category to link the case tos
         """
-        if not category in self.separated:
+        if category not in self.separated:
             self.separated[category] = set()
         self.separated[category].add(case)
-        if not case in self.cases:
+        if case not in self.cases:
             self.cases[case] = set()
         self.cases[case].add(category)
 
@@ -342,14 +342,14 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
             if not self.strategy.observer.has_observed(case):
                 raise ValueError("Anything-goes category should be sufficient")
 
-    def separate(self, checker: RegressionChecker) -> List[RegressionChecker]:
-        """Separate the specified regression checker into a list of regression checkers.
+    def separate(self, checker: RegressionChecker) -> None:
+        """Separate the specified regression checker into multiple sets of cases.
+
+        Each case may be associated with either no, one, or multiple categories.
+        The specifics depends on `allow_overflow` and `strategy`.
 
         Args:
             checker(RegressionChecker): The input regression checker
-
-        Returns:
-            List[RegressionChecker]: The output regression checkers
         """
         for case in checker.cases:
             self.find_categories_for(case)
