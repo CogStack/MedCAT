@@ -27,6 +27,8 @@ def _prepare_args() -> argparse.Namespace:
                         action='store_true')
     parser.add_argument(
         '--overwrite', help='Overwrite the target file if it exists', action='store_true')
+    parser.add_argument(
+        '--overflow', help='Allow using overflow category', action='store_true')
     return parser.parse_args()
 
 
@@ -41,7 +43,7 @@ def main():
         checking_logger.setLevel('DEBUG')
     strategy = StrategyType[args.strategy.upper()]
     separate_categories(args.categories, strategy, args.regressionsuite,
-                        args.targetprefix, overwrite=args.overwrite)
+                        args.targetprefix, overwrite=args.overwrite, overflow_category=args.overflow)
 
 
 if __name__ == "__main__":
