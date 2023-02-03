@@ -354,7 +354,7 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
                 raise ValueError(f"File already exists: {yaml_file_name}. "
                                  "Pass overwrite=True to overwrite")
             logger.info("Writing %d cases to %s", len(cases), yaml_file_name)
-            with open(yaml_file_name) as f:
+            with open(yaml_file_name, 'w') as f:
                 f.write(yaml_str)
 
 
