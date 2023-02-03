@@ -3,6 +3,8 @@ from enum import auto, Enum
 import os
 from typing import Any, List, Dict, Optional, Set
 import yaml
+import string
+import random
 import logging
 
 import pydantic
@@ -291,6 +293,10 @@ class SeparateToAll(SeparatorStrategy):
         self.observer.observe(case, category)
 
 
+def get_random_str(length=8):
+    return ''.join(random.choices(string.ascii_letters, k=length))
+
+
 class RegressionCheckerSeparator(pydantic.BaseModel):
     """Regression checker separtor.
 
@@ -302,11 +308,12 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
     Args:
         categories(List[Category]): The categories to separate into
         strategy(SeparatorStrategy): The strategy for separation
+        overflow_category(bool): Whether to use an overflow category for cases that don't fit in other categoreis. Defaults to False.
     """
 
-    # def __init__(self, categories: , strategy: SeparatorStrategy) -> None:
     categories: List[Category]
     strategy: SeparatorStrategy
+    overflow_category: bool = False
 
     class Config:
         arbitrary_types_allowed = True
@@ -323,6 +330,17 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
         """
         for cat in self.categories:
             self._attempt_category_for(cat, case)
+        if not self.strategy.observer.has_observed(case) and self.overflow_category:
+            anything_goes = AnyPartOfCategory(
+                f'overflow-{get_random_str()}', descr=CategoryDescription.anything_goes())
+            self.categories.append(anything_goes)
+            self._attempt_category_for(anything_goes, case)
+            logger.info(
+                "Created overflow category since not all cases fit in specified categories")
+            logger.info("The overflow category is named: %s",
+                        anything_goes.name)
+            if not self.strategy.observer.has_observed(case):
+                raise ValueError("Anything-goes category should be sufficient")
 
     def separate(self, checker: RegressionChecker) -> List[RegressionChecker]:
         """Separate the specified regression checker into a list of regression checkers.
@@ -388,18 +406,20 @@ def get_strategy(strategy_type: StrategyType) -> SeparatorStrategy:
         raise ValueError(f"Unknown strategy type {strategy_type}")
 
 
-def get_separator(categories: List[Category], strategy_type: StrategyType) -> RegressionCheckerSeparator:
+def get_separator(categories: List[Category], strategy_type: StrategyType,
+                  overflow_category: bool = False) -> RegressionCheckerSeparator:
     """Get the regression checker separator for the list of categories and the specified strategy.
 
     Args:
         categories (List[Category]): The list of categories to include
         strategy_type (StrategyType): The strategy for separation
+        overflow_category (bool): Whether to use an overflow category for items that don't go in other categories. Defaults to False.
 
     Returns:
         RegressionCheckerSeparator: The resulting separator
     """
     strategy = get_strategy(strategy_type)
-    return RegressionCheckerSeparator(categories=categories, strategy=strategy)
+    return RegressionCheckerSeparator(categories=categories, strategy=strategy, overflow_category=overflow_category)
 
 
 def get_description(cat_description: dict) -> CategoryDescription:
@@ -477,7 +497,8 @@ def read_categories(yaml_file: str) -> List[Category]:
 
 
 def separate_categories(category_yaml: str, strategy_type: StrategyType,
-                        regression_suite_yaml: str, target_file_prefix: str, overwrite: bool = False) -> None:
+                        regression_suite_yaml: str, target_file_prefix: str, overwrite: bool = False,
+                        overflow_category: bool = False) -> None:
     """Separate categories based on simple input.
 
     The categories are read from the provided file and
@@ -491,8 +512,10 @@ def separate_categories(category_yaml: str, strategy_type: StrategyType,
         regression_suite_yaml (str): The regression suite YAML
         target_file_prefix (str): The target file prefix
         overwrite (bool, optional): Whether to overwrite file(s) if/when needed. Defaults to False.
+        overflow_category (bool): Whether to use an overflow category for items that don't go in other categories. Defaults to False.
     """
-    separator = get_separator(read_categories(category_yaml), strategy_type)
+    separator = get_separator(read_categories(
+        category_yaml), strategy_type, overflow_category)
     checker = RegressionChecker.from_yaml(regression_suite_yaml)
     separator.separate(checker)
     metadata = checker.metadata  # TODO - allow using different metadata?

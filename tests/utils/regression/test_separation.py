@@ -453,15 +453,34 @@ def get_applicable_files_in(folder: str, avoid_basename_start: str = 'converted'
 
 
 class FullSeparationTests(unittest.TestCase):
-    target_prefix_file = tempfile.TemporaryDirectory()
+
+    def save_copy_with_one_fewer_category(self):
+        self.one_fewer_categories_file = os.path.join(
+            self.other_temp_folder.name, 'one_fewer_categories.yml')
+        with open(TEST_CATEGORIES_FILE) as f:
+            d = yaml.safe_load(f)
+        categories = d['categories']
+        to_remove = list(categories.keys())[0]
+        del categories[to_remove]
+        yaml_str = yaml.safe_dump(d)
+        with open(self.one_fewer_categories_file, 'w') as f:
+            f.write(yaml_str)
 
     def setUp(self) -> None:
+        # new temporary folders for new tests, just in case
+        self.target_prefix_file = tempfile.TemporaryDirectory()
+        self.other_temp_folder = tempfile.TemporaryDirectory()
         self.rc = get_real_checker()
         self.regr_yaml_file = os.path.join(
             self.target_prefix_file.name, "converted_regr.yml")
         yaml_str = self.rc.to_yaml()
         with open(self.regr_yaml_file, 'w') as f:
             f.write(yaml_str)
+        self.save_copy_with_one_fewer_category()
+
+    def tearDown(self) -> None:
+        self.target_prefix_file.cleanup()
+        self.other_temp_folder.cleanup()
 
     def join_back_up(self) -> RegressionChecker:
         files = get_applicable_files_in(self.target_prefix_file.name)
@@ -476,5 +495,29 @@ class FullSeparationTests(unittest.TestCase):
         prefix = os.path.join(self.target_prefix_file.name, 'split-')
         separate_categories(TEST_CATEGORIES_FILE,
                             StrategyType.FIRST, self.regr_yaml_file, prefix)
+        rc = self.join_back_up()
+        self.assertEqual(self.rc, rc)
+
+    def test_something_lost_if_not_fit(self):
+        prefix = os.path.join(self.target_prefix_file.name, 'split-')
+        separate_categories(self.one_fewer_categories_file,
+                            StrategyType.FIRST, self.regr_yaml_file, prefix, overflow_category=False)
+        files = get_applicable_files_in(self.target_prefix_file.name)
+        self.assertFalse(any('overflow-' in f for f in files))
+        rc = self.join_back_up()
+        self.assertLess(len(rc.cases), len(self.rc.cases))
+        self.assertNotEqual(rc, self.rc)
+
+    def test_something_written_in_overflow(self):
+        prefix = os.path.join(self.target_prefix_file.name, 'split-')
+        separate_categories(self.one_fewer_categories_file,
+                            StrategyType.FIRST, self.regr_yaml_file, prefix, overflow_category=True)
+        files = get_applicable_files_in(self.target_prefix_file.name)
+        self.assertTrue(any('overflow-' in f for f in files))
+
+    def test_something_NOT_lost_if_use_overflow(self):
+        prefix = os.path.join(self.target_prefix_file.name, 'split-')
+        separate_categories(self.one_fewer_categories_file,
+                            StrategyType.FIRST, self.regr_yaml_file, prefix, overflow_category=True)
         rc = self.join_back_up()
         self.assertEqual(self.rc, rc)
