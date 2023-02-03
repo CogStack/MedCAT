@@ -3,10 +3,15 @@ import os
 import sys
 import unittest
 import tempfile
+import shutil
+from transformers import AutoTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB
 from medcat.cat import CAT
 from medcat.utils.checkpoint import Checkpoint
+from medcat.meta_cat import MetaCAT
+from medcat.config_meta_cat import ConfigMetaCAT
+from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 
 
 class CATTests(unittest.TestCase):
@@ -24,12 +29,15 @@ class CATTests(unittest.TestCase):
         cls.cdb.config.linking.train = True
         cls.cdb.config.linking.disamb_length_limit = 5
         cls.cdb.config.general.full_unlink = True
-        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab)
+        cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
+        cls.meta_cat = _get_meta_cat(cls.meta_cat_dir)
+        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[cls.meta_cat])
         cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
 
     @classmethod
     def tearDownClass(cls) -> None:
         cls.undertest.destroy_pipe()
+        shutil.rmtree(cls.meta_cat_dir)
 
     def tearDown(self) -> None:
         self.cdb.config.annotation_output.include_text_in_output = False
@@ -349,6 +357,7 @@ class CATTests(unittest.TestCase):
         self.assertTrue("cdb.dat" in contents)
         self.assertTrue("vocab.dat" in contents)
         self.assertTrue("model_card.json" in contents)
+        self.assertTrue("meta_Status" in contents)
         with open(os.path.join(save_dir_path.name, full_model_pack_name, "model_card.json")) as file:
             model_card = json.load(file)
         self.assertTrue("MedCAT Version" in model_card)
@@ -359,12 +368,34 @@ class CATTests(unittest.TestCase):
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
+        self.assertEqual(repr(cat._meta_cats), repr([self.meta_cat]))
+
+    def test_load_model_pack_without_meta_cat(self):
+        save_dir_path = tempfile.TemporaryDirectory()
+        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
+        self.assertTrue(isinstance(cat, CAT))
+        self.assertIsNotNone(cat.config.version.medcat_version)
+        self.assertEqual(cat._meta_cats, [])
 
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
+
+
+def _get_meta_cat(meta_cat_dir):
+    config = ConfigMetaCAT()
+    config.general["category_name"] = "Status"
+    config.train["nepochs"] = 1
+    meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("bert-base-uncased")),
+                       embeddings=None,
+                       config=config)
+    os.makedirs(meta_cat_dir, exist_ok=True)
+    json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "mct_export_for_meta_cat_test.json")
+    meta_cat.train(json_path, save_dir_path=meta_cat_dir)
+    return meta_cat
 
 
 if __name__ == '__main__':
