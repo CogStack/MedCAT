@@ -3,6 +3,7 @@ from typing import Iterator, cast
 import yaml
 from functools import lru_cache
 
+
 from medcat.utils.regression.checking import RegressionCase, ResultDescriptor, FilterOptions, FilterStrategy, TypedFilter, FilterType
 from medcat.utils.regression.checking import RegressionChecker
 from medcat.utils.regression.converting import medcat_export_json_to_regression_yml
@@ -266,9 +267,12 @@ class SeparationObserverTests(unittest.TestCase):
                 self.assertTrue(self.observer.has_observed(case))
 
 
+TEST_CATEGORIES_FILE = os.path.join(
+    'tests', 'resources', 'test_categories.yml')
+
+
 def get_all_categories() -> Iterator[Category]:
-    path = os.path.join('tests', 'resources', 'test_categories.yml')
-    return read_categories(path)
+    return read_categories(TEST_CATEGORIES_FILE)
 
 
 class SeparateToFirstTests(unittest.TestCase):
@@ -341,11 +345,13 @@ class SeparateToAllTests(unittest.TestCase):
                     self.assertTrue(self.strat.can_separate(case))
 
 
+TEST_MCT_EXPORT_JSON_FILE = os.path.join("tests", "resources",
+                                         "medcat_trainer_export.json")
+
+
 @lru_cache
 def get_all_real_cases() -> Iterator[RegressionCase]:
-    json_path = os.path.join("tests", "resources",
-                             "medcat_trainer_export.json")
-    yaml_str = medcat_export_json_to_regression_yml(json_path)
+    yaml_str = medcat_export_json_to_regression_yml(TEST_MCT_EXPORT_JSON_FILE)
     d = yaml.safe_load(yaml_str)
     rc = RegressionChecker.from_dict(d)
     for case in rc.cases:
