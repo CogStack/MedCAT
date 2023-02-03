@@ -359,6 +359,18 @@ def get_separator(categories: List[Category], strategy_type: StartegyType) -> Re
 
 
 def get_description(cat_description: dict) -> CategoryDescription:
+    """Get the description from its dict representation.
+
+    The dict is expected to have the following keys:
+    'cuis', 'tuis', and 'names'
+    Each one should have a list of strings as their values.
+
+    Args:
+        cat_description (dict): The dict representation
+
+    Returns:
+        CategoryDescription: The resulting category description
+    """
     cuis = set(cat_description['cuis'])
     names = set(cat_description['names'])
     tuis = set(cat_description['tuis'])
@@ -366,6 +378,24 @@ def get_description(cat_description: dict) -> CategoryDescription:
 
 
 def get_category(cat_name: str, cat_description: dict) -> Category:
+    """Get the category of the specified name from the dict.
+
+    The dict is expected to be in the form:
+        type: <category type> # either any or all
+        cuis: []  # list of CUIs in category
+        names: [] # list of names in category
+        tuis: []  # list of type IDs in category
+
+    Args:
+        cat_name (str): The name of the category
+        cat_description (dict): The dict describing the category
+
+    Raises:
+        ValueError: If an unknown type is specified.
+
+    Returns:
+        Category: The resulting category
+    """
     description = get_description(cat_description)
     cat_type = cat_description['type']
     if cat_type.lower() in ('any', 'anyparts', 'anypartsof'):
