@@ -2,14 +2,15 @@ import os
 from typing import Iterator, cast
 import yaml
 from functools import lru_cache
-
+import tempfile
 
 from medcat.utils.regression.checking import RegressionCase, ResultDescriptor, FilterOptions, FilterStrategy, TypedFilter, FilterType
 from medcat.utils.regression.checking import RegressionChecker
 from medcat.utils.regression.converting import medcat_export_json_to_regression_yml
 from medcat.utils.regression.categoryseparation import CategoryDescription, Category, AllPartsCategory, AnyPartOfCategory
 from medcat.utils.regression.categoryseparation import SeparationObserver, SeparateToFirst, SeparateToAll, read_categories
-from medcat.utils.regression.categoryseparation import RegressionCheckerSeparator
+from medcat.utils.regression.categoryseparation import RegressionCheckerSeparator, separate_categories, StrategyType
+from medcat.utils.regression.editing import combine_yamls
 
 import unittest
 
@@ -350,10 +351,15 @@ TEST_MCT_EXPORT_JSON_FILE = os.path.join("tests", "resources",
 
 
 @lru_cache
-def get_all_real_cases() -> Iterator[RegressionCase]:
+def get_real_checker() -> RegressionChecker:
     yaml_str = medcat_export_json_to_regression_yml(TEST_MCT_EXPORT_JSON_FILE)
     d = yaml.safe_load(yaml_str)
-    rc = RegressionChecker.from_dict(d)
+    return RegressionChecker.from_dict(d)
+
+
+@lru_cache
+def get_all_real_cases() -> Iterator[RegressionCase]:
+    rc = get_real_checker()
     for case in rc.cases:
         yield case
 
@@ -410,3 +416,37 @@ class RegressionCheckerSeparator_toAll_Tests(unittest.TestCase):
         for cases in self.separator.strategy.observer.separated.values():
             separated_cases += len(cases)
         self.assertGreaterEqual(nr_of_total_cases, separated_cases)
+
+
+def get_applicable_files_in(folder: str, avoid_basename_start: str = 'converted') -> list:
+    orig_list = os.listdir(folder)
+    return [os.path.join(folder, fn) for fn in orig_list
+            if fn.endswith(".yml") and not fn.startswith(avoid_basename_start)]
+
+
+class FullSeparationTests(unittest.TestCase):
+    target_prefix_file = tempfile.TemporaryDirectory()
+
+    def setUp(self) -> None:
+        self.rc = get_real_checker()
+        self.regr_yaml_file = os.path.join(
+            self.target_prefix_file.name, "converted_regr.yml")
+        yaml_str = self.rc.to_yaml()
+        with open(self.regr_yaml_file, 'w') as f:
+            f.write(yaml_str)
+
+    def join_back_up(self) -> RegressionChecker:
+        files = get_applicable_files_in(self.target_prefix_file.name)
+        f0 = files[0]
+        f_new = os.path.join(self.target_prefix_file.name, "join-back-1.yml")
+        for f1 in files[1:]:
+            combine_yamls(f0, f1, f_new)
+            f0 = f_new
+        return RegressionChecker.from_yaml(f_new)
+
+    def test_separations_combined_same(self):
+        prefix = os.path.join(self.target_prefix_file.name, 'split-')
+        separate_categories(TEST_CATEGORIES_FILE,
+                            StrategyType.FIRST, self.regr_yaml_file, prefix)
+        rc = self.join_back_up()
+        self.assertEqual(self.rc, rc)
