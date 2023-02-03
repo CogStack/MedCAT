@@ -25,7 +25,7 @@ class CategoryDescription(pydantic.BaseModel):
     target_cuis: Set[str]
     target_names: Set[str]
     target_tuis: Set[str]
-    anything_goes: bool = False
+    allow_everything: bool = False
 
     def _get_required_filter(self, case: RegressionCase, target_filter: FilterType) -> Optional[TypedFilter]:
         for filter in case.filters:
@@ -34,7 +34,7 @@ class CategoryDescription(pydantic.BaseModel):
         return None
 
     def _has_specific_from(self, case: RegressionCase, targets: Set[str], target_filter: FilterType):
-        if self.anything_goes:
+        if self.allow_everything:
             return True
         filter = self._get_required_filter(case, target_filter)
         if filter is None:
@@ -91,7 +91,7 @@ class CategoryDescription(pydantic.BaseModel):
     @classmethod
     def anything_goes(cls) -> 'CategoryDescription':
         s = set()
-        return CategoryDescription(s, s, s, anything_goes=True)
+        return CategoryDescription(target_cuis=s, target_tuis=s, target_names=s, allow_everything=True)
 
 
 class Category(ABC):
