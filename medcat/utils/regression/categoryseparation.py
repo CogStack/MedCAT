@@ -328,6 +328,24 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
             self.find_categories_for(case)
 
     def save(self, prefix: str, metadata: MetaData, overwrite: bool = False) -> None:
+        """Save the results of the separation in different files.
+
+        This needs to be called after the `separate` method has been called.
+
+        Each separated category (that has any cases registered to it) will
+        be saved in a separate file with the specified predix and the category name.
+
+        Args:
+            prefix (str): The prefix for the saved file(s)
+            metadata (MetaData): The metadata for the regression suite
+            overwrite (bool, optional): Whether to overwrite file(s) if/when needed. Defaults to False.
+
+        Raises:
+            ValueError: If the method is called before separation or no separtion was done
+            ValueError: If a file already exists and is not allowed to be overwritten
+        """
+        if not self.strategy.observer.separated:  # empty
+            raise ValueError("Need to do separation before saving!")
         for category, cases in self.strategy.observer.separated.items():
             rc = RegressionChecker(list(cases), metadata=metadata)
             yaml_str = rc.to_yaml()
@@ -451,6 +469,20 @@ def read_categories(yaml_file: str) -> List[Category]:
 
 def separate_categories(category_yaml: str, strategy_type: StartegyType,
                         regression_suite_yaml: str, target_file_prefix: str, overwrite: bool = False) -> None:
+    """Separate categories based on simple input.
+
+    The categories are read from the provided file and
+    the regression suite from its corresponding yaml.
+    The separated regression suites are saved in accordance
+    to the defined prefix.
+
+    Args:
+        category_yaml (str): The name of the YAML file describing the categories
+        strategy_type (StartegyType): The strategy for separation
+        regression_suite_yaml (str): The regression suite YAML
+        target_file_prefix (str): The target file prefix
+        overwrite (bool, optional): Whether to overwrite file(s) if/when needed. Defaults to False.
+    """
     separator = get_separator(read_categories(category_yaml), strategy_type)
     checker = RegressionChecker.from_yaml(regression_suite_yaml)
     separator.separate(checker)
