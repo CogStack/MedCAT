@@ -224,6 +224,14 @@ class RegressionCase(BaseModel):
         return RegressionCase(name=name, options=options, filters=parsed_filters,
                               phrases=phrases, report=ResultDescriptor(name=name))
 
+    def __hash__(self) -> int:
+        return hash(str(self.to_dict()))
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, RegressionCase):
+            return False
+        return self.to_dict() == other.to_dict()
+
 
 UNKNOWN_METADATA = 'Unknown'
 
