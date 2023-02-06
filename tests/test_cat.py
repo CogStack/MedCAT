@@ -30,8 +30,7 @@ class CATTests(unittest.TestCase):
         cls.cdb.config.linking.disamb_length_limit = 5
         cls.cdb.config.general.full_unlink = True
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
-        cls.meta_cat = _get_meta_cat(cls.meta_cat_dir)
-        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[cls.meta_cat])
+        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
         cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
 
     @classmethod
@@ -349,7 +348,8 @@ class CATTests(unittest.TestCase):
 
     def test_create_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
-        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[_get_meta_cat(self.meta_cat_dir)])
+        full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         pack = [f for f in os.listdir(save_dir_path.name)]
         self.assertTrue(full_model_pack_name in pack)
         self.assertTrue(f'{full_model_pack_name}.zip' in pack)
@@ -364,15 +364,19 @@ class CATTests(unittest.TestCase):
 
     def test_load_model_pack(self):
         save_dir_path = tempfile.TemporaryDirectory()
-        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        meta_cat = _get_meta_cat(self.meta_cat_dir)
+        cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
+        full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
-        self.assertEqual(repr(cat._meta_cats), repr([self.meta_cat]))
+        self.assertEqual(repr(cat._meta_cats), repr([meta_cat]))
 
     def test_load_model_pack_without_meta_cat(self):
         save_dir_path = tempfile.TemporaryDirectory()
-        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
+        meta_cat = _get_meta_cat(self.meta_cat_dir)
+        cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
+        full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
@@ -389,7 +393,7 @@ def _get_meta_cat(meta_cat_dir):
     config = ConfigMetaCAT()
     config.general["category_name"] = "Status"
     config.train["nepochs"] = 1
-    config.model["input_size"] = 100
+    config.model["input_size"] = 10
     meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")),
                        embeddings=None,
                        config=config)
