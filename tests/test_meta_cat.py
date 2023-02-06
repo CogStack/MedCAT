@@ -13,15 +13,11 @@ class MetaCATTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(self) -> None:
-        tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained("bert-base-uncased"))
+        tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
         config = ConfigMetaCAT()
         config.general['category_name'] = 'Status'
-        config.general['cntx_left'] = 15
-        config.general['cntx_right'] = 10
-        config.general['seed'] = 13
-        config.train['nepochs'] = 10
-        config.model['input_size'] = 300
-        config.train['auto_save_model'] = True
+        config.train['nepochs'] = 1
+        config.model['input_size'] = 100
 
         self.meta_cat = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
 

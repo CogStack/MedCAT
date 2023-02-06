@@ -389,7 +389,8 @@ def _get_meta_cat(meta_cat_dir):
     config = ConfigMetaCAT()
     config.general["category_name"] = "Status"
     config.train["nepochs"] = 1
-    meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("bert-base-uncased")),
+    config.model["input_size"] = 100
+    meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")),
                        embeddings=None,
                        config=config)
     os.makedirs(meta_cat_dir, exist_ok=True)
@@ -398,5 +399,5 @@ def _get_meta_cat(meta_cat_dir):
     return meta_cat
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
