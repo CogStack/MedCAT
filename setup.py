@@ -42,7 +42,7 @@ setuptools.setup(
         'pydantic>=1.10.0', # for spacy compatibility
         # the following are not direct dependencies of MedCAT but needed for docs/building
         # hopefully will no longer need the transitive dependencies
-        # 'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
+        'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
         # 'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
         # 'joblib~=1.2',
         ],
