@@ -236,6 +236,7 @@ class SeparatorStrategy(ABC):
     def __init__(self, observer: SeparationObserver) -> None:
         self.observer = observer
 
+    @abstractmethod
     def can_separate(self, case: RegressionCase) -> bool:
         """Check if the separator strategy can separate the specified regression case
 

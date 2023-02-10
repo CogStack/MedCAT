@@ -1,5 +1,6 @@
 import json
 import logging
+from abc import ABC, abstractmethod
 import re
 from typing import List, Optional, Set
 import tqdm
@@ -12,7 +13,7 @@ from medcat.utils.regression.targeting import FilterOptions, FilterStrategy, Fil
 logger = logging.getLogger(__name__)
 
 
-class ContextSelector:
+class ContextSelector(ABC):
     """Describes how the context of a concept is found.
     A sub-class should be used as this one has no implementation.
     """
@@ -36,6 +37,7 @@ class ContextSelector:
         """
         return text.replace(r'%', r'%%')
 
+    @abstractmethod
     def get_context(self, text: str, start: int, end: int, leave_concept: bool = False) -> str:
         """Get the context of a concept within a larger body of text.
         The concept is specifiedb by its start and end indices.
