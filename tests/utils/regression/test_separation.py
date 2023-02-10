@@ -491,6 +491,16 @@ class FullSeparationTests(unittest.TestCase):
             f0 = f_new
         return RegressionChecker.from_yaml(f_new)
 
+    def test_separations_work_alone(self):
+        prefix = os.path.join(self.target_prefix_file.name, 'split-')
+        separate_categories(TEST_CATEGORIES_FILE,
+                            StrategyType.FIRST, self.regr_yaml_file, prefix)
+        files = get_applicable_files_in(self.target_prefix_file.name)
+        for f in files:
+            with self.subTest(f'With {f}'):
+                rc = RegressionChecker.from_yaml(f)
+                self.assertIsNotNone(rc)
+
     def test_separations_combined_same(self):
         prefix = os.path.join(self.target_prefix_file.name, 'split-')
         separate_categories(TEST_CATEGORIES_FILE,
