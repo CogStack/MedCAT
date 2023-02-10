@@ -9,6 +9,11 @@ logger = logging.getLogger(__name__)
 
 
 def _prepare_args() -> argparse.Namespace:
+    """Prepares command line arguments to be used in main().
+
+    Returns:
+        argparse.Namespace: The argument namespace.
+    """
     parser = argparse.ArgumentParser()
     # category_yaml: str, strategy_type: StrategyType,
     # regression_suite_yaml: str, target_file_prefix: str, overwrite: bool = False
@@ -33,6 +38,7 @@ def _prepare_args() -> argparse.Namespace:
 
 
 def main():
+    """Runs the category separation according to command line arguments."""
     args = _prepare_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
