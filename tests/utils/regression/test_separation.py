@@ -7,9 +7,9 @@ import tempfile
 from medcat.utils.regression.checking import RegressionCase, ResultDescriptor, FilterOptions, FilterStrategy, TypedFilter, FilterType
 from medcat.utils.regression.checking import RegressionChecker
 from medcat.utils.regression.converting import medcat_export_json_to_regression_yml
-from medcat.utils.regression.categoryseparation import CategoryDescription, Category, AllPartsCategory, AnyPartOfCategory
-from medcat.utils.regression.categoryseparation import SeparationObserver, SeparateToFirst, SeparateToAll, read_categories
-from medcat.utils.regression.categoryseparation import RegressionCheckerSeparator, separate_categories, StrategyType
+from medcat.utils.regression.category_separation import CategoryDescription, Category, AllPartsCategory, AnyPartOfCategory
+from medcat.utils.regression.category_separation import SeparationObserver, SeparateToFirst, SeparateToAll, read_categories
+from medcat.utils.regression.category_separation import RegressionCheckerSeparator, separate_categories, StrategyType
 from medcat.utils.regression.editing import combine_yamls
 
 import unittest

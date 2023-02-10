@@ -2,7 +2,7 @@ import argparse
 import logging
 from pathlib import Path
 
-from medcat.utils.regression.categoryseparation import separate_categories, StrategyType
+from medcat.utils.regression.category_separation import separate_categories, StrategyType
 
 
 logger = logging.getLogger(__name__)
@@ -38,7 +38,7 @@ def main():
         logger.addHandler(logging.StreamHandler())
         logger.setLevel('INFO')
     if args.verbose:
-        from categoryseparation import logger as checking_logger
+        from category_separation import logger as checking_logger
         checking_logger.addHandler(logging.StreamHandler())
         checking_logger.setLevel('DEBUG')
     strategy = StrategyType[args.strategy.upper()]
