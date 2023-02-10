@@ -272,9 +272,9 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
-    labels = [name for (name, index) in sorted(config.general['category_value2id'].items(), key=lambda x:x[1])]
+    labels = [name for (name, _) in sorted(config.general['category_value2id'].items(), key=lambda x:x[1])]
     confusion = pd.DataFrame(
-        data= confusion_matrix(y_eval, predictions,),
+        data=confusion_matrix(y_eval, predictions,),
         columns=["true " + label for label in labels],
         index=["predicted " + label for label in labels],
     )
