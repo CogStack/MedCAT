@@ -3,3 +3,4 @@ sphinx-rtd-theme~=1.0
 myst-parser~=0.17
 sphinx-autoapi~=1.8
 setuptools>=60.0
+aiohttp==3.8.3
