@@ -4,7 +4,7 @@ from medcat.utils.regression.results import ResultDescriptor
 
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterStrategy, FilterType
 from medcat.utils.regression.targeting import TypedFilter
-from medcat.utils.regression.checking import RegressionChecker, RegressionCase
+from medcat.utils.regression.checking import RegressionChecker, RegressionCase, MetaData
 
 
 class TestSerialisation(unittest.TestCase):
@@ -93,7 +93,7 @@ class TestSerialisation(unittest.TestCase):
                                           phrases=['the %s phrase']):
         rc = RegressionCase(name=name, options=options,
                             filters=filters, phrases=phrases, report=ResultDescriptor(name=name))
-        checker = RegressionChecker(cases=[rc])
+        checker = RegressionChecker(cases=[rc], metadata=MetaData.unknown())
         self.assertIsInstance(checker.to_dict(), dict)
 
     def test_RegressionChecker_deserialises_to_same(self, name='the-name', options=FilterOptions(strategy=FilterStrategy.ANY),
@@ -102,7 +102,7 @@ class TestSerialisation(unittest.TestCase):
                                                     phrases=['the %s phrase']):
         rc = RegressionCase(name=name, options=options,
                             filters=filters, phrases=phrases, report=ResultDescriptor(name=name))
-        checker = RegressionChecker(cases=[rc])
+        checker = RegressionChecker(cases=[rc], metadata=MetaData.unknown())
         checker2 = RegressionChecker.from_dict(checker.to_dict())
         self.assertIsInstance(checker2, RegressionChecker)
         rc.__eq__
