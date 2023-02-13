@@ -300,7 +300,11 @@ class CAT(object):
         return model_pack_name
 
     @classmethod
-    def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
+    def load_model_pack(cls,
+                        zip_path: str,
+                        meta_cat_config_dict: Optional[Dict] = None,
+                        load_meta_models: bool = True,
+                        load_addl_ner: bool = True) -> "CAT":
         """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
         (if present)
 
@@ -311,6 +315,10 @@ class CAT(object):
                 A config dict that will overwrite existing configs in meta_cat.
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
                 Defaults to None.
+            load_meta_models (bool):
+                Whether to load MetaCAT models if present (Default value True).
+            load_addl_ner (bool):
+                Whether to load additional NER models if present (Default value True).
         """
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -347,7 +355,7 @@ class CAT(object):
             vocab = None
 
         # Find meta models in the model_pack
-        trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')]
+        trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')] if load_addl_ner else []
         addl_ner = []
         for trf_path in trf_paths:
             trf = TransformersNER.load(save_dir_path=trf_path)
@@ -355,7 +363,7 @@ class CAT(object):
             addl_ner.append(trf)
 
         # Find meta models in the model_pack
-        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
         meta_cats = []
         for meta_path in meta_paths:
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
