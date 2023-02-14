@@ -12,17 +12,17 @@ from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 class MetaCATTests(unittest.TestCase):
 
     @classmethod
-    def setUpClass(self) -> None:
+    def setUpClass(cls) -> None:
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
         config = ConfigMetaCAT()
         config.general['category_name'] = 'Status'
         config.train['nepochs'] = 1
         config.model['input_size'] = 100
 
-        self.meta_cat = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
+        cls.meta_cat = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
 
-        self.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
-        os.makedirs(self.tmp_dir, exist_ok=True)
+        cls.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
+        os.makedirs(cls.tmp_dir, exist_ok=True)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
