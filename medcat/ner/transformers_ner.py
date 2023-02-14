@@ -353,15 +353,15 @@ class TransformersNER(object):
                             # To not loop through everything
                             if end_char > r['end']:
                                 break
+                        if inds:
+                            entity = Span(doc, min(inds), max(inds) + 1, label=r['entity_group'])
+                            entity._.cui = r['entity_group']
+                            entity._.context_similarity = r['score']
+                            entity._.detected_name = r['word']
+                            entity._.id = len(doc._.ents)
+                            entity._.confidence = r['score']
 
-                        entity = Span(doc, min(inds), max(inds) + 1, label=r['entity_group'])
-                        entity._.cui = r['entity_group']
-                        entity._.context_similarity = r['score']
-                        entity._.detected_name = r['word']
-                        entity._.id = len(doc._.ents)
-                        entity._.confidence = r['score']
-
-                        doc._.ents.append(entity)
+                            doc._.ents.append(entity)
                     create_main_ann(self.cdb, doc)
                     if self.cdb.config.general['make_pretty_labels'] is not None:
                         make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
