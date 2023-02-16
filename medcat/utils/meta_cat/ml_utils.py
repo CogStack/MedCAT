@@ -3,13 +3,14 @@ import random
 import math
 import torch
 import numpy as np
+import pandas as pd
 import torch.optim as optim
 from typing import List, Optional, Tuple, Any, Dict
 from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from sklearn.metrics import classification_report, precision_recall_fscore_support
+from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
 
 import logging
 
@@ -271,6 +272,14 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
+    labels = [name for (name, _) in sorted(config.general['category_value2id'].items(), key=lambda x:x[1])]
+    confusion = pd.DataFrame(
+        data=confusion_matrix(y_eval, predictions,),
+        columns=["true " + label for label in labels],
+        index=["predicted " + label for label in labels],
+    )
+
+
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
     for i, p in enumerate(predictions):
@@ -289,4 +298,4 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         else:
             examples['TP'][y] = examples['TP'].get(y, []) + [(info, text)]
 
-    return {'precision': precision, 'recall': recall, 'f1': f1, 'examples': examples}
+    return {'precision': precision, 'recall': recall, 'f1': f1, 'examples': examples, 'confusion matrix': confusion}
