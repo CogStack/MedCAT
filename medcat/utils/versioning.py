@@ -1,8 +1,20 @@
 from typing import Tuple
+import re
 
 from medcat.cat import CAT
 
 SemanticVersion = Tuple[int, int, int]
+
+
+# Regex as per:
+# https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
+SEMANTIC_VERSION_REGEX = (r"^(0|[1-9]\d*)"  # major
+                          r"\.(0|[1-9]\d*)"  # .minor
+                          r"\.(0|[1-9]\d*)"  # .patch
+                          # and then some trailing stuff
+                          f"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+                          f"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$")
+SEMANTIC_VERSION_PATTERN = re.compile(SEMANTIC_VERSION_REGEX)
 
 
 def get_version_from_modelcard(d: dict) -> SemanticVersion:
@@ -19,10 +31,10 @@ def get_version_from_modelcard(d: dict) -> SemanticVersion:
         SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
     """
     version_str: str = d["MedCAT Version"]
-    parts = version_str.split(".")
-    if len(parts) != 3:
+    match = SEMANTIC_VERSION_PATTERN.match(version_str)
+    if not match:
         raise ValueError(f"Unknown version string: {version_str}")
-    return tuple([int(part) for part in parts])
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
 
 
 def get_semantic_version(cat: CAT) -> SemanticVersion:
