@@ -1,5 +1,8 @@
 from typing import Tuple
 import re
+import os
+
+import dill
 
 from medcat.cat import CAT
 
@@ -67,3 +70,40 @@ def get_semantic_version_from_model(cat: CAT) -> SemanticVersion:
         SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
     """
     return get_version_from_modelcard(cat.get_model_card(as_dict=True))
+
+
+def get_version_from_cdb_dump(cdb_path: str) -> SemanticVersion:
+    """Get the version from a CDB dump (cdb.dat).
+
+    The version information is expected in the following location:
+        cdb["config"]["version"]["medcat_version"]
+
+    Args:
+        cdb_path (str): The path to cdb.dat
+
+    Returns:
+        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+    """
+    with open(cdb_path, 'rb') as f:
+        d = dill.load(f)
+    config: dict = d["config"]
+    version = config["version"]["medcat_version"]
+    return get_semantic_version(version)
+
+
+def get_version_from_modelpack_zip(zip_path: str, cdb_file_name="cdb.dat") -> SemanticVersion:
+    """Get the semantic version from a MedCAT model pack zip file.
+
+    This involves simply reading the config on file and reading the version information from there.
+
+    The zip file is extracted if it has not yet been extracted.
+
+    Args:
+        zip_path (str): The zip file path for the model pack.
+        cdb_file_name (str, optional): The CDB file name to use. Defaults to "cdb.dat".
+
+    Returns:
+        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+    """
+    model_pack_path = CAT.attempt_unpack(zip_path)
+    return get_version_from_cdb_dump(os.path.join(model_pack_path, cdb_file_name))

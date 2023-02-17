@@ -2,6 +2,7 @@ import unittest
 import os
 
 from medcat.utils.versioning import get_version_from_modelcard, get_semantic_version_from_model
+from medcat.utils.versioning import get_version_from_cdb_dump, get_version_from_modelpack_zip
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
@@ -67,12 +68,13 @@ class VersionGettingFromModelCardTests(unittest.TestCase):
         self.assertEqual(cntr, len(CORRECT_SEMANTIC_VERSIONS))
 
 
+NEW_CDB_NAME = "cdb_new.dat"
 CDB_PATH = os.path.join(os.path.dirname(
-    os.path.realpath(__file__)), "..", "..", "examples", "cdb_new.dat")
+    os.path.realpath(__file__)), "..", "..", "examples", NEW_CDB_NAME)
+EXPECTED_CDB_VERSION = (1, 0, 0)
 
 
 class VersionGettingFromCATTests(unittest.TestCase):
-    EXPECTED_VERSION = (1, 0, 0)
 
     def setUp(self) -> None:
         self.cdb = CDB.load(CDB_PATH)
@@ -94,4 +96,21 @@ class VersionGettingFromCATTests(unittest.TestCase):
 
     def test_gets_correct_version(self):
         version = get_semantic_version_from_model(self.undertest)
-        self.assertEqual(self.EXPECTED_VERSION, version)
+        self.assertEqual(EXPECTED_CDB_VERSION, version)
+
+
+class VersionGetterFromCDBTests(unittest.TestCase):
+
+    def test_gets_version_from_cdb(self):
+        version = get_version_from_cdb_dump(CDB_PATH)
+        self.assertEqual(EXPECTED_CDB_VERSION, version)
+
+
+class VersionGettFromModelPackTests(unittest.TestCase):
+
+    def test_gets_version_from_model_pack(self):
+        # not strictly speaking a ZIP, but should work currently
+        # since the folder exists
+        model_pack_zip = os.path.dirname(CDB_PATH)
+        version = get_version_from_modelpack_zip(model_pack_zip, cdb_file_name=NEW_CDB_NAME)
+        self.assertEqual(EXPECTED_CDB_VERSION, version)
