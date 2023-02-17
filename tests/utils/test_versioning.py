@@ -1,7 +1,7 @@
 import unittest
 import os
 
-from medcat.utils.versioning import get_version_from_modelcard, get_semantic_version
+from medcat.utils.versioning import get_version_from_modelcard, get_semantic_version_from_model
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
@@ -91,5 +91,5 @@ class VersionGettingFromCATTests(unittest.TestCase):
             cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[])
 
     def test_gets_correct_version(self):
-        version = get_semantic_version(self.undertest)
+        version = get_semantic_version_from_model(self.undertest)
         self.assertEqual(EXAMPLE_VERSION, version)

@@ -17,6 +17,24 @@ SEMANTIC_VERSION_REGEX = (r"^(0|[1-9]\d*)"  # major
 SEMANTIC_VERSION_PATTERN = re.compile(SEMANTIC_VERSION_REGEX)
 
 
+def get_semantic_version(version: str) -> SemanticVersion:
+    """Get the semantiv version from the string.
+
+    Args:
+        version (str): The version string.
+
+    Raises:
+        ValueError: If the version string does not match the semantic versioning format.
+
+    Returns:
+        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+    """
+    match = SEMANTIC_VERSION_PATTERN.match(version)
+    if not match:
+        raise ValueError(f"Unknown version string: {version}")
+    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+
+
 def get_version_from_modelcard(d: dict) -> SemanticVersion:
     """Gets the the major.minor.patch version from a model card.
 
@@ -31,13 +49,10 @@ def get_version_from_modelcard(d: dict) -> SemanticVersion:
         SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
     """
     version_str: str = d["MedCAT Version"]
-    match = SEMANTIC_VERSION_PATTERN.match(version_str)
-    if not match:
-        raise ValueError(f"Unknown version string: {version_str}")
-    return int(match.group(1)), int(match.group(2)), int(match.group(3))
+    return get_semantic_version(version_str)
 
 
-def get_semantic_version(cat: CAT) -> SemanticVersion:
+def get_semantic_version_from_model(cat: CAT) -> SemanticVersion:
     """Get the semantic version of a CAT model.
 
     This uses the `get_version_from_modelcard` method on the model's
