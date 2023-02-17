@@ -67,16 +67,18 @@ class VersionGettingFromModelCardTests(unittest.TestCase):
         self.assertEqual(cntr, len(CORRECT_SEMANTIC_VERSIONS))
 
 
+CDB_PATH = os.path.join(os.path.dirname(
+    os.path.realpath(__file__)), "..", "..", "examples", "cdb_new.dat")
+
+
 class VersionGettingFromCATTests(unittest.TestCase):
+    EXPECTED_VERSION = (1, 0, 0)
 
     def setUp(self) -> None:
-        self.cdb = CDB.load(os.path.join(os.path.dirname(
-            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+        self.cdb = CDB.load(CDB_PATH)
         self.vocab = Vocab.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..", "examples", "vocab.dat"))
         self.cdb.config.general.spacy_model = "en_core_web_md"
-        self.cdb.config.version.medcat_version = ".".join(
-            str(v) for v in EXAMPLE_VERSION)
         self.cdb.config.ner.min_name_len = 2
         self.cdb.config.ner.upper_case_limit_len = 3
         self.cdb.config.general.spell_check = True
@@ -92,4 +94,4 @@ class VersionGettingFromCATTests(unittest.TestCase):
 
     def test_gets_correct_version(self):
         version = get_semantic_version_from_model(self.undertest)
-        self.assertEqual(EXAMPLE_VERSION, version)
+        self.assertEqual(self.EXPECTED_VERSION, version)
