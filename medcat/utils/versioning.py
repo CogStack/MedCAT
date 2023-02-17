@@ -13,11 +13,17 @@ SemanticVersion = Tuple[int, int, int]
 # https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string
 SEMANTIC_VERSION_REGEX = (r"^(0|[1-9]\d*)"  # major
                           r"\.(0|[1-9]\d*)"  # .minor
-                          r"\.(0|[1-9]\d*)"  # .patch
+                          # CHANGE FROM NORM - allowing dev before patch version number
+                          # but NOT capturing the group
+                          r"\.(?:dev)?"
+                          f"(0|[1-9]\d*)"  # .patch
                           # and then some trailing stuff
                           f"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
                           f"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$")
 SEMANTIC_VERSION_PATTERN = re.compile(SEMANTIC_VERSION_REGEX)
+
+
+CDB_FILE_NAME = "cdb.dat"
 
 
 def get_semantic_version(version: str) -> SemanticVersion:
@@ -91,7 +97,7 @@ def get_version_from_cdb_dump(cdb_path: str) -> SemanticVersion:
     return get_semantic_version(version)
 
 
-def get_version_from_modelpack_zip(zip_path: str, cdb_file_name="cdb.dat") -> SemanticVersion:
+def get_version_from_modelpack_zip(zip_path: str, cdb_file_name=CDB_FILE_NAME) -> SemanticVersion:
     """Get the semantic version from a MedCAT model pack zip file.
 
     This involves simply reading the config on file and reading the version information from there.
