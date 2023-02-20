@@ -1105,7 +1105,7 @@ class CAT(object):
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))  # type: ignore
 
                 cnf_annotation_output = self.config.annotation_output
-                if not(cnf_annotation_output.include_text_in_output):
+                if not cnf_annotation_output.include_text_in_output:
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
