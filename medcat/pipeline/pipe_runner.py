@@ -24,7 +24,7 @@ class PipeRunner(Pipe):
         raise NotImplementedError("Method __call__ has not been implemented.")
 
     # Override
-    def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Union[Generator[Doc, None, None], Iterator[Doc]]:
+    def pipe(self, stream: Iterable[Doc], batch_size: int, **kwargs) -> Union[Generator[Doc, None, None], Iterator[Doc]]:  # type: ignore
         error_handler = self.get_error_handler()
         if kwargs.get("parallel", False):
             PipeRunner._execute, PipeRunner._delayed = self._lazy_init_pool()
@@ -35,14 +35,14 @@ class PipeRunner(Pipe):
                     for output_doc in PipeRunner._execute(tasks):
                         yield PipeRunner.deserialize_entities(output_doc)
                 except Exception as e:
-                    error_handler(self.name, self, docs, e)
+                    error_handler(self.name, self, docs, e)  # type: ignore
                     yield from [None] * len(docs)
         else:
             for doc in stream:
                 try:
                     yield self(doc)
                 except Exception as e:
-                    error_handler(self.name, self, [doc], e)
+                    error_handler(self.name, self, [doc], e)  # type: ignore
                     yield None
 
     @staticmethod
@@ -89,7 +89,7 @@ class PipeRunner(Pipe):
 
     @staticmethod
     def _run_pipe_on_one(call: Callable, doc: Doc, underscore_state: Tuple) -> Doc:
-        Underscore.load_state(underscore_state)
+        Underscore.load_state(underscore_state)  # type: ignore
         doc = PipeRunner.deserialize_entities(doc)
         doc = call(doc)
         doc = PipeRunner.serialize_entities(doc)

@@ -2,8 +2,9 @@ from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, cast
 import yaml
 import logging
 import tqdm
+import datetime
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TranslationLayer, FilterStrategy
@@ -223,6 +224,124 @@ class RegressionCase(BaseModel):
         return RegressionCase(name=name, options=options, filters=parsed_filters,
                               phrases=phrases, report=ResultDescriptor(name=name))
 
+    def __hash__(self) -> int:
+        return hash(str(self.to_dict()))
+
+    def __eq__(self, other: Any) -> bool:
+        if not isinstance(other, RegressionCase):
+            return False
+        return self.to_dict() == other.to_dict()
+
+
+UNKNOWN_METADATA = 'Unknown'
+
+
+def get_ontology_and_version(model_card: dict) -> Tuple[str, str]:
+    """Attempt to get ontology (and its version) from a model card dict.
+
+    If no ontology is found, 'Unknown' is returned.
+    The version is always returned as the first source ontology.
+    That is, unless the specified location does not exist in the model card,
+    in which case 'Unknown' is returned.
+
+    The ontology is assumed to be descibed at:
+        model_card['Source Ontology'][0] (or model_card['Source Ontology'] if it's a string instead of a list)
+
+    The ontology version is read from:
+        model_card['Source Ontology'][0] (or model_card['Source Ontology'] if it's a string instead of a list)
+
+    Currently, only SNOMED-CT, UMLS and ICD are supported / found.
+
+    Args:
+        model_card (dict): The input model card.
+
+    Returns:
+        str: The ontology (if found) or 'Unknown'
+    Returns:
+        Tuple[str, str]: The ontology (if found) or 'Unknown'; and the version (if found) or 'Unknown'
+    """
+    try:
+        ont_list = model_card['Source Ontology']
+        if isinstance(ont_list, list):
+            ont1 = ont_list[0]
+        elif isinstance(ont_list, str):
+            ont1 = ont_list
+        else:
+            raise KeyError(f"Unknown source ontology: {ont_list}")
+    except KeyError as key_err:
+        logger.warn(
+            "Didn't find the expected source ontology from the model card!", exc_info=key_err)
+        return UNKNOWN_METADATA, UNKNOWN_METADATA
+    # find ontology
+    if 'SNOMED' in ont1.upper():
+        return 'SNOMED-CT', ont1
+    elif 'UMLS' in ont1.upper():
+        return 'UMLS', ont1
+    elif 'ICD' in ont1.upper():
+        return 'ICD', ont1
+    else:
+        return UNKNOWN_METADATA, ont1
+
+
+class MetaData(BaseModel):
+    """The metadat for the regression suite.
+
+    This should define which ontology (e.g UMLS or SNOMED) as well as
+    which version was used when generating the regression suite.
+
+    The metadata may contain further information as well, this may include
+    the annotator(s) involved when converting from MCT export or other relevant data.
+    """
+    ontology: str
+    ontology_version: str
+    extra: dict = {}
+    regr_suite_creation_date: str = Field(
+        default_factory=lambda: str(datetime.datetime.now()))
+
+    @classmethod
+    def from_modelcard(cls, model_card: dict) -> 'MetaData':
+        """Generate a MetaData object from a model card.
+
+        This involves reading ontology info and version from the model card.
+
+        It must be noted that the model card should be provided as a dict not a string.
+
+        Args:
+            model_card (dict): The CAT modelcard
+
+        Returns:
+            MetaData: The resulting MetaData
+        """
+        ontology, ont_version = get_ontology_and_version(model_card)
+        return MetaData(ontology=ontology, ontology_version=ont_version, extra=model_card)
+
+    @classmethod
+    def unknown(self) -> 'MetaData':
+        return MetaData(ontology=UNKNOWN_METADATA, ontology_version=UNKNOWN_METADATA,
+
+                        extra={}, regr_suite_creation_date=UNKNOWN_METADATA)
+
+
+def fix_np_float64(d: dict) -> None:
+    """Fix numpy.float64 in dictrionary for yaml saving purposes.
+
+    These types of objects are unable to be cleanly serialized using yaml.
+    So we need to conver them to the corresponding floats.
+
+    The changes will be made within the dictionary itself
+    as well as dictionaries within, recursively.
+
+    Args:
+        d (dict): The input dict
+        prefix (str, optional): The prefix for t. Defaults to ''.
+    """
+    import numpy as np
+    for k, v in d.items():
+        if isinstance(v, np.float64):
+            d[k] = float(v)
+        if isinstance(v, dict):
+            fix_np_float64(v)
+
 
 class RegressionChecker:
     """The regression checker.
@@ -230,12 +349,14 @@ class RegressionChecker:
 
     Args:
         cases (List[RegressionCase]): The list of regression cases
+        metadata (MetaData): The metadata for the regression suite
         use_report (bool): Whether or not to use the report functionality (defaults to False)
     """
 
-    def __init__(self, cases: List[RegressionCase]) -> None:
+    def __init__(self, cases: List[RegressionCase], metadata: MetaData) -> None:
         self.cases: List[RegressionCase] = cases
         self.report = MultiDescriptor(name='ALL')  # TODO - allow setting names
+        self.metadata = metadata
         for case in self.cases:
             self.report.parts.append(case.report)
 
@@ -295,6 +416,9 @@ class RegressionChecker:
         d = {}
         for case in self.cases:
             d[case.name] = case.to_dict()
+        d['meta'] = self.metadata.dict()
+        fix_np_float64(d['meta'])
+
         return d
 
     def to_yaml(self) -> str:
@@ -327,9 +451,16 @@ class RegressionChecker:
         """
         cases = []
         for case_name, details in in_dict.items():
+            if case_name == 'meta':
+                continue  # ignore metadata
             case = RegressionCase.from_dict(case_name, details)
             cases.append(case)
-        return RegressionChecker(cases=cases)
+        if 'meta' not in in_dict:
+            logger.warn("Loading regression suite without any meta data")
+            metadata = MetaData.unknown()
+        else:
+            metadata = MetaData.parse_obj(in_dict['meta'])
+        return RegressionChecker(cases=cases, metadata=metadata)
 
     @classmethod
     def from_yaml(cls, file_name: str) -> 'RegressionChecker':

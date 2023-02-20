@@ -138,10 +138,20 @@ class CAT(object):
         """Returns the spacy pipeline with MedCAT"""
         return self.pipe.spacy_nlp
 
-    def get_hash(self):
-        """Will not be a deep hash but will try to catch all the changing parts during training."""
+    def get_hash(self, force_recalc: bool = False) -> str:
+        """Will not be a deep hash but will try to catch all the changing parts during training.
+
+        Able to force recalculation of hash. This is relevant for CDB
+        the hash for which is otherwise only recalculated if it has changed.
+
+        Args:
+            force_recalc (bool, optional): Whether to force recalculation. Defaults to False.
+
+        Returns:
+            str: The resulting hash
+        """
         hasher = Hasher()
-        hasher.update(self.cdb.get_hash())
+        hasher.update(self.cdb.get_hash(force_recalc))
 
         hasher.update(self.config.get_hash())
 
@@ -186,13 +196,13 @@ class CAT(object):
         else:
             return json.dumps(card, indent=2, sort_keys=False)
 
-    def _versioning(self):
+    def _versioning(self, force_rehash: bool = False):
         # Check version info and do not allow without it
         if self.config.version.description == 'No description':
             logger.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
 
         # Fill the stuff automatically that is needed for versioning
-        m = self.get_hash()
+        m = self.get_hash(force_recalc=force_rehash)
         version = self.config.version
         if version.id is None or m != version.id:
             if version.id is not None:
@@ -204,8 +214,8 @@ class CAT(object):
             version.medcat_version = __version__
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME,
-            format: str = 'dill') -> str:
+    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False,
+            cdb_format: str = 'dill') -> str:
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
@@ -214,8 +224,10 @@ class CAT(object):
                 An id will be appended to this name
             model_pack_name (str, optional):
                 The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
-            format (str):
-                The format of the saved model pack.
+            force_rehash (bool, optional):
+                Force recalculation of hash. Defaults to `False`.
+            cdb_format (str):
+                The format of the saved CDB in the model pack.
                 The available formats are:
                 - dill
                 - json
@@ -228,7 +240,7 @@ class CAT(object):
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
         # Versioning
-        self._versioning()
+        self._versioning(force_rehash)
         model_pack_name += "_{}".format(self.config.version.id)
 
         logger.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
@@ -236,11 +248,11 @@ class CAT(object):
         save_dir_path = os.path.join(save_dir_path, model_pack_name)
 
         # Check format
-        if format.lower() == 'json':
+        if cdb_format.lower() == 'json':
             json_path = save_dir_path # in the same folder!
         else:
             json_path = None # use dill formating
-        logger.info('Saving model pack with %s format', format)
+        logger.info('Saving model pack with CDB in %s format', cdb_format)
 
         # expand user path to make this work with '~'
         os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
@@ -288,7 +300,11 @@ class CAT(object):
         return model_pack_name
 
     @classmethod
-    def load_model_pack(cls, zip_path: str, meta_cat_config_dict: Optional[Dict] = None) -> "CAT":
+    def load_model_pack(cls,
+                        zip_path: str,
+                        meta_cat_config_dict: Optional[Dict] = None,
+                        load_meta_models: bool = True,
+                        load_addl_ner: bool = True) -> "CAT":
         """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
         (if present)
 
@@ -299,6 +315,10 @@ class CAT(object):
                 A config dict that will overwrite existing configs in meta_cat.
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
                 Defaults to None.
+            load_meta_models (bool):
+                Whether to load MetaCAT models if present (Default value True).
+            load_addl_ner (bool):
+                Whether to load additional NER models if present (Default value True).
         """
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -335,7 +355,7 @@ class CAT(object):
             vocab = None
 
         # Find meta models in the model_pack
-        trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')]
+        trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')] if load_addl_ner else []
         addl_ner = []
         for trf_path in trf_paths:
             trf = TransformersNER.load(save_dir_path=trf_path)
@@ -343,7 +363,7 @@ class CAT(object):
             addl_ner.append(trf)
 
         # Find meta models in the model_pack
-        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
         meta_cats = []
         for meta_path in meta_paths:
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
@@ -378,7 +398,7 @@ class CAT(object):
             return None
         else:
             text = self._get_trimmed_text(str(text))
-            return self.pipe(text)
+            return self.pipe(text)  # type: ignore
 
     def __repr__(self):
         """Prints the model_card for this CAT instance.
@@ -473,7 +493,7 @@ class CAT(object):
                     else:
                         local_filters.cuis = {'empty'}
 
-                spacy_doc: Doc = self(doc['text'])
+                spacy_doc: Doc = self(doc['text'])  # type: ignore
 
                 if use_overlaps:
                     p_anns = spacy_doc._.ents
@@ -672,6 +692,9 @@ class CAT(object):
             self.cdb.reset_training()
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
+        # cache train state
+        _prev_train = self.config.linking.train
+
         latest_trained_step = checkpoint.count if checkpoint is not None else 0
         epochal_data_iterator = chain.from_iterable(repeat(data_iterator, nepochs))
         for line in islice(epochal_data_iterator, latest_trained_step, None):
@@ -693,7 +716,7 @@ class CAT(object):
             if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                 checkpoint.save(cdb=self.cdb, count=latest_trained_step)
 
-        self.config.linking.train = False
+        self.config.linking.train = _prev_train
 
     def add_cui_to_group(self, cui: str, group_name: str) -> None:
         """Adds a CUI to a group, will appear in cdb.addl_info['cui2group']
@@ -786,7 +809,7 @@ class CAT(object):
 
         if spacy_entity is not None and spacy_doc is not None:
             # Train Linking
-            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative, names=names)
+            self.linker.context_model.train(cui=cui, entity=spacy_entity, doc=spacy_doc, negative=negative, names=names)  # type: ignore
 
             if not negative and devalue_others:
                 # Find all cuis
@@ -798,7 +821,7 @@ class CAT(object):
                     cuis.remove(cui)
                 # Add negative training for all other CUIs that link to these names
                 for _cui in cuis:
-                    self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
+                    self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
     def train_supervised(self,
                          data_path: str,
@@ -970,7 +993,7 @@ class CAT(object):
 
                 for idx_doc in trange(current_document, len(project['documents']), initial=current_document, total=len(project['documents']), desc='Document', leave=False):
                     doc = project['documents'][idx_doc]
-                    spacy_doc: Doc = self(doc['text'])
+                    spacy_doc: Doc = self(doc['text'])  # type: ignore
 
                     # Compatibility with old output where annotations are a list
                     doc_annotations = self._get_doc_annotations(doc)
@@ -991,8 +1014,8 @@ class CAT(object):
                     if train_from_false_positives:
                         fps: List[Span] = get_false_positives(doc, spacy_doc)
 
-                        for fp in fps:
-                            fp_: Span = fp
+                        for fp in fps:  # type: ignore
+                            fp_: Span = fp  # type: ignore
                             self.add_and_train_concept(cui=fp_._.cui,
                                                        name=fp_.text,
                                                        spacy_doc=spacy_doc,
@@ -1034,7 +1057,7 @@ class CAT(object):
                      only_cui: bool = False,
                      addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed']) -> Dict:
         doc = self(text)
-        out = self._doc_to_out(doc, only_cui, addl_info)
+        out = self._doc_to_out(doc, only_cui, addl_info)  # type: ignore
         return out
 
     def get_entities_multi_texts(self,
@@ -1060,7 +1083,7 @@ class CAT(object):
         if n_process is None:
             texts_ = self._generate_trimmed_texts(texts)
             for text in texts_:
-                out.append(self._doc_to_out(self(text), only_cui, addl_info))
+                out.append(self._doc_to_out(self(text), only_cui, addl_info))  # type: ignore
         else:
             self.pipe.set_error_handler(self._pipe_error_handler)
             try:
@@ -1077,12 +1100,12 @@ class CAT(object):
                     logger.warning("Found at least one failed batch and set output for enclosed texts to empty")
                     for i, text in enumerate(texts_):
                         if i == len(out):
-                            out.append(self._doc_to_out(None, only_cui, addl_info))
+                            out.append(self._doc_to_out(None, only_cui, addl_info))  # type: ignore
                         elif out[i].get('text', '') != text:
-                            out.insert(i, self._doc_to_out(None, only_cui, addl_info))
+                            out.insert(i, self._doc_to_out(None, only_cui, addl_info))  # type: ignore
 
                 cnf_annotation_output = self.config.annotation_output
-                if not(cnf_annotation_output.include_text_in_output):
+                if not cnf_annotation_output.include_text_in_output:
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
@@ -1487,7 +1510,7 @@ class CAT(object):
                         entity._.meta_anns = _ent['meta_anns']
                     _ents.append(entity)
             else:
-                _ents = doc.ents
+                _ents = doc.ents  # type: ignore
 
             if cnf_annotation_output.lowercase_context:
                 doc_tokens = [tkn.text_with_ws.lower() for tkn in list(doc)]
@@ -1570,10 +1593,10 @@ class CAT(object):
 
     @staticmethod
     def _get_doc_annotations(doc: Doc):
-        if type(doc['annotations']) == list:
-            return doc['annotations']
-        if type(doc['annotations']) == dict:
-            return doc['annotations'].values()
+        if type(doc['annotations']) == list:  # type: ignore
+            return doc['annotations']  # type: ignore
+        if type(doc['annotations']) == dict:  # type: ignore
+            return doc['annotations'].values()  # type: ignore
         return None
 
     def destroy_pipe(self):

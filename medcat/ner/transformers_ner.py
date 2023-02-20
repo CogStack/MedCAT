@@ -331,19 +331,19 @@ class TransformersNER(object):
             return stream
 
         batch_size_chars = self.config.general['pipe_batch_size_in_chars']
-        yield from self._process(stream, batch_size_chars)
+        yield from self._process(stream, batch_size_chars)  # type: ignore
 
     def _process(self,
                  stream: Iterable[Union[Doc, None]],
                  batch_size_chars: int) -> Iterator[Optional[Doc]]:
-        for docs in self.batch_generator(stream, batch_size_chars):
+        for docs in self.batch_generator(stream, batch_size_chars):  # type: ignore
             #all_text = [doc.text for doc in docs]
             #all_text_processed = self.tokenizer.encode_eval(all_text)
             # For now we will process the documents one by one, should be improved in the future to use batching
             for doc in docs:
                 try:
                     res = self.ner_pipe(doc.text, aggregation_strategy=self.config.general['ner_aggregation_strategy'])
-                    doc.ents = []
+                    doc.ents = []  # type: ignore
                     for r in res:
                         inds = []
                         for ind, word in enumerate(doc):
@@ -353,15 +353,15 @@ class TransformersNER(object):
                             # To not loop through everything
                             if end_char > r['end']:
                                 break
+                        if inds:
+                            entity = Span(doc, min(inds), max(inds) + 1, label=r['entity_group'])
+                            entity._.cui = r['entity_group']
+                            entity._.context_similarity = r['score']
+                            entity._.detected_name = r['word']
+                            entity._.id = len(doc._.ents)
+                            entity._.confidence = r['score']
 
-                        entity = Span(doc, min(inds), max(inds) + 1, label=r['entity_group'])
-                        entity._.cui = r['entity_group']
-                        entity._.context_similarity = r['score']
-                        entity._.detected_name = r['word']
-                        entity._.id = len(doc._.ents)
-                        entity._.confidence = r['score']
-
-                        doc._.ents.append(entity)
+                            doc._.ents.append(entity)
                     create_main_ann(self.cdb, doc)
                     if self.cdb.config.general['make_pretty_labels'] is not None:
                         make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
