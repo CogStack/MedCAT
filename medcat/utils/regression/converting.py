@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 import re
 from typing import List, Optional, Set
 import tqdm
+from abc import ABC, abstractmethod
 
 from medcat.utils.regression.checking import RegressionCase, RegressionChecker, MetaData
 from medcat.utils.regression.results import ResultDescriptor
