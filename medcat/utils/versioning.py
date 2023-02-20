@@ -1,6 +1,7 @@
-from typing import Tuple
+from typing import Tuple, List
 import re
 import os
+import shutil
 
 import dill
 
@@ -113,3 +114,116 @@ def get_version_from_modelpack_zip(zip_path: str, cdb_file_name=CDB_FILE_NAME) -
     """
     model_pack_path = CAT.attempt_unpack(zip_path)
     return get_version_from_cdb_dump(os.path.join(model_pack_path, cdb_file_name))
+
+
+UPDATE_VERSION = (1, 3, 0)
+
+
+class ConfigUpgrader:
+    """Config updater.
+
+    Attempts to upgrade pre 1.3.0 medcat configs to the newer format.
+
+    Args:
+        zip_path (str): The model pack zip path.
+        cdb_file_name (str, optional): The CDB file name. Defaults to "cdb.dat".
+    """
+
+    def __init__(self, zip_path: str, cdb_file_name: str = CDB_FILE_NAME) -> None:
+        self.model_pack_path = CAT.attempt_unpack(zip_path)
+        self.cdb_path = os.path.join(self.model_pack_path, cdb_file_name)
+        self.current_version = get_version_from_cdb_dump(self.cdb_path)
+
+    def needs_upgrade(self) -> bool:
+        """Check if the specified modelpack needs an upgrade.
+
+        It needs an upgrade if its version is less than 1.3.0.
+
+        Returns:
+            bool: Whether or not an upgrade is needed.
+        """
+        return True  # TODO - rmeove
+        return self.current_version < UPDATE_VERSION
+
+    def _get_relevant_files(self, ignore_hidden: bool = True) -> List[str]:
+        """Get the list of relevant files with full path names.
+
+        By default this will ignore hidden files (those that start with '.').
+
+        Args:
+            ignore_hidden (bool, optional): Whether to ignore hidden files. Defaults to True.
+
+        Returns:
+            List[str]: The list of relevant file names to copy.
+        """
+        return [os.path.join(self.model_pack_path, fn)  # ignores hidden files
+                for fn in os.listdir(self.model_pack_path) if (ignore_hidden and not fn.startswith("."))]
+
+    def _check_existance(self, files_to_copy: List[str], new_path: str, overwrite: bool):
+        if overwrite:
+            return  # ignore all
+        if not os.path.exists(new_path):
+            os.makedirs(new_path)
+            return  # all good, new folder
+        # check file existance in new (existing) path
+        for file_to_copy in files_to_copy:
+            new_file_name = os.path.join(
+                new_path, os.path.basename(file_to_copy))
+            if os.path.exists(new_file_name):
+                raise ValueError(f"File already exists: {new_file_name}. "
+                                 "Pass overwrite=True to overwrite")
+
+    def _copy_files(self, files_to_copy: List[str], new_path: str) -> None:
+        for file_to_copy in files_to_copy:
+            new_file_name = os.path.join(
+                new_path, os.path.basename(file_to_copy))
+            if os.path.isdir(file_to_copy):
+                # if exists is OK since it should have been checked before
+                # if it was not to be overwritten
+                shutil.copytree(file_to_copy, new_file_name,
+                                dirs_exist_ok=True)
+            else:
+                shutil.copy(file_to_copy, new_file_name)
+
+    def upgrade(self, new_path: str, overwrite: bool = False) -> None:
+        """Upgrade the model.
+
+        The upgrade copies all the files from the original folder
+        to the new folder.
+
+        After copying, it changes the config into the format
+        required by MedCAT after version 1.3.0.
+
+        Args:
+            new_path (str): The path for the new model pack folder.
+            overwrite (bool, optional): Whether to overwrite new path. Defaults to False.
+
+        Raises:
+            ValueError: If one of the target files exists and cannot be overwritten.
+            ValueError: If model pack does not need an upgrade
+        """
+        if not self.needs_upgrade():
+            raise ValueError(f"Model pack does not need ugprade: {self.model_pack_path} "
+                             f"since it's at version: {self.current_version}")
+        files_to_copy = self._get_relevant_files()
+        self._check_existance(files_to_copy, new_path, overwrite)
+        self._copy_files(files_to_copy, new_path)
+        self._fix_cdb(new_path)
+
+    def _fix_cdb(self, new_path: str) -> None:
+        new_cdb_path = os.path.join(new_path, os.path.basename(self.cdb_path))
+        with open(new_cdb_path, 'rb') as f:
+            data = dill.load(f)
+        # make the changes
+
+        # Number 1
+        # the linking.filters.cuis is set to "{}"
+        # which is assumed to be an empty set, but actually
+        # evaluates to an empty dict instead
+        cuis = data['config']['linking']['filters']['cuis']
+        if isinstance(cuis, dict):
+            # though it _should_ be the empty set
+            data['config']['linking']['filters']['cuis'] = set(cuis)
+        # save modified version
+        with open(new_cdb_path, 'wb') as f:
+            dill.dump(data, f)
