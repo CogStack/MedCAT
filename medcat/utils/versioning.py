@@ -2,10 +2,15 @@ from typing import Tuple, List
 import re
 import os
 import shutil
+import argparse
+import logging
 
 import dill
 
 from medcat.cat import CAT
+
+
+logger = logging.getLogger(__name__)
 
 SemanticVersion = Tuple[int, int, int]
 
@@ -133,6 +138,7 @@ class ConfigUpgrader:
         self.model_pack_path = CAT.attempt_unpack(zip_path)
         self.cdb_path = os.path.join(self.model_pack_path, cdb_file_name)
         self.current_version = get_version_from_cdb_dump(self.cdb_path)
+        logger.debug("Loaded model from %s at version %s", self.model_pack_path, self.current_version)
 
     def needs_upgrade(self) -> bool:
         """Check if the specified modelpack needs an upgrade.
@@ -142,7 +148,6 @@ class ConfigUpgrader:
         Returns:
             bool: Whether or not an upgrade is needed.
         """
-        return True  # TODO - rmeove
         return self.current_version < UPDATE_VERSION
 
     def _get_relevant_files(self, ignore_hidden: bool = True) -> List[str]:
@@ -180,9 +185,11 @@ class ConfigUpgrader:
             if os.path.isdir(file_to_copy):
                 # if exists is OK since it should have been checked before
                 # if it was not to be overwritten
+                logger.debug("Copying folder %s to %s", file_to_copy, new_file_name)
                 shutil.copytree(file_to_copy, new_file_name,
                                 dirs_exist_ok=True)
             else:
+                logger.debug("Copying file %s to %s", file_to_copy, new_file_name)
                 shutil.copy(file_to_copy, new_file_name)
 
     def upgrade(self, new_path: str, overwrite: bool = False) -> None:
@@ -205,9 +212,12 @@ class ConfigUpgrader:
         if not self.needs_upgrade():
             raise ValueError(f"Model pack does not need ugprade: {self.model_pack_path} "
                              f"since it's at version: {self.current_version}")
+        logger.info("Starting to upgrade %s at (version %s)", self.model_pack_path, self.current_version)
         files_to_copy = self._get_relevant_files()
         self._check_existance(files_to_copy, new_path, overwrite)
+        logger.debug("Copying files from %s", self.model_pack_path)
         self._copy_files(files_to_copy, new_path)
+        logger.info("Going to try and fix CDB")
         self._fix_cdb(new_path)
 
     def _fix_cdb(self, new_path: str) -> None:
@@ -216,6 +226,7 @@ class ConfigUpgrader:
             data = dill.load(f)
         # make the changes
 
+        logger.debug("Fixing CDB issue #1 (linking.filters.cui)")
         # Number 1
         # the linking.filters.cuis is set to "{}"
         # which is assumed to be an empty set, but actually
@@ -225,5 +236,6 @@ class ConfigUpgrader:
             # though it _should_ be the empty set
             data['config']['linking']['filters']['cuis'] = set(cuis)
         # save modified version
+        logger.debug("Saving CDB back into %s", new_cdb_path)
         with open(new_cdb_path, 'wb') as f:
             dill.dump(data, f)
