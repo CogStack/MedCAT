@@ -22,10 +22,10 @@ SEMANTIC_VERSION_REGEX = (r"^(0|[1-9]\d*)"  # major
                           # CHANGE FROM NORM - allowing dev before patch version number
                           # but NOT capturing the group
                           r"\.(?:dev)?"
-                          f"(0|[1-9]\d*)"  # .patch
+                          r"(0|[1-9]\d*)"  # .patch
                           # and then some trailing stuff
-                          f"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
-                          f"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$")
+                          r"(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?"
+                          r"(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$")
 SEMANTIC_VERSION_PATTERN = re.compile(SEMANTIC_VERSION_REGEX)
 
 
