@@ -254,6 +254,11 @@ class ConfigUpgrader:
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse the arguments from the CLI.
+
+    Returns:
+        argparse.Namespace: The parsed arguments.
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "action", help="The action. Currently, only 'fix-config' is available.", choices=['fix-config'])
@@ -269,6 +274,11 @@ def parse_args() -> argparse.Namespace:
 
 
 def setup_logging(args: argparse.Namespace):
+    """Setup logging for the runnable based on CLI arguments.
+
+    Args:
+        args (argparse.Namespace): The parsed arguments.
+    """
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
     if args.verbose:
@@ -276,6 +286,11 @@ def setup_logging(args: argparse.Namespace):
 
 
 def fix_config(args: argparse.Namespace) -> None:
+    """Perform the fix-config action based on the CLI arguments.
+
+    Args:
+        args (argparse.Namespace): The parsed arguments.
+    """
     logger.debug("Setting up upgrader")
     upgrader = ConfigUpgrader(args.modelpack)
     logger.debug("Starting the upgrade process")
@@ -283,6 +298,11 @@ def fix_config(args: argparse.Namespace) -> None:
 
 
 def main():
+    """Run the CLI associated with this module.
+
+    Raises:
+        ValueError: If an unknown action is provided.
+    """
     args = parse_args()
     setup_logging(args)
     logger.debug("Will attempt to perform action %s", args.action)
