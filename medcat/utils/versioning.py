@@ -251,3 +251,46 @@ class ConfigUpgrader:
                      from_dir, target_name)
         shutil.make_archive(
             base_name=target_name, format='zip', base_dir=from_dir)
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "action", help="The action. Currently, only 'fix-config' is available.", choices=['fix-config'])
+    parser.add_argument("modelpack", help="MedCAT modelpack zip path")
+    parser.add_argument("newpath", help="The path for the new modelpack")
+    parser.add_argument(
+        "--overwrite", help="Allow overvwriting existing files", action="store_true")
+    parser.add_argument(
+        "--silent", help="Disable logging", action="store_true")
+    parser.add_argument(
+        "--verbose", help="Show debug output", action="store_true")
+    return parser.parse_args()
+
+
+def setup_logging(args: argparse.Namespace):
+    if not args.silent:
+        logger.addHandler(logging.StreamHandler())
+    if args.verbose:
+        logger.setLevel(logging.DEBUG)
+
+
+def fix_config(args: argparse.Namespace) -> None:
+    logger.debug("Setting up upgrader")
+    upgrader = ConfigUpgrader(args.modelpack)
+    logger.debug("Starting the upgrade process")
+    upgrader.upgrade(args.newpath, overwrite=args.overwrite)
+
+
+def main():
+    args = parse_args()
+    setup_logging(args)
+    logger.debug("Will attempt to perform action %s", args.action)
+    if args.action.lower() == 'fix-config':
+        fix_config(args)
+    else:
+        raise ValueError(f"Unknown action: {args.action}")
+
+
+if __name__ == "__main__":
+    main()
