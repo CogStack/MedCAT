@@ -273,7 +273,7 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def setup_logging(args: argparse.Namespace):
+def setup_logging(args: argparse.Namespace) -> None:
     """Setup logging for the runnable based on CLI arguments.
 
     Args:
@@ -297,7 +297,7 @@ def fix_config(args: argparse.Namespace) -> None:
     upgrader.upgrade(args.newpath, overwrite=args.overwrite)
 
 
-def main():
+def main() -> None:
     """Run the CLI associated with this module.
 
     Raises:
