@@ -800,6 +800,24 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)
 
+    def eval(self,
+             data_path: str,
+             use_filters: bool = False,
+             use_overlaps: bool = False,
+             use_cui_doc_limit: bool = False,
+             use_groups: bool = False,
+             extra_cui_filter: Optional[Set] = None,
+             ) -> Tuple:
+        with open(data_path) as f:
+            data = json.load(f)
+            fp, fn, tp, p, r, f1, cui_counts, examples = self._print_stats(data,
+                                                                           use_project_filters=use_filters,
+                                                                           use_cui_doc_limit=use_cui_doc_limit,
+                                                                           use_overlaps=use_overlaps,
+                                                                           use_groups=use_groups,
+                                                                           extra_cui_filter=extra_cui_filter)
+            return fp, fn, tp, p, r, f1
+
     def train_supervised(self,
                          data_path: str,
                          reset_cui_count: bool = False,
