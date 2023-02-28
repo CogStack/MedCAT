@@ -261,7 +261,7 @@ def parse_args() -> argparse.Namespace:
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "action", help="The action. Currently, only 'fix-config' is available.", choices=['fix-config'])
+        "action", help="The action. Currently, only 'fix-config' is available.", choices=['fix-config'], type=str.lower)
     parser.add_argument("modelpack", help="MedCAT modelpack zip path")
     parser.add_argument("newpath", help="The path for the new modelpack")
     parser.add_argument(
@@ -306,7 +306,7 @@ def main() -> None:
     args = parse_args()
     setup_logging(args)
     logger.debug("Will attempt to perform action %s", args.action)
-    if args.action.lower() == 'fix-config':
+    if args.action == 'fix-config':
         fix_config(args)
     else:
         raise ValueError(f"Unknown action: {args.action}")
