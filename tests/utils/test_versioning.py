@@ -1,8 +1,14 @@
 import unittest
 import os
+import tempfile
+import shutil
+
+import dill
+import pydantic
 
 from medcat.utils.versioning import get_version_from_modelcard, get_semantic_version_from_model
 from medcat.utils.versioning import get_version_from_cdb_dump, get_version_from_modelpack_zip
+from medcat.utils.versioning import ConfigUpgrader
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
@@ -112,5 +118,46 @@ class VersionGettFromModelPackTests(unittest.TestCase):
         # not strictly speaking a ZIP, but should work currently
         # since the folder exists
         model_pack_zip = os.path.dirname(CDB_PATH)
-        version = get_version_from_modelpack_zip(model_pack_zip, cdb_file_name=NEW_CDB_NAME)
+        version = get_version_from_modelpack_zip(
+            model_pack_zip, cdb_file_name=NEW_CDB_NAME)
         self.assertEqual(EXPECTED_CDB_VERSION, version)
+
+
+class VersioningFixTests(unittest.TestCase):
+
+    def break_cdb(self):
+        with open(self.broken_cdb_path, 'rb') as rf:
+            data = dill.load(rf)
+        data['config']['linking']['filters']['cuis'] = {}
+        with open(self.broken_cdb_path, 'wb') as wf:
+            dill.dump(data, wf)
+
+    def setUp(self) -> None:
+        self.temp_folder = tempfile.TemporaryDirectory()
+        self.broken_cdb_path = os.path.join(self.temp_folder.name, "cdb.dat")
+        self.new_temp_folder = tempfile.TemporaryDirectory()
+        shutil.copyfile(CDB_PATH, self.broken_cdb_path)
+        self.break_cdb()
+
+    def tearDown(self) -> None:
+        self.temp_folder.cleanup()
+        self.new_temp_folder.cleanup()
+
+    def test_new_format_does_not_change_when_upgraded(self):
+        fixer = ConfigUpgrader(os.path.dirname(
+            CDB_PATH), cdb_file_name=NEW_CDB_NAME)
+        fixer.upgrade(self.new_temp_folder.name)
+        old_cdb = CDB.load(CDB_PATH)
+        new_cdb = CDB.load(os.path.join(
+            self.new_temp_folder.name, NEW_CDB_NAME))
+        self.assertEqual(old_cdb.config.get_hash(), new_cdb.config.get_hash())
+
+    def test_old_format_needs_upgrade(self):
+        fixer = ConfigUpgrader(self.temp_folder.name)
+        self.assertTrue(fixer.needs_upgrade())
+
+    def test_fixes_old_format(self):
+        fixer = ConfigUpgrader(self.temp_folder.name)
+        fixer.upgrade(self.new_temp_folder.name)
+        new_cdb = CDB.load(os.path.join(self.new_temp_folder.name, "cdb.dat"))
+        self.assertIsInstance(new_cdb, CDB)
