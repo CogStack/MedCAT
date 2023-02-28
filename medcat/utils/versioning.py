@@ -236,7 +236,7 @@ class ConfigUpgrader:
         # which is assumed to be an empty set, but actually
         # evaluates to an empty dict instead
         cuis = data['config']['linking']['filters']['cuis']
-        if isinstance(cuis, dict):
+        if cuis == {}:
             # though it _should_ be the empty set
             data['config']['linking']['filters']['cuis'] = set(cuis)
         # save modified version
