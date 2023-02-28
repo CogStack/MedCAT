@@ -245,12 +245,10 @@ class ConfigUpgrader:
             dill.dump(data, f)
 
     def _make_archive(self, new_path: str):
-        target_name = new_path
-        from_dir = new_path
         logger.debug("Taking data from %s and writing it to %s.zip",
-                     from_dir, target_name)
+                     new_path, new_path)
         shutil.make_archive(
-            base_name=target_name, format='zip', base_dir=from_dir)
+            base_name=new_path, format='zip', base_dir=new_path)
 
 
 def parse_args() -> argparse.Namespace:
