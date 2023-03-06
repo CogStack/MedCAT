@@ -300,6 +300,31 @@ class CAT(object):
         return model_pack_name
 
     @classmethod
+    def attempt_unpack(cls, zip_path: str) -> str:
+        """Attempt unpack the zip to a folder and get the model pack path.
+
+        If the folder already exists, no unpacking is done.
+
+        Args:
+            zip_path (str): The ZIP path
+
+        Returns:
+            str: The model pack path
+        """
+        base_dir = os.path.dirname(zip_path)
+        filename = os.path.basename(zip_path)
+
+        foldername = filename.replace(".zip", '')
+
+        model_pack_path = os.path.join(base_dir, foldername)
+        if os.path.exists(model_pack_path):
+            logger.info("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
+        else:
+            logger.info("Unziping the model pack and loading models.")
+            shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
+        return model_pack_path
+
+    @classmethod
     def load_model_pack(cls,
                         zip_path: str,
                         meta_cat_config_dict: Optional[Dict] = None,
@@ -324,16 +349,7 @@ class CAT(object):
         from medcat.vocab import Vocab
         from medcat.meta_cat import MetaCAT
 
-        base_dir = os.path.dirname(zip_path)
-        filename = os.path.basename(zip_path)
-        foldername = filename.replace(".zip", '')
-
-        model_pack_path = os.path.join(base_dir, foldername)
-        if os.path.exists(model_pack_path):
-            logger.info("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
-        else:
-            logger.info("Unziping the model pack and loading models.")
-            shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
+        model_pack_path = cls.attempt_unpack(zip_path)
 
         # Load the CDB
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
