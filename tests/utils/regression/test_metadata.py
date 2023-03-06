@@ -4,6 +4,7 @@ import unittest
 
 
 # from Anthony's 1.4 model
+EXAMPLE_VERSION = 1, 3, 0
 MODEL_CARD_EXAMPLE = {
     "Model ID": "acd0dfc2f0df45de",
     "Last Modified On": "04 October 2022",
