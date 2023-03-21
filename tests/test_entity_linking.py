@@ -1,6 +1,4 @@
 import unittest
-from medcat.cat import CAT
-from medcat.config import Config
 from medcat.utils.model_creator import create_models
 from pathlib import Path
 
@@ -14,11 +12,8 @@ class EntityLinkingTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cdb, vocab = create_models(Path('tests/model_creator/config_example.yml'))
-        medcat_config = Config()
-        medcat_config.parse_config_file(Path('tests/model_creator/medcat.txt'))
-        cls.cat = CAT(cdb=cdb, vocab=vocab, config=medcat_config)
-        cls.cdb = cdb
+        model_creator_config_path = Path('tests/model_creator/config_example.yml')
+        cls.cat = create_models(model_creator_config_path)
 
     def assert_linked_entities(self, doc, expected_entities, unexpected_entities=None):
         """General assertion function to assess linked entities.
@@ -98,7 +93,7 @@ class TestDiacritics(EntityLinkingTest):
     """
 
     def test_diacritics_in_cdb(self):
-        self.assertIn('ménière', self.cdb.cui2snames['C0025281'])
+        self.assertIn('ménière', self.cat.cdb.cui2snames['C0025281'])
 
     def test_diacritics_in_text(self):
         expected_entities = ['C0025281']

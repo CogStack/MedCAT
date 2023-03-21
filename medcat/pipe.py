@@ -14,52 +14,53 @@ from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
 from medcat.rel_cat import RelCAT
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
-from medcat.utils.loggers import add_handlers
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.ner.transformers_ner import TransformersNER
+
+
+logger = logging.getLogger(__name__) # different logger from the package-level one
 
 
 class Pipe(object):
-    r''' A wrapper around the standard spacy pipeline.
+    """A wrapper around the standard spacy pipeline.
 
     Args:
-        tokenizer (`spacy.tokenizer.Tokenizer`):
-            What will be used to split text into tokens, can be anything built as a spacy tokenizer.
-        config (`medcat.config.Config`):
+        tokenizer (spacy.tokenizer.Tokenizer):
+            What will be used to split text into tokens,
+            can be anything built as a spacy tokenizer.
+        config (medcat.config.Config):
             Global config for medcat.
 
     Properties:
         nlp (spacy.language.<lng>):
             The base spacy NLP pipeline.
-    '''
-    log = logging.getLogger(__package__)
-    # Add file and console handlers
-    log = add_handlers(log)
+    """
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
-        self._nlp = spacy.load(config.general['spacy_model'], disable=config.general['spacy_disabled_components'])
-        if config.preprocessing['stopwords'] is not None:
-            self._nlp.Defaults.stop_words = set(config.preprocessing['stopwords'])
+        self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
+        if config.preprocessing.stopwords is not None:
+            self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
         # Set max document length
-        self._nlp.max_length = config.preprocessing.get('max_document_length', 1000000)
+        self._nlp.max_length = config.preprocessing.max_document_length
         self.config = config
         # Set log level
-        self.log.setLevel(self.config.general['log_level'])
+        logger.setLevel(self.config.general.log_level)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
-        r''' Add any kind of a tagger for tokens.
+        """Add any kind of a tagger for tokens.
 
         Args:
-            tagger (`object/function`):
+            tagger(Callable):
                 Any object/function that takes a spacy doc as an input, does something
                 and returns the same doc.
-            name (`str`):
-                Name for this component in the pipeline.
-            additional_fields (`List[str]`):
-                Fields to be added to the `_` properties of a token.
-        '''
+            name(Optional[str], optional):
+                Name for this component in the pipeline. (Default value = None)
+            additional_fields(List[str], optional):
+                Fields to be added to the `_` properties of a token. (Default value = [])
+        """
         component_factory_name = spacy.util.get_object_name(tagger)
         name = name if name is not None else component_factory_name
         Language.factory(name=component_factory_name, default_config={"config": self.config}, func=tagger)
@@ -83,10 +84,15 @@ class Pipe(object):
         Token.set_extension('norm', default=None, force=True)
 
     def add_ner(self, ner: NER, name: Optional[str] = None) -> None:
-        r''' Add NER from CAT to the pipeline, will also add the necessary fields
+        """Add NER from CAT to the pipeline, will also add the necessary fields
         to the document and Span objects.
 
-        '''
+        Args:
+            ner(NER):
+                The NER instance
+            name(Optional[str], optional):
+                The pipeline name (Default value = None)
+        """
         component_name = spacy.util.get_object_name(ner)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=ner)
@@ -102,13 +108,16 @@ class Pipe(object):
         Span.set_extension('link_candidates', default=None, force=True)
 
     def add_linker(self, linker: Linker, name: Optional[str] = None) -> None:
-        r''' Add entity linker to the pipeline, will also add the necessary fields
+        """Add entity linker to the pipeline, will also add the necessary fields
         to Span object.
 
-        linker (object/function):
-            Any object/function created based on the requirements for a spaCy pipeline components. Have
-            a look at https://spacy.io/usage/processing-pipelines#custom-components
-        '''
+        Args:
+            linker(Linker):
+                Any object/function created based on the requirements for a spaCy pipeline components. Have
+                a look at https://spacy.io/usage/processing-pipelines#custom-components
+            name(Optional[str], optional):
+                The component name (Default value = None)
+        """
         component_name = spacy.util.get_object_name(linker)
         name = name if name is not None else component_name
         Language.component(name=component_name, func=linker)
@@ -135,32 +144,47 @@ class Pipe(object):
         # dictionary containing relations of the form {}
         Doc.set_extension("relations", default=[], force=True)
 
+    def add_addl_ner(self, addl_ner: TransformersNER, name: Optional[str] = None) -> None:
+        component_name = spacy.util.get_object_name(addl_ner)
+        name = name if name is not None else component_name
+        Language.component(name=component_name, func=addl_ner)  # type: ignore
+        self._nlp.add_pipe(component_name, name=name, last=True)
+
+        Doc.set_extension('ents', default=[], force=True)
+        Span.set_extension('confidence', default=-1, force=True)
+        Span.set_extension('id', default=0, force=True)
+        Span.set_extension('cui', default=-1, force=True)
+        Span.set_extension('context_similarity', default=-1, force=True)
+        Span.set_extension('detected_name', default=None, force=True)
+
+
     def batch_multi_process(self,
                             texts: Iterable[str],
                             n_process: Optional[int] = None,
                             batch_size: Optional[int] = None) -> Iterable[Doc]:
-        r''' Batch process a list of texts in parallel.
+        """Batch process a list of texts in parallel.
 
         Args:
-            texts (`Iterable[str]`):
+            texts (Iterable[str]):
                 The input sequence of texts to process.
-            n_process (`int`):
-                The number of processes running in parallel. Defaults to max(mp.cpu_count() - 1, 1).
-            batch_size (`int`):
+            n_process (int):
+                The number of processes running in parallel.
+                Defaults to max(mp.cpu_count() - 1, 1).
+            batch_size (int):
                 The number of texts to buffer. Defaults to 1000.
-            total (`int`):
+            total (int):
                 The number of texts in total.
 
-        Return:
+        Returns:
             Generator[Doc]:
                 The output sequence of spacy documents with the extracted entities
-        '''
+        """
         instance_name = "ensure_serializable"
         try:
             self._nlp.get_pipe(instance_name)
         except KeyError:
             component_name = spacy.util.get_object_name(self._ensure_serializable)
-            Language.component(name=component_name, func=self._ensure_serializable)
+            Language.component(name=component_name, func=self._ensure_serializable)  # type: ignore
             self._nlp.add_pipe(component_name, name=instance_name, last=True)
 
         n_process = n_process if n_process is not None else max(cpu_count() - 1, 1)
@@ -213,8 +237,7 @@ class Pipe(object):
 
     @property
     def spacy_nlp(self) -> Language:
-        """ The spaCy Language object
-        """
+        """The spaCy Language object."""
         return self._nlp
 
     @staticmethod
@@ -223,18 +246,18 @@ class Pipe(object):
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
-            return self._nlp(text) if len(text) > 0 else None
+            return self._nlp(text) if len(text) > 0 else None  # type: ignore
         elif isinstance(text, Iterable):
             docs = []
             for t in text if isinstance(text, types.GeneratorType) else tqdm(text, total=len(list(text))):
                 try:
                     doc = self._nlp(t) if isinstance(t, str) and len(t) > 0 else None
                 except Exception as e:
-                    self.log.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
-                    self.log.warning(e, exc_info=True, stack_info=True)
+                    logger.warning("Exception raised when processing text: %s", t[:50] + "..." if isinstance(t, str) else t)
+                    logger.warning(e, exc_info=True, stack_info=True)
                     doc = None
                 docs.append(doc)
-            return docs
+            return docs  # type: ignore
         else:
-            self.log.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
+            logger.error("The input text should be either a string or a sequence of strings but got: %s", type(text))
             return None

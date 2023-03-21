@@ -8,12 +8,15 @@ from medcat.preprocessing.iterators import SimpleIter
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
 
+logger = logging.getLogger(__name__)
+
+
 class MakeVocab(object):
-    r'''
-    Create a new vocab from a text file. To make a vocab and train word embeddings do:
+    """Create a new vocab from a text file.
+
     Args:
         config (medcat.config.Config):
-            Global configuration for medcat
+            Global configuration for medcat.
         cdb (medcat.cdb.CDB):
             The concept database that will be added ontop of the Vocab built from the text file.
         vocab (medcat.vocab.Vocab, optional):
@@ -21,14 +24,14 @@ class MakeVocab(object):
         word_tokenizer (<function>):
             A custom tokenizer for word spliting - used if embeddings are BERT or similar.
             Default: None
+    Examples:
+        To make a vocab and train word embeddings.
 
-    >>>cdb = <your existing cdb>
-    >>>maker = MakeVocab(cdb=cdb, config=config)
-    >>>maker.make(data_iterator, out_folder="./output/")
-    >>>maker.add_vectors(in_path="./output/data.txt")
-    >>>
-    '''
-    log = logging.getLogger(__name__)
+        >>> cdb = <your existing cdb>
+        >>> maker = MakeVocab(cdb=cdb, config=config)
+        >>> maker.make(data_iterator, out_folder="./output/")
+        >>> maker.add_vectors(in_path="./output/data.txt")
+    """
 
     def __init__(self, config, cdb=None, vocab=None, word_tokenizer=None):
         self.cdb = cdb
@@ -58,8 +61,7 @@ class MakeVocab(object):
         return [text]
 
     def make(self, iter_data, out_folder, join_cdb=True, normalize_tokens=False):
-        r'''
-        Make a vocab - without vectors initially. This will create two files in the out_folder:
+        """Make a vocab - without vectors initially. This will create two files in the out_folder:
         - vocab.dat -> The vocabulary without vectors
         - data.txt -> The tokenized dataset prepared for training of word2vec or similar embeddings.
 
@@ -67,13 +69,13 @@ class MakeVocab(object):
             iter_data (Iterator):
                 An iterator over sentences or documents. Can also be a simple array of text documents/sentences.
             out_folder (string):
-                A path to a folder where all the results will be saved
+                A path to a folder where all the results will be saved.
             join_cdb (bool):
-                Should the words from the CDB be added to the Vocab. Default: True
+                Should the words from the CDB be added to the Vocab. Default: True.
             normalize_tokens (bool, defaults to True):
                 If set tokens will be lematized - tends to work better in some cases where the difference
                 between e.g. plural/singular should be ignored. But in general not so important if the dataset is big enough.
-        '''
+        """
         # Save the preprocessed data, used for emb training
         out_path = Path(out_folder) / "data.txt"
         vocab_path = Path(out_folder) / "vocab.dat"
@@ -82,8 +84,7 @@ class MakeVocab(object):
 
         for ind, doc in enumerate(iter_data):
             if ind % 10000 == 0:
-                self.log.info("Vocab builder at: %s", str(ind))
-                print(ind)
+                logger.info("Vocab builder at: %s", str(ind))
 
             doc = self.pipe.spacy_nlp.tokenizer(doc)
             line = ""
@@ -120,8 +121,7 @@ class MakeVocab(object):
 
     def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, epochs=2, min_count=10, window=10, vector_size=300,
                     unigram_table_size=100000000):
-        r'''
-        Add vectors to an existing vocabulary and save changes to the vocab_path.
+        """Add vectors to an existing vocabulary and save changes to the vocab_path.
 
         Args:
             in_path (str):
@@ -136,7 +136,7 @@ class MakeVocab(object):
 
         Returns:
             A trained word2vec model.
-        '''
+        """
         if w2v is None:
             if data_iter is None:
                 data = SimpleIter(in_path)

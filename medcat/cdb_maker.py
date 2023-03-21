@@ -1,9 +1,9 @@
-import pandas
+import pandas as pd
 import numpy as np
 import datetime
 import logging
 import re
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Union
 
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
@@ -11,29 +11,29 @@ from medcat.config import Config
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
-from medcat.utils.loggers import add_handlers
 
 PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
 
 
+logger = logging.getLogger(__name__)
+
+
 class CDBMaker(object):
-    r''' Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
+    """Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
     updates an exisitng one.
 
     Args:
-        config (`medcat.config.Config`):
+        config (medcat.config.Config):
             Global config for MedCAT.
-        cdb (`medcat.cdb.CDB`, optional):
-            If set the `CDBMaker` will updat the existing `CDB` with new concepts in the CSV.
-        name_max_words (`int`, defaults to `20`):
-            Names with more words will be skipped during the build of a CDB
-    '''
-    log = add_handlers(logging.getLogger(__package__))
+        cdb (medcat.cdb.CDB):
+            If set the `CDBMaker` will updat the existing `CDB` with
+            new concepts in the CSV (Default value `None`).
+    """
 
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
         # Set log level
-        self.log.setLevel(self.config.general['log_level'])
+        logger.setLevel(self.config.general['log_level'])
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker
@@ -50,50 +50,55 @@ class CDBMaker(object):
                              additional_fields=['is_punct'])
 
     def prepare_csvs(self,
-                     csv_paths: List[str],
+                     csv_paths: Union[pd.DataFrame, List[str]],
                      sep: str = ',',
                      encoding: Optional[str] = None,
                      escapechar: Optional[str] = None,
                      index_col: bool = False,
                      full_build: bool = False,
                      only_existing_cuis: bool = False, **kwargs) -> CDB:
-        r''' Compile one or multiple CSVs into a CDB.
+        r"""Compile one or multiple CSVs into a CDB.
 
         Args:
-            csv_paths (`List[str]`):
-                An array of paths to the csv files that should be processed
-            full_build (`bool`, defaults to `True`):
+            csv_paths (Union[pd.DataFrame, List[str]]):
+                An array of paths to the csv files that should be processed. Can also be an array of pd.DataFrames
+            full_build (bool):
                 If False only the core portions of the CDB will be built (the ones required for
                 the functioning of MedCAT). If True, everything will be added to the CDB - this
                 usually includes concept descriptions, various forms of names etc (take care that
-                this option produces a much larger CDB).
-            sep (`str`, defaults to `,`):
-                If necessary a custom separator for the csv files
-            encoding (`str`, optional):
-                Encoding to be used for reading the CSV file
-            escapechar (`str`, optional):
-                Escape char for the CSV
-            index_col (`bool`, defaults_to `False`):
-                Index column for pandas read_csv
-            only_existing_cuis (`bool`, defaults to False):
+                this option produces a much larger CDB) (Default value False).
+            sep (str):
+                If necessary a custom separator for the csv files (Default value ',').
+            encoding (str):
+                Encoding to be used for reading the CSV file (Default value `None`).
+            escapechar (str):
+                Escape char for the CSV (Default value None).
+            index_col (bool):
+                Index column for pandas read_csv (Default value False).
+            only_existing_cuis bool):
                 If True no new CUIs will be added, but only linked names will be extended. Mainly used when
-                enriching names of a CDB (e.g. SNOMED with UMLS terms).
-        Return:
-            `medcat.cdb.CDB` with the new concepts added.
+                enriching names of a CDB (e.g. SNOMED with UMLS terms) (Default value `False`).
+        Returns:
+            medcat.cdb.CDB: CDB with the new concepts added.
 
         Note:
             \*\*kwargs:
                 Will be passed to pandas for CSV reading
             csv:
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)
-        '''
+        """
 
         useful_columns = ['cui', 'name', 'ontologies', 'name_status', 'type_ids', 'description']
         name_status_options = {'A', 'P', 'N'}
 
         for csv_path in csv_paths:
             # Read CSV, everything is converted to strings
-            df = pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=index_col, dtype=str, **kwargs)
+            if isinstance(csv_path, str):
+                logger.info("Started importing concepts from: {}".format(csv_path))
+                df = pd.pandas.read_csv(csv_path, sep=sep, encoding=encoding, escapechar=escapechar, index_col=index_col, dtype=str, **kwargs)
+            else:
+                # Not very clear, but csv_path can be a pre-loaded csv
+                df = csv_path
             df = df.fillna('')
 
             # Find which columns to use from the CSV
@@ -104,7 +109,6 @@ class CDBMaker(object):
                     col2ind[str(col).lower().strip()] = len(cols)
                     cols.append(col)
 
-            self.log.info("Started importing concepts from: {}".format(csv_path))
             _time = None # Used to check speed
             _logging_freq = np.ceil(len(df[cols]) / 100)
             for row_id, row in enumerate(df[cols].values):
@@ -117,7 +121,7 @@ class CDBMaker(object):
                     ctime = datetime.datetime.now()
                     # Get time difference
                     timediff = ctime - _time
-                    self.log.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format(
+                    logger.info("Current progress: {:.0f}% at {:.3f}s per {} rows".format(
                         (row_id / len(df)) * 100, timediff.microseconds/10**6 + timediff.seconds, (len(df[cols]) // 100)))
                     # Set previous time to current time
                     _time = ctime
@@ -172,7 +176,7 @@ class CDBMaker(object):
                     self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
-                    self.log.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
+                    logger.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
                                    cui, names, ontologies, name_status, type_ids, description, full_build)
 
         return self.cdb

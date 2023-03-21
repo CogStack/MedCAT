@@ -11,7 +11,11 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 
 **Discussion Forum [here](https://discourse.cogstack.org/)**
 
+**Available Models (requires UMLS license) [here](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback)**
+
 ## News
+- **Paper** [A New Public Corpus for Clinical Section Identification: MedSecId](https://aclanthology.org/2022.coling-1.326.pdf)
+- **New Release** \[5. October 2022\]**: Logging changes, and various small updates. [Full changelog](https://github.com/CogStack/MedCAT/compare/v1.3.0...v1.4.0)
 - **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
 - **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT.
@@ -21,8 +25,6 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
   as well as potential problems with all code that used the MedCAT package. MedCAT v0.4 is available on the legacy
   branch and will still be supported until 1. July 2021
   (with respect to potential bug fixes), after it will still be available but not updated anymore.
-- **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
-- ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md))
 
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
@@ -112,30 +114,20 @@ python medcat/utils/model_creator.py tests/model_creator/config_example.yml
 | medcat_config_file | Path to optional config file for adjusting MedCAT properties, see [configs](https://github.com/CogStack/MedCAT/tree/master/configs), [medcat/config.py](https://github.com/CogStack/MedCAT/tree/master/medcat/config.py) and [tests/model_creator/medcat.txt](https://github.com/CogStack/MedCAT/tree/master/tests/model_creator/medcat.txt)| 
 | unigram_table_size | Optional parameter for setting the initialization size of the unigram table in the vocab model. Default is 100000000, while for testing with a small unsupervised training data file a much smaller size could work. | 
 
-
 ## Models
-A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`.
+### SNOMED-CT and UMLS
+If you have access to UMLS or SNOMED-CT, you can download the pre-built CDB and Vocab for those databases by signing in and filling out [the online form](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback). This link first requires you to authenticate your ontology access via the NIH portal.
 
-#### ModelPacks
+### MedMentions
+A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`. This was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as that data is not publicaly available.
 
+Model packs:
 - MedMentions with Status (Is Concept Affirmed or Negated/Hypothetical) [Download](https://medcat.rosalind.kcl.ac.uk/media/medmen_wstatus_2021_oct.zip)
 
-
-#### Separate models
-
+Separate models:
 - Vocabulary [Download](https://medcat.rosalind.kcl.ac.uk/media/vocab.dat) - Built from MedMentions
-
 - CDB [Download](https://medcat.rosalind.kcl.ac.uk/media/cdb-medmen-v1_2.dat) - Built from MedMentions
-
 - MetaCAT Status [Download](https://medcat.rosalind.kcl.ac.uk/media/mc_status.zip) - Built from a sample from MIMIC-III, detects is an annotation Affirmed (Positve) or Other (Negated or Hypothetical)
-
-
-(Note: This was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as
-that data is not publicaly available.)
-
-### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT, you can download the pre-built CDB and Vocab for those databases by signing in and filling out [the online form](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback).
-This link first requires you to authenticate your ontology access via the NIH portal.
 
 ## Acknowledgements
 Entity extraction was trained on [MedMentions](https://github.com/chanzuckerberg/MedMentions) In total it has ~ 35K entites from UMLS

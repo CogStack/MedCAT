@@ -6,25 +6,39 @@ from sklearn.metrics import cohen_kappa_score
 from typing import Dict, List, Optional, Union, Tuple, Any, Set
 from spacy.tokens.doc import Doc
 from spacy.tokens.span import Span
-from medcat.cat import CDB
+from medcat.cdb import CDB
+from collections import defaultdict
+import random
+
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def set_all_seeds(seed: int) -> None:
     torch.manual_seed(seed)
     np.random.seed(seed)
+    random.seed(seed)
 
 
-def count_annotations_project(project: Dict) -> int:
+def count_annotations_project(project: Dict, cnt_per_cui=None) -> Tuple[int, Any]:
     cnt = 0
+    if cnt_per_cui is None:
+        cnt_per_cui = defaultdict(int)
     for doc in project['documents']:
         for ann in doc['annotations']:
             # Only validated
-            if ann['validated']:
+            if ann.get('validated', True):
                 cnt += 1
-    return cnt
+                cnt_per_cui[ann['cui']] += 1
+    return cnt, cnt_per_cui
 
 
 def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann: bool = True) -> Dict:
+    """Args:
+        require_annotations:
+            This will require anns but on project level, any doc in a project needs anns.
+    """
     data_candidates = json.load(open(data_path))
     if require_annotations:
         data: Dict = {'projects': []}
@@ -44,24 +58,34 @@ def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann
     cnts = []
     if order_by_num_ann:
         for project in data['projects']:
-            cnt = count_annotations_project(project)
+            cnt, _ = count_annotations_project(project)
             cnts.append(cnt)
-    srt = np.argsort(-np.array(cnts))
-    data['projects'] = [data['projects'][i] for i in srt]
+        srt = np.argsort(-np.array(cnts))
+        data['projects'] = [data['projects'][i] for i in srt]
 
     return data
 
 
-def count_annotations(data_path: str) -> None:
+def count_annotations(data_path: str) -> Dict:
     data = load_data(data_path, require_annotations=True)
 
     g_cnt = 0
+    cnt_per_cui: Dict = defaultdict(int)
     for project in data['projects']:
-        cnt = count_annotations_project(project)
+        cnt, cnt_per_cui = count_annotations_project(project, cnt_per_cui)
         g_cnt += cnt
-        print("Number of annotations in '{}' is: {}".format(project['name'], cnt))
+        logger.info("Number of annotations in project '%s' is: %d", project['name'], cnt)
 
-    print("Total number of annotations is: {}".format(g_cnt))
+    # Count annotates per entity
+    logger.info("Total number of annotations is: %d", g_cnt)
+
+    # Annotates per CUI
+    cnt_per_cui = dict(cnt_per_cui)
+    logger.info("Annotations per CUI: ")
+    for row in sorted(cnt_per_cui.items(), key=lambda x: x[1], reverse=True):
+        logger.info(row)
+
+    return cnt_per_cui
 
 
 def get_doc_from_project(project: Dict, doc_id: str) -> Optional[Dict]:
@@ -195,8 +219,8 @@ def print_consolid_stats(ann_stats: List = [], meta_names: List = []) -> None:
         for i in range(len(_ann_stats)):
             if _ann_stats[i, 0] == _ann_stats[i, 1]:
                 t += 1
-        print("Overall given the parameters (scores here can be strange, be sure to know what they mean)")
-        print("   In Agreement vs Total: {} / {}\n\n".format(t, len(_ann_stats)))
+        logger.info("Overall given the parameters (scores here can be strange, be sure to know what they mean)")
+        logger.info("   In Agreement vs Total: %d / %d\n\n", t, len(_ann_stats))
 
         _ann_stats = np.array(ann_stats[1])
         ck = cohen_kappa_score(_ann_stats[:, 0], _ann_stats[:, 1])
@@ -205,9 +229,9 @@ def print_consolid_stats(ann_stats: List = [], meta_names: List = []) -> None:
             if _ann_stats[i, 0] == _ann_stats[i, 1]:
                 t += 1
         agr = t / len(_ann_stats)
-        print("NER + L")
-        print("   Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
-        print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
+        logger.info("NER + L")
+        logger.info("   Kappa: %.4f; Agreement: %.4f", ck, agr)
+        logger.info("   InAgreement vs Total: %d / %d", t, len(_ann_stats))
 
         for id_meta, meta_name in enumerate(meta_names):
             if len(ann_stats) > id_meta + 2:
@@ -220,16 +244,16 @@ def print_consolid_stats(ann_stats: List = [], meta_names: List = []) -> None:
                     if _ann_stats[i, 0] == _ann_stats[i, 1]:
                         t += 1
                 agr = t / len(_ann_stats)
-                print("Stats for: {}".format(meta_name))
-                print("   Kappa: {:.4f}; Agreement: {:.4f}".format(ck, agr))
-                print("   InAgreement vs Total: {} / {}".format(t, len(_ann_stats)))
+                logger.info("Stats for: %s", meta_name)
+                logger.info("   Kappa: %.4f; Agreement: %.4f", ck, agr)
+                logger.info("   InAgreement vs Total: %d / %d", t, len(_ann_stats))
 
 
 # Deprecated and removable?
 def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignore_already_done=False, only_start=False, only_saved=False) -> None:
     data = load_data(data_path, require_annotations=True)
     for pid, project in enumerate(data['projects']):
-        print("Starting: {} / {}".format(pid, len(data['projects'])))
+        logger.info("Starting: %d / %d", pid, len(data['projects']))
         cui_filter = None
         tui_filter = None
         if 'cuis' in project and len(project['cuis'].strip()) > 0:
@@ -244,7 +268,7 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
         cat.train = False
 
         for did, doc in enumerate(project['documents']):
-            print("Starting: {} / {}".format(did, len(project['documents'])))
+            logger.info("Starting: %d / %d", did, len(project['documents']))
             text = doc['text']
 
             if not doc.get('_verified', False) or ignore_already_done or only_saved:
@@ -262,27 +286,27 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
                     p_anns_norm.append((ann.start_char, ann._.cui))
                     p_anns_start.append(ann.start_char)
 
-                print("__________________")
-                print("T: ", t_anns_norm)
-                print()
-                print("P: ", p_anns_norm)
+                logger.info("__________________") # TODO - remove?
+                logger.info("T: ", t_anns_norm)
+                logger.info("P: ", p_anns_norm)
 
 
-                print("\n\nSTARTING MC TO GT")
+                logger.info("\n\nSTARTING MC TO GT")
                 for id_p_ann, p_ann in enumerate(p_anns_norm):
                     if (only_start and p_ann[0] not in t_anns_start) or (not only_start and p_ann not in t_anns_norm):
                         ann = s_doc.ents[id_p_ann]
                         if not only_saved:
-                            print("\n\nThis does not exist in gt annotations")
+                            logger.info("\n\nThis does not exist in gt annotations")
                             start = ann.start_char
                             end = ann.end_char
                             cui = ann._.cui
                             b = text[max(0, start-cntx_size):start].replace("\n", " ").replace('\r', ' ')
                             m = text[start:end].replace("\n", " ").replace('\r', ' ')
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ").replace('\r', ' ')
-                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                            print(cui, " | ", cat.cdb.get_name(cui), " | ", cat.cdb.cui2tui.get(cui, ''), " | ", ann.start_char)
-                            print(ann._.acc)
+                            logger.info("SNIPPET: %s <<<%s>>> %s", b, m, e)
+                            logger.info("%s | %s | %s | %s",
+                                cui, cat.cdb.get_name(cui), cat.cdb.cui2tui.get(cui, ''), ann.start_char)
+                            logger.info(ann._.acc)
                             d = str(input("###Add as (or empty for skip): 1-Correct, 2-Incorrect, s-save: "))
 
                             if d:
@@ -317,7 +341,7 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
 
                                 doc['annotations'].append(new_ann)
 
-                print("\n\nSTARTING GT TO MC")
+                logger.info("\n\nSTARTING GT TO MC")
                 # Redo
                 t_anns_norm = []
                 for ann in doc['annotations']:
@@ -332,17 +356,17 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
                        (only_saved and ann.get("_saved", False)):
                         # Check is it correct
                         if not ann.get('_verified', False) or ignore_already_done or (only_saved and ann.get('_saved', False)):
-                            print("\n\nThis does not exist in mc annotations or it is a saved item")
+                            logger.info("\n\nThis does not exist in mc annotations or it is a saved item")
                             b = text[max(0, ann['start']-cntx_size):ann['start']].replace("\n", " ").replace('\r', ' ')
                             m = text[ann['start']:ann['end']].replace("\n", " ").replace('\r', ' ')
                             e = text[ann['end']:min(len(text), ann['end']+cntx_size)].replace("\n", " ").replace('\r', ' ')
-                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                            print(ann['cui'], " | ", cat.cdb.get_name(ann['cui']), " | ", ann['start'])
-                            print("Current status")
-                            print("  Correct:     " + str(ann['correct']))
-                            print("  Incorrect:   " + str(ann['deleted']))
-                            print("  Alternative: " + str(ann['alternative']))
-                            print("  Killed:      " + str(ann['killed']))
+                            logger.info("SNIPPET: %s <<<%s>>> %s", b, m, e)
+                            logger.info("%s | %s | %s", ann['cui'], cat.cdb.get_name(ann['cui']), ann['start'])
+                            logger.info("Current status")
+                            logger.info("  Correct:     %s", str(ann['correct']))
+                            logger.info("  Incorrect:   %s", str(ann['deleted']))
+                            logger.info("  Alternative: %s", str(ann['alternative']))
+                            logger.info("  Killed:      %s", str(ann['killed']))
                             d = str(input("###Change to (or empty for skip): 1-Correct, 2-Incorrect, d-delete, s-save: "))
 
                             if d == '1':
@@ -378,14 +402,12 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
 
 
 def consolidate_double_annotations(data_path: str, out_path: str, require_double: bool = True, require_double_inner: bool = False, meta_anns_to_match: List = []) -> Dict:
-    """ Consolidated a dataset that was multi-annotated (same documents two times).
+    """Consolidated a dataset that was multi-annotated (same documents two times).
 
     data_path:
         Output from MedCATtrainer - projects containig the same documents must have the same name.
     out_path:
-        The consolidated data will be saved here - usually only annotations where both annotators agre
-            out_path:
-            The consolidated data will be saved here - usually only annotations where both annotators agreee
+        The consolidated data will be saved here - usually only annotations where both annotators agree
     require_double (boolean):
         If True everything must be double annotated, meaning there have to be two projects of the same name for each name. Else, it will
             also use projects that do not have double annotiations. If this is False, projects that do not have double anns will be
@@ -451,30 +473,29 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
                 out_data['projects'].append(new_project)
 
             if ann_stats_project:
-                print("** Printing stats for project: {}".format(project['name']))
+                logger.info("** Printing stats for project: %s", project['name'])
                 print_consolid_stats(ann_stats_project, meta_names=meta_anns_to_match)
                 d_stats_proj[project['name']] = ann_stats_project
-                print("\n\n")
+                logger.info("\n\n") # TODO - remove?
             else:
-                print("** Project '{}' did not have double annotations\n\n".format(project['name']))
+                logger.info("** Project '%s' did not have double annotations\n\n", project['name'])
 
     # Save
     json.dump(out_data, open(out_path, 'w'))
-    print("** Overall stats")
+    logger.info("** Overall stats")
     print_consolid_stats(ann_stats, meta_names=meta_anns_to_match)
     return d_stats_proj
 
 
 def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only: bool = False, ignore_if_already_done: bool = False) -> None:
-    """ Please just ignore this function, I'm afraid to even look at it
-    """
+    """Please just ignore this function, I'm afraid to even look at it."""
     data: Dict = json.load(open(data_path))
     name2cui: Dict = {}
     cui2status: Dict = {}
 
-    print("This will overwrite the original data, make sure you've a backup")
-    print("If something is completely wrong or you do not know what to do, chose the [s]kip option, you can also skip by leaving input blank.")
-    print("If you want to [q]uit write  q  your progress will be saved to the json and you can continue later")
+    logger.info("This will overwrite the original data, make sure you've a backup")
+    logger.info("If something is completely wrong or you do not know what to do, chose the [s]kip option, you can also skip by leaving input blank.")
+    logger.info("If you want to [q]uit write  q  your progress will be saved to the json and you can continue later")
 
     for project in data['projects']:
         for document in project['documents']:
@@ -523,21 +544,19 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                         # First check name
                         if len(name2cui[name]) > 1:
                             cuis = list(name2cui[name].keys())
-                            print("\n\nThis name was annotated with multiple CUIs\n")
+                            logger.info("\n\nThis name was annotated with multiple CUIs\n")
                             b = text[max(0, start-cntx_size):start].replace("\n", " ")
                             m = text[start:end].replace("\n", " ")
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
-                            print("SNIPPET: {} <<<{}>>> {}".format(b, m, e))
-                            print()
-                            print("C | {:3} | {:20} | {:70} | {}".format("ID", "CUI", "Concept", "Number of annotations in the dataset"))
-                            print("-"*110)
+                            logger.info("SNIPPET: %s <<<%s>>> %s", b, m, e)
+                            logger.info("C | %3s | %20s | %70s | %s", "ID", "CUI", "Concept", "Number of annotations in the dataset")
+                            logger.info("-"*110) # TODO - remove?
                             for id_cui, _cui in enumerate(cuis):
                                 if _cui == cui:
                                     c = "+"
                                 else:
                                     c = " "
-                                print("{} | {:3} | {:20} | {:70} | {}".format(c, id_cui, _cui, cdb.get_name(_cui)[:69], name2cui[name][_cui]))
-                            print()
+                                logger.info("%s | %3s | %20s | %70s | %s", c, id_cui, _cui, cdb.get_name(_cui)[:69], name2cui[name][_cui])
                             d = str(input("###Change to ([s]kip/[q]uit/id): "))
 
                             if d == 'q':
@@ -609,17 +628,16 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                             status = 'unk'
 
                         if len(cui2status[cui][name]) > 1:
-                            print("\n\nThis name was annotated with different status\n")
+                            logger.info("\n\nThis name was annotated with different status\n")
                             b = text[max(0, start-cntx_size):start].replace("\n", " ")
                             m = text[start:end].replace("\n", " ")
                             e = text[end:min(len(text), end+cntx_size)].replace("\n", " ")
-                            print("SNIPPET           : {} <<<{}>>> {}".format(b, m, e))
-                            print("CURRENT STATUS    : {}".format(status))
-                            print("CURRENT ANNOTATION: {} - {}".format(cui, cdb.get_name(cui)))
-                            print("ANNS TOTAL        :")
+                            logger.info("SNIPPET           : %s <<<%s>>> %s", b, m, e)
+                            logger.info("CURRENT STATUS    : %s", status)
+                            logger.info("CURRENT ANNOTATION: %s - %s", cui, cdb.get_name(cui))
+                            logger.info("ANNS TOTAL        :")
                             for k,v in cui2status[cui][name].items():
-                                print("        {}: {}".format(str(k), str(v)))
-                            print()
+                                logger.info("        %s: %s", str(k), str(v))
 
                             d = str(input("###Change to ([q]uit/[s]kip/[c]orrect/[i]ncorrect/[t]erminate): "))
 
@@ -645,8 +663,6 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
                                 ann['killed'] = True
                                 ann['deleted'] = False
                                 ann['alternative'] = False
-                            print()
-                            print()
                 if quit_:
                     break
             if quit_:
@@ -657,14 +673,12 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
 
 class MetaAnnotationDS(torch.utils.data.Dataset):
     def __init__(self, data: Dict, category_map: Dict):
-        r'''
-
-        Args:
+        """Args:
             data:
-                Dictionary of data values
+                Dictionary of data values.
             category_map:
-                Map from category naem to id
-        '''
+                Map from category naem to id.
+        """
         self.data = data
         self.category_map = category_map
 
@@ -711,15 +725,19 @@ def prepare_from_json_chars(data: Dict,
                             tokenizer: Any,
                             cui_filter: Optional[Dict] = None,
                             replace_center: Optional[Dict] = None) -> Dict:
-    """ Convert the data from a json format into a CSV-like format for training.
+    """Convert the data from a json format into a CSV-like format for training.
 
-    data:  json file from MedCAT
-    cntx_left:  size of the context
-    cntx_right:  size of the context
-    tokenizer:  instance of the <FastTokenizer> class from huggingface
-    replace_center:  if not None the center word (concept) will be replaced with whatever is set
+    Args:
+        data (Dict): The json file from MedCAT.
+        cntx_left (int): The size of the context.
+        cntx_right (int): The size of the context.
+        tokenizer (Any): The instance of the <FastTokenizer> class from huggingface.
+        cui_filter (Optional[Dict], optional): The CUI filter. Defaults to None.
+        replace_center (Optional[Dict], optional): If not None the center word (concept) will be
+            replaced with whatever is set. Defaults to None.
 
-    return:  {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
+    Returns:
+        Dict: {'category_name': [('category_value', 'tokens', 'center_token'), ...], ...}
     """
     out_data: Dict = {}
 
@@ -774,8 +792,7 @@ def prepare_from_json_chars(data: Dict,
 
 
 def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
-    """ This is a disaster
-    """
+    """This is a disaster."""
     cnts: Dict = {}
     total_anns = 0
     # Count all CUIs

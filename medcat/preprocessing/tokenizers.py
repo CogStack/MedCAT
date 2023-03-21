@@ -39,7 +39,7 @@ def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
 
     token_characters = r'[^A-Za-z0-9\@]'
 
-    if config.general['diacritics']:
+    if config.general.diacritics:
         token_characters = r'[^A-Za-zÀ-ÖØ-öø-ÿ0-9\@]'
 
     infix_re = re.compile(token_characters)
@@ -70,10 +70,10 @@ class WordpieceTokenizer(object):
           input = "unaffable"
           output = ["un", "##aff", "##able"]
         Args:
-          text: A single token or whitespace separated tokens. This should have
-            already been passed through `BasicTokenizer.
+          text: A single token or whitespace separated tokens. This should have.
+            already been passed through `BasicTokenizer`.
         Returns:
-          A list of wordpiece tokens.
+          List: A list of wordpiece tokens.
         """
 
         # Why is convert_to_unicode undefined?
@@ -144,8 +144,6 @@ class SpacyHFDoc(object):
 
 
 class TokenizerWrapperBPE(object):
-    '''
-    '''
 
     def __init__(self, hf_tokenizers: Any) -> None:
         self.hf_tokenizers = hf_tokenizers
@@ -174,8 +172,6 @@ class TokenizerWrapperBPE(object):
 
 
 class TokenizerWrapperBERT(object):
-    '''
-    '''
 
     def __init__(self, hf_tokenizers=None):
         self.hf_tokenizers = hf_tokenizers

@@ -1,6 +1,4 @@
 import logging
-import os
-import requests
 import unittest
 from spacy.lang.en import English
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -14,6 +12,8 @@ from medcat.linking.context_based_linker import Linker
 from medcat.config import Config
 from medcat.cdb import CDB
 
+from .helper import VocabDownloader
+
 
 class A_NERTests(unittest.TestCase):
     @classmethod
@@ -25,11 +25,9 @@ class A_NERTests(unittest.TestCase):
         cls.cdb = CDB(config=cls.config)
 
         print("Set up Vocab")
-        vocab_path = "./tmp_vocab.dat"
-        if not os.path.exists(vocab_path):
-            tmp = requests.get("https://medcat.rosalind.kcl.ac.uk/media/vocab.dat")
-            with open(vocab_path, 'wb') as f:
-                f.write(tmp.content)
+        downloader = VocabDownloader()
+        vocab_path = downloader.vocab_path
+        downloader.check_or_download()
 
         cls.vocab = Vocab.load(vocab_path)
 
@@ -69,7 +67,8 @@ class A_NERTests(unittest.TestCase):
         cls.pipe.destroy()
 
     def test_aa_cdb_names_output(self):
-        target_result = {'S-229004': {'movar~viruse', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
+        print("Fixing 'movar~viruse' -> 'movar-virus' for newere en_core_web_md")
+        target_result = {'S-229004': {'movar~virus', 'movar', 'movar~viruses'}, 'S-229005': {'cdb'}}
         self.assertEqual(self.cdb.cui2names, target_result)
 
     def test_ab_entities_length(self):

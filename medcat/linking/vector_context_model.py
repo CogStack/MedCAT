@@ -3,22 +3,23 @@ import logging
 from typing import Tuple, Dict, List, Union
 from spacy.tokens import Span, Doc
 from medcat.utils.matutils import unitvec
-from medcat.utils.filters import check_filters
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config import Config
 import random
 
 
+logger = logging.getLogger(__name__)
+
+
 class ContextModel(object):
-    r''' Used to learn embeddings for concepts and calculate similarities in new documents.
+    """Used to learn embeddings for concepts and calculate similarities in new documents.
 
     Args:
-        cdb
-        vocab
-        config
-    '''
-    log = logging.getLogger(__name__)
+        cdb (CDB): The Context Database
+        vocab (Vocab): The vocabulary
+        config (Config): The config to be used
+    """
 
     def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb
@@ -26,14 +27,14 @@ class ContextModel(object):
         self.config = config
 
     def get_context_tokens(self, entity: Span, doc: Doc, size: int) -> Tuple:
-        r''' Get context tokens for an entity, this will skip anything that
+        """Get context tokens for an entity, this will skip anything that
         is marked as skip in token._.to_skip
 
         Args:
-            entity
-            doc
-            size
-        '''
+            entity (Span): The entity to look for.
+            doc (Doc): The document look in.
+            size (int): The size of the entity.
+        """
         start_ind = entity[0].i
         end_ind = entity[-1].i
 
@@ -48,13 +49,17 @@ class ContextModel(object):
         return tokens_left, tokens_center, tokens_right
 
     def get_context_vectors(self, entity: Span, doc: Doc, cui=None) -> Dict:
-        r''' Given an entity and the document it will return the context representation for the
+        """Given an entity and the document it will return the context representation for the
         given entity.
 
         Args:
-            entity
-            doc
-        '''
+            entity (Span): The entity to look for.
+            doc (Doc): The document to look in.
+            cui (Any): The CUI.
+
+        Returns:
+            Dict: The context vector.
+        """
         vectors = {}
 
         for context_type in self.config.linking['context_vector_sizes'].keys():
@@ -85,26 +90,29 @@ class ContextModel(object):
         return vectors
 
     def similarity(self, cui: str, entity: Span, doc: Doc) -> float:
-        r''' Calculate the similarity between the learnt context for this CUI and the context
+        """Calculate the similarity between the learnt context for this CUI and the context
         in the given `doc`.
 
         Args:
-            cui
-            entity
-            doc
-        '''
+            cui (str): The CUI.
+            entity (Span): The entity to look for.
+            doc (Doc): The document to look in.
+
+        Returns:
+            float: The simularity.
+        """
         vectors = self.get_context_vectors(entity, doc)
         sim = self._similarity(cui, vectors)
 
         return sim
 
     def _similarity(self, cui: str, vectors: Dict) -> float:
-        r''' Calculate similarity once we have vectors and a cui.
+        """Calculate similarity once we have vectors and a cui.
 
         Args:
             cui
             vectors
-        '''
+        """
 
         cui_vectors = self.cdb.cui2context_vectors.get(cui, {})
 
@@ -118,7 +126,7 @@ class ContextModel(object):
                     similarity += weight * s
 
                     # DEBUG
-                    self.log.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
+                    logger.debug("Similarity for CUI: %s, Count: %s, Context Type: %.10s, Weight: %s.2f, Similarity: %s.3f, S*W: %s.3f",
                                    cui, self.cdb.cui2count_train[cui], context_type, weight, s, s*weight)
             return similarity
         else:
@@ -132,32 +140,32 @@ class ContextModel(object):
         #do not want to explain why, but it is needed.
         if self.config.linking['filter_before_disamb']:
             # DEBUG
-            self.log.debug("Is trainer, subsetting CUIs")
-            self.log.debug("CUIs before: %s", cuis)
+            logger.debug("Is trainer, subsetting CUIs")
+            logger.debug("CUIs before: %s", cuis)
 
-            cuis = [cui for cui in cuis if check_filters(cui, filters)]
+            cuis = [cui for cui in cuis if filters.check_filters(cui)]
             # DEBUG
-            self.log.debug("CUIs after: %s", cuis)
+            logger.debug("CUIs after: %s", cuis)
 
         if cuis:    # Maybe none are left after filtering
             # Calculate similarity for each cui
             similarities = [self._similarity(cui, vectors) for cui in cuis]
             # DEBUG
-            self.log.debug("Similarities: %s", [(sim, cui) for sim, cui in zip(cuis, similarities)])
+            logger.debug("Similarities: %s", [(sim, cui) for sim, cui in zip(cuis, similarities)])
 
             # Prefer primary
             if self.config.linking.get('prefer_primary_name', 0) > 0:
-                self.log.debug("Preferring primary names")
+                logger.debug("Preferring primary names")
                 for i, cui in enumerate(cuis):
                     if similarities[i] > 0:
                         if self.cdb.name2cuis2status.get(name, {}).get(cui, '') in {'P', 'PD'}:
                             old_sim = similarities[i]
                             similarities[i] = min(0.99, similarities[i] + similarities[i] * self.config.linking.get('prefer_primary_name', 0))
                             # DEBUG
-                            self.log.debug("CUI: %s, Name: %s, Old sim: %.3f, New sim: %.3f", cui, name, old_sim, similarities[i])
+                            logger.debug("CUI: %s, Name: %s, Old sim: %.3f, New sim: %.3f", cui, name, old_sim, similarities[i])
 
             if self.config.linking.get('prefer_frequent_concepts', 0) > 0:
-                self.log.debug("Preferring frequent concepts")
+                logger.debug("Preferring frequent concepts")
                 #Prefer frequent concepts
                 cnts = [self.cdb.cui2count_train.get(cui, 0) for cui in cuis]
                 m = min(cnts) if min(cnts) > 0 else 1
@@ -171,19 +179,19 @@ class ContextModel(object):
             return None, 0
 
     def train(self, cui: str, entity: Span, doc: Doc, negative: bool = False, names: Union[List[str], Dict] = []) -> None:
-        r''' Update the context representation for this CUI, given it's correct location (entity)
+        """Update the context representation for this CUI, given it's correct location (entity)
         in a document (doc).
 
         Args:
             names (List[str]/Dict):
                 Optionally used to update the `status` of a name-cui pair in the CDB.
-        '''
+        """
         # Context vectors to be calculated
         if len(entity) > 0: # Make sure there is something
             vectors = self.get_context_vectors(entity, doc, cui=cui)
             self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=negative)
             # Debug
-            self.log.debug("Updating CUI: %s with negative=%s", cui, negative)
+            logger.debug("Updating CUI: %s with negative=%s", cui, negative)
 
             if not negative:
                 # Update the name count, if possible
@@ -202,11 +210,11 @@ class ContextModel(object):
                         # Set this name to always be disambiguated, even though it is primary
                         self.cdb.name2cuis2status.get(name, {})[cui] = 'PD'
                         # Debug
-                        self.log.debug("Updating status for CUI: %s, name: %s to <PD>", cui, name)
+                        logger.debug("Updating status for CUI: %s, name: %s to <PD>", cui, name)
                     elif self.cdb.name2cuis2status.get(name, {}).get(cui, '') == 'A':
                         # Set this name to always be disambiguated instead of A
                         self.cdb.name2cuis2status.get(name, {})[cui] = 'N'
-                        self.log.debug("Updating status for CUI: %s, name: %s to <N>", cui, name)
+                        logger.debug("Updating status for CUI: %s, name: %s to <N>", cui, name)
             if not negative and self.config.linking.get('devalue_linked_concepts', False):
                 #Find what other concepts can be disambiguated against this one
                 _cuis = set()
@@ -218,9 +226,9 @@ class ContextModel(object):
                 for _cui in _cuis:
                     self.cdb.update_context_vector(cui=_cui, vectors=vectors, negative=True)
 
-                self.log.debug("Devalued via names.\n\tBase cui: %s \n\tTo be devalued: %s\n", cui, _cuis)
+                logger.debug("Devalued via names.\n\tBase cui: %s \n\tTo be devalued: %s\n", cui, _cuis)
         else:
-            self.log.warning("The provided entity for cui <%s> was empty, nothing to train", cui)
+            logger.warning("The provided entity for cui <%s> was empty, nothing to train", cui)
 
     def train_using_negative_sampling(self, cui: str) -> None:
         vectors = {}
@@ -234,7 +242,7 @@ class ContextModel(object):
             if len(values) > 0:
                 vectors[context_type] = np.average(values, axis=0)
             # Debug
-            self.log.debug("Updating CUI: %s, with %s negative words", cui, len(inds))
+            logger.debug("Updating CUI: %s, with %s negative words", cui, len(inds))
 
         # Do the update for all context types
         self.cdb.update_context_vector(cui=cui, vectors=vectors, negative=True)

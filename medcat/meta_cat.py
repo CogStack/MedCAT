@@ -12,26 +12,40 @@ from medcat.utils.hasher import Hasher
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
 from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
-from medcat.utils.loggers import add_handlers
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 
 # It should be safe to do this always, as all other multiprocessing
-#will be finished before data comes to meta_cat
+# will be finished before data comes to meta_cat
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
 
+logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
 class MetaCAT(PipeRunner):
-    r''' TODO: Add documentation
-    '''
+    """The MetaCAT class used for training 'Meta-Annotation' models, i.e. annotations of clinical
+    concept annotations. These are also known as properties or attributes of recognise entities
+    in similar tools such as MetaMap and cTakes.
+
+    This is a flexible model agnostic class that can learns any meta-annotation task, i.e. any
+    multi-class classification task for recognised terms.
+
+    Args:
+        tokenizer (TokenizerWrapperBase):
+            The Huggingface tokenizer instance. This can be a pre-trained tokenzier instance from
+            a BERT-style model, or trained from scratch for the Bi-LSTM (w. attention) model that
+            is currently used in most deployments.
+        embeddings (Tensor, numpy.ndarray):
+            embedding mapping (sub)word input id n-dim (sub)word embedding.
+        config (ConfigMetaCAT):
+            the configuration for MetaCAT. Param descriptions available in ConfigMetaCAT docs.
+    """
 
     # Custom pipeline component name
     name = 'meta_cat'
     _component_lock = Lock()
-
-    # Add file and console handlers
-    log = add_handlers(logging.getLogger(__package__))
 
     # Override
     def __init__(self,
@@ -55,6 +69,16 @@ class MetaCAT(PipeRunner):
         self.model = self.get_model(embeddings=self.embeddings)
 
     def get_model(self, embeddings: Optional[Tensor]) -> nn.Module:
+        """Get the model
+
+        Args:
+            embeddings (Optional[Tensor]):
+                The embedding densor
+
+        Returns:
+            nn.Module:
+                The module
+        """
         config = self.config
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
@@ -65,8 +89,7 @@ class MetaCAT(PipeRunner):
         return model
 
     def get_hash(self):
-        r''' A partial hash trying to catch differences between models
-        '''
+        """A partial hash trying to catch differences between models."""
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.train['last_train_on'] is None:
@@ -76,16 +99,16 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
-        r''' Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
-            json_path (`str` or `list`):
+            json_path (Union[str, list]):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
-            save_dir_path (`str`, optional, defaults to `None`):
+            save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
-                we need to set a save path.
-        '''
+                we need to set a save path. Defaults to `None`.
+        """
         g_config = self.config.general
         t_config = self.config.train
 
@@ -118,15 +141,17 @@ class MetaCAT(PipeRunner):
 
         # Prepare the data
         assert self.tokenizer is not None
-        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                lowercase=g_config['lowercase'])
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer,
+                                 cui_filter=t_config['cui_filter'],
+                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
+                                 lowercase=g_config['lowercase'])
 
         # Check is the name there
         category_name = g_config['category_name']
         if category_name not in data:
-            raise Exception("The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
-                category_name, " | ".join(list(data.keys()))))
+            raise Exception(
+                "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
+                    category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
 
@@ -141,9 +166,10 @@ class MetaCAT(PipeRunner):
 
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
-            self.log.warning("The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                             self.config.model['nclasses'], len(category_value2id)))
-            self.log.warning("Auto-setting the nclasses value in config and rebuilding the model.")
+            logger.warning(
+                "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
+                    self.config.model['nclasses'], len(category_value2id)))
+            logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
             self.model = self.get_model(embeddings=self.embeddings)
 
@@ -165,6 +191,22 @@ class MetaCAT(PipeRunner):
         return report
 
     def eval(self, json_path: str) -> Dict:
+        """Evaluate from json.
+
+        Args:
+            json_path (str):
+                The json file ath
+
+        Returns:
+            Dict:
+                The resulting model dict
+
+        Raises:
+            AssertionError:
+                If self.tokenizer
+            Exception:
+                If the category name does not exist
+        """
         g_config = self.config.general
         t_config = self.config.train
 
@@ -173,9 +215,10 @@ class MetaCAT(PipeRunner):
 
         # Prepare the data
         assert self.tokenizer is not None
-        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer, cui_filter=t_config['cui_filter'],
-                replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
-                lowercase=g_config['lowercase'])
+        data = prepare_from_json(data_loaded, g_config['cntx_left'], g_config['cntx_right'], self.tokenizer,
+                                 cui_filter=t_config['cui_filter'],
+                                 replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
+                                 lowercase=g_config['lowercase'])
 
         # Check is the name there
         category_name = g_config['category_name']
@@ -195,12 +238,16 @@ class MetaCAT(PipeRunner):
         return result
 
     def save(self, save_dir_path: str) -> None:
-        r''' Save all components of this class to a file
+        """Save all components of this class to a file
 
         Args:
-            save_dir_path(`str`):
+            save_dir_path (str):
                 Path to the directory where everything will be saved.
-        '''
+
+        Raises:
+            AssertionError:
+                If self.tokenizer is None
+        """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
 
@@ -216,23 +263,23 @@ class MetaCAT(PipeRunner):
         torch.save(self.model.state_dict(), model_save_path)
 
         # This is everything we need to save from the class, we do not
-        #save the class itself.
+        # save the class itself.
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "MetaCAT":
-        r''' Load a meta_cat object.
+        """Load a meta_cat object.
 
         Args:
-            save_dir_path (`str`):
+            save_dir_path (str):
                 The directory where all was saved.
-            config_dict (`dict`):
+            config_dict (Optional[Dict], optional):
                 This can be used to overwrite saved parameters for this meta_cat
-                instance. Why? It is needed in certain cases where we autodeploy stuff.
+                instance. Why? It is needed in certain cases where we autodeploy stuff. (Default value = None)
 
         Returns:
-            meta_cat (`medcat.MetaCAT`):
-                You don't say
-        '''
+            MetaCAT:
+                The MetaCAT instance
+        """
 
         # Load config
         config = cast(ConfigMetaCAT, ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json')))
@@ -257,7 +304,7 @@ class MetaCAT(PipeRunner):
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         device = torch.device(config.general['device'])
         if not torch.cuda.is_available() and device.type == 'cuda':
-            MetaCAT.log.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
+            logger.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
             config.general['device'] = 'cpu'
             device = torch.device('cpu')
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
@@ -265,13 +312,24 @@ class MetaCAT(PipeRunner):
         return meta_cat
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
-        r'''
+        """Prepares document.
 
         Args:
-            doc - spacy
-            input_ids
-            offset_mapping
-        '''
+            doc (Doc):
+                The document
+            input_ids (List):
+                Input ids
+            offset_mapping (List):
+                Offset mapings
+            lowercase (bool):
+                Whether to use lower case replace center
+
+        Returns:
+            Dict:
+                Entity id to index mapping
+            List:
+                Samples
+        """
         config = self.config
         cntx_left = config.general['cntx_left']
         cntx_right = config.general['cntx_right']
@@ -285,7 +343,7 @@ class MetaCAT(PipeRunner):
 
         samples = []
         last_ind = 0
-        ent_id2ind = {} # Map form entitiy ID to where is it in the samples array
+        ent_id2ind = {}  # Map form entitiy ID to where is it in the samples array
         for ent in sorted(ents, key=lambda ent: ent.start_char):
             start = ent.start_char
             end = ent.end_char
@@ -301,7 +359,7 @@ class MetaCAT(PipeRunner):
             _start = max(0, ind - cntx_left)
             _end = min(len(input_ids), ind + 1 + cntx_right)
             tkns = input_ids[_start:_end]
-            cpos = cntx_left + min(0, ind-cntx_left)
+            cpos = cntx_left + min(0, ind - cntx_left)
 
             if replace_center is not None:
                 if lowercase:
@@ -313,9 +371,9 @@ class MetaCAT(PipeRunner):
                     if end > pair[0] and end <= pair[1]:
                         e_ind = _ind + ind
                         break
-                ln = e_ind - s_ind # Length of the concept in tokens
+                ln = e_ind - s_ind  # Length of the concept in tokens
                 assert self.tokenizer is not None
-                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos+ln+1:]
+                tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
 
             samples.append([tkns, cpos])
             ent_id2ind[ent._.id] = len(samples) - 1
@@ -324,6 +382,18 @@ class MetaCAT(PipeRunner):
 
     @staticmethod
     def batch_generator(stream: Iterable[Doc], batch_size_chars: int) -> Iterable[List[Doc]]:
+        """Generator for batch of documents.
+
+        Args:
+            stream (Iterable[Doc]):
+                The document stream
+            batch_size_chars (int):
+                Number of characters per batch
+
+        Returns:
+            Generator[List[Dic]]:
+                The document generator
+        """
         docs = []
         char_count = 0
         for doc in stream:
@@ -341,12 +411,18 @@ class MetaCAT(PipeRunner):
 
     # Override
     def pipe(self, stream: Iterable[Union[Doc, FakeDoc]], *args, **kwargs) -> Iterator[Doc]:
-        r''' Process many documents at once.
+        """Process many documents at once.
 
         Args:
-            stream (Iterable[spacy.tokens.Doc]):
+            stream (Iterable[Union[Doc, FakeDoc]]):
                 List of spacy documents.
-        '''
+            *args: Unused arguments (due to override)
+            **kwargs: Unused keyword arguments (due to override)
+
+        Returns:
+            Generator[Doc]:
+                The document generator
+        """
         # Just in case
         if stream is None or not stream:
             return stream
@@ -356,17 +432,17 @@ class MetaCAT(PipeRunner):
         batch_size_chars = config.general['pipe_batch_size_in_chars']
 
         if config.general['device'] == 'cpu' or config.general['disable_component_lock']:
-            yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
+            yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)  # type: ignore
         else:
             with MetaCAT._component_lock:
-                yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)
+                yield from self._set_meta_anns(stream, batch_size_chars, config, id2category_value)  # type: ignore
 
     def _set_meta_anns(self,
                        stream: Iterable[Union[Doc, FakeDoc]],
                        batch_size_chars: int,
                        config: ConfigMetaCAT,
                        id2category_value: Dict) -> Iterator[Optional[Doc]]:
-        for docs in self.batch_generator(stream, batch_size_chars):
+        for docs in self.batch_generator(stream, batch_size_chars):  # type: ignore
             try:
                 if not config.general['save_and_reuse_tokens'] or docs[0]._.share_tokens is None:
                     if config.general['lowercase']:
@@ -376,7 +452,7 @@ class MetaCAT(PipeRunner):
                     assert self.tokenizer is not None
                     all_text_processed = self.tokenizer(all_text)
                     doc_ind2positions = {}
-                    data: List = [] # The thing that goes into the model
+                    data: List = []  # The thing that goes into the model
                     for i, doc in enumerate(docs):
                         ent_id2ind, samples = self.prepare_document(doc, input_ids=all_text_processed[i]['input_ids'],
                                                                     offset_mapping=all_text_processed[i]['offset_mapping'],
@@ -387,7 +463,7 @@ class MetaCAT(PipeRunner):
                             doc._.share_tokens = (samples, doc_ind2positions[i])
                 else:
                     # This means another model has already processed the data and we can just use it. This is a
-                    #dangerous option - as it assumes the other model has the same tokenizer and context size.
+                    # dangerous option - as it assumes the other model has the same tokenizer and context size.
                     data = []
                     doc_ind2positions = {}
                     for i, doc in enumerate(docs):
@@ -424,15 +500,48 @@ class MetaCAT(PipeRunner):
 
     # Override
     def __call__(self, doc: Doc) -> Doc:
-        ''' Process one document, used in the spacy pipeline for sequential
+        """Process one document, used in the spacy pipeline for sequential
         document processing.
 
         Args:
             doc (spacy.tokens.Doc):
                 A spacy document
-        '''
+        """
 
         # Just call the pipe method
         doc = next(self.pipe(iter([doc])))
 
         return doc
+
+    def get_model_card(self, as_dict: bool = False):
+        """A minimal model card.
+
+        Args:
+            as_dict (bool, optional):
+                return the model card as a dictionary instead of a str. (Default value = False)
+
+        Returns:
+            str:
+                An indented JSON object.
+            OR
+            Dict:
+                A JSON object in dict form
+        """
+        card = {
+            'Category Name': self.config.general['category_name'],
+            'Description': self.config.general['description'],
+            'Classes': self.config.general['category_value2id'],
+            'Model': self.config.model['model_name']
+        }
+        if as_dict:
+            return card
+        else:
+            return json.dumps(card, indent=2, sort_keys=False)
+
+    def __repr__(self):
+        """Prints the model_card for this MetaCAT instance.
+
+        Returns:
+            the 'Model Card' for this MetaCAT instance. This includes NER+L config and any MetaCATs
+        """
+        return self.get_model_card(as_dict=False)

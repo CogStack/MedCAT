@@ -10,30 +10,30 @@ def prepare_from_json(data: Dict,
                       replace_center: Optional[str] = None,
                       prerequisites: Dict = {},
                       lowercase: bool = True) -> Dict:
-    """ Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
+    """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
     working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
     Args:
-        data (`dict`):
+        data (dict):
             Loaded output of MedCATtrainer. If we have a `my_export.json` from MedCATtrainer, than data = json.load(<my_export>).
-        cntx_left (`int`):
+        cntx_left (int):
             Size of context to get from the left of the concept
-        cntx_right (`int`):
+        cntx_right (int):
             Size of context to get from the right of the concept
-        tokenizer (`medcat.tokenizers.meta_cat_tokenizers`):
+        tokenizer (medcat.tokenizers.meta_cat_tokenizers):
             Something to split text into tokens for the LSTM/BERT/whatever meta models.
-        replace_center (`str`, optional):
+        replace_center (Optional[str]):
             If not None the center word (concept) will be replaced with whatever this is.
-        prerequisites (`dict`, optional):
+        prerequisites (Dict):
             A map of prerequisities, for example our data has two meta-annotations (experiencer, negation). Assume I want to create
             a dataset for `negation` but only in those cases where `experiencer=patient`, my prerequisites would be:
-                {'Experiencer': 'Patient'} - Take care that the CASE has to match whatever is in the data
-        lowercase (`bool`, defaults to True):
-            Should the text be lowercased before tokenization
+                {'Experiencer': 'Patient'} - Take care that the CASE has to match whatever is in the data. Defaults to `{}`.
+        lowercase (bool):
+            Should the text be lowercased before tokenization. Defaults to True.
 
     Returns:
-        out_data (`dict`):
+        out_data (dict):
             Example: {'category_name': [('<category_value>', '<[tokens]>', '<center_token>'), ...], ...}
     """
     out_data: Dict = {}
@@ -107,21 +107,21 @@ def prepare_from_json(data: Dict,
 
 
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None) -> Tuple:
-    r''' Converts the category values in the data outputed by `prepare_from_json`
+    """Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
 
     Args:
-        data (`dict`):
-            Output of `prepare_from_json`
-        existing_category_value2id(`dict`, optional):
-            Map from category_value to id (old/existing)
+        data (Dict):
+            Output of `prepare_from_json`.
+        existing_category_value2id(Optional[Dict]):
+            Map from category_value to id (old/existing).
 
     Returns:
-        data (`dict`):
+        dict:
             New data with integeres inplace of strings for categry values.
-        category_value2id (`dict`):
+        dict:
             Map rom category value to ID for all categories in the data.
-    '''
+    """
     data = list(data)
     if existing_category_value2id is not None:
         category_value2id = existing_category_value2id
@@ -141,19 +141,19 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
 
 def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
-    r''' Creates a generator of fake spacy documents, used for running
+    """Creates a generator of fake spacy documents, used for running
     meta_cat pipe separately from main cat pipeline.
 
     Args:
-        data(`dict`):
-            Output from cat formated as: {<id>: <output of get_entities, ...}
-        id2text(`dict`):
-            Map from document id to text of that documetn
+        data(Dict):
+            Output from cat formated as: {<id>: <output of get_entities, ...}.
+        id2text(Dict):
+            Map from document id to text of that document.
 
     Returns:
-        generator:
-            Generator of spacy like documents that can be feed into meta_cat.pipe
-    '''
+        Generator:
+            Generator of spacy like documents that can be feed into meta_cat.pipe.
+    """
     for id_ in data.keys():
         ents = data[id_]['entities'].values()
 

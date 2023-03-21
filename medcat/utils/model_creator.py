@@ -6,13 +6,11 @@ from medcat.cdb_maker import CDBMaker
 from medcat.utils.make_vocab import MakeVocab
 from medcat.cat import CAT
 from medcat.config import Config
-from medcat.utils.loggers import add_handlers
 from pathlib import Path
 
-# Create Logger
-logger = logging.getLogger('__package__')
-logger = add_handlers(logger)
-logger.setLevel(logging.INFO)
+DEFAULT_UNIGRAM_TABLE_SIZE = 100000000
+
+logger = logging.getLogger(__package__)
 
 
 def create_cdb(concept_csv_file, medcat_config):
@@ -24,7 +22,7 @@ def create_cdb(concept_csv_file, medcat_config):
         medcat_config (medcat.config.Config):
             MedCAT configuration file.
     Returns:
-        cdb (medcat.cdb.CDB):
+        medcat.cdb.CDB:
             MedCAT concept database containing list of entities and synonyms, without context embeddings.
     """
     logger.info('Creating concept database from concept table')
@@ -49,7 +47,7 @@ def create_vocab(cdb, training_data_list, medcat_config, output_dir, unigram_tab
             Size of unigram table to be initialized before creating vocabulary.
 
     Returns:
-        vocab (medcat.vocab.Vocab):
+        medcat.vocab.Vocab:
             MedCAT vocabulary created from CDB and training documents.
     """
     logger.info('Creating and saving vocabulary')
@@ -60,7 +58,7 @@ def create_vocab(cdb, training_data_list, medcat_config, output_dir, unigram_tab
     return vocab
 
 
-def train_unsupervised(cdb, vocab, medcat_config, output_dir, training_data_list):
+def train_unsupervised(cdb, vocab, config, output_dir, training_data_list):
     """Perform unsupervised training and save updated CDB.
 
     Although not returned explicitly in this function, the CDB will be updated with context embeddings.
@@ -70,7 +68,7 @@ def train_unsupervised(cdb, vocab, medcat_config, output_dir, training_data_list
             MedCAT concept database containing list of entities and synonyms.
         vocab (medcat.vocab.Vocab):
             MedCAT vocabulary created from CDB and training documents.
-        medcat_config (medcat.config.Config):
+        config (medcat.config.Config):
             MedCAT configuration file.
         output_dir (pathlib.Path):
             Output directory to write updated CDB to.
@@ -78,11 +76,11 @@ def train_unsupervised(cdb, vocab, medcat_config, output_dir, training_data_list
             List of example documents.
 
     Returns:
-        cdb (medcat.cdb.CDB):
+        medcat.cdb.CDB:
             MedCAT concept database containing list of entities and synonyms, as well as context embeddings.
     """
     # Create MedCAT pipeline
-    cat = CAT(cdb=cdb, vocab=vocab, config=medcat_config)
+    cat = CAT(cdb=cdb, vocab=vocab, config=config)
 
     # Perform unsupervised training and add model to concept database
     logger.info('Performing unsupervised training')
@@ -103,42 +101,50 @@ def create_models(config_file):
             Location of model creator configuration file to specify input, output and MedCAT configuration.
 
     Returns:
-        cdb (medcat.cdb.CDB):
-            MedCAT concept database containing list of entities and synonyms, as well as context embeddings.
-        vocab (medcat.vocab.Vocab):
-            MedCAT vocabulary created from CDB and training documents.
+        medcat.cat.CAT:
+            Containing CDB, Vocab and Config.
     """
+
     # Load model creator configuration
     with open(config_file, 'r') as stream:
-        config = yaml.safe_load(stream)
+        creator_config = yaml.safe_load(stream)
 
     # Load data for unsupervised training
-    with open(Path(config['unsupervised_training_data_file']), 'r', encoding='utf-8') as training_data:
+    with open(Path(creator_config['unsupervised_training_data_file']), 'r', encoding='utf-8') as training_data:
         training_data_list = [line.strip() for line in training_data]
 
     # Load MedCAT configuration
-    medcat_config = Config()
-    if 'medcat_config_file' in config:
-        medcat_config.parse_config_file(Path(config['medcat_config_file']))
+    config = Config()
+    if 'medcat_config_file' in creator_config:
+        config.parse_config_file(str(Path(creator_config['medcat_config_file'])))
 
     # Create output dir if it does not exist
-    output_dir = Path(config['output_dir'])
+    output_dir = Path(creator_config['output_dir'])
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Create models
-    cdb = create_cdb(Path(config['concept_csv_file']), medcat_config)
-    vocab = create_vocab(cdb, training_data_list, medcat_config, output_dir, config['unigram_table_size'])
-    cdb = train_unsupervised(cdb, vocab, medcat_config, output_dir, training_data_list)
+    # Create and save models
+    cdb = create_cdb(Path(creator_config['concept_csv_file']), config)
+    vocab = create_vocab(cdb, training_data_list, config, output_dir,
+                         creator_config.get('unigram_table_size', DEFAULT_UNIGRAM_TABLE_SIZE))
+    cdb = train_unsupervised(cdb, vocab, config, output_dir, training_data_list)
+    cat = CAT(cdb=cdb, vocab=vocab, config=config)
+    return cat
 
-    return cdb, vocab
+
+def main(config_file):
+    # Setup logging
+    handler = logging.StreamHandler()
+    logger.addHandler(handler)
+    logger.setLevel(logging.INFO)
+
+    return create_models(config_file)
 
 
 if __name__ == '__main__':
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument('config_file', help='YAML formatted file containing the parameters for model creator. An '
-                                            'example can be found in `tests/model_creator/config_example.yml`')
+                                            'example can be found in `tests/model_creator/config_example.yml`',
+                        type=Path)
     args = parser.parse_args()
-
-    # Run pipeline
-    create_models(args.config_file)
+    main(args.config_file)
