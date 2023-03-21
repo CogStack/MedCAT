@@ -1,3 +1,4 @@
+from email.utils import encode_rfc2231
 import torch
 from torch import nn
 
@@ -7,11 +8,14 @@ from transformers.models.bert.configuration_bert import BertConfig
 
 from transformers import logging
 
+from medcat.config_rel_cat import ConfigRelCAT
+
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
-    def __init__(self, pretrained_model_name_or_path, model_config: BertConfig, model_size: int, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):
+    def __init__(self, pretrained_model_name_or_path, relcat_config: ConfigRelCAT, model_config: BertConfig, model_size: int, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):
         super(BertModel_RelationExtraction, self).__init__(model_config, ignore_mismatched_sizes)
 
+        self.relcat_config = relcat_config
         self.model_config = model_config
         self.nclasses = nclasses
         self.task = task
@@ -31,21 +35,75 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         self.init_weights()
 
+    def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
+        spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)   
+
+        temp = []
+        for idx in spec_idx:
+            temp.append(sequence_output[idx[0]][idx[1]])
+            
+        tags_rep = torch.stack(temp, dim=0)
+
+        return tags_rep
+
+    def output2logits(self, pooled_output, sequence_output, input_ids, e1_e2_start):
+        """
+
+        Args:
+            data_iterator (Iterable):
+                Simple iterator over sentences/documents, e.g. a open file
+                or an array or anything that we can use in a for loop
+                If True resume the previous training; If False, start a fresh new training.
+        """
+
+        classification_logits = None
+        new_pooled_output = pooled_output
+        if self.relcat_config.general["annotation_schema_tag_ids"]:
+            seq_tags = []
+            for each_tag in self.relcat_config.general["annotation_schema_tag_ids"]:
+                seq_tags.append(self.get_annotation_schema_tag(sequence_output, input_ids, each_tag)) #self.special_tag_representation(sequence_output, input_ids, each_tag))
+
+            seq_tags = torch.stack(seq_tags, dim=0)
+
+            new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
+            
+            new_pooled_output = torch.squeeze(new_pooled_output, dim=1)
+
+        else:
+            
+            e1e2_output =[]  
+            temp_e1 = []
+            temp_e2 = []
+
+            for i, seq in enumerate(sequence_output): 
+                # e1e2 token sequences
+                temp_e1.append(seq[e1_e2_start[i][0]]) 
+                temp_e2.append(seq[e1_e2_start[i][1]])
+
+            e1e2_output.append(torch.stack(temp_e1, dim=0))
+            e1e2_output.append(torch.stack(temp_e2, dim=0))
+
+            new_pooled_output=torch.cat((pooled_output, *e1e2_output), dim=1)
+
+            del e1e2_output
+            del temp_e2
+            del temp_e1
+      
+        classification_logits = self.classification_layer(self.drop_out(new_pooled_output))
+
+        return classification_logits
+
 
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None,
-                head_mask=None, inputs_embeds=None, encoder_hidden_states=None, encoder_attention_mask=None,
+                head_mask=None, encoder_hidden_states=None, encoder_attention_mask=None,
                 Q=None, e1_e2_start=None, pooled_output=None):
-
-        if input_ids is not None and inputs_embeds is not None:
-            raise ValueError("You cannot specify both input_ids and inputs_embeds at the same time")
-        elif input_ids is not None:
+        
+        if input_ids is not None:
             input_shape = input_ids.size()
-        elif inputs_embeds is not None:
-            input_shape = inputs_embeds.size()[:-1]
         else:
-            raise ValueError("You have to specify either input_ids or inputs_embeds")
+            raise ValueError("You have to specify input_ids")
 
-        device = input_ids.device if input_ids is not None else inputs_embeds.device
+        device = input_ids.device
 
         self.classification_layer = nn.Linear(self.hidden_size, self.nclasses, device=device)
 
@@ -66,30 +124,9 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
                                   encoder_hidden_states=encoder_hidden_states,
                                   encoder_attention_mask=encoder_attention_mask)
 
-        sequence_output = model_output[0] # (batch_size,  sequence_length, hidden_size)
+        sequence_output = model_output[0] # (batch_size, sequence_length, hidden_size)
         pooled_output = model_output[1]
 
-        e1e2_output =[]  
-        temp_e1 = []
-        temp_e2 = []
-
-        for i, seq in enumerate(sequence_output): 
-            # e1e2 token sequences
-            temp_e1.append(seq[e1_e2_start[i][0]]) 
-            temp_e2.append(seq[e1_e2_start[i][1]])
-
-        e1e2_output.append(torch.stack(temp_e1, dim=0))
-        e1e2_output.append(torch.stack(temp_e2, dim=0))
-
-        new_pooled_output=torch.cat((pooled_output, *e1e2_output), dim=1)
-
-        del e1e2_output
-        del temp_e2
-        del temp_e1
-
-        classification_logits = None
-
-        if self.task == "train":
-            classification_logits = self.classification_layer(self.drop_out(new_pooled_output))
+        classification_logits = self.output2logits(pooled_output, sequence_output, input_ids, e1_e2_start)
 
         return model_output, classification_logits.to(device)

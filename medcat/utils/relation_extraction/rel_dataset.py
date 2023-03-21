@@ -48,7 +48,7 @@ class RelData(Dataset):
             if col in text_cols:
                 df["relation_token_span_ids"] = [self.tokenizer(text)["input_ids"] for text in df[col]] 
                 df = df.drop(columns=col)
-
+        
         df["ent1_ent2_start"] = df["ent1_ent2_start"].apply(lambda x: literal_eval(str(x)))
 
         nclasses, labels2idx, idx2label = RelData.get_labels(df["label"], self.config)
@@ -185,7 +185,7 @@ class RelData(Dataset):
 
                     doc_length = len(text)
 
-                    tokenizer_data = self.tokenizer(text)
+                    tokenizer_data = self.tokenizer(text, add_special_tokens=self.config.general["tokenizer_special_tokens"])
 
                     ann_ids_ents: Dict[Any, Any] = {}
                     for ann in annotations: 

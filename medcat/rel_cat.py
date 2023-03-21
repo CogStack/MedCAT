@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+from tokenize import Token
 import torch
 
 import torch.nn
@@ -42,8 +43,10 @@ class RelCAT(PipeRunner):
 
     def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train"):
         self.config = config
-        self.tokenizer = tokenizer
+        self.tokenizer : TokenizerWrapperBERT = tokenizer
         self.cdb = cdb
+
+        self.log.setLevel(self.config.general['log_level'])
 
         self.learning_rate = config.train["lr"]
         self.batch_size = config.train["batch_size"]
@@ -51,7 +54,6 @@ class RelCAT(PipeRunner):
 
         self.is_cuda_available = torch.cuda.is_available()
         self.device = torch.device("cuda" if self.is_cuda_available and self.config.general["device"] != "cpu" else "cpu")
-        self.tokenizer = tokenizer
         self.model_config = BertConfig()
         self.model: BertModel_RelationExtraction
         self.task = task
@@ -126,6 +128,7 @@ class RelCAT(PipeRunner):
         try:
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
                                                                        model_size=config.model["hidden_size"],
+                                                                       relcat_config = config,
                                                                        model_config=model_config,
                                                                        task=config.general["task"],
                                                                        nclasses=config.model["nclasses"],
@@ -136,6 +139,7 @@ class RelCAT(PipeRunner):
             print("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
                                                                         model_size=model_config.hidden_size,
+                                                                        relcat_config = config,
                                                                         model_config=model_config,
                                                                         task=config.general["task"],
                                                                         nclasses=config.model["nclasses"],

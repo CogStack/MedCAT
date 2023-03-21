@@ -1,3 +1,4 @@
+import logging
 from typing import Dict, Any
 from medcat.config import ConfigMixin
 
@@ -12,13 +13,15 @@ class ConfigRelCAT(ConfigMixin):
                 'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
                 'lowercase': True, # If true all input text will be lowercased
                 'ent_context_left': 2, # Number of entities to take from the left of the concept
-                'ent_context_right': 2, # Number of entities to take from the right of the concept
+                '       ': 2, # Number of entities to take from the right of the concept
                 'window_size': 300, # max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)
                 'tokenizer_name': 'BERT_tokenizer_relation_extraction', # Tokenizer name used, "BERT_tokenizer_relation_extraction" default
                 'model_name': 'bert-base-uncased', # e.g "dmis-lab/biobert-base-cased-v1.2", "bert-large-uncased", "bert-base-uncased", "emilyalsentzer/Bio_ClinicalBERT"
-                'log_level': 'info',
+                'log_level': logging.INFO,
                 'padding_idx': -1,
                 'task': 'train',
+                'tokenizer_special_tokens': False,
+                'annotation_schema_tag_ids': [30522, 30523, 30524, 30525], # s1,s2,e1,e2 token id markers
                 'labels2idx': {},
                 'idx2labels': {},
                 'pin_memory': True
@@ -34,7 +37,7 @@ class ConfigRelCAT(ConfigMixin):
         self.train: Dict[str, Any] = {
                 'batch_size': 25,
                 'nepochs': 2,
-                'lr': 0.001,
+                'lr': 0.00001,
                 'test_size': 0.2,
                 'gradient_acc_steps': 1,
                 'multistep_milestones': [2,4,6,8,12,15,18,20,22,24,26,30],

@@ -2,12 +2,11 @@ import os
 from typing import Optional
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
-from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 
 
-class TokenizerWrapperBERT(TokenizerWrapperBase):
+class TokenizerWrapperBERT(BertTokenizerFast):
     ''' Wrapper around a huggingface BERT tokenizer so that it works with the
-    MetaCAT models.
+    RelCAT models.
 
     Args:
         hf_tokenizers (`transformers.models.bert.tokenization_bert_fast.BertTokenizerFast`):
@@ -15,24 +14,26 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
     '''
     name = 'bert-tokenizer'
 
-    def __init__(self, hf_tokenizers=None, max_seq_length: Optional[int] = None):
+    def __init__(self, hf_tokenizers=None, max_seq_length: Optional[int] = None, add_special_tokens: Optional[bool] = False):
         self.hf_tokenizers = hf_tokenizers
         self.max_seq_length = max_seq_length
+        self.add_special_tokens = add_special_tokens
 
     def __call__(self, text):
         if isinstance(text, str):
-            result = self.hf_tokenizers.encode_plus(text, return_offsets_mapping=True, return_token_type_ids=True, return_attention_mask=True,
-                    add_special_tokens=False, max_length=self.max_seq_length, padding="longest", truncation=True)
+            result = self.hf_tokenizers.encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True, return_attention_mask=True,
+                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length, padding="longest", truncation=True)
 
             return {'offset_mapping': result['offset_mapping'],
                     'input_ids': result['input_ids'],
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
                     'token_type_ids': result['token_type_ids'],
-                    'attention_mask': result['attention_mask']
+                    'attention_mask': result['attention_mask'],
+                    'length' : result['length']
                     }
         elif isinstance(text, list):
-            results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_token_type_ids=True,
-                    add_special_tokens=False, max_length=self.max_seq_length)
+            results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True,
+                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length)
             output = []
             for ind in range(len(results['input_ids'])):
                 output.append({
@@ -40,7 +41,8 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
                     'input_ids': results['input_ids'][ind],
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(results['input_ids'][ind]),
                     'token_type_ids': results['token_type_ids'][ind],
-                    'attention_mask': results['attention_mask'][ind]
+                    'attention_mask': results['attention_mask'][ind],
+                    'length' : result['length']
                     })
             return output
         else:

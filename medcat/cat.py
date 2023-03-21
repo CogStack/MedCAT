@@ -823,6 +823,7 @@ class CAT(object):
         filters = self.config.linking['filters']
 
         fp = fn = tp = p = r = f1 = examples = {}
+        
         with open(data_path) as f:
             data = json.load(f)
         cui_counts = {}
