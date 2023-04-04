@@ -98,7 +98,7 @@ class CDB(object):
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
-        the logest name assigend to the concept.
+        the longest name assigned to the concept.
 
         Args:
             cui
@@ -118,7 +118,7 @@ class CDB(object):
         self.is_dirty = True
 
     def remove_names(self, cui: str, names: Dict) -> None:
-        """Remove names from an existing concept - efect is this name will never again be used to link to this concept.
+        """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
         could also be useful to keep the removed names in e.g. cui2names.
@@ -151,6 +151,39 @@ class CDB(object):
                             self.name2cuis2status[name][_cui] = 'N'
                         elif self.name2cuis2status[name][_cui] == 'P':
                             self.name2cuis2status[name][_cui] = 'PD'
+        self.is_dirty = True
+
+    def remove_cui(self, cui: str) -> None:
+        """This function takes a `CUI` as an argument and removes it from all the internal objects that reference it.
+        Args:
+            cui
+        """
+        if cui in self.cui2names:
+            del self.cui2names[cui]
+        if cui in self.cui2snames:
+            del self.cui2snames[cui]
+        if cui in self.cui2context_vectors:
+            del self.cui2context_vectors[cui]
+        if cui in self.cui2count_train:
+            del self.cui2count_train[cui]
+        if cui in self.cui2tags:
+            del self.cui2tags[cui]
+        if cui in self.cui2type_ids:
+            del self.cui2type_ids[cui]
+        if cui in self.cui2preferred_name:
+            del self.cui2preferred_name[cui]
+        if cui in self.cui2average_confidence:
+            del self.cui2average_confidence[cui]
+        for name, cuis in self.name2cuis.items():
+            if cui in cuis:
+                cuis.remove(cui)
+        for name, cuis2status in self.name2cuis2status.items():
+            if cui in cuis2status:
+                del cuis2status[cui]
+        self.snames = set()
+        for cuis in self.cui2snames.values():
+            self.snames |= cuis
+        self.name2count_train = {name: len(cuis) for name, cuis in self.name2cuis.items()}
         self.is_dirty = True
 
     def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:

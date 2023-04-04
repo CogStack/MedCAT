@@ -64,6 +64,16 @@ class CDBTests(unittest.TestCase):
         stats = self.undertest.make_stats()
         self.assertFalse(np.isnan(stats["Average training examples per concept"]))
         self.undertest.cui2count_train = copied
+    
+    def test_remove_cui(self):
+        self.undertest.remove_cui('C0000039')
+        assert 'C0000039' not in self.undertest.cui2names
+        assert 'C0000039' not in self.undertest.cui2snames
+        assert 'C0000039' not in self.undertest.cui2count_train
+        assert 'C0000039' not in self.undertest.cui2type_ids
+        assert 'C0000039' not in self.undertest.cui2preferred_name
+        assert 'C0000039' not in self.undertest.name2cuis['virus~z']
+        assert 'C0000039' not in self.undertest.name2cuis2status['virus~z']
 
 if __name__ == '__main__':
     unittest.main()
