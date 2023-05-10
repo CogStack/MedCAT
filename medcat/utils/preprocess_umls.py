@@ -187,6 +187,23 @@ class UMLS:
         return df
 
     def get_pt2ch(self) -> dict:
+        """Generates a parent to children dict.
+
+        It goes through all the < # TODO
+
+        The resulting dictionary maps a CUI to a list of CUIs that
+        consider that CUI as their parent.
+
+        PS:
+        This expects the MRHIER.RRF file to also exist in the same folder
+        as the MRCONSO.RRF file.
+
+        Raises:
+            ValueError: If the MRHIER.RRF file wasn't found
+
+        Returns:
+            dict: The dictionary of parent CUI and their children.
+        """
         path = self.main_file_name.rsplit('/', 1)[0]
         hier_file = f"{path}/MRHIER.RRF"
 
@@ -204,11 +221,14 @@ class UMLS:
         if self.allow_langugages:
             conso_df = conso_df[conso_df["LAT"].isin(self.allow_langugages)]
 
+        # create a AUI -> CUI map
+        aui_cui = dict(zip(conso_df["AUI"], conso_df["CUI"]))
+
+        # filter ISA relationships
+        hier_df = hier_df[hier_df['RELA'] == 'isa']
+
         # merge dataframes
         merged_df = pd.merge(conso_df, hier_df, on=['AUI', 'CUI'])
-
-        # create a AUI -> CUI map
-        aui_cui = dict(zip(merged_df["AUI"], merged_df["CUI"]))
 
         # only keep CUI and parent AUI
         cui_parent = merged_df[['CUI', 'PAUI']]
