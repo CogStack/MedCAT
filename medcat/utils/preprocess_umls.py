@@ -224,6 +224,9 @@ class UMLS:
         # create a AUI -> CUI map
         aui_cui = dict(zip(conso_df["AUI"], conso_df["CUI"]))
 
+        # remove non-preferred from conso
+        conso_df = conso_df[conso_df['ISPREF'] == 'Y']
+
         # filter ISA relationships
         hier_df = hier_df[hier_df['RELA'] == 'isa']
 
