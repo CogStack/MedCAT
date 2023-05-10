@@ -245,6 +245,8 @@ class UMLS:
                 pt2ch[cur_cui] = set()
             pt2ch[cur_cui].add(parent_cui)
         for k, v in pt2ch.items():
+            if k in v:
+                v.remove(k)
             pt2ch[k] = list(v)
         return pt2ch
 
@@ -272,11 +274,17 @@ if __name__ == '__main__':
     pt2ch = umls.get_pt2ch()
     print('Get parent-child dict', len(pt2ch),
           '' if len(pt2ch) > 1_000 else pt2ch)
+    all_vals = [len(v) for v in pt2ch.values()]
+    print('LEN of VALS:', sum(all_vals), 'max',
+          max(all_vals), 'min', min(all_vals), 'mean', sum(all_vals) / len(all_vals))
     import random
     random_4_keys = random.sample(list(pt2ch.keys()), k=4)
 
     def _get_name(cui: str) -> str:
-        return df[df['cui'] == cui]['name'].iloc[0]
+        matches = df[df['cui'] == cui]
+        if len(matches.index) == 0:
+            return 'N/A'  # UNKNOWN
+        return matches['name'].iloc[0]
     print('FF RAW   ', [f"{k}:{pt2ch[k]}" for k in random_4_keys])
     print('FIRST FEW', [
         (f"{_get_name(key)} ({key})", [f"{_get_name(child)} ({child})" for child in pt2ch[key]]) for key in random_4_keys])
