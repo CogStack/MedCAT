@@ -1,6 +1,8 @@
 
 from typing import List, Union
 import pandas as pd
+import tqdm
+import os
 
 _DEFAULT_COLUMNS: list = [
     "CUI",
@@ -20,7 +22,7 @@ _DEFAULT_COLUMNS: list = [
     "STR",
     "SRL",
     "SUPPRESS",
-    "CVF",   
+    "CVF",
 ]
 
 _DEFAULT_SEM_TYPE_COLUMNS: list = [
@@ -32,12 +34,24 @@ _DEFAULT_SEM_TYPE_COLUMNS: list = [
     "CVF",
 ]
 
+_DEFAULT_MRHIER_COLUMNS: list = [
+    "CUI",
+    "AUI",
+    "CXN",
+    "PAUI",
+    "SAB",
+    "RELA",
+    "PTR",
+    "HCD",
+    "CVF",
+]
+
 medcat_csv_mapper: dict = {
     'CUI': 'cui',
     'STR': 'name',
     'SAB': 'ontologies',
     'ISPREF': 'name_status',
-    'TUI': 'type_ids', # from MRSTY.RRF
+    'TUI': 'type_ids',  # from MRSTY.RRF
 }
 
 
@@ -57,11 +71,13 @@ class UMLS:
     def __init__(self, main_file_name: str, sem_types_file: str, allow_languages: list = ['ENG'], sep: str = '|'):
         self.main_file_name = main_file_name
         self.sem_types_file = sem_types_file
-        self.main_columns = list(_DEFAULT_COLUMNS) # copy
-        self.sem_types_columns = list(_DEFAULT_SEM_TYPE_COLUMNS) # copy
+        self.main_columns = list(_DEFAULT_COLUMNS)  # copy
+        self.sem_types_columns = list(_DEFAULT_SEM_TYPE_COLUMNS)  # copy
+        self.mrhier_columns = list(_DEFAULT_MRHIER_COLUMNS)  # copy
         self.sep = sep
         # copy in case of default list
-        self.allow_langugages = list(allow_languages) if allow_languages else allow_languages
+        self.allow_langugages = list(
+            allow_languages) if allow_languages else allow_languages
 
     def to_concept_df(self) -> pd.DataFrame:
         """Create a concept DataFrame.
@@ -72,7 +88,8 @@ class UMLS:
         """
         # target columns:
         # cui, name, name_status, ontologies, description_type_ids, type_ids
-        df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False)
+        df = pd.read_csv(self.main_file_name,
+                         names=self.main_columns, sep=self.sep, index_col=False)
 
         # filter languages
         if self.allow_langugages:
@@ -82,7 +99,8 @@ class UMLS:
 
         # get TUI
 
-        sem_types = pd.read_csv(self.sem_types_file, names=self.sem_types_columns, sep=self.sep, index_col=False)
+        sem_types = pd.read_csv(
+            self.sem_types_file, names=self.sem_types_columns, sep=self.sep, index_col=False)
         df = df.merge(sem_types)
 
         # rename columns
@@ -109,7 +127,8 @@ class UMLS:
         Returns:
             pd.DataFrame: Dataframe that contains the SCUI (source CUI) as well as the UMLS CUI for each applicable concept
         """
-        df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False, dtype={'SCUI': 'str'})
+        df = pd.read_csv(self.main_file_name, names=self.main_columns,
+                         sep=self.sep, index_col=False, dtype={'SCUI': 'str'})
         # get only SNOMED-CT US based concepts that have a SNOMED-CT (source) CUI
         df = df[df.SAB == 'SNOMEDCT_US'][df.SCUI.notna()]
         # sort by SCUI
@@ -154,7 +173,8 @@ class UMLS:
         Returns:
             pd.DataFrame: DataFrame that has the target source codes
         """
-        df = pd.read_csv(self.main_file_name, names=self.main_columns, sep=self.sep, index_col=False, dtype={'CODE': 'str'})
+        df = pd.read_csv(self.main_file_name, names=self.main_columns,
+                         sep=self.sep, index_col=False, dtype={'CODE': 'str'})
         # get the specified source(s)
         if isinstance(sources, list):
             df = df[df.SAB.isin(sources)][df.CODE.notna()]
@@ -165,6 +185,48 @@ class UMLS:
         # rearrange columns starting with CODE
         df = df[['CODE',] + [col for col in df.columns.values if col != 'CODE']]
         return df
+
+    def get_pt2ch(self) -> dict:
+        path = self.main_file_name.rsplit('/', 1)[0]
+        hier_file = f"{path}/MRHIER.RRF"
+
+        if not os.path.exists(hier_file):
+            raise ValueError(
+                f'Expected MRHIER.RRF to exist within the same parent folder ({path})')
+
+        conso_df = pd.read_csv(self.main_file_name, names=self.main_columns,
+                               sep=self.sep, index_col=False)
+
+        hier_df = pd.read_csv(hier_file, sep=self.sep, index_col=False,
+                              header=None, names=self.mrhier_columns)
+
+        # filter languages
+        if self.allow_langugages:
+            conso_df = conso_df[conso_df["LAT"].isin(self.allow_langugages)]
+
+        # merge dataframes
+        merged_df = pd.merge(conso_df, hier_df, on=['AUI', 'CUI'])
+
+        # create a AUI -> CUI map
+        aui_cui = dict(zip(merged_df["AUI"], merged_df["CUI"]))
+
+        # only keep CUI and parent AUI
+        cui_parent = merged_df[['CUI', 'PAUI']]
+        # only include CUIs with a parent
+        cui_parent = cui_parent[cui_parent['PAUI'].notna()]
+
+        # create dict
+        pt2ch: dict[str, set[str]] = {}
+        for _, row in tqdm.tqdm(cui_parent.iterrows(), total=len(cui_parent.index)):
+            cur_cui = row['CUI']
+            paui = row['PAUI']
+            parent_cui = aui_cui[paui]
+            if cur_cui not in pt2ch:
+                pt2ch[cur_cui] = set()
+            pt2ch[cur_cui].add(parent_cui)
+        for k, v in pt2ch.items():
+            pt2ch[k] = list(v)
+        return pt2ch
 
 
 if __name__ == '__main__':
@@ -187,3 +249,14 @@ if __name__ == '__main__':
     to_ICD10_man = umls.map_umls2source(sources=['ICD10'])
     print('As ICD-10(MAN):')
     print(to_ICD10_man.head())
+    pt2ch = umls.get_pt2ch()
+    print('Get parent-child dict', len(pt2ch),
+          '' if len(pt2ch) > 1_000 else pt2ch)
+    import random
+    random_4_keys = random.sample(list(pt2ch.keys()), k=4)
+
+    def _get_name(cui: str) -> str:
+        return df[df['cui'] == cui]['name'].iloc[0]
+    print('FF RAW   ', [f"{k}:{pt2ch[k]}" for k in random_4_keys])
+    print('FIRST FEW', [
+        (f"{_get_name(key)} ({key})", [f"{_get_name(child)} ({child})" for child in pt2ch[key]]) for key in random_4_keys])
