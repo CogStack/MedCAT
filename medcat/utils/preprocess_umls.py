@@ -245,14 +245,15 @@ class UMLS:
             cur_cui = row['CUI']
             paui = row['PAUI']
             parent_cui = aui_cui[paui]
+            # avoid self as parent/child
+            if parent_cui == cur_cui:
+                continue
             if parent_cui not in pt2ch:
                 pt2ch[parent_cui] = set()
             pt2ch[parent_cui].add(cur_cui)
         # move from set to list for consistency with SNOMED
         pt2ch: Dict[str, List[str]] = pt2ch  # type: ignore
         for k, v in pt2ch.items():
-            if k in v:
-                v.remove(k)
             pt2ch[k] = list(v)
         return pt2ch
 
