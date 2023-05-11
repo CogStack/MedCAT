@@ -3,7 +3,7 @@ from typing import List, Union
 import pandas as pd
 import tqdm
 import os
-from typing import Dict, Set, List
+from typing import Dict, Set
 
 _DEFAULT_COLUMNS: list = [
     "CUI",
@@ -245,9 +245,9 @@ class UMLS:
             cur_cui = row['CUI']
             paui = row['PAUI']
             parent_cui = aui_cui[paui]
-            if cur_cui not in pt2ch:
-                pt2ch[cur_cui] = set()
-            pt2ch[cur_cui].add(parent_cui)
+            if parent_cui not in pt2ch:
+                pt2ch[parent_cui] = set()
+            pt2ch[parent_cui].add(cur_cui)
         # move from set to list for consistency with SNOMED
         pt2ch: Dict[str, List[str]] = pt2ch  # type: ignore
         for k, v in pt2ch.items():
