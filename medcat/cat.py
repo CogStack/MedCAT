@@ -912,8 +912,8 @@ class CAT(object):
             checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
                 The MedCAT CheckpointST object
             synthetic_data_path (Optional[str])
-                the path to a csv file that contains synthetic data that can be added to the training data in the format
-                [name, cui, start, end]
+                the path to a CSV file that contains synthetic data with the columns {name, cui, start, end}
+                which can be added to the training set
             retain_filters (bool):
                 If True, retain the filters in the MedCATtrainer export within this CAT instance. In other words, the
                 filters defined in the input file will henseforth be saved within config.linking.filters .
@@ -1050,6 +1050,7 @@ class CAT(object):
 
                 if synthetic_data_path is not None:
                     synth_data = pd.read_csv(synthetic_data_path)
+                    assert {'cui', 'name', 'start', 'end'}.issubset(synth_data.columns)
                     logger.info(
                         f"Training with additional {len(synth_data)} synthetic data points from {synthetic_data_path}"
                     )

@@ -33,6 +33,13 @@ class MetaCATTests(unittest.TestCase):
 
         self.assertEqual(results['report']['weighted avg']['f1-score'], 1.0)
 
+    def test_train_with_synthetic_data(self):
+        json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources', 'mct_export_for_meta_cat_test.json')
+        synthetic_data_path = os.path.join(os.path.dirname(__file__), "resources", "synthetic_train_data.csv")
+        results = self.meta_cat.train(json_path, save_dir_path=self.tmp_dir, synthetic_csv_path=synthetic_data_path)
+
+        self.assertAlmostEquals(results['report']['weighted avg']['f1-score'], 1.0, places=1)
+
     def test_save_load(self):
         json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources', 'mct_export_for_meta_cat_test.json')
         self.meta_cat.train(json_path, save_dir_path=self.tmp_dir)

@@ -230,6 +230,30 @@ class CATTests(unittest.TestCase):
         for step in range(1, nepochs * num_of_documents + 1):
             self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
 
+    def test_train_supervised_with_synthetic_data(self):
+        nepochs = 3
+        num_of_documents = 27
+        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
+        synthetic_data_path = os.path.join(os.path.dirname(__file__), "resources", "synthetic_train_data.csv")
+        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
+                                                                                     synthetic_data_path=synthetic_data_path,
+                                                                                     checkpoint=checkpoint,
+                                                                                     nepochs=nepochs)
+        checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
+        self.assertEqual({}, fp)
+        self.assertEqual({}, fn)
+        self.assertEqual({}, tp)
+        self.assertEqual({}, p)
+        self.assertEqual({}, r)
+        self.assertEqual({}, f1)
+        self.assertEqual({}, cui_counts)
+        self.assertEqual({}, examples)
+        self.assertEqual(nepochs * num_of_documents, len(checkpoints))
+        for step in range(1, nepochs * num_of_documents + 1):
+            self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
+
     def test_resume_supervised_training(self):
         nepochs_train = 1
         nepochs_retrain = 2

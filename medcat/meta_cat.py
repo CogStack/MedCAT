@@ -2,9 +2,9 @@ import os
 import json
 import logging
 
-import pandas as pd
 import torch
 import numpy
+import pandas as pd
 from multiprocessing import Lock
 from torch import nn, Tensor
 from spacy.tokens import Doc
@@ -108,8 +108,8 @@ class MetaCAT(PipeRunner):
             json_path (Union[str, list]):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
             synthetic_csv_path (Optional[str]):
-                Path to a csv file containing synthetically generated data that can be added to the training data in the
-                format [name, cui, start, end, label1, label2 [...])
+                Path to a csv file containing synthetically generated data that can be added to the training data with
+                 the headings {text, cui, start, end, category_name1, category_name2 [...]}
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
@@ -162,6 +162,7 @@ class MetaCAT(PipeRunner):
 
         if synthetic_csv_path is not None:
             synth_data_loaded = pd.read_csv(synthetic_csv_path)
+            assert {'text', 'cui', 'start', 'end'}.issubset(synth_data_loaded.columns)
             logger.info(
                 f"Training with additional {len(synth_data_loaded)} synthetic data points from {synthetic_csv_path}"
             )

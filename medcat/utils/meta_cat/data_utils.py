@@ -118,6 +118,28 @@ def prepare_from_csv(
         replace_center: Optional[str] = None,
         lowercase: bool = True,
 ) -> Dict:
+    """Convert the synthetic data from a CSV format into a format for training. This is just a modified
+    version of prepare_from_json().
+    Args:
+        data (pd.DataFrame):
+            Loaded synthetic data from CSV file - pd.load_csv(<synthetic_data_csv>).
+             Example: {'text':['<text>', ...], 'cui':['<cui>', ...], 'start':['<start>', ...],
+             'end':['<end>', ...], 'category_name':['<category_value>', ...], ...}
+        cntx_left (int):
+            Size of context to get from the left of the concept
+        cntx_right (int):
+            Size of context to get from the right of the concept
+        tokenizer (medcat.tokenizers.meta_cat_tokenizers):
+            Something to split text into tokens for the LSTM/BERT/whatever meta models.
+        replace_center (Optional[str]):
+            If not None the center word (concept) will be replaced with whatever this is.
+        lowercase (bool):
+            Should the text be lowercased before tokenization. Defaults to True.
+
+    Returns:
+        out_data (dict):
+            Example: {'category_name': [('<category_value>', '<[tokens]>', '<center_token>'), ...], ...}
+    """
     out_data: Dict = {}
 
     for i in range(len(data)):
@@ -235,7 +257,7 @@ class Span(object):
         self.start_char = start_char
         self.end_char = end_char
         self._.id = id_  # type: ignore
-        self._.meta_anns = None  # type: ignore
+        self._.meta_anns = None # type: ignore
 
 
 class Doc(object):
