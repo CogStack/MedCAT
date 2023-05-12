@@ -1,6 +1,8 @@
 import os
 import json
 import logging
+
+import pandas as pd
 import torch
 import numpy
 from multiprocessing import Lock
@@ -11,7 +13,7 @@ from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.utils.hasher import Hasher
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
-from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
+from medcat.utils.meta_cat.data_utils import prepare_from_json, prepare_from_csv, encode_category_values
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
@@ -98,13 +100,16 @@ class MetaCAT(PipeRunner):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
-    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
+    def train(self, json_path: Union[str, list], synthetic_csv_path: Optional[str] = None, save_dir_path: Optional[str] = None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
             json_path (Union[str, list]):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
+            synthetic_csv_path (Optional[str]):
+                Path to a csv file containing synthetically generated data that can be added to the training data in the
+                format [name, cui, start, end, label1, label2 [...])
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
@@ -154,6 +159,24 @@ class MetaCAT(PipeRunner):
                     category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
+
+        if synthetic_csv_path is not None:
+            synth_data_loaded = pd.read_csv(synthetic_csv_path)
+            logger.info(
+                f"Training with additional {len(synth_data_loaded)} synthetic data points from {synthetic_csv_path}"
+            )
+            synth_data = prepare_from_csv(
+                synth_data_loaded,
+                cntx_left=g_config["cntx_left"],
+                cntx_right=g_config["cntx_right"],
+                tokenizer=self.tokenizer,
+                replace_center=g_config["replace_center"],
+                category_name=category_name,
+                lowercase=g_config["lowercase"],
+            )
+            synth_data = synth_data[category_name]
+            # concat synth data to medcattrainer data
+            data = data + synth_data
 
         category_value2id = g_config['category_value2id']
         if not category_value2id:

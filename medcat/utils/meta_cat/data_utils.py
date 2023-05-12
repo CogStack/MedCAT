@@ -1,4 +1,7 @@
 from typing import Dict, Optional, Tuple, Iterable, List
+
+import pandas as pd
+
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 
 
@@ -106,6 +109,64 @@ def prepare_from_json(data: Dict,
     return out_data
 
 
+def prepare_from_csv(
+        data: pd.DataFrame,
+        category_name: str,
+        cntx_left: int,
+        cntx_right: int,
+        tokenizer: TokenizerWrapperBase,
+        replace_center: Optional[str] = None,
+        lowercase: bool = True,
+) -> Dict:
+    out_data: Dict = {}
+
+    for i in range(len(data)):
+        text = data.text.values[i]
+
+        if len(text) > 0:
+            doc_text = tokenizer(text)
+
+            start = data.start.values[i]
+            end = data.end.values[i]
+
+            # Get the index of the center token
+            ind = 0
+            for ind, pair in enumerate(doc_text["offset_mapping"]):
+                if pair[0] <= start < pair[1]:
+                    break
+
+            _start = max(0, ind - cntx_left)
+            _end = min(len(doc_text["input_ids"]), ind + 1 + cntx_right)
+            tkns = doc_text["input_ids"][_start:_end]
+            cpos = cntx_left + min(0, ind - cntx_left)
+
+            if replace_center is not None:
+                if lowercase:
+                    replace_center = replace_center.lower()
+                for p_ind, pair in enumerate(doc_text["offset_mapping"]):
+                    if pair[0] <= start < pair[1]:
+                        s_ind = p_ind
+                    if pair[0] < end <= pair[1]:
+                        e_ind = p_ind
+
+                ln = e_ind - s_ind
+                tkns = (
+                        tkns[:cpos]
+                        + tokenizer(replace_center)["input_ids"]
+                        + tkns[cpos + ln + 1:]
+                )
+
+            value = data[category_name].values[i]
+            sample = [tkns, cpos, value]
+
+            if category_name in out_data:
+                out_data[category_name].append(sample)
+            else:
+                out_data[category_name] = [sample]
+
+    return out_data
+
+
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None) -> Tuple:
     """Converts the category values in the data outputed by `prepare_from_json`
     into integere values.
@@ -174,7 +235,7 @@ class Span(object):
         self.start_char = start_char
         self.end_char = end_char
         self._.id = id_  # type: ignore
-        self._.meta_anns = None # type: ignore
+        self._.meta_anns = None  # type: ignore
 
 
 class Doc(object):

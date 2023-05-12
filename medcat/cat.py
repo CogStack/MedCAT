@@ -8,6 +8,7 @@ import logging
 import math
 import time
 import psutil
+import pandas as pd
 from time import sleep
 from multiprocess import Process, Manager, cpu_count
 from multiprocess.queues import Queue
@@ -856,6 +857,7 @@ class CAT(object):
                          extra_cui_filter: Optional[Set] = None,
                          retain_extra_cui_filter: bool = False,
                          checkpoint: Optional[Checkpoint] = None,
+                         synthetic_data_path: Optional[str] = None,
                          retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
         """TODO: Refactor, left from old
@@ -909,6 +911,9 @@ class CAT(object):
                 This will only have an effect if/when retain_filters is set to True. Defaults to False.
             checkpoint (Optional[Optional[medcat.utils.checkpoint.CheckpointST]):
                 The MedCAT CheckpointST object
+            synthetic_data_path (Optional[str])
+                the path to a csv file that contains synthetic data that can be added to the training data in the format
+                [name, cui, start, end]
             retain_filters (bool):
                 If True, retain the filters in the MedCATtrainer export within this CAT instance. In other words, the
                 filters defined in the input file will henseforth be saved within config.linking.filters .
@@ -1042,6 +1047,30 @@ class CAT(object):
                     latest_trained_step += 1
                     if checkpoint is not None and checkpoint.steps is not None and latest_trained_step % checkpoint.steps == 0:
                         checkpoint.save(self.cdb, latest_trained_step)
+
+                if synthetic_data_path is not None:
+                    synth_data = pd.read_csv(synthetic_data_path)
+                    logger.info(
+                        f"Training with additional {len(synth_data)} synthetic data points from {synthetic_data_path}"
+                    )
+                    for i in range(len(synth_data)):
+                        synth_spacy_doc: Optional[Doc] = self(synth_data.text.values[i])
+                        cui = synth_data.cui.values[i]
+                        name = synth_data.name.values[i]
+                        start = synth_data.start.values[i]
+                        end = synth_data.end.values[i]
+                        spacy_entity = tkns_from_doc(
+                            spacy_doc=synth_spacy_doc, start=start, end=end
+                        )
+                        self.add_and_train_concept(
+                            cui=cui,
+                            name=name,
+                            spacy_doc=synth_spacy_doc,
+                            spacy_entity=spacy_entity,
+                            negative=False,
+                            devalue_others=devalue_others,
+                        )
+
                 # if retaining MCT filters AND (if they exist) extra_cui_filters
                 if retain_filters:
                     self.config.linking.filters.merge_with(local_filters)
