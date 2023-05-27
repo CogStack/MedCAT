@@ -4,7 +4,7 @@ from typing import List, Optional, Dict, Iterable, Any, Tuple
 
 NUM = "NUMNUM"
 
-FAST_SPLIT = re.compile("[^A-Za-z0-9]")
+FAST_SPLIT = re.compile("[^\u0E00-\u0E7FA-Za-z0-9]")
 
 
 class EmbMimicCSV(object):

@@ -12,7 +12,7 @@ from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
-PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
+PH_REMOVE = re.compile("(\s)\([\u0E00-\u0E7Fa-zA-Z]+[^\)\(]*\)($)")
 
 
 logger = logging.getLogger(__name__)

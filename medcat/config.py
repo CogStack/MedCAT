@@ -549,7 +549,7 @@ class Config(MixingConfig, BaseModel):
         self.word_skipper = re.compile('^({})$'.format(
             '|'.join(self.preprocessing.words_to_skip)))
         # Very agressive punct checker, input will be lowercased
-        self.punct_checker = re.compile(r'[^a-z0-9]+')
+        self.punct_checker = re.compile(r'[^\u0E00-\u0E7Fa-z0-9]+')
 
     # Override
     def get_hash(self):

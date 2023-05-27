@@ -9,10 +9,10 @@ from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 from medcat.config import Config
 
-
+# edited
 def spacy_extended(nlp: Language) -> Tokenizer:
     infix_re_list = ('\\.\\.+',
-    '''(?<=[A-Za-z]{1})[\-_;\,\/~]+(?=[A-Za-z]{1})|(?<=[0-9]{1})[\-_;\,\/]+(?=[A-Za-z]{1})|(?<=[A-Za-z]{1})[\-_;\,\/]+(?=[0-9]{1})|\d{2,4}[\-\s_\*]\d{1,2}[\-\s_\*]\d{1,2}|\d{1,2}:\d{1,2}:\d{1,2}|\d{1,2}:\d{2}'''
+    '''(?<=[\u0E00-\u0E7FA-Za-z]{1})[\-_;\,\/~]+(?=[\u0E00-\u0E7FA-Za-z]{1})|(?<=[0-9]{1})[\-_;\,\/]+(?=[\u0E00-\u0E7FA-Za-z]{1})|(?<=[\u0E00-\u0E7FA-Za-z]{1})[\-_;\,\/]+(?=[0-9]{1})|\d{2,4}[\-\s_\*]\d{1,2}[\-\s_\*]\d{1,2}|\d{1,2}:\d{1,2}:\d{1,2}|\d{1,2}:\d{2}'''
      '…',
      '[\\p{So}]',
      '(?<=[[[\\p{Ll}&&\\p{Latin}]||[ёа-я]||[әөүҗңһ]||[α-ωάέίόώήύ]||[\\p{L}&&\\p{Bengali}]||[\\p{L}&&\\p{Hebrew}]||[\\p{L}&&\\p{Arabic}]||[\\p{L}&&\\p{Sinhala}]]])\\.(?=[[[\\p{Lu}&&\\p{Latin}]||[ЁА-Я]||[ӘӨҮҖҢҺ]||[Α-ΩΆΈΊΌΏΉΎ]||[\\p{L}&&\\p{Bengali}]||[\\p{L}&&\\p{Hebrew}]||[\\p{L}&&\\p{Arabic}]||[\\p{L}&&\\p{Sinhala}]]])',
@@ -37,10 +37,10 @@ def spacy_extended(nlp: Language) -> Tokenizer:
 
 def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
 
-    token_characters = r'[^A-Za-z0-9\@]'
+    token_characters = r'[^\u0E00-\u0E7FA-Za-z0-9\@]' #edited
 
     if config.general.diacritics:
-        token_characters = r'[^A-Za-zÀ-ÖØ-öø-ÿ0-9\@]'
+        token_characters = r'[^\u0E00-\u0E7FA-Za-zÀ-ÖØ-öø-ÿ0-9\@]' #edited
 
     infix_re = re.compile(token_characters)
     suffix_re = re.compile(token_characters + r'$')
