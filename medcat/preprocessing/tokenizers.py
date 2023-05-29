@@ -62,15 +62,15 @@ def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
     if config.general.diacritics:
         token_characters = r'[^\u0E00-\u0E7FA-Za-zÀ-ÖØ-öø-ÿ0-9\@]' #edited
 
-    infix_re = re.compile(token_characters)
-    suffix_re = re.compile(token_characters + r'$')
-    prefix_re = re.compile(r'^' + token_characters)
+    # infix_re = re.compile(token_characters)
+    # suffix_re = re.compile(token_characters + r'$')
+    # prefix_re = re.compile(r'^' + token_characters)
     return ThaiTokenizer(nlp.vocab,
-            rules={},
-            token_match=None,
-            prefix_search=prefix_re.search,
-            suffix_search=suffix_re.search,
-            infix_finditer=infix_re.finditer
+            # rules={},
+            # token_match=None,
+            # prefix_search=prefix_re.search,
+            # suffix_search=suffix_re.search,
+            # infix_finditer=infix_re.finditer
             )
 
 
