@@ -44,7 +44,25 @@ class Pipe(object):
         #self._nlp = spacy.blank('th')
         #self._nlp.add_pipe('pythainlp')
         self._nlp = Thai()
-        self._nlp.add_pipe('pythainlp')
+        self._nlp.add_pipe(
+            "pythainlp", 
+            config={
+                "pos_engine": "perceptron",
+                "pos": False,
+                "pos_corpus": "orchid_ud",
+                "sent_engine": "crfcut",
+                "sent": False,
+                "ner_engine": "thainer",
+                "ner": False,
+                "tokenize_engine": "newmm",
+                "tokenize": False,
+                "dependency_parsing": False,
+                "dependency_parsing_engine": "esupar",
+                "dependency_parsing_model": None,
+                "word_vector": False,
+                "word_vector_model": "thai2fit_wv"
+            }
+        )
         # self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
         if config.preprocessing.stopwords is not None:
             self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
