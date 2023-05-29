@@ -18,6 +18,7 @@ from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.ner.transformers_ner import TransformersNER
 import spacy
+from spacy.lang.th import Thai
 import spacy_pythainlp.core
 
 
