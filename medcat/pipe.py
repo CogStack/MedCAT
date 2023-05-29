@@ -44,7 +44,7 @@ class Pipe(object):
         #self._nlp = spacy.blank('th')
         #self._nlp.add_pipe('pythainlp')
         self._nlp = Thai()
-        #self._nlp.add_pipe('pythainlp')
+        self._nlp.add_pipe('pythainlp')
         # self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
         if config.preprocessing.stopwords is not None:
             self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
