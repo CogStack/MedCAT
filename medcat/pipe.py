@@ -256,6 +256,12 @@ class Pipe(object):
     def spacy_nlp(self) -> Language:
         """The spaCy Language object."""
         return self._nlp
+    
+    @property
+    def spacy_nlp_thai(self) -> Language:
+        """The spaCy Language object."""
+        self._nlp = Thai()
+        return self._nlp
 
     @staticmethod
     def _ensure_serializable(doc: Doc) -> Doc:
