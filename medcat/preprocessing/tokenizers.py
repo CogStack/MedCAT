@@ -55,7 +55,7 @@ def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
             infix_finditer=infix_re.finditer
             )
     
-def thai_tokenizer_factory(nlp: Language):
+def thai_tokenizer_factory(nlp: Language, config: Config) -> Tokenizer:
         return ThaiTokenizer(nlp.vocab)
 
 # def spacy_split_all(config: Config) -> Tokenizer:
