@@ -20,7 +20,8 @@ from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
 
 from medcat import __version__
-from medcat.preprocessing.tokenizers import spacy_split_all
+# from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.preprocessing.tokenizers import thai_tokenizer_factory
 from medcat.pipe import Pipe
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.cdb import CDB
@@ -41,6 +42,7 @@ from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES
+from spacy.lang.th import ThaiTokenizer
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
@@ -105,7 +107,7 @@ class CAT(object):
         logger.setLevel(config.general.log_level)
 
         # Build the pipeline
-        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
+        self.pipe = Pipe(tokenizer=thai_tokenizer_factory, config=config)
         self.pipe.add_tagger(tagger=tag_skip_and_punct,
                              name='skip_and_punct',
                              additional_fields=['is_punct'])

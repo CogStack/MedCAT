@@ -9,7 +9,7 @@ from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 from medcat.config import Config
 from spacy.lang.th import ThaiTokenizer
-import spacy_pythainlp.core
+# import spacy_pythainlp.core
 
 # edited
 def spacy_extended(nlp: Language) -> Tokenizer:
@@ -37,24 +37,6 @@ def spacy_extended(nlp: Language) -> Tokenizer:
             )
 
 ## original
-# def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
-
-#     token_characters = r'[^\u0E00-\u0E7FA-Za-z0-9\@]' #edited
-
-#     if config.general.diacritics:
-#         token_characters = r'[^\u0E00-\u0E7FA-Za-zÀ-ÖØ-öø-ÿ0-9\@]' #edited
-
-#     infix_re = re.compile(token_characters)
-#     suffix_re = re.compile(token_characters + r'$')
-#     prefix_re = re.compile(r'^' + token_characters)
-#     return Tokenizer(nlp.vocab,
-#             rules={},
-#             token_match=None,
-#             prefix_search=prefix_re.search,
-#             suffix_search=suffix_re.search,
-#             infix_finditer=infix_re.finditer
-#             )
-
 def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
 
     token_characters = r'[^\u0E00-\u0E7FA-Za-z0-9\@]' #edited
@@ -62,16 +44,59 @@ def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
     if config.general.diacritics:
         token_characters = r'[^\u0E00-\u0E7FA-Za-zÀ-ÖØ-öø-ÿ0-9\@]' #edited
 
-    # infix_re = re.compile(token_characters)
-    # suffix_re = re.compile(token_characters + r'$')
-    # prefix_re = re.compile(r'^' + token_characters)
-    return ThaiTokenizer(nlp.vocab,
-            # rules={},
-            # token_match=None,
-            # prefix_search=prefix_re.search,
-            # suffix_search=suffix_re.search,
-            # infix_finditer=infix_re.finditer
+    infix_re = re.compile(token_characters)
+    suffix_re = re.compile(token_characters + r'$')
+    prefix_re = re.compile(r'^' + token_characters)
+    return Tokenizer(nlp.vocab,
+            rules={},
+            token_match=None,
+            prefix_search=prefix_re.search,
+            suffix_search=suffix_re.search,
+            infix_finditer=infix_re.finditer
             )
+    
+def thai_tokenizer_factory(nlp: Language):
+        return ThaiTokenizer(nlp.vocab)
+
+# def spacy_split_all(config: Config) -> Tokenizer:
+
+#     token_characters = r'[^\u0E00-\u0E7FA-Za-z0-9\@]' #edited
+
+#     if config.general.diacritics:
+#         token_characters = r'[^\u0E00-\u0E7FA-Za-zÀ-ÖØ-öø-ÿ0-9\@]' #edited
+
+#     nlp = Thai()
+#     # nlp.add_pipe(
+#     #     "pythainlp", 
+#     #     config={
+#     #         "pos_engine": "perceptron",
+#     #         "pos": False,
+#     #         "pos_corpus": "orchid_ud",
+#     #         "sent_engine": "crfcut",
+#     #         "sent": False,
+#     #         "ner_engine": "thainer",
+#     #         "ner": False,
+#     #         "tokenize_engine": "newmm",
+#     #         "tokenize": False,
+#     #         "dependency_parsing": False,
+#     #         "dependency_parsing_engine": "esupar",
+#     #         "dependency_parsing_model": None,
+#     #         "word_vector": False,
+#     #         "word_vector_model": "thai2fit_wv"
+#     #     }
+#     # )
+
+
+#     # infix_re = re.compile(token_characters)
+#     # suffix_re = re.compile(token_characters + r'$')
+#     # prefix_re = re.compile(r'^' + token_characters)
+#     return ThaiTokenizer(nlp.vocab,
+#             # rules={},
+#             # token_match=None,
+#             # prefix_search=prefix_re.search,
+#             # suffix_search=suffix_re.search,
+#             # infix_finditer=infix_re.finditer
+#             )
 
 
 class WordpieceTokenizer(object):
