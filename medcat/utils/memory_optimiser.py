@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, KeysView, ValuesView, ItemsView, Iterator, List, Tuple
 
 from medcat.cdb import CDB
 
@@ -35,23 +35,54 @@ class DelegatingDict:
         return key in self.delegate and self.delegate[key][self.nr] is not None
 
     def keys(self) -> Iterator[str]:
-        for key in self.delegate.keys():
-            if key in self:
-                yield key
+        return self.KeysView(self.delegate.keys(), self)
 
     def items(self) -> Iterator[Tuple[str, Any]]:
-        for key in self:
-            yield key, self[key]
+        return self.ItemsView(self)
 
     def values(self) -> Iterator[Any]:
-        for key in self:
-            yield self[key]
+        return self.ValuesView(self)
 
     def __iter__(self) -> Iterator[str]:
         yield from self.keys()
 
     def __len__(self) -> int:
-        return len(list(self.keys()))
+        return len(self.keys())
+
+    class KeysView:
+        def __init__(self, keys: KeysView, parent: 'DelegatingDict'):
+            self._keys = keys
+            self._parent = parent
+
+        def __iter__(self) -> Iterator[Any]:
+            for key in self._keys:
+                if key in self._parent:
+                    yield key
+
+        def __len__(self) -> int:
+            return len([_ for _ in self])
+
+    class ItemsView:
+        def __init__(self, parent: 'DelegatingDict') -> None:
+            self._parent = parent
+
+        def __iter__(self) -> Iterator[Any]:
+            for key in self._parent:
+                yield key, self._parent[key]
+
+        def __len__(self) -> int:
+            return len(self._parent)
+
+    class ValuesView:
+        def __init__(self, parent: 'DelegatingDict') -> None:
+            self._parent = parent
+
+        def __iter__(self) -> Iterator[Any]:
+            for key in self._parent:
+                yield self._parent[key]
+
+        def __len__(self) -> int:
+            return len(self._parent)
 
 
 def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> None:
