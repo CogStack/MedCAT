@@ -1,6 +1,12 @@
 from medcat.utils import memory_optimiser
 
 import unittest
+import tempfile
+import os
+import shutil
+from medcat.cat import CAT
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
 
 
 class DelegatingDictTests(unittest.TestCase):
@@ -66,3 +72,59 @@ class DelegatingDictTests(unittest.TestCase):
                 with self.subTest(f"{name}: {key}"):
                     val = delegator.get(key, def_value)
                     self.assertIs(val, def_value)
+
+
+class OperationalTests(unittest.TestCase):
+    temp_folder = tempfile.TemporaryDirectory()
+    temp_cdb_path = os.path.join(temp_folder.name, 'cat.cdb')
+    # importing here so it's in the local namespace
+    # otherwise, all of its parts would get run again
+    from tests.test_cat import CATTests
+    test_callable_with_single_text = CATTests.test_callable_with_single_text
+    test_callable_with_single_empty_text = CATTests.test_callable_with_single_empty_text
+    test_callable_with_single_none_text = CATTests.test_callable_with_single_none_text
+    test_get_entities = CATTests.test_get_entities
+    test_get_entities_including_text = CATTests.test_get_entities_including_text
+    test_get_entities_multi_texts = CATTests.test_get_entities_multi_texts
+    test_get_entities_multi_texts_including_text = CATTests.test_get_entities_multi_texts_including_text
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+        memory_optimiser.perform_optimisation(cls.cdb)
+        cls.vocab = Vocab.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "vocab.dat"))
+        cls.cdb.config.general.spacy_model = "en_core_web_md"
+        cls.cdb.config.ner.min_name_len = 2
+        cls.cdb.config.ner.upper_case_limit_len = 3
+        cls.cdb.config.general.spell_check = True
+        cls.cdb.config.linking.train_count_threshold = 10
+        cls.cdb.config.linking.similarity_threshold = 0.3
+        cls.cdb.config.linking.train = True
+        cls.cdb.config.linking.disamb_length_limit = 5
+        cls.cdb.config.general.full_unlink = True
+        cls.meta_cat_dir = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)), "tmp")
+        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config,
+                            vocab=cls.vocab, meta_cats=[])
+        cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
+
+        # # add tests from CAT tests
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.temp_folder.cleanup()
+        cls.undertest.destroy_pipe()
+        if os.path.exists(cls.meta_cat_dir):
+            shutil.rmtree(cls.meta_cat_dir)
+
+    def tearDown(self) -> None:
+        self.cdb.config.annotation_output.include_text_in_output = False
+        # need to make sure linking filters are not retained beyond a test scope
+        self.undertest.config.linking.filters = self._linkng_filters.copy_of()
+
+    def test_cdb_has_one2many(self, one2many_name='cui2many'):
+        self.assertTrue(hasattr(self.cdb, one2many_name))
+        one2many = getattr(self.cdb, one2many_name)
+        self.assertIsInstance(one2many, dict)
