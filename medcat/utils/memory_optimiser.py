@@ -1,4 +1,4 @@
-from typing import Any, Dict, KeysView, ValuesView, ItemsView, Iterator, List, Tuple
+from typing import Any, Dict, KeysView, Iterator, List, Tuple
 
 from medcat.cdb import CDB
 
