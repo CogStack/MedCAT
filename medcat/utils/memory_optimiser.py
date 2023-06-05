@@ -98,7 +98,8 @@ def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> 
     cdb.is_dirty = True
 
 
-def perform_optimisation(cdb: CDB) -> None:
+def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
+                         optimise_names: bool = True) -> None:
     """Attempts to optimise the memory footprint of the CDB.
 
     Does so by unifying the following dicts:
@@ -133,19 +134,23 @@ def perform_optimisation(cdb: CDB) -> None:
 
     Args:
         cdb (CDB): The CDB to modify.
+        optimise_cuis (bool, optional): Whether to optimise cui2<...> dicts. Defaults to True.
+        optimise_names (bool, optional): Whether to optimise name2<...> dicts. Defaults to True.
     """
     # cui2<...> -> cui2many
-    cui_dict_names_to_combine = [
-        "cui2names", "cui2snames", "cui2context_vectors",
-        "cui2count_train", "cui2tags", "cui2type_ids",
-        "cui2preferred_name", "cui2average_confidence",
-    ]
-    _optimise(cdb, 'cui2many', cui_dict_names_to_combine)
+    if optimise_cuis:
+        cui_dict_names_to_combine = [
+            "cui2names", "cui2snames", "cui2context_vectors",
+            "cui2count_train", "cui2tags", "cui2type_ids",
+            "cui2preferred_name", "cui2average_confidence",
+        ]
+        _optimise(cdb, 'cui2many', cui_dict_names_to_combine)
     # name2<...> -> name2many
-    name_dict_names_to_combine = [
-        "cui2names", "name2cuis2status", "cui2preferred_name",
-    ]
-    _optimise(cdb, 'name2many', name_dict_names_to_combine)
+    if optimise_names:
+        name_dict_names_to_combine = [
+            "cui2names", "name2cuis2status", "cui2preferred_name",
+        ]
+        _optimise(cdb, 'name2many', name_dict_names_to_combine)
 
 
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
