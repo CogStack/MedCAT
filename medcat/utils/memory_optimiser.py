@@ -54,6 +54,16 @@ class DelegatingDict:
         return len(list(self.keys()))
 
 
+def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> None:
+    dicts = [getattr(cdb, dict_name)
+             for dict_name in dict_names_to_combine]
+    one2many, delegators = map_to_many(dicts)
+    for delegator, name in zip(delegators, dict_names_to_combine):
+        setattr(cdb, name, delegator)
+    setattr(cdb, to_many_name, one2many)
+    cdb.is_dirty = True
+
+
 def perform_optimisation(cdb: CDB) -> None:
     """Attempts to optimise the memory footprint of the CDB.
 
@@ -77,22 +87,31 @@ def perform_optimisation(cdb: CDB) -> None:
         cui2average_confidence (Dict[str, str]):
             Used for dynamic thresholding. Holds the average confidence for this CUI given the training examples.
 
+        name2cuis (Dict[str, List[str]]):
+            Map fro concept name to CUIs - one name can map to multiple CUIs.
+        name2cuis2status (Dict[str, Dict[str, str]]):
+            What is the status for a given name and cui pair - each name can be:
+                P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
+        name2count_train (Dict[str, str]):
+            Counts how often did a name appear during training.
+
     They will all be included in 1 dict with CUI keys and a list of values for each pre-existing dict.
 
     Args:
         cdb (CDB): The CDB to modify.
     """
-    dict_names_to_combine = [
+    # cui2<...> -> cui2many
+    cui_dict_names_to_combine = [
         "cui2names", "cui2snames", "cui2context_vectors",
         "cui2count_train", "cui2tags", "cui2type_ids",
-        "cui2preferred_name", "cui2average_confidence"
+        "cui2preferred_name", "cui2average_confidence",
     ]
-    dicts = [getattr(cdb, dict_name) for dict_name in dict_names_to_combine]
-    cui2many, delegators = map_to_many(dicts)
-    for delegator, name in zip(delegators, dict_names_to_combine):
-        setattr(cdb, name, delegator)
-    cdb.cui2many = cui2many
-    cdb.is_dirty = True
+    _optimise(cdb, 'cui2many', cui_dict_names_to_combine)
+    # name2<...> -> name2many
+    name_dict_names_to_combine = [
+        "cui2names", "name2cuis2status", "cui2preferred_name",
+    ]
+    _optimise(cdb, 'name2many', name_dict_names_to_combine)
 
 
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
