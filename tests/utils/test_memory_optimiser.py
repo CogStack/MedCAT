@@ -74,6 +74,26 @@ class DelegatingDictTests(unittest.TestCase):
                     self.assertIs(val, def_value)
 
 
+class MemoryOptimisingTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+        memory_optimiser.perform_optimisation(cls.cdb)
+
+    def test_cdb_has_one2many(self, one2many_name='cui2many'):
+        self.assertTrue(hasattr(self.cdb, one2many_name))
+        one2many = getattr(self.cdb, one2many_name)
+        self.assertIsInstance(one2many, dict)
+
+    def test_cdb_has_delegating_dicts(self):
+        for dict_name in memory_optimiser.CUI_DICT_NAMES_TO_COMBINE:
+            with self.subTest(dict_name):
+                d = getattr(self.cdb, dict_name)
+                self.assertIsInstance(d, memory_optimiser.DelegatingDict)
+
+
 class OperationalTests(unittest.TestCase):
     temp_folder = tempfile.TemporaryDirectory()
     temp_cdb_path = os.path.join(temp_folder.name, 'cat.cdb')
@@ -123,8 +143,3 @@ class OperationalTests(unittest.TestCase):
         self.cdb.config.annotation_output.include_text_in_output = False
         # need to make sure linking filters are not retained beyond a test scope
         self.undertest.config.linking.filters = self._linkng_filters.copy_of()
-
-    def test_cdb_has_one2many(self, one2many_name='cui2many'):
-        self.assertTrue(hasattr(self.cdb, one2many_name))
-        one2many = getattr(self.cdb, one2many_name)
-        self.assertIsInstance(one2many, dict)
