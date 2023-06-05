@@ -99,8 +99,13 @@ def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> 
 
 
 def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
-                         optimise_names: bool = True) -> None:
+                         optimise_names: bool = False) -> None:
     """Attempts to optimise the memory footprint of the CDB.
+
+    This can perform optimisation for cui2<...> and name2<...> dicts.
+    However, by default, only cui2many optimisation will be done.
+    This is because at the time of writing, there were not enough name2<...>
+    dicts to be able to benefit from the optimisation.
 
     Does so by unifying the following dicts:
 
@@ -135,7 +140,7 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
     Args:
         cdb (CDB): The CDB to modify.
         optimise_cuis (bool, optional): Whether to optimise cui2<...> dicts. Defaults to True.
-        optimise_names (bool, optional): Whether to optimise name2<...> dicts. Defaults to True.
+        optimise_names (bool, optional): Whether to optimise name2<...> dicts. Defaults to False.
     """
     # cui2<...> -> cui2many
     if optimise_cuis:
