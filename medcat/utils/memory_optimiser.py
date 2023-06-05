@@ -3,6 +3,17 @@ from typing import Any, Dict, KeysView, ValuesView, ItemsView, Iterator, List, T
 from medcat.cdb import CDB
 
 
+CUI_DICT_NAMES_TO_COMBINE = [
+    "cui2names", "cui2snames", "cui2context_vectors",
+    "cui2count_train", "cui2tags", "cui2type_ids",
+    "cui2preferred_name", "cui2average_confidence",
+]
+
+NAME_DICT_NAMES_TO_COMBINE = [
+    "cui2names", "name2cuis2status", "cui2preferred_name",
+]
+
+
 class _KeysView:
     def __init__(self, keys: KeysView, parent: 'DelegatingDict'):
         self._keys = keys
@@ -144,18 +155,10 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
     """
     # cui2<...> -> cui2many
     if optimise_cuis:
-        cui_dict_names_to_combine = [
-            "cui2names", "cui2snames", "cui2context_vectors",
-            "cui2count_train", "cui2tags", "cui2type_ids",
-            "cui2preferred_name", "cui2average_confidence",
-        ]
-        _optimise(cdb, 'cui2many', cui_dict_names_to_combine)
+        _optimise(cdb, 'cui2many', CUI_DICT_NAMES_TO_COMBINE)
     # name2<...> -> name2many
     if optimise_names:
-        name_dict_names_to_combine = [
-            "cui2names", "name2cuis2status", "cui2preferred_name",
-        ]
-        _optimise(cdb, 'name2many', name_dict_names_to_combine)
+        _optimise(cdb, 'name2many', NAME_DICT_NAMES_TO_COMBINE)
 
 
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
