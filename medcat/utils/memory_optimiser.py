@@ -3,6 +3,44 @@ from typing import Any, Dict, KeysView, ValuesView, ItemsView, Iterator, List, T
 from medcat.cdb import CDB
 
 
+class _KeysView:
+    def __init__(self, keys: KeysView, parent: 'DelegatingDict'):
+        self._keys = keys
+        self._parent = parent
+
+    def __iter__(self) -> Iterator[Any]:
+        for key in self._keys:
+            if key in self._parent:
+                yield key
+
+    def __len__(self) -> int:
+        return len([_ for _ in self])
+
+
+class _ItemsView:
+    def __init__(self, parent: 'DelegatingDict') -> None:
+        self._parent = parent
+
+    def __iter__(self) -> Iterator[Any]:
+        for key in self._parent:
+            yield key, self._parent[key]
+
+    def __len__(self) -> int:
+        return len(self._parent)
+
+
+class _ValuesView:
+    def __init__(self, parent: 'DelegatingDict') -> None:
+        self._parent = parent
+
+    def __iter__(self) -> Iterator[Any]:
+        for key in self._parent:
+            yield self._parent[key]
+
+    def __len__(self) -> int:
+        return len(self._parent)
+
+
 class DelegatingDict:
 
     def __init__(self, delegate: Dict[str, List[Any]], nr: int,
@@ -34,55 +72,20 @@ class DelegatingDict:
     def __contains__(self, key: str) -> bool:
         return key in self.delegate and self.delegate[key][self.nr] is not None
 
-    def keys(self) -> Iterator[str]:
-        return self.KeysView(self.delegate.keys(), self)
+    def keys(self) -> _KeysView:
+        return _KeysView(self.delegate.keys(), self)
 
-    def items(self) -> Iterator[Tuple[str, Any]]:
-        return self.ItemsView(self)
+    def items(self) -> _ItemsView:
+        return _ItemsView(self)
 
-    def values(self) -> Iterator[Any]:
-        return self.ValuesView(self)
+    def values(self) -> _ValuesView:
+        return _ValuesView(self)
 
     def __iter__(self) -> Iterator[str]:
         yield from self.keys()
 
     def __len__(self) -> int:
         return len(self.keys())
-
-    class KeysView:
-        def __init__(self, keys: KeysView, parent: 'DelegatingDict'):
-            self._keys = keys
-            self._parent = parent
-
-        def __iter__(self) -> Iterator[Any]:
-            for key in self._keys:
-                if key in self._parent:
-                    yield key
-
-        def __len__(self) -> int:
-            return len([_ for _ in self])
-
-    class ItemsView:
-        def __init__(self, parent: 'DelegatingDict') -> None:
-            self._parent = parent
-
-        def __iter__(self) -> Iterator[Any]:
-            for key in self._parent:
-                yield key, self._parent[key]
-
-        def __len__(self) -> int:
-            return len(self._parent)
-
-    class ValuesView:
-        def __init__(self, parent: 'DelegatingDict') -> None:
-            self._parent = parent
-
-        def __iter__(self) -> Iterator[Any]:
-            for key in self._parent:
-                yield self._parent[key]
-
-        def __len__(self) -> int:
-            return len(self._parent)
 
 
 def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> None:
