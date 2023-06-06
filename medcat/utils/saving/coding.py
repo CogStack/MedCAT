@@ -52,7 +52,7 @@ class SetEncoder(PartEncoder):
 
 class PartDecoder(Protocol):
 
-    def try_decode(dct: dict) -> Union[dict, Any]:
+    def try_decode(self, dct: dict) -> Union[dict, Any]:
         """Try to decode the dictionary.
 
         Args:
@@ -112,7 +112,7 @@ class CustomDelegatingEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
     @classmethod
-    def def_inst(cls, *args, **kwargs) -> 'CustomDelegatingDecoder':
+    def def_inst(cls, *args, **kwargs) -> 'CustomDelegatingEncoder':
         return cls([_cls() for _cls in DEFAULT_ENCODERS], *args, **kwargs)
 
 
