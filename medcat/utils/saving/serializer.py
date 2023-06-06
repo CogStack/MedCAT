@@ -5,7 +5,7 @@ And to save as well as load them in some other way.
 """
 import os
 import logging
-from typing import cast, Dict, Optional
+from typing import cast, Dict, Optional, Type
 import dill
 import json
 
@@ -50,7 +50,11 @@ class JsonSetSerializer:
         logger.info('Writing data for "%s" into "%s"',
                     self.name, self.file_name)
         with open(self.file_name, 'w') as f:
-            json.dump(d, f, cls=CustomDelegatingEncoder.def_inst)
+            # the def_inst method, when called,
+            # returns the right type of object anyway
+
+            json.dump(d, f, cls=cast(Type[json.JSONEncoder],
+                                     CustomDelegatingEncoder.def_inst))
 
     def read(self) -> dict:
         """Read the json file specified by this serializer.
