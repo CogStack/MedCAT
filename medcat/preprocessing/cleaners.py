@@ -4,7 +4,6 @@ pretty much everything that is not a word.
 import re
 from typing import Dict, Optional, List
 from spacy.language import Language
-from spacy.lang.th import Thai
 from medcat.config import Config
 
 
@@ -25,7 +24,6 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
         names (Dict):
             The new dictionary of prepared names.
     """
-    nlp = Thai()
     sc_name = nlp(raw_name)
 
     for version in config.cdb_maker['name_versions']:
