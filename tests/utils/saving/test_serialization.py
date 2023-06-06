@@ -9,7 +9,9 @@ from medcat.cdb import CDB
 from medcat.cat import CAT
 from medcat.vocab import Vocab
 
-from medcat.utils.saving.serializer import JsonSetSerializer, CDBSerializer, SPECIALITY_NAMES
+from medcat.utils.saving.serializer import JsonSetSerializer, CDBSerializer, SPECIALITY_NAMES, ONE2MANY
+
+import medcat.utils.saving.coding as _
 
 
 class JSONSerialoizationTests(unittest.TestCase):
@@ -42,6 +44,11 @@ class CDBSerializationTests(unittest.TestCase):
         self.ser.serialize(self.cdb, overwrite=True)
         cdb = self.ser.deserialize(CDB)
         for name in SPECIALITY_NAMES:
+            if name in ONE2MANY:
+                # ignore cui2many and name2many
+                # since they don't exist if/when
+                # optimisation hasn't been done
+                continue
             with self.subTest(name):
                 orig = getattr(self.cdb, name)
                 now = getattr(cdb, name)
@@ -75,6 +82,7 @@ class ModelCreationTests(unittest.TestCase):
             self.dill_model_pack.name)
 
     def test_dill_to_json(self):
+        self._check_cdb(self.undertest.cdb, prefix='TDJ')
         model_pack_path = self.undertest.create_model_pack(
             self.json_model_pack.name, cdb_format='json')
         model_pack_folder = os.path.join(
@@ -82,11 +90,19 @@ class ModelCreationTests(unittest.TestCase):
         json_path = os.path.join(model_pack_folder, "*.json")
         jsons = glob.glob(json_path)
         # there is also a model_card.json
-        self.assertGreaterEqual(len(jsons), len(SPECIALITY_NAMES))
+        # but nothing for cui2many or name2many
+        # so can remove the length of ONE2MANY
+        self.assertGreaterEqual(len(jsons), len(
+            SPECIALITY_NAMES) - len(ONE2MANY))
         for json in jsons:
             with self.subTest(f'JSON {json}'):
                 if json.endswith('model_card.json'):
                     continue  # ignore model card here
+                if any(name in json for name in ONE2MANY):
+                    # ignore cui2many and name2many
+                    # since they don't exist if/when
+                    # optimisation hasn't been done
+                    continue
                 self.assertTrue(
                     any(special_name in json for special_name in SPECIALITY_NAMES))
         return model_pack_folder
@@ -99,6 +115,7 @@ class ModelCreationTests(unittest.TestCase):
     def test_round_trip(self):
         folder = self.test_dill_to_json()  # make sure the files exist
         cat = CAT.load_model_pack(folder)
+        self._check_cdb(cat.cdb, prefix='TRT')
         # The spacy model has full path in the loaded model, thus won't be equal
         cat.config.general.spacy_model = os.path.basename(
             cat.config.general.spacy_model)
@@ -128,6 +145,11 @@ class ModelCreationTests(unittest.TestCase):
         self.assertEqual(cat.vocab.unigram_table,
                          self.undertest.vocab.unigram_table)
         for name in SPECIALITY_NAMES:
+            if name in ONE2MANY:
+                # ignore cui2many and name2many
+                # since they don't exist if/when
+                # optimisation hasn't been done
+                continue
             with self.subTest(f'CDB Name {name}'):
                 self.assertEqual(cat.cdb.__dict__[
                                  name], self.undertest.cdb.__dict__[name])
