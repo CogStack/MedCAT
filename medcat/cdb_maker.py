@@ -8,7 +8,8 @@ from typing import Optional, List, Dict, Union
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
 from medcat.config import Config
-from medcat.preprocessing.tokenizers import spacy_split_all
+# from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.preprocessing.tokenizers import thai_tokenizer_factory
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
@@ -44,7 +45,7 @@ class CDBMaker(object):
             self.cdb = cdb
 
         # Build the required spacy pipeline
-        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
+        self.pipe = Pipe(tokenizer=thai_tokenizer_factory, config=config)
         self.pipe.add_tagger(tagger=tag_skip_and_punct,
                              name='skip_and_punct',
                              additional_fields=['is_punct'])

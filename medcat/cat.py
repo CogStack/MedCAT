@@ -42,7 +42,6 @@ from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES
-from spacy.lang.th import ThaiTokenizer
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
