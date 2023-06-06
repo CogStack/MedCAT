@@ -4,9 +4,11 @@ import unittest
 import tempfile
 import os
 import shutil
+import json
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
+from medcat.utils.saving import coding
 
 
 class DelegatingDictTests(unittest.TestCase):
@@ -74,6 +76,74 @@ class DelegatingDictTests(unittest.TestCase):
                     self.assertIs(val, def_value)
 
 
+class DelegatingDictJsonTests(unittest.TestCase):
+    _dict = {'c5': [None, 10], 'c6': [11, None]}
+
+    def setUp(self) -> None:
+        self.del_dict1 = memory_optimiser.DelegatingDict(self._dict, 0, 2)
+        self.del_dict2 = memory_optimiser.DelegatingDict(self._dict, 1, 2)
+        self.delegators = [self.del_dict1, self.del_dict2]
+        self.master_dict = {'one2many': self._dict,
+                            'part1': self.del_dict1,
+                            'part2': self.del_dict2}
+
+    def serialise_master(self) -> str:
+        return json.dumps(self.master_dict,
+                          cls=coding.CustomDelegatingEncoder.def_inst)
+
+    def deserialise(self, s: str, one2many_name='one2many') -> dict:
+        d = json.loads(s, object_hook=coding.default_hook)
+        one2many = d[one2many_name]
+        for key, value in d.items():
+            if key == one2many_name:
+                continue
+            if value.delegate is None:
+                value.delegate = one2many
+        return d
+
+    def test_dict_of_delegation_serialises(self):
+        s = self.serialise_master()
+        self.assertIsInstance(s, str)
+
+    def test_dod_ser_has_keys(self):
+        s = self.serialise_master()
+        for key in self.master_dict:
+            with self.subTest(key):
+                self.assertIn(key, s)
+
+    def test_dod_ser_one2many_has_sub_keys(self):
+        s = self.serialise_master()
+        for key in self.master_dict['one2many']:
+            with self.subTest(key):
+                self.assertIn(key, s)
+
+    def test_round_trip(self):
+        s = self.serialise_master()
+        d = self.deserialise(s)
+        self.assertIsInstance(d, dict)
+
+    def test_round_trip_equal(self):
+        s = self.serialise_master()
+        d = self.deserialise(s)
+        self.assertEqual(d, self.master_dict)
+
+
+class UnOptimisingTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+
+    def test_unoptimised_cdb_does_not_have_cui2many(self):
+        self.assertFalse(hasattr(self.cdb, 'cui2many'))
+
+    def test_unoptmised_cdb_does_not_have_delegating_dicts(self):
+        for key, val in self.cdb.__dict__.items():
+            with self.subTest(key):
+                self.assertNotIsInstance(val, memory_optimiser.DelegatingDict)
+
+
 class MemoryOptimisingTests(unittest.TestCase):
 
     @classmethod
@@ -97,6 +167,7 @@ class MemoryOptimisingTests(unittest.TestCase):
 class OperationalTests(unittest.TestCase):
     temp_folder = tempfile.TemporaryDirectory()
     temp_cdb_path = os.path.join(temp_folder.name, 'cat.cdb')
+    json_path = temp_cdb_path.rsplit(os.path.sep, 1)[0]
     # importing here so it's in the local namespace
     # otherwise, all of its parts would get run again
     from tests.test_cat import CATTests
@@ -143,3 +214,19 @@ class OperationalTests(unittest.TestCase):
         self.cdb.config.annotation_output.include_text_in_output = False
         # need to make sure linking filters are not retained beyond a test scope
         self.undertest.config.linking.filters = self._linkng_filters.copy_of()
+
+    def test_optimised_cdb_has_cui2many(self):
+        self.assertTrue(hasattr(self.cdb, 'cui2many'))
+
+    def test_can_be_saved_as_json(self):
+        self.cdb.save(self.temp_cdb_path, json_path=self.json_path)
+
+    def test_can_be_loaded_as_json(self):
+        self.test_can_be_saved_as_json()
+        cdb = CDB.load(self.temp_cdb_path, self.json_path)
+        self.assertEqual(self.cdb.cui2many, cdb.cui2many)
+        for del_name in memory_optimiser.CUI_DICT_NAMES_TO_COMBINE:
+            d = getattr(cdb, del_name)
+            with self.subTest(del_name):
+                self.assertIsInstance(d, memory_optimiser.DelegatingDict)
+                self.assertIs(cdb.cui2many, d.delegate)
