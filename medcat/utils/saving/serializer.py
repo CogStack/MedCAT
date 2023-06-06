@@ -183,11 +183,8 @@ class CDBSerializer:
             for name in SPECIALITY_NAMES:
                 if not os.path.exists(self.jsons[name].file_name):
                     continue  # in case of non-memory-optimised where cui2many doesn't exist
-                _val = self.jsons[name].read()
                 cdb.__dict__[name] = self.jsons[name].read()
         # if anything has
-        #  been registered to postprocess the CDBs
-        example_dict = 'cui2type_ids'
-        val = cdb.__dict__[example_dict]
+        # been registered to postprocess the CDBs
         default_postprocessing(cdb)
         return cdb
