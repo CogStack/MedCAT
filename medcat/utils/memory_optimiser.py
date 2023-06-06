@@ -1,6 +1,7 @@
-from typing import Any, Dict, KeysView, Iterator, List, Tuple
+from typing import Any, Dict, KeysView, Iterator, List, Tuple, Union
 
 from medcat.cdb import CDB
+from medcat.utils.saving.coding import EncodeableObject, PartEncoder, PartDecoder, UnsuitableObject, register_encoder_decoder
 
 
 CUI_DICT_NAMES_TO_COMBINE = [
@@ -8,10 +9,14 @@ CUI_DICT_NAMES_TO_COMBINE = [
     "cui2count_train", "cui2tags", "cui2type_ids",
     "cui2preferred_name", "cui2average_confidence",
 ]
+ONE2MANY = 'cui2many'
 
 NAME_DICT_NAMES_TO_COMBINE = [
     "cui2names", "name2cuis2status", "cui2preferred_name",
 ]
+NAME2MANY = 'name2many'
+
+DELEGATING_DICT_IDENTIFIER = '==DELEGATING_DICT=='
 
 
 class _KeysView:
@@ -98,6 +103,50 @@ class DelegatingDict:
     def __len__(self) -> int:
         return len(self.keys())
 
+    def to_dict(self) -> dict:
+        return {'delegate': None,
+                'nr': self.nr,
+                'nr_of_overall_items': self.nr_of_overall_items}
+
+    def __eq__(self, __value: object) -> bool:
+        if not isinstance(__value, DelegatingDict):
+            return False
+        return self.delegate == __value.delegate and self.nr == __value.nr
+
+    def __hash__(self) -> int:
+        return hash((self.delegate, self.nr))
+
+
+class DelegatingDictEncoder(PartEncoder):
+
+    def try_encode(self, obj):
+        if isinstance(obj, DelegatingDict):
+            return {DELEGATING_DICT_IDENTIFIER: obj.to_dict()}
+        raise UnsuitableObject()
+
+
+class DelegatingDictDecoder(PartDecoder):
+
+    def try_decode(self, dct: dict) -> Union[dict, EncodeableObject]:
+        if DELEGATING_DICT_IDENTIFIER in dct:
+            info = dct[DELEGATING_DICT_IDENTIFIER]
+            delegate = info['delegate']
+            nr = info['nr']
+            overall = info['nr_of_overall_items']
+            return DelegatingDict(delegate, nr, overall)
+        return dct
+
+
+def attempt_fix_after_load(cdb: CDB):
+    _attempt_fix_after_load(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
+    _attempt_fix_after_load(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
+
+
+# register encoder and decoders
+register_encoder_decoder(encoder=DelegatingDictEncoder,
+                         decoder=DelegatingDictDecoder,
+                         loading_postprocessor=attempt_fix_after_load)
+
 
 def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> None:
     dicts = [getattr(cdb, dict_name)
@@ -155,10 +204,21 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
     """
     # cui2<...> -> cui2many
     if optimise_cuis:
-        _optimise(cdb, 'cui2many', CUI_DICT_NAMES_TO_COMBINE)
+        _optimise(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
     # name2<...> -> name2many
     if optimise_names:
-        _optimise(cdb, 'name2many', NAME_DICT_NAMES_TO_COMBINE)
+        _optimise(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
+
+
+def _attempt_fix_after_load(cdb: CDB, one2many_name: str, dict_names: List[str]):
+    if not hasattr(cdb, one2many_name):
+        return
+    one2many = getattr(cdb, one2many_name)
+    for dict_name in dict_names:
+        d = getattr(cdb, dict_name)
+        if not isinstance(d, DelegatingDict):
+            raise ValueError(f'Unknown type for {dict_name}: {type(d)}')
+        d.delegate = one2many
 
 
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
