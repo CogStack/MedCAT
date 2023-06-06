@@ -75,7 +75,6 @@ class SetDecoder(PartDecoder):
             Union[dict, set]: The original dict if this was not a serialized set, the set otherwise
         """
         if SET_IDENTIFIER in dct:
-            print('SET decoder')
             return set(dct[SET_IDENTIFIER])
         return dct
 
@@ -91,13 +90,10 @@ def register_encoder_decoder(encoder: Optional[Type[PartEncoder]],
                              decoder: Optional[Type[PartDecoder]],
                              loading_postprocessor: Optional[PostProcessor]):
     if encoder:
-        print('Registering encoder', encoder)
         DEFAULT_ENCODERS.append(encoder)
     if decoder:
-        print('Registering decoder', decoder)
         DEFAULT_DECODERS.append(decoder)
     if loading_postprocessor:
-        print('Registering postprocessor', loading_postprocessor)
         LOADING_POSTPROCESSORS.append(loading_postprocessor)
 
 
@@ -117,7 +113,6 @@ class CustomDelegatingEncoder(json.JSONEncoder):
 
     @classmethod
     def def_inst(cls, *args, **kwargs) -> 'CustomDelegatingDecoder':
-        print('def inst of', cls, ':', len(DEFAULT_ENCODERS))
         return cls([_cls() for _cls in DEFAULT_ENCODERS], *args, **kwargs)
 
 
@@ -131,10 +126,6 @@ class CustomDelegatingDecoder(json.JSONDecoder):
         for delegator in self._delegates:
             ret_val = delegator.try_decode(dct)
             if ret_val is not dct:
-                print('DECODER result', type(ret_val), 
-                    #   (len(ret_val)
-                    #   if hasattr(ret_val, '__len__') else ret_val)
-                      )
                 return ret_val
         return dct
 
@@ -142,7 +133,6 @@ class CustomDelegatingDecoder(json.JSONDecoder):
     def def_inst(cls) -> 'CustomDelegatingDecoder':
         if cls._def_inst is None:
             cls._def_inst = cls([_cls() for _cls in DEFAULT_DECODERS])
-        print('def inst of', type(cls._def_inst), ':', len(DEFAULT_DECODERS))
         return cls._def_inst
 
 
@@ -153,5 +143,4 @@ def default_hook(dct: dict) -> Any:
 
 def default_postprocessing(cdb) -> None:
     for pp in LOADING_POSTPROCESSORS:
-        print('DOING POSTPROCESSING w', pp)
         pp(cdb)
