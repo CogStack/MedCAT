@@ -3,10 +3,7 @@ from typing import List, Union
 import pandas as pd
 import tqdm
 import os
-<<<<<<< HEAD
-=======
-from typing import Dict, Set
->>>>>>> 564d15caa6d328733f8da8b56b4dfebc2982bc4d
+from typing import Dict
 
 _DEFAULT_COLUMNS: list = [
     "CUI",
