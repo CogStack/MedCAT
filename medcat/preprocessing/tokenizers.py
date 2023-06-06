@@ -9,7 +9,6 @@ from tokenizers import ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 from medcat.config import Config
 from spacy.lang.th import ThaiTokenizer
-# import spacy_pythainlp.core
 
 # edited
 def spacy_extended(nlp: Language) -> Tokenizer:
