@@ -234,7 +234,7 @@ def _attempt_fix_after_load(cdb: CDB, one2many_name: str, dict_names: List[str])
 
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
     one2many: Dict[str, List[Any]] = {}
-    delegators: list[DelegatingDict] = []
+    delegators: List[DelegatingDict] = []
     for nr, d in enumerate(dicts):
         delegator = DelegatingDict(
             one2many, nr, nr_of_overall_items=len(dicts))
