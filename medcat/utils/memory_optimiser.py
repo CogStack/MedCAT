@@ -1,4 +1,4 @@
-from typing import Any, Dict, KeysView, Iterator, List, Tuple, Union
+from typing import Any, Dict, KeysView, Iterator, List, Tuple, Union, Optional
 
 from medcat.cdb import CDB
 from medcat.utils.saving.coding import EncodeableObject, PartEncoder, PartDecoder, UnsuitableObject, register_encoder_decoder
@@ -115,6 +115,17 @@ class DelegatingDict:
 
     def __hash__(self) -> int:
         return hash((self.delegate, self.nr))
+
+    def __delitem__(self, key: str) -> None:
+        self[key] = None
+
+    def pop(self, key: str, default: Optional[Any] = None) -> Any:
+        if key in self:
+            item = self[key]
+        else:
+            item = default
+        del self[key]
+        return item
 
 
 class DelegatingDictEncoder(PartEncoder):
