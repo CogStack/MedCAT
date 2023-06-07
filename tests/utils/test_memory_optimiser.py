@@ -15,13 +15,33 @@ class DelegatingDictTests(unittest.TestCase):
     _dict = {'c1': [None, 0], 'c2': [1, None]}
 
     def setUp(self) -> None:
-        self.del_dict1 = memory_optimiser.DelegatingDict(self._dict, 0, 2)
-        self.del_dict2 = memory_optimiser.DelegatingDict(self._dict, 1, 2)
+        # deep copy so that the origianl remains unchangeds
+        _dict = dict((k, v.copy()
+                      ) for k, v in self._dict.items())
+        self.del_dict1 = memory_optimiser.DelegatingDict(_dict, 0, 2)
+        self.del_dict2 = memory_optimiser.DelegatingDict(_dict, 1, 2)
         self.delegators = [self.del_dict1, self.del_dict2]
         self.names = ['delegator 1', 'delegator 2']
         self.expected_lens = [len(
-            [v[nr] for v in self._dict.values() if v[nr] is not None]
-        ) for nr in range(len(self._dict[list(self._dict.keys())[0]]))]
+            [v[nr] for v in _dict.values() if v[nr] is not None]
+        ) for nr in range(len(_dict[list(_dict.keys())[0]]))]
+
+    def test_removal(self, key='c2'):
+        self.assertIn(key, self.del_dict1)
+        del self.del_dict1[key]
+        self.assertNotIn(key, self.del_dict1)
+
+    def test_pop_no_def_existing(self, key='c2'):
+        self.assertIn(key, self.del_dict1)
+        val = self.del_dict1.pop(key)
+        self.assertNotIn(key, self.del_dict1)
+        self.assertIs(val, self._dict[key][0])
+
+    def test_pop_def_non_existing(self, key='c1', def_val='DEF VAL'):
+        self.assertNotIn(key, self.del_dict1)
+        val = self.del_dict1.pop(key, def_val)
+        self.assertNotIn(key, self.del_dict1)
+        self.assertIs(val, def_val)
 
     def test_delegating_dict_has_correct_keys(self):
         for delegator, exp_len, name in zip(self.delegators, self.expected_lens, self.names):
