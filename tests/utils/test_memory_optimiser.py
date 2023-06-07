@@ -43,6 +43,21 @@ class DelegatingDictTests(unittest.TestCase):
         self.assertNotIn(key, self.del_dict1)
         self.assertIs(val, def_val)
 
+    def test_adding_exiting_key_nonexist_value(self, key: str = 'c1'):
+        self.assertNotIn(key, self.del_dict1)
+        self.del_dict1[key] = 'value'
+        self.assertIn(key, self.del_dict1)
+
+    def test_adding_nonexiting_key(self, key: str = 'nek1'):
+        self.assertNotIn(key, self.del_dict1)
+        self.del_dict1[key] = 'value-NEW'
+        self.assertIn(key, self.del_dict1)
+
+    def test_adding_nonexiting_key_not_affect_other(self, key: str = 'nek2'):
+        self.assertNotIn(key, self.del_dict2)
+        self.del_dict1[key] = 'value-NEW-2'
+        self.assertNotIn(key, self.del_dict2)
+
     def test_delegating_dict_has_correct_keys(self):
         for delegator, exp_len, name in zip(self.delegators, self.expected_lens, self.names):
             with self.subTest(name):
