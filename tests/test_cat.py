@@ -42,6 +42,7 @@ class CATTests(unittest.TestCase):
         self.cdb.config.annotation_output.include_text_in_output = False
         # need to make sure linking filters are not retained beyond a test scope
         self.undertest.config.linking.filters = self._linkng_filters.copy_of()
+        self.cdb.config.general.show_nested_entities = True
 
     def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
@@ -179,6 +180,16 @@ class CATTests(unittest.TestCase):
     def test_get_entities(self):
         text = "The dog is sitting outside the house."
         out = self.undertest.get_entities(text)
+        print('OUT(1):', out)
+        self.assertEqual({}, out["entities"])
+        self.assertEqual([], out["tokens"])
+        self.assertFalse("text" in out)
+
+    def test_get_entities_nested_entities(self):
+        self.cdb.config.general.show_nested_entities = True
+        text = "The dog is sitting outside the house."
+        out = self.undertest.get_entities(text)
+        print('OUT(2):', out)
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
         self.assertFalse("text" in out)
@@ -187,6 +198,7 @@ class CATTests(unittest.TestCase):
         self.cdb.config.annotation_output.include_text_in_output = True
         text = "The dog is sitting outside the house."
         out = self.undertest.get_entities(text)
+        print('OUT(3):', out)
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
         self.assertTrue(text in out["text"])
@@ -293,11 +305,13 @@ class CATTests(unittest.TestCase):
 
     def test_no_error_handling_on_none_input(self):
         out = self.undertest.get_entities(None)
+        print('OUT(4):', out)
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
 
     def test_no_error_handling_on_empty_string_input(self):
         out = self.undertest.get_entities("")
+        print('OUT(5):', out)
         self.assertEqual({}, out["entities"])
         self.assertEqual([], out["tokens"])
 
