@@ -34,16 +34,11 @@ The wrapper also exposes some CAT parts directly:
 - config
 - cdb
 """
-from typing import Any, Union, Tuple
-
 from medcat.cat import CAT
 from medcat.utils.ner import helpers
-from medcat.config import Config
-from medcat.cdb import CDB
-from medcat.ner.transformers_ner import TransformersNER
+from medcat.utils.ner.model import NerModel
 
-
-class DeIdModel:
+class DeIdModel(NerModel):
     """The DeID model.
 
     This wraps a CAT instance and simplifies its use as a
@@ -58,19 +53,6 @@ class DeIdModel:
 
     def __init__(self, cat: CAT) -> None:
         self.cat = cat
-
-    def train(self, json_path: Union[str, list, None], *args, **kwargs) -> Tuple[Any, Any, Any]:
-        """Train the underlying transformers NER model.
-
-        All the extra arguments are passed to the TransformersNER train method.
-
-        Args:
-            json_path (Union[str, list, None]): The JSON file path to read the training data from.
-
-        Returns:
-            Tuple[Any, Any, Any]: df, examples, dataset
-        """
-        return self.cat._addl_ner[0].train(json_path, *args, **kwargs)
 
     def __call__(self, text: str, redact: bool) -> str:
         """Shorthand for the deid_text method.
@@ -98,27 +80,6 @@ class DeIdModel:
         """
         return helpers.deid_text(self.cat, text, redact=redact)
 
-    @property
-    def config(self) -> Config:
-        return self.cat.config
-
-    @property
-    def cdb(self) -> CDB:
-        return self.cat.cdb
-
-    @classmethod
-    def create(cls, ner: TransformersNER) -> 'DeIdModel':
-        """Create a DeID model with a TransformersNER
-
-        Args:
-            ner (TransformersNER): _description_
-
-        Returns:
-            DeIdModel: _description_
-        """
-        cat = CAT(cdb=ner.cdb, addl_ner=ner)
-        return cls(cat)
-
     @classmethod
     def load_model_pack(cls, model_pack_path: str) -> 'DeIdModel':
         """Load DeId model from model pack.
@@ -137,12 +98,13 @@ class DeIdModel:
         Returns:
             DeIdModel: The resulting DeI model.
         """
-        cat = CAT.load_model_pack(model_pack_path)
+        model = NerModel.load_model_pack(model_pack_path)
+        cat = model.cat
         if not cls._is_deid_model(cat):
             raise ValueError(
                 f"The model saved at {model_pack_path} is not a deid model "
                 f"({cls._get_reason_not_deid(cat)})")
-        return cls(cat)
+        return model
 
     @classmethod
     def _is_deid_model(cls, cat: CAT) -> bool:
