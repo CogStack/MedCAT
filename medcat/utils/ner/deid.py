@@ -40,6 +40,7 @@ from medcat.cat import CAT
 from medcat.utils.ner import helpers
 from medcat.utils.ner.model import NerModel
 
+
 class DeIdModel(NerModel):
     """The DeID model.
 
@@ -123,3 +124,13 @@ class DeIdModel(NerModel):
         if len(cat._addl_ner) != 1:
             return f"Incorrect number of addl_ner: {len(cat._addl_ner)}"
         return ""
+
+
+def deid_text(cat, text, redact=False):
+    new_text = str(text)
+    entities = cat.get_entities(text)['entities']
+    for ent in sorted(entities.values(), key=lambda ent: ent['start'], reverse=True):
+        r = "*"*(ent['end']-ent['start']
+                 ) if redact else cat.cdb.get_name(ent['cui'])
+        new_text = new_text[:ent['start']] + f'[{r}]' + new_text[ent['end']:]
+    return new_text
