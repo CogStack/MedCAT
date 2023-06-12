@@ -34,6 +34,8 @@ The wrapper also exposes some CAT parts directly:
 - config
 - cdb
 """
+from typing import Union, Tuple, Any
+
 from medcat.cat import CAT
 from medcat.utils.ner import helpers
 from medcat.utils.ner.model import NerModel
@@ -67,6 +69,10 @@ class DeIdModel(NerModel):
             str: The deidentified text.
         """
         return self.deid_text(text, redact=redact)
+
+    def train(self, json_path: Union[str, list, None],
+              *args, **kwargs) -> Tuple[Any, Any, Any]:
+        super().train(json_path, train_nr=0, *args, **kwargs)
 
     def deid_text(self, text: str, redact: bool = False):
         """Deidentify text and potentially redact information.

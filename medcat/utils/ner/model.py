@@ -1,4 +1,4 @@
-from typing import Any, Tuple, Union
+from typing import Any, List, Tuple, Union, Optional
 
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.cat import CAT
@@ -23,18 +23,20 @@ class NerModel:
     def __init__(self, cat: CAT) -> None:
         self.cat = cat
 
-    def train(self, json_path: Union[str, list, None], *args, **kwargs) -> Tuple[Any, Any, Any]:
+    def train(self, json_path: Union[str, list, None], train_nr: int = 0,
+              *args, **kwargs) -> Tuple[Any, Any, Any]:
         """Train the underlying transformers NER model.
 
         All the extra arguments are passed to the TransformersNER train method.
 
         Args:
             json_path (Union[str, list, None]): The JSON file path to read the training data from.
+            train_nr (int, optional): The number of the NER object in cat._addl_train to train. Defaults to 0.
 
         Returns:
             Tuple[Any, Any, Any]: df, examples, dataset
         """
-        return self.cat._addl_ner[0].train(json_path, *args, **kwargs)
+        return self.cat._addl_ner[train_nr].train(json_path, *args, **kwargs)
 
     @property
     def config(self) -> Config:
@@ -45,11 +47,11 @@ class NerModel:
         return self.cat.cdb
 
     @classmethod
-    def create(cls, ner: TransformersNER) -> 'NerModel':
+    def create(cls, ner: Union[TransformersNER, List[TransformersNER]]) -> 'NerModel':
         """Create a NER model with a TransformersNER
 
         Args:
-            ner (TransformersNER): The TransformersNER instance.
+            ner (Union[TransformersNER, List[TransformersNER]]): The TransformersNER instance(s).
 
         Returns:
             NerModel: The resulting model 
