@@ -37,7 +37,6 @@ The wrapper also exposes some CAT parts directly:
 from typing import Union, Tuple, Any
 
 from medcat.cat import CAT
-from medcat.utils.ner import helpers
 from medcat.utils.ner.model import NerModel
 
 
@@ -85,7 +84,7 @@ class DeIdModel(NerModel):
         Returns:
             str: The deidentified text.
         """
-        return helpers.deid_text(self.cat, text, redact=redact)
+        return deid_text(self.cat, text, redact=redact)
 
     @classmethod
     def load_model_pack(cls, model_pack_path: str) -> 'DeIdModel':
