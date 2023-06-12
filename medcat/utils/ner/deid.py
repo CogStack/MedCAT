@@ -141,15 +141,15 @@ class DeIdModel:
         if not cls._is_deid_model(cat):
             raise ValueError(
                 f"The model saved at {model_pack_path} is not a deid model "
-                f"({cls._get_reason_nod_deid(cat)})")
+                f"({cls._get_reason_not_deid(cat)})")
         return cls(cat)
 
     @classmethod
     def _is_deid_model(cls, cat: CAT) -> bool:
-        return bool(cls._get_reason_nod_deid(cat))
+        return bool(cls._get_reason_not_deid(cat))
 
     @classmethod
-    def _get_reason_nod_deid(cls, cat: CAT) -> str:
+    def _get_reason_not_deid(cls, cat: CAT) -> str:
         if cat.vocab is not None:
             return "Has vocab"
         if len(cat._addl_ner) != 1:
