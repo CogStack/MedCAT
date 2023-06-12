@@ -9,7 +9,7 @@ It tackles two use cases
 
 I.e for use case 1:
 
-Instead ofL
+Instead of:
 cat = CAT(cdb=ner.cdb, addl_ner=ner)
 
 You can use:
