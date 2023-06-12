@@ -120,7 +120,7 @@ class DeIdModel:
         return cls(cat)
 
     @classmethod
-    def from_model_pack(cls, model_pack_path: str) -> 'DeIdModel':
+    def load_model_pack(cls, model_pack_path: str) -> 'DeIdModel':
         """Load DeId model from model pack.
 
         The method first loads the CAT instance.
