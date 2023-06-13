@@ -56,14 +56,14 @@ class DeIdModel(NerModel):
     def __init__(self, cat: CAT) -> None:
         self.cat = cat
 
-    def __call__(self, text: str, redact: bool) -> str:
+    def __call__(self, text: str, redact: bool = False) -> str:
         """Shorthand for the deid_text method.
 
         Deidentify text and potentially redact information.
 
         Args:
             text (str): The text to deidentify.
-            redact (bool): Whether to redact the information.
+            redact (bool): Whether to redact the information. Defaults to False.
 
         Returns:
             str: The deidentified text.
