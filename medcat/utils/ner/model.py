@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any, List, Tuple, Union
 
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.cat import CAT
