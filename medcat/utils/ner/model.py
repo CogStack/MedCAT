@@ -56,7 +56,9 @@ class NerModel:
         Returns:
             NerModel: The resulting model 
         """
-        cat = CAT(cdb=ner.cdb, addl_ner=ner)
+        # expecting all to have the same CDB
+        cdb = ner.cdb if isinstance(ner, TransformersNER) else ner[0].cdb
+        cat = CAT(cdb=cdb, addl_ner=ner)
         return cls(cat)
 
     @classmethod
