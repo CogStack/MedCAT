@@ -72,7 +72,7 @@ class DeIdModel(NerModel):
 
     def train(self, json_path: Union[str, list, None],
               *args, **kwargs) -> Tuple[Any, Any, Any]:
-        return super().train(json_path, train_nr=0, *args, **kwargs)
+        return super().train(json_path, *args, train_nr=0, **kwargs)
 
     def deid_text(self, text: str, redact: bool = False):
         """Deidentify text and potentially redact information.
