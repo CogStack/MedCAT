@@ -104,12 +104,13 @@ class DeIdModel(NerModel):
         Returns:
             DeIdModel: The resulting DeI model.
         """
-        model = NerModel.load_model_pack(model_pack_path)
-        cat = model.cat
+        ner_model = NerModel.load_model_pack(model_pack_path)
+        cat = ner_model.cat
         if not cls._is_deid_model(cat):
             raise ValueError(
                 f"The model saved at {model_pack_path} is not a deid model "
                 f"({cls._get_reason_not_deid(cat)})")
+        model = cls(ner_model.cat)
         return model
 
     @classmethod
