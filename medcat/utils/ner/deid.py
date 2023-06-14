@@ -9,11 +9,7 @@ It tackles two use cases
 
 I.e for use case 1:
 
-<<<<<<< HEAD
 Instead of:
-=======
-Instead ofL
->>>>>>> f1a533a9f5431e7dd5ea1dfb64605d61f431bc31
 cat = CAT(cdb=ner.cdb, addl_ner=ner)
 
 You can use:
