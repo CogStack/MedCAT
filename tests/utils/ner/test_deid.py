@@ -105,3 +105,15 @@ class DeIDModelWorks(unittest.TestCase):
         anon_text = self.deid_model(input_text)
         self.assertIn("[DOCTOR]", anon_text)
         self.assertIn("[HOSPITAL]", anon_text)
+
+    def test_model_works_deid_text_redact(self):
+        anon_text = self.deid_model.deid_text(input_text, redact=True)
+        self.assertIn("****", anon_text)
+        self.assertNotIn("[DOCTOR]", anon_text)
+        self.assertNotIn("[HOSPITAL]", anon_text)
+
+    def test_model_works_dunder_call_redact(self):
+        anon_text = self.deid_model(input_text, redact=True)
+        self.assertIn("****", anon_text)
+        self.assertNotIn("[DOCTOR]", anon_text)
+        self.assertNotIn("[HOSPITAL]", anon_text)
