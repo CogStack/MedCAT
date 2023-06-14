@@ -114,7 +114,7 @@ class DeIdModel(NerModel):
 
     @classmethod
     def _is_deid_model(cls, cat: CAT) -> bool:
-        return bool(cls._get_reason_not_deid(cat))
+        return not bool(cls._get_reason_not_deid(cat))
 
     @classmethod
     def _get_reason_not_deid(cls, cat: CAT) -> str:
