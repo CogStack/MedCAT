@@ -11,6 +11,10 @@ import unittest
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
 
+# NB! This 'training data' is extremely flawed
+# it is only (somewhat) useful for the purpose of this
+# test
+# DO NOT USE THIS DATA ELSEWHERE - IT WILL NOT BE USEFUL
 TRAIN_DATA = os.path.join(FILE_DIR, "..", "..",
                           "resources", "deid_train_data.json")
 
