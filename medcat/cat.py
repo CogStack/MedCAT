@@ -1526,7 +1526,7 @@ class CAT(object):
                         logger.warning(str(e))
         sleep(2)
 
-    def _add_nested_ent(self, doc: Doc, _ents: list, _ent) -> None:
+    def _add_nested_ent(self, doc: Doc, _ents: List[Span], _ent) -> None:
         meta_anns = None
         start = _ent.start
         end = _ent.end
@@ -1559,7 +1559,7 @@ class CAT(object):
         if doc is not None:
             out_ent: Dict = {}
             if self.config.general.show_nested_entities:
-                _ents = []
+                _ents: List[Span] = []
                 for _ent in doc._.ents:
                     self._add_nested_ent(doc, _ents, _ent)
             else:
