@@ -18,6 +18,7 @@ from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
+from spacy import __version__ as spacy_version
 
 from medcat import __version__
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -44,6 +45,26 @@ from medcat.utils.saving.serializer import SPECIALITY_NAMES
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
+# TODO - move somewhere else?
+def has_new_spacy() -> bool:
+    """Figures out whether or not a newer version of spacy is installed.
+
+    This plays a role in how some parts of the Span needs to be interacted with.
+
+    Returns:
+        bool: Whether new version was detected.
+    """
+    major, minor, patch_plus = spacy_version.split('.')
+    major, minor = int(major), int(minor)
+    patch = int(patch_plus)
+    return (major > 3 or
+            (major == 3 and minor > 3) or
+            (major == 3 and minor == 3 and patch >= 1))
+
+
+HAS_NEW_SPACY = has_new_spacy()
 
 
 class CAT(object):
@@ -1505,6 +1526,29 @@ class CAT(object):
                         logger.warning(str(e))
         sleep(2)
 
+    def _add_nested_ent(self, doc: Doc, _ents: list, _ent) -> None:
+        meta_anns = None
+        start = _ent.start
+        end = _ent.end
+        label = _ent.label
+        cui = _ent._.cui
+        detected_name = _ent._.detected_name
+        context_similarity = _ent._.context_similarity
+        if _ent._.has('meta_anns'):
+            meta_anns = _ent._.meta_anns
+        if HAS_NEW_SPACY:
+            id = _ent.id
+        else:
+            id = _ent.ent_id
+        entity = Span(doc, start, end, label=label)
+        entity._.cui = cui
+        entity._.detected_name = detected_name
+        entity._.context_similarity = context_similarity
+        entity._.id = id
+        if meta_anns is not None:
+            entity._.meta_anns = meta_anns
+        _ents.append(entity)
+
     def _doc_to_out(self,
                     doc: Doc,
                     only_cui: bool,
@@ -1517,14 +1561,7 @@ class CAT(object):
             if self.config.general.show_nested_entities:
                 _ents = []
                 for _ent in doc._.ents:
-                    entity = Span(doc, _ent['start'], _ent['end'], label=_ent['label'])
-                    entity._.cui = _ent['cui']
-                    entity._.detected_name = _ent['detected_name']
-                    entity._.context_similarity = _ent['context_similarity']
-                    entity._.id = _ent['id']
-                    if 'meta_anns' in _ent:
-                        entity._.meta_anns = _ent['meta_anns']
-                    _ents.append(entity)
+                    self._add_nested_ent(doc, _ents, _ent)
             else:
                 _ents = doc.ents  # type: ignore
 
