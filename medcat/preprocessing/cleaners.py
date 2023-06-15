@@ -47,8 +47,8 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
         if tokens is not None and tokens:
             snames = set()
             name = config.general['separator'].join(tokens)
-            # edited
-            if not config.cdb_maker.get('min_letters_required', 0) or len(re.sub("[^\u0E00-\u0E7FA-Za-z]*", '', name)) >= config.cdb_maker.get('min_letters_required', 0):
+            
+            if not config.cdb_maker.get('min_letters_required', 0) or len(re.sub("[^{}A-Za-z]*".format(config.general.additional_token_characters), '', name)) >= config.cdb_maker.get('min_letters_required', 0):
                 if name not in names:
                     sname = ""
                     for token in tokens:
@@ -79,7 +79,7 @@ def basic_clean(text: str) -> str:
     text = re.sub("[:;\\|!?%#@%\&=><\-\*\+\^]", " ", text)
 
     # Remove dots not preeceded by a letter or number
-    text = re.sub("[^\u0E00-\u0E7FA-Za-z0-9]+\.", "", text) #edited
+    text = re.sub("[^\u0E00-\u0E7FA-Za-z0-9]+\.", "", text) # edited, add \u0E00-\u0E7F
 
     # Remove commas not in-between numbers
     text = re.sub(",([^0-9])|([^0-9]),", r"\2\1 ", text)

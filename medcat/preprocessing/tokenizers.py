@@ -10,7 +10,7 @@ from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 from medcat.config import Config
 from spacy.lang.th import ThaiTokenizer
 
-# edited
+# edited, add \u0E00-\u0E7F
 def spacy_extended(nlp: Language) -> Tokenizer:
     infix_re_list = ('\\.\\.+',
     '''(?<=[\u0E00-\u0E7FA-Za-z]{1})[\-_;\,\/~]+(?=[\u0E00-\u0E7FA-Za-z]{1})|(?<=[0-9]{1})[\-_;\,\/]+(?=[\u0E00-\u0E7FA-Za-z]{1})|(?<=[\u0E00-\u0E7FA-Za-z]{1})[\-_;\,\/]+(?=[0-9]{1})|\d{2,4}[\-\s_\*]\d{1,2}[\-\s_\*]\d{1,2}|\d{1,2}:\d{1,2}:\d{1,2}|\d{1,2}:\d{2}'''
@@ -37,10 +37,10 @@ def spacy_extended(nlp: Language) -> Tokenizer:
 
 def spacy_split_all(nlp: Language, config: Config) -> Tokenizer:
 
-    token_characters = r'[^\u0E00-\u0E7FA-Za-z0-9\@]' #edited
+    token_characters = r'[^{}A-Za-z0-9\@]'.format(config.general.additional_token_characters)
 
     if config.general.diacritics:
-        token_characters = r'[^\u0E00-\u0E7FA-Za-zÀ-ÖØ-öø-ÿ0-9\@]' #edited
+        token_characters = r'[^{}A-Za-zÀ-ÖØ-öø-ÿ0-9\@]'.format(config.general.additional_token_characters)
 
     infix_re = re.compile(token_characters)
     suffix_re = re.compile(token_characters + r'$')

@@ -13,8 +13,6 @@ from medcat.preprocessing.tokenizers import thai_tokenizer_factory
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.preprocessing.taggers import tag_skip_and_punct
 
-PH_REMOVE = re.compile("(\s)\([\u0E00-\u0E7Fa-zA-Z]+[^\)\(]*\)($)")
-
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +36,7 @@ class CDBMaker(object):
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker
+        self.PH_REMOVE = re.compile("(\s)\([{}A-Za-z]+[^\)\(]*\)($)".format(config.general.additional_token_characters))
 
         if cdb is None:
             self.cdb = CDB(config=self.config)
@@ -170,7 +169,7 @@ class CDBMaker(object):
 
                         if self.config.cdb_maker.get('remove_parenthesis', 0) > 0 and name_status == 'P':
                             # Should we remove the content in parenthesis from primary names and add them also
-                            raw_name = PH_REMOVE.sub(" ", raw_name).strip()
+                            raw_name = self.PH_REMOVE.sub(" ", raw_name).strip()
                             if len(raw_name) >= self.config.cdb_maker['remove_parenthesis']:
                                 prepare_name(raw_name, self.pipe.spacy_nlp, names, self.config)
 
