@@ -26,9 +26,9 @@ You can use:
 deid = DeIdModel.from_model_pack(model_pack_path)
 anon_text = deid.deid_text(text)
 
-Or even simply:
+Or if/when structured output is desired:
 deid = DeIdModel.from_model_pack(model_pack_path)
-anon_text = deid(text)
+anon_doc = deid(text)  # the spacy document
 
 The wrapper also exposes some CAT parts directly:
 - config
@@ -55,20 +55,6 @@ class DeIdModel(NerModel):
 
     def __init__(self, cat: CAT) -> None:
         self.cat = cat
-
-    def __call__(self, text: str, redact: bool = False) -> str:
-        """Shorthand for the deid_text method.
-
-        Deidentify text and potentially redact information.
-
-        Args:
-            text (str): The text to deidentify.
-            redact (bool): Whether to redact the information. Defaults to False.
-
-        Returns:
-            str: The deidentified text.
-        """
-        return self.deid_text(text, redact=redact)
 
     def train(self, json_path: Union[str, list, None],
               *args, **kwargs) -> Tuple[Any, Any, Any]:
