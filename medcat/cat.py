@@ -1526,20 +1526,34 @@ class CAT(object):
                         logger.warning(str(e))
         sleep(2)
 
-    def _add_nested_ent(self, doc: Doc, _ents: List[Span], _ent) -> None:
+    def _add_nested_ent(self, doc: Doc, _ents: List[Span], _ent: Union[Dict, Span]) -> None:
+        # if the entities are serialised (PipeRunner.serialize_entities)
+        # then the entities are dicts
+        # otherwise they're Span objects
         meta_anns = None
-        start = _ent.start
-        end = _ent.end
-        label = _ent.label
-        cui = _ent._.cui
-        detected_name = _ent._.detected_name
-        context_similarity = _ent._.context_similarity
-        if _ent._.has('meta_anns'):
-            meta_anns = _ent._.meta_anns
-        if HAS_NEW_SPACY:
-            id = _ent.id
+        if isinstance(_ent, dict):
+            start = _ent['start']
+            end =_ent['end']
+            label = _ent['label']
+            cui =  _ent['cui']
+            detected_name = _ent['detected_name']
+            context_similarity = _ent['context_similarity']
+            id = _ent['id']
+            if 'meta_anns' in _ent:
+                meta_anns = _ent['meta_anns']
         else:
-            id = _ent.ent_id
+            start = _ent.start
+            end = _ent.end
+            label = _ent.label
+            cui = _ent._.cui
+            detected_name = _ent._.detected_name
+            context_similarity = _ent._.context_similarity
+            if _ent._.has('meta_anns'):
+                meta_anns = _ent._.meta_anns
+            if HAS_NEW_SPACY:
+                id = _ent.id
+            else:
+                id = _ent.ent_id
         entity = Span(doc, start, end, label=label)
         entity._.cui = cui
         entity._.detected_name = detected_name
