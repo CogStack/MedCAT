@@ -38,6 +38,19 @@ class NerModel:
         """
         return self.cat._addl_ner[train_nr].train(json_path, *args, **kwargs)
 
+    def get_entities(self, text: str, *args, **kwargs) -> dict:
+        """Gets the entities recognized within a given text.
+
+        The output format is identical to `CAT.get_entities`.
+
+        Args:
+            text (str): The input text.
+
+        Returns:
+            dict: The output entities.
+        """
+        return self.cat.get_entities(text, *args, **kwargs)
+
     @property
     def config(self) -> Config:
         return self.cat.config
