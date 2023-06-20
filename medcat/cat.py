@@ -1535,7 +1535,7 @@ class CAT(object):
             start = _ent['start']
             end =_ent['end']
             label = _ent['label']
-            cui =  _ent['cui']
+            cui = _ent['cui']
             detected_name = _ent['detected_name']
             context_similarity = _ent['context_similarity']
             id = _ent['id']
