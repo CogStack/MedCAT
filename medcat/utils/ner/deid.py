@@ -126,7 +126,24 @@ class DeIdModel(NerModel):
         return ""
 
 
-def deid_text(cat, text, redact=False):
+def deid_text(cat: CAT, text: str, redact: bool = False) -> str:
+    """De-identify text.
+
+    De-identified text.
+    If redaction is enabled, identifiable entities will be
+    replaced with starts (e.g `*****`).
+    Otherwise, the replacement will be the CUI or in other words,
+    the type of information that was hidden (e.g [PATIENT]).
+
+
+    Args:
+        cat (CAT): The CAT object to use for deid.
+        text (str): The input document.
+        redact (bool, optional): Whether to redact. Defaults to False.
+
+    Returns:
+        str: The de-identified document.
+    """
     new_text = str(text)
     entities = cat.get_entities(text)['entities']
     for ent in sorted(entities.values(), key=lambda ent: ent['start'], reverse=True):
