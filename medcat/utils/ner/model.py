@@ -1,4 +1,6 @@
-from typing import Any, List, Tuple, Union
+from typing import Any, List, Tuple, Union, Optional
+
+from spacy.tokens import Doc
 
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.cat import CAT
@@ -38,10 +40,27 @@ class NerModel:
         """
         return self.cat._addl_ner[train_nr].train(json_path, *args, **kwargs)
 
+    def __call__(self, text: Optional[str], *args, **kwargs) -> Optional[Doc]:
+        """Get the annotated document for text.
+
+        Undefined arguments and keyword arguments get passed on to
+        the equivalent `CAT` method.
+
+        Args:
+            text (Optional[str]): The input text.
+
+        Returns:
+            Optional[Doc]: The annotated document.
+        """
+        return self.cat(text, *args, **kwargs)
+
     def get_entities(self, text: str, *args, **kwargs) -> dict:
         """Gets the entities recognized within a given text.
 
         The output format is identical to `CAT.get_entities`.
+
+        Undefined arguments and keyword arguments get passed on to
+        CAT.get_entities.
 
         Args:
             text (str): The input text.
