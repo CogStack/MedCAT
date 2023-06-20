@@ -126,6 +126,11 @@ class DeIdModel(NerModel):
         return ""
 
 
+# For now, we will keep this method separate from the above class
+# This is so that we wouldn't need to create a thorwaway object
+# when calling the method from .helpers where it used to be.
+# After the deprecated method in .helpers is removed, we can
+# move this to a proper class method.
 def deid_text(cat: CAT, text: str, redact: bool = False) -> str:
     """De-identify text.
 
