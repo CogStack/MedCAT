@@ -18,7 +18,6 @@ from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
-from spacy import __version__ as spacy_version
 
 from medcat import __version__
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -29,7 +28,7 @@ from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
-from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
+from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters, has_new_spacy
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
@@ -45,23 +44,6 @@ from medcat.utils.saving.serializer import SPECIALITY_NAMES
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
-
-
-# TODO - move somewhere else?
-def has_new_spacy() -> bool:
-    """Figures out whether or not a newer version of spacy is installed.
-
-    This plays a role in how some parts of the Span needs to be interacted with.
-
-    Returns:
-        bool: Whether new version was detected.
-    """
-    major, minor, patch_plus = spacy_version.split('.')
-    major, minor = int(major), int(minor)
-    patch = int(patch_plus)
-    return (major > 3 or
-            (major == 3 and minor > 3) or
-            (major == 3 and minor == 3 and patch >= 1))
 
 
 HAS_NEW_SPACY = has_new_spacy()
