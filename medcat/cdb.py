@@ -533,6 +533,27 @@ class CDB(object):
         self.reset_concept_similarity()
         self.is_dirty = True
 
+    def populate_cui2snames(self, force: bool = True) -> None:
+        """Populate the cui2snames dict if it's empty.
+
+        If the dict is not empty and the population is not force,
+        nothing will happen.
+
+        For now, this method simply populates all the names form
+        cui2names into cui2snames.
+
+        Args:
+            force (bool, optional): Whether to force the (re-)population. Defaults to True.
+        """
+        if not force and self.cui2snames:
+            return
+        self.cui2snames.clear() # in case forced re-population
+        # run through cui2names
+        # and create new sets so that they can be independently modified
+        for cui, names in self.cui2names.items():
+            self.cui2snames[cui] = set(names)  # new set
+        self.is_dirty = True
+
     def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         """Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
