@@ -1,4 +1,5 @@
 import numpy as np
+import pandas as pd
 import pickle
 from typing import Optional, List, Dict
 
@@ -171,6 +172,33 @@ class Vocab(object):
                     vec = np.array([float(x) for x in parts[2].strip().split(" ")])
 
                 self.add_word(word, cnt, vec, replace)
+
+    def add_words_from_dataframe(self, path: str, replace: bool = True) -> None:
+        """Adds words to the vocab from pandas dataframe pickle file,
+        the file which exported with method pandas.DataFrame.to_pickle
+        https://pandas.pydata.org/docs/reference/api/pandas.DataFrame.to_pickle.html
+        the dataframe is required to have the following format (vector being optional):
+            columns = ['word', 'count', 'vector']
+            type(word) : str
+            type(count) : int
+            type(vector) : Optional[numpy.ndarray]
+        
+        e.g. dummy_df = pd.DataFrame({"word": 'house', "count": 34444, "vector": [np.array((0.3232, 0.123213, 1.231231))]})
+
+        Args:
+            path(str):
+                path to the pandas dataframe pickle file
+            replace(bool, optional):
+                existing words in the vocabulary will be replaced (Default value = True)
+        """
+        vocab_df = pd.read_pickle(path)
+        # maybe not the optimize solution, 
+        for index, row in vocab_df.iterrows():
+            word = str(row['word'])
+            cnt = int(row['count'])
+            vec = None if pd.isna(row['vector']) else row['vector']
+            
+            self.add_word(word, cnt, vec, replace)
 
     def make_unigram_table(self, table_size: int = 100000000) -> None:
         """Make unigram table for negative sampling, look at the paper if interested
