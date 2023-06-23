@@ -196,7 +196,7 @@ class Vocab(object):
         for index, row in vocab_df.iterrows():
             word = str(row['word'])
             cnt = int(row['count'])
-            vec = None if pd.isna(row['vector']) else row['vector']
+            vec = None if np.any(np.isna(row['vector'])) else row['vector']
             
             self.add_word(word, cnt, vec, replace)
 
