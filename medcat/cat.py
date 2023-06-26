@@ -28,7 +28,7 @@ from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
-from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
+from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters, has_new_spacy
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
@@ -44,6 +44,9 @@ from medcat.utils.saving.serializer import SPECIALITY_NAMES
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
+HAS_NEW_SPACY = has_new_spacy()
 
 
 class CAT(object):
@@ -1505,6 +1508,43 @@ class CAT(object):
                         logger.warning(str(e))
         sleep(2)
 
+    def _add_nested_ent(self, doc: Doc, _ents: List[Span], _ent: Union[Dict, Span]) -> None:
+        # if the entities are serialised (PipeRunner.serialize_entities)
+        # then the entities are dicts
+        # otherwise they're Span objects
+        meta_anns = None
+        if isinstance(_ent, dict):
+            start = _ent['start']
+            end =_ent['end']
+            label = _ent['label']
+            cui = _ent['cui']
+            detected_name = _ent['detected_name']
+            context_similarity = _ent['context_similarity']
+            id = _ent['id']
+            if 'meta_anns' in _ent:
+                meta_anns = _ent['meta_anns']
+        else:
+            start = _ent.start
+            end = _ent.end
+            label = _ent.label
+            cui = _ent._.cui
+            detected_name = _ent._.detected_name
+            context_similarity = _ent._.context_similarity
+            if _ent._.has('meta_anns'):
+                meta_anns = _ent._.meta_anns
+            if HAS_NEW_SPACY:
+                id = _ent.id
+            else:
+                id = _ent.ent_id
+        entity = Span(doc, start, end, label=label)
+        entity._.cui = cui
+        entity._.detected_name = detected_name
+        entity._.context_similarity = context_similarity
+        entity._.id = id
+        if meta_anns is not None:
+            entity._.meta_anns = meta_anns
+        _ents.append(entity)
+
     def _doc_to_out(self,
                     doc: Doc,
                     only_cui: bool,
@@ -1515,16 +1555,9 @@ class CAT(object):
         if doc is not None:
             out_ent: Dict = {}
             if self.config.general.show_nested_entities:
-                _ents = []
+                _ents: List[Span] = []
                 for _ent in doc._.ents:
-                    entity = Span(doc, _ent['start'], _ent['end'], label=_ent['label'])
-                    entity._.cui = _ent['cui']
-                    entity._.detected_name = _ent['detected_name']
-                    entity._.context_similarity = _ent['context_similarity']
-                    entity._.id = _ent['id']
-                    if 'meta_anns' in _ent:
-                        entity._.meta_anns = _ent['meta_anns']
-                    _ents.append(entity)
+                    self._add_nested_ent(doc, _ents, _ent)
             else:
                 _ents = doc.ents  # type: ignore
 
