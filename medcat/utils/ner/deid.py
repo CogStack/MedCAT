@@ -23,11 +23,11 @@ cat = CAT.load_model_pack(model_pack_path)
 anon_text = deid_text(cat, text)
 
 You can use:
-deid = DeIdModel.from_model_pack(model_pack_path)
+deid = DeIdModel.load_model_pack(model_pack_path)
 anon_text = deid.deid_text(text)
 
 Or if/when structured output is desired:
-deid = DeIdModel.from_model_pack(model_pack_path)
+deid = DeIdModel.load_model_pack(model_pack_path)
 anon_doc = deid(text)  # the spacy document
 
 The wrapper also exposes some CAT parts directly:
