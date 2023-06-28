@@ -112,4 +112,3 @@ class DeIdModel(NerModel):
         if len(cat._addl_ner) != 1:
             return f"Incorrect number of addl_ner: {len(cat._addl_ner)}"
         return ""
-
