@@ -39,6 +39,8 @@ from typing import Union, Tuple, Any
 from medcat.cat import CAT
 from medcat.utils.ner.model import NerModel
 
+from medcat.utils.ner.helpers import _deid_text as deid_text
+
 
 class DeIdModel(NerModel):
     """The DeID model.
