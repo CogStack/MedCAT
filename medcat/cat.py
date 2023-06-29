@@ -842,6 +842,8 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
+    @deprecated(message="Use train_supervised_from_json to train based on data "
+                "loaded from a json file")
     def train_supervised(self,
                          data_path: str,
                          reset_cui_count: bool = False,
@@ -937,6 +939,33 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI.
         """
+        return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
+                                               print_stats, use_filters, terminate_last,
+                                               use_overlaps, use_cui_doc_limit, test_size,
+                                               devalue_others, use_groups, never_terminate,
+                                               train_from_false_positives, extra_cui_filter,
+                                               retain_extra_cui_filter, checkpoint,
+                                               retain_filters, is_resumed)
+
+    def train_supervised_from_json(self,
+                                   data_path: str,
+                                   reset_cui_count: bool = False,
+                                   nepochs: int = 1,
+                                   print_stats: int = 0,
+                                   use_filters: bool = False,
+                                   terminate_last: bool = False,
+                                   use_overlaps: bool = False,
+                                   use_cui_doc_limit: bool = False,
+                                   test_size: int = 0,
+                                   devalue_others: bool = False,
+                                   use_groups: bool = False,
+                                   never_terminate: bool = False,
+                                   train_from_false_positives: bool = False,
+                                   extra_cui_filter: Optional[Set] = None,
+                                   retain_extra_cui_filter: bool = False,
+                                   checkpoint: Optional[Checkpoint] = None,
+                                   retain_filters: bool = False,
+                                   is_resumed: bool = False) -> Tuple:
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
         local_filters = self.config.linking.filters.copy_of()
