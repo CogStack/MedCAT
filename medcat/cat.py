@@ -863,9 +863,44 @@ class CAT(object):
                          checkpoint: Optional[Checkpoint] = None,
                          retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
-        """TODO: Refactor, left from old
-        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
-        online training then supervised.
+        """Train supervised by reading data from a json file.
+
+        Refer to `train_supervvised_from_json` and/or `train_supervised_raw`
+        for further details.
+        """
+        return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
+                                               print_stats, use_filters, terminate_last,
+                                               use_overlaps, use_cui_doc_limit, test_size,
+                                               devalue_others, use_groups, never_terminate,
+                                               train_from_false_positives, extra_cui_filter,
+                                               retain_extra_cui_filter, checkpoint,
+                                               retain_filters, is_resumed)
+
+    def train_supervised_from_json(self,
+                                   data_path: str,
+                                   reset_cui_count: bool = False,
+                                   nepochs: int = 1,
+                                   print_stats: int = 0,
+                                   use_filters: bool = False,
+                                   terminate_last: bool = False,
+                                   use_overlaps: bool = False,
+                                   use_cui_doc_limit: bool = False,
+                                   test_size: int = 0,
+                                   devalue_others: bool = False,
+                                   use_groups: bool = False,
+                                   never_terminate: bool = False,
+                                   train_from_false_positives: bool = False,
+                                   extra_cui_filter: Optional[Set] = None,
+                                   retain_extra_cui_filter: bool = False,
+                                   checkpoint: Optional[Checkpoint] = None,
+                                   retain_filters: bool = False,
+                                   is_resumed: bool = False) -> Tuple:
+        """
+        Run supervised training on a dataset from MedCATtrainer in JSON format.
+
+        Refer to `train_supervised_raw` for more details.
+
+        Please take care that this is more a simulated online training then supervised.
 
         When filtering, the filters within the CAT model are used first,
         then the ones from MedCATtrainer (MCT) export filters,
@@ -939,33 +974,6 @@ class CAT(object):
             examples (dict):
                 FP/FN examples of sentences for each CUI.
         """
-        return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
-                                               print_stats, use_filters, terminate_last,
-                                               use_overlaps, use_cui_doc_limit, test_size,
-                                               devalue_others, use_groups, never_terminate,
-                                               train_from_false_positives, extra_cui_filter,
-                                               retain_extra_cui_filter, checkpoint,
-                                               retain_filters, is_resumed)
-
-    def train_supervised_from_json(self,
-                                   data_path: str,
-                                   reset_cui_count: bool = False,
-                                   nepochs: int = 1,
-                                   print_stats: int = 0,
-                                   use_filters: bool = False,
-                                   terminate_last: bool = False,
-                                   use_overlaps: bool = False,
-                                   use_cui_doc_limit: bool = False,
-                                   test_size: int = 0,
-                                   devalue_others: bool = False,
-                                   use_groups: bool = False,
-                                   never_terminate: bool = False,
-                                   train_from_false_positives: bool = False,
-                                   extra_cui_filter: Optional[Set] = None,
-                                   retain_extra_cui_filter: bool = False,
-                                   checkpoint: Optional[Checkpoint] = None,
-                                   retain_filters: bool = False,
-                                   is_resumed: bool = False) -> Tuple:
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
         local_filters = self.config.linking.filters.copy_of()
