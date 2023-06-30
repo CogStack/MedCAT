@@ -146,7 +146,7 @@ class MetaCAT(PipeRunner):
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
         return self.train_raw(data_loaded, save_dir_path)
 
-    def train_raw(self, data_loaded: Dict, save_dir_path: str) -> Dict:
+    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None) -> Dict:
         """Train or continue training a model given raw data. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
