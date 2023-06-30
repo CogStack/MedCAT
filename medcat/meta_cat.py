@@ -15,6 +15,7 @@ from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
+from medcat.utils.decorators import deprecated
 
 # It should be safe to do this always, as all other multiprocessing
 # will be finished before data comes to meta_cat
@@ -98,7 +99,21 @@ class MetaCAT(PipeRunner):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
+    @deprecated(message="Use `train_from_json` or `train_raw` instead")
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
+        """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        continue training if an existing model is loaded or start new training if the model is blank/new.
+
+        Args:
+            json_path (Union[str, list]):
+                Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
+            save_dir_path (Optional[str]):
+                In case we have aut_save_model (meaning during the training the best model will be saved)
+                we need to set a save path. Defaults to `None`.
+        """
+        return self.train_from_json(json_path, save_dir_path)
+
+    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
