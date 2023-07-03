@@ -233,7 +233,7 @@ def _optimise_snames(cdb: CDB, cui2snames: str, snames_attr: str = 'snames') -> 
 
 def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
                          optimise_names: bool = False,
-                         optimise_snames: bool = False) -> None:
+                         optimise_snames: bool = True) -> None:
     """Attempts to optimise the memory footprint of the CDB.
 
     This can perform optimisation for cui2<...> and name2<...> dicts.
@@ -277,7 +277,7 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
         cdb (CDB): The CDB to modify.
         optimise_cuis (bool, optional): Whether to optimise cui2<...> dicts. Defaults to True.
         optimise_names (bool, optional): Whether to optimise name2<...> dicts. Defaults to False.
-        optimise_snames (bool, optional): Whether to optimise `snames` set. Defaults to False.
+        optimise_snames (bool, optional): Whether to optimise `snames` set. Defaults to True.
     """
     # cui2<...> -> cui2many
     if optimise_cuis:
