@@ -185,7 +185,7 @@ class MemoryOptimisingTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
-        memory_optimiser.perform_optimisation(cls.cdb)
+        memory_optimiser.perform_optimisation(cls.cdb, optimise_snames=True)
 
     def test_cdb_has_one2many(self, one2many_name='cui2many'):
         self.assertTrue(hasattr(self.cdb, one2many_name))
@@ -197,6 +197,16 @@ class MemoryOptimisingTests(unittest.TestCase):
             with self.subTest(dict_name):
                 d = getattr(self.cdb, dict_name)
                 self.assertIsInstance(d, memory_optimiser.DelegatingDict)
+
+    def test_has_delegating_set(self):
+        self.assertIsInstance(
+            self.cdb.snames, memory_optimiser.DelegatingValueSet)
+
+    def test_delegating_set_has_values(self):
+        for values in self.cdb.cui2snames.values():
+            for val in values:
+                with self.subTest(f'Checking {val}'):
+                    self.assertIn(val, self.cdb.snames)
 
 
 class OperationalTests(unittest.TestCase):
@@ -218,7 +228,7 @@ class OperationalTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
-        memory_optimiser.perform_optimisation(cls.cdb)
+        memory_optimiser.perform_optimisation(cls.cdb, optimise_snames=True)
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..", "examples", "vocab.dat"))
         cls.cdb.config.general.spacy_model = "en_core_web_md"
