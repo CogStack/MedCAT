@@ -18,6 +18,8 @@ NAME2MANY = 'name2many'
 
 DELEGATING_DICT_IDENTIFIER = '==DELEGATING_DICT=='
 
+DELEGATING_SET_IDENTIFIER = '==DELEGATING_SET=='
+
 
 class _KeysView:
     def __init__(self, keys: KeysView, parent: 'DelegatingDict'):
@@ -143,6 +145,9 @@ class DelegatingValueSet:
                 return True
         return False
 
+    def to_dict(self) -> dict:
+        return {'delegate': None}
+
 
 class DelegatingDictEncoder(PartEncoder):
 
@@ -164,15 +169,43 @@ class DelegatingDictDecoder(PartDecoder):
         return dct
 
 
+class DelegatingValueSetEncoder(PartEncoder):
+
+    def try_encode(self, obj):
+        if isinstance(obj, DelegatingValueSet):
+            return {DELEGATING_SET_IDENTIFIER: obj.to_dict()}
+        raise UnsuitableObject()
+
+
+class DelegatingValueSetDecoder(PartDecoder):
+
+    def try_decode(self, dct: dict) -> Union[dict, EncodeableObject]:
+        if DELEGATING_SET_IDENTIFIER in dct:
+            info = dct[DELEGATING_SET_IDENTIFIER]
+            delegate = info['delegate']
+            return DelegatingValueSet(delegate)
+        return dct
+
+
 def attempt_fix_after_load(cdb: CDB):
     _attempt_fix_after_load(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
     _attempt_fix_after_load(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
+
+
+def attempt_fix_snames_after_load(cdb: CDB, snames_attr_name: str = 'snames'):
+    snames = getattr(cdb, snames_attr_name)
+    if isinstance(snames, DelegatingValueSet) and snames.delegate is None:
+        snames = DelegatingValueSet(cdb.cui2snames)
+        setattr(cdb, snames_attr_name, snames)
 
 
 # register encoder and decoders
 register_encoder_decoder(encoder=DelegatingDictEncoder,
                          decoder=DelegatingDictDecoder,
                          loading_postprocessor=attempt_fix_after_load)
+register_encoder_decoder(encoder=DelegatingValueSetEncoder,
+                         decoder=DelegatingValueSetDecoder,
+                         loading_postprocessor=attempt_fix_snames_after_load)
 
 
 def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> None:
