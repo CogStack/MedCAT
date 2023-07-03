@@ -1,4 +1,4 @@
-from typing import Any, Dict, KeysView, Iterator, List, Tuple, Union, Optional
+from typing import Any, Dict, KeysView, Iterator, List, Tuple, Union, Optional, Set
 
 from medcat.cdb import CDB
 from medcat.utils.saving.coding import EncodeableObject, PartEncoder, PartDecoder, UnsuitableObject, register_encoder_decoder
@@ -128,6 +128,22 @@ class DelegatingDict:
         return item
 
 
+class DelegatingValueSet:
+
+    def __init__(self, delegate: Dict[str, Set[str]]) -> None:
+        self.delegate = delegate
+
+    def update(self, other: Any) -> None:
+        # do nothing since the value will be updated in delegate
+        pass
+
+    def __contains__(self, value: str) -> bool:
+        for cui_value in self.delegate.values():
+            if value in cui_value:
+                return True
+        return False
+
+
 class DelegatingDictEncoder(PartEncoder):
 
     def try_encode(self, obj):
@@ -169,8 +185,22 @@ def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> 
     cdb.is_dirty = True
 
 
+def _optimise_snames(cdb: CDB, cui2snames: str, snames_attr: str = 'snames') -> None:
+    """Optimise the snames part of a CDB.
+
+    Args:
+        cdb (CDB): The CDB to optimise snames on.
+        one2many_name (str): The cui2snames dict name to delegate to.
+        snames_attr (str, optional): The `snames` attribute name. Defaults to 'snames'.
+    """
+    delegate = getattr(cdb, cui2snames)
+    dvs = DelegatingValueSet(delegate)
+    setattr(cdb, snames_attr, dvs)
+
+
 def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
-                         optimise_names: bool = False) -> None:
+                         optimise_names: bool = False,
+                         optimise_snames: bool = False) -> None:
     """Attempts to optimise the memory footprint of the CDB.
 
     This can perform optimisation for cui2<...> and name2<...> dicts.
@@ -206,12 +236,15 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
         name2count_train (Dict[str, str]):
             Counts how often did a name appear during training.
 
+    It can also delegate the `snames` set to use the various sets in `cui2snames` instead.
+
     They will all be included in 1 dict with CUI keys and a list of values for each pre-existing dict.
 
     Args:
         cdb (CDB): The CDB to modify.
         optimise_cuis (bool, optional): Whether to optimise cui2<...> dicts. Defaults to True.
         optimise_names (bool, optional): Whether to optimise name2<...> dicts. Defaults to False.
+        optimise_snames (bool, optional): Whether to optimise `snames` set. Defaults to False.
     """
     # cui2<...> -> cui2many
     if optimise_cuis:
@@ -219,6 +252,9 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
     # name2<...> -> name2many
     if optimise_names:
         _optimise(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
+    if optimise_snames:
+        # check snames based on cui2sanmes
+        _optimise_snames(cdb, "cui2snames")
 
 
 def _attempt_fix_after_load(cdb: CDB, one2many_name: str, dict_names: List[str]):

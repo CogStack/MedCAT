@@ -180,9 +180,13 @@ class CDB(object):
         for name, cuis2status in self.name2cuis2status.items():
             if cui in cuis2status:
                 del cuis2status[cui]
-        self.snames = set()
-        for cuis in self.cui2snames.values():
-            self.snames |= cuis
+        if isinstance(self.snames, set):
+            # if this is a memory optimised CDB, this won't be a set
+            # but it also won't need to be changed since it
+            # relies directly on cui2snames
+            self.snames = set()
+            for cuis in self.cui2snames.values():
+                self.snames |= cuis
         self.name2count_train = {name: len(cuis) for name, cuis in self.name2cuis.items()}
         self.is_dirty = True
 

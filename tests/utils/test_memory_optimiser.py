@@ -265,3 +265,31 @@ class OperationalTests(unittest.TestCase):
             with self.subTest(del_name):
                 self.assertIsInstance(d, memory_optimiser.DelegatingDict)
                 self.assertIs(cdb.cui2many, d.delegate)
+
+
+class DelegatingValueSetTests(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.delegate = {'a': set('abcd'),
+                         'b': set('efghij'),
+                         'c': set('lm'),  # skip k
+                         'd': set('qrst'),  # skip a bunch
+                         }
+        self.original = set([v for s in self.delegate for v in s])
+
+    def test_DelegatingValueSet_constructs(self):
+        dvs = memory_optimiser.DelegatingValueSet(self.delegate)
+        self.assertIsInstance(dvs, memory_optimiser.DelegatingValueSet)
+
+    def test_DelegatingValueSet_contains_values(self):
+        dvs = memory_optimiser.DelegatingValueSet(self.delegate)
+        for v in self.original:
+            with self.subTest(f'Check: {v}'):
+                self.assertIn(v, dvs)
+
+    def test_DelegatingValueSet_contains_incorrect_values(self,
+                                                          to_check=set('kopuvwxyz')):
+        dvs = memory_optimiser.DelegatingValueSet(self.delegate)
+        for v in to_check:
+            with self.subTest(f'Check: {v}'):
+                self.assertNotIn(v, dvs)
