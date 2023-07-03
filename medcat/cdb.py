@@ -544,6 +544,10 @@ class CDB(object):
         This also will not remove any data from cdb.addl_info - as this field can contain data of
         unknown structure.
 
+        As a side note, if the CDB has been memory-optimised, filtering will undo this memory optimisation.
+        This is because the dicts being involved will be rewritten.
+        However, the memory optimisation can be performed again afterwards.
+
         Args:
             cuis_to_keep (List[str]):
                 CUIs that will be kept, the rest will be removed (not completely, look above).
