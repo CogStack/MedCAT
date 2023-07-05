@@ -14,8 +14,8 @@ from medcat.utils.saving.serializer import JsonSetSerializer, CDBSerializer, SPE
 import medcat.utils.saving.coding as _
 
 
-class JSONSerialoizationTests(unittest.TestCase):
-    folder = os.path.join('temp', 'JSONSerialoizationTests')
+class JSONSerializationTests(unittest.TestCase):
+    folder = os.path.join('temp', 'JSONSerializationTests')
 
     def setUp(self) -> None:
         return super().setUp()
