@@ -1,4 +1,4 @@
-Django==3.2.19
+Django==3.2.20
 django-dbbackup==4.0.0b0
 django-storages[boto3]==1.12.3
 django-cron==0.5.1
