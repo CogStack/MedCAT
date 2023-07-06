@@ -218,17 +218,19 @@ def _optimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]) -> 
     cdb.is_dirty = True
 
 
-def _optimise_snames(cdb: CDB, cui2snames: str, snames_attr: str = 'snames') -> None:
+def _optimise_snames(cdb: CDB, cui2snames: str = 'cui2snames',
+                     snames_attr: str = 'snames') -> None:
     """Optimise the snames part of a CDB.
 
     Args:
         cdb (CDB): The CDB to optimise snames on.
-        one2many_name (str): The cui2snames dict name to delegate to.
+        one2many_name (str): The cui2snames dict name to delegate to. Defaults to 'cui2snames'.
         snames_attr (str, optional): The `snames` attribute name. Defaults to 'snames'.
     """
     delegate = getattr(cdb, cui2snames)
     dvs = DelegatingValueSet(delegate)
     setattr(cdb, snames_attr, dvs)
+    cdb.is_dirty = True
 
 
 def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
@@ -289,7 +291,7 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
         cdb._memory_optimised_parts.add('NAMES')
     if optimise_snames:
         # check snames based on cui2sanmes
-        _optimise_snames(cdb, "cui2snames")
+        _optimise_snames(cdb)
         cdb._memory_optimised_parts.add('snames')
 
 
