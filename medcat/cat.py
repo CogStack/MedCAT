@@ -40,7 +40,7 @@ from medcat.config import Config, LinkingFilters
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
-from medcat.utils.saving.serializer import SPECIALITY_NAMES
+from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
@@ -356,7 +356,8 @@ class CAT(object):
 
         # Load the CDB
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= len(SPECIALITY_NAMES)
+        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
+        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
         json_path = model_pack_path if has_jsons else None
         logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
         cdb = CDB.load(cdb_path, json_path)

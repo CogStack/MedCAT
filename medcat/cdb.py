@@ -95,6 +95,7 @@ class CDB(object):
         self._optim_params = None
         self.is_dirty = False
         self._hash: Optional[str] = None
+        self._memory_optimised_parts: Set[str] = set()
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -180,9 +181,13 @@ class CDB(object):
         for name, cuis2status in self.name2cuis2status.items():
             if cui in cuis2status:
                 del cuis2status[cui]
-        self.snames = set()
-        for cuis in self.cui2snames.values():
-            self.snames |= cuis
+        if isinstance(self.snames, set):
+            # if this is a memory optimised CDB, this won't be a set
+            # but it also won't need to be changed since it
+            # relies directly on cui2snames
+            self.snames = set()
+            for cuis in self.cui2snames.values():
+                self.snames |= cuis
         self.name2count_train = {name: len(cuis) for name, cuis in self.name2cuis.items()}
         self.is_dirty = True
 
@@ -561,6 +566,10 @@ class CDB(object):
         This also will not remove any data from cdb.addl_info - as this field can contain data of
         unknown structure.
 
+        As a side note, if the CDB has been memory-optimised, filtering will undo this memory optimisation.
+        This is because the dicts being involved will be rewritten.
+        However, the memory optimisation can be performed again afterwards.
+
         Args:
             cuis_to_keep (List[str]):
                 CUIs that will be kept, the rest will be removed (not completely, look above).
@@ -624,6 +633,8 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
         self.is_dirty = True
+        # reset memory optimisation state
+        self._memory_optimised_parts.clear()
 
     def make_stats(self):
         stats = {}
