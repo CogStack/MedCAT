@@ -209,6 +209,40 @@ class MemoryOptimisingTests(unittest.TestCase):
                     self.assertIn(val, self.cdb.snames)
 
 
+class MemoryUnoptimisingTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+
+    def test_optimisation_round_trip_cuis(self):
+        cui_dicts_before = [getattr(self.cdb, dict_name)
+                            for dict_name in memory_optimiser.CUI_DICT_NAMES_TO_COMBINE]
+        memory_optimiser.perform_optimisation(self.cdb)
+        memory_optimiser.unoptimise_cdb(self.cdb)
+        cui_dicts_after = [getattr(self.cdb, dict_name)
+                           for dict_name in memory_optimiser.CUI_DICT_NAMES_TO_COMBINE]
+        for before, after, name in zip(cui_dicts_before,
+                                       cui_dicts_after,
+                                       memory_optimiser.CUI_DICT_NAMES_TO_COMBINE):
+            with self.subTest(f'{name}'):
+                self.assertIsInstance(before, dict)
+                self.assertIsInstance(after, dict)
+                self.assertEquals(len(before), len(after))
+                self.assertEquals(before, after)
+
+    def test_optimisation_round_trip_snames(self):
+        snames_before = self.cdb.snames
+        memory_optimiser.perform_optimisation(self.cdb)
+        memory_optimiser.unoptimise_cdb(self.cdb)
+        snames_after = self.cdb.snames
+        self.assertIsInstance(snames_before, set)
+        self.assertIsInstance(snames_after, set)
+        self.assertEquals(len(snames_before), len(snames_after))
+        self.assertEquals(snames_before, snames_after)
+
+
 class OperationalTests(unittest.TestCase):
     temp_folder = tempfile.TemporaryDirectory()
     temp_cdb_path = os.path.join(temp_folder.name, 'cat.cdb')
