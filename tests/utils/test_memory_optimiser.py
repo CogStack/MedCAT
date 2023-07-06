@@ -178,6 +178,13 @@ class UnOptimisingTests(unittest.TestCase):
             with self.subTest(key):
                 self.assertNotIsInstance(val, memory_optimiser.DelegatingDict)
 
+    def test_unoptimised_knows_has_no_optimsied_parts(self):
+        self.assertFalse(self.cdb._memory_optimised_parts,
+                         "Should have empty optimised partss")
+
+    def test_simply_loaded_model_not_dirty(self):
+        self.assertFalse(self.cdb.is_dirty)
+
 
 class MemoryOptimisingTests(unittest.TestCase):
 
@@ -186,6 +193,24 @@ class MemoryOptimisingTests(unittest.TestCase):
         cls.cdb = CDB.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
         memory_optimiser.perform_optimisation(cls.cdb, optimise_snames=True)
+
+    def test_is_dirty(self):
+        self.assertTrue(self.cdb.is_dirty,
+                        "Should be dirty after optimisation")
+
+    def test_knows_optimised(self):
+        self.assertTrue(self.cdb._memory_optimised_parts,
+                        "Should have non-empty `_memory_optimised_parts`")
+
+    def test_knows_correct_parts_optimsed(self, should_be=['CUIS', 'snames']):
+        for name in should_be:
+            with self.subTest(name):
+                self.assertIn(name, self.cdb._memory_optimised_parts)
+
+    def test_knows_incorrect_parts_NOT_optimised(self, should_not_be=['NAMES']):
+        for name in should_not_be:
+            with self.subTest(name):
+                self.assertNotIn(name, self.cdb._memory_optimised_parts)
 
     def test_cdb_has_one2many(self, one2many_name='cui2many'):
         self.assertTrue(hasattr(self.cdb, one2many_name))
@@ -241,6 +266,17 @@ class MemoryUnoptimisingTests(unittest.TestCase):
         self.assertIsInstance(snames_after, set)
         self.assertEquals(len(snames_before), len(snames_after))
         self.assertEquals(snames_before, snames_after)
+
+    def test_optimisation_round_trip_dirty(self):
+        memory_optimiser.perform_optimisation(self.cdb)
+        memory_optimiser.unoptimise_cdb(self.cdb)
+        self.assertTrue(self.cdb.is_dirty)
+
+    def test_optimisation_round_trip_no_optimised_parts(self):
+        memory_optimiser.perform_optimisation(self.cdb)
+        memory_optimiser.unoptimise_cdb(self.cdb)
+        self.assertFalse(self.cdb._memory_optimised_parts,
+                         "Should have no optimised parts")
 
 
 class OperationalTests(unittest.TestCase):
