@@ -316,6 +316,7 @@ def _unoptimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]):
     for del_dict, dict_name in zip(delegating_dicts, dict_names_to_combine):
         raw_dict = dict(del_dict.items())
         setattr(cdb, dict_name, raw_dict)
+    cdb._memory_optimised_parts.clear()
     cdb.is_dirty = True
 
 
