@@ -23,7 +23,7 @@ setuptools.setup(
         'gensim>=4.3.0', # first to support 3.11
         'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
-        'transformers>=4.19.2',
+        'transformers>=4.19.2,<4.22.0', # upper bound is needed for the de-id model until it is retrained
         'torch>=1.13.0', # first to support 3.11
         'tqdm>=4.27',
         'scikit-learn>=1.1.3', # first to supporrt 3.11
@@ -39,7 +39,7 @@ setuptools.setup(
         'xxhash>=3.0.0', # allow later versions, tested with 3.1.0
         'blis>=0.7.5', # allow later versions, tested with 0.7.9
         'click>=8.0.4', # allow later versions, tested with 8.1.3
-        'pydantic>=1.10.0', # for spacy compatibility
+        'pydantic>=1.10.0,<2.0', # for spacy compatibility; avoid 2.0 due to breaking changes
         # the following are not direct dependencies of MedCAT but needed for docs/building
         # hopefully will no longer need the transitive dependencies
         'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec <- datasets <- medcat

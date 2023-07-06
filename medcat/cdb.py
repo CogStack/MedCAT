@@ -95,10 +95,11 @@ class CDB(object):
         self._optim_params = None
         self.is_dirty = False
         self._hash: Optional[str] = None
+        self._memory_optimised_parts: Set[str] = set()
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
-        the logest name assigend to the concept.
+        the longest name assigned to the concept.
 
         Args:
             cui
@@ -118,7 +119,7 @@ class CDB(object):
         self.is_dirty = True
 
     def remove_names(self, cui: str, names: Dict) -> None:
-        """Remove names from an existing concept - efect is this name will never again be used to link to this concept.
+        """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
         could also be useful to keep the removed names in e.g. cui2names.
@@ -151,6 +152,43 @@ class CDB(object):
                             self.name2cuis2status[name][_cui] = 'N'
                         elif self.name2cuis2status[name][_cui] == 'P':
                             self.name2cuis2status[name][_cui] = 'PD'
+        self.is_dirty = True
+
+    def remove_cui(self, cui: str) -> None:
+        """This function takes a `CUI` as an argument and removes it from all the internal objects that reference it.
+        Args:
+            cui
+        """
+        if cui in self.cui2names:
+            del self.cui2names[cui]
+        if cui in self.cui2snames:
+            del self.cui2snames[cui]
+        if cui in self.cui2context_vectors:
+            del self.cui2context_vectors[cui]
+        if cui in self.cui2count_train:
+            del self.cui2count_train[cui]
+        if cui in self.cui2tags:
+            del self.cui2tags[cui]
+        if cui in self.cui2type_ids:
+            del self.cui2type_ids[cui]
+        if cui in self.cui2preferred_name:
+            del self.cui2preferred_name[cui]
+        if cui in self.cui2average_confidence:
+            del self.cui2average_confidence[cui]
+        for name, cuis in self.name2cuis.items():
+            if cui in cuis:
+                cuis.remove(cui)
+        for name, cuis2status in self.name2cuis2status.items():
+            if cui in cuis2status:
+                del cuis2status[cui]
+        if isinstance(self.snames, set):
+            # if this is a memory optimised CDB, this won't be a set
+            # but it also won't need to be changed since it
+            # relies directly on cui2snames
+            self.snames = set()
+            for cuis in self.cui2snames.values():
+                self.snames |= cuis
+        self.name2count_train = {name: len(cuis) for name, cuis in self.name2cuis.items()}
         self.is_dirty = True
 
     def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:
@@ -500,12 +538,37 @@ class CDB(object):
         self.reset_concept_similarity()
         self.is_dirty = True
 
+    def populate_cui2snames(self, force: bool = True) -> None:
+        """Populate the cui2snames dict if it's empty.
+
+        If the dict is not empty and the population is not force,
+        nothing will happen.
+
+        For now, this method simply populates all the names form
+        cui2names into cui2snames.
+
+        Args:
+            force (bool, optional): Whether to force the (re-)population. Defaults to True.
+        """
+        if not force and self.cui2snames:
+            return
+        self.cui2snames.clear() # in case forced re-population
+        # run through cui2names
+        # and create new sets so that they can be independently modified
+        for cui, names in self.cui2names.items():
+            self.cui2snames[cui] = set(names)  # new set
+        self.is_dirty = True
+
     def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         """Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
         find all CUIs that link to those names and keep all of them.
         This also will not remove any data from cdb.addl_info - as this field can contain data of
         unknown structure.
+
+        As a side note, if the CDB has been memory-optimised, filtering will undo this memory optimisation.
+        This is because the dicts being involved will be rewritten.
+        However, the memory optimisation can be performed again afterwards.
 
         Args:
             cuis_to_keep (List[str]):
@@ -570,6 +633,8 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
         self.is_dirty = True
+        # reset memory optimisation state
+        self._memory_optimised_parts.clear()
 
     def make_stats(self):
         stats = {}
