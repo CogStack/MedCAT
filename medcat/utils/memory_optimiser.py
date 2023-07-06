@@ -20,6 +20,11 @@ DELEGATING_DICT_IDENTIFIER = '==DELEGATING_DICT=='
 
 DELEGATING_SET_IDENTIFIER = '==DELEGATING_SET=='
 
+# these will be used in CDB._memory_optimised_parts
+CUIS_PART = 'CUIS'
+NAMES_PART = 'NAMES'
+SNAMES_PART = 'snames'
+
 
 class _KeysView:
     def __init__(self, keys: KeysView, parent: 'DelegatingDict'):
@@ -284,15 +289,15 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
     # cui2<...> -> cui2many
     if optimise_cuis:
         _optimise(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
-        cdb._memory_optimised_parts.add('CUIS')
+        cdb._memory_optimised_parts.add(CUIS_PART)
     # name2<...> -> name2many
     if optimise_names:
         _optimise(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
-        cdb._memory_optimised_parts.add('NAMES')
+        cdb._memory_optimised_parts.add(NAMES_PART)
     if optimise_snames:
         # check snames based on cui2sanmes
         _optimise_snames(cdb)
-        cdb._memory_optimised_parts.add('snames')
+        cdb._memory_optimised_parts.add(SNAMES_PART)
 
 
 def _attempt_fix_after_load(cdb: CDB, one2many_name: str, dict_names: List[str]):
@@ -316,7 +321,6 @@ def _unoptimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]):
     for del_dict, dict_name in zip(delegating_dicts, dict_names_to_combine):
         raw_dict = dict(del_dict.items())
         setattr(cdb, dict_name, raw_dict)
-    cdb._memory_optimised_parts.clear()
     cdb.is_dirty = True
 
 
@@ -339,12 +343,13 @@ def unoptimise_cdb(cdb: CDB):
     Args:
         cdb (CDB): The CDB to work on.
     """
-    if 'CUIS' in cdb._memory_optimised_parts:
+    if CUIS_PART in cdb._memory_optimised_parts:
         _unoptimise(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
-    if 'NAMES' in cdb._memory_optimised_parts:
+    if NAMES_PART in cdb._memory_optimised_parts:
         _unoptimise(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
-    if 'snames' in cdb._memory_optimised_parts:
+    if SNAMES_PART in cdb._memory_optimised_parts:
         _unoptimise_snames(cdb)
+    cdb._memory_optimised_parts.clear()
 
 
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
