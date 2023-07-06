@@ -306,6 +306,46 @@ def _attempt_fix_after_load(cdb: CDB, one2many_name: str, dict_names: List[str])
         d.delegate = one2many
 
 
+def _unoptimise(cdb: CDB, to_many_name: str, dict_names_to_combine: List[str]):
+    # remove one2many attribute
+    # the references still exist on each delegator
+    delattr(cdb, to_many_name)
+
+    delegating_dicts: List[Dict[str, Any]] = [getattr(cdb, dict_name)
+                                              for dict_name in dict_names_to_combine]
+    for del_dict, dict_name in zip(delegating_dicts, dict_names_to_combine):
+        raw_dict = dict(del_dict.items())
+        setattr(cdb, dict_name, raw_dict)
+    cdb.is_dirty = True
+
+
+def _unoptimise_snames(cdb: CDB, cui2snames: str = 'cui2snames',
+                       snames_attr: str = 'snames') -> None:
+    # rebuild snames
+    delegate: Dict[str, Set[str]] = getattr(cdb, cui2snames)
+    snames = set()
+    for values in delegate.values():
+        snames.update(values)
+    setattr(cdb, snames_attr, snames)
+    cdb.is_dirty = True
+
+
+def unoptimise_cdb(cdb: CDB):
+    """This undoes all the (potential) memory optimisations done in `perform_optimisation`.
+
+    This method relies on `CDB._memory_optimised_parts` to be up to date.
+
+    Args:
+        cdb (CDB): The CDB to work on.
+    """
+    if 'CUIS' in cdb._memory_optimised_parts:
+        _unoptimise(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
+    if 'NAMES' in cdb._memory_optimised_parts:
+        _unoptimise(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
+    if 'snames' in cdb._memory_optimised_parts:
+        _unoptimise_snames(cdb)
+
+
 def map_to_many(dicts: List[Dict[str, Any]]) -> Tuple[Dict[str, List[Any]], List[DelegatingDict]]:
     one2many: Dict[str, List[Any]] = {}
     delegators: List[DelegatingDict] = []
