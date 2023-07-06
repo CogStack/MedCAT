@@ -282,12 +282,15 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
     # cui2<...> -> cui2many
     if optimise_cuis:
         _optimise(cdb, ONE2MANY, CUI_DICT_NAMES_TO_COMBINE)
+        cdb._memory_optimised_parts.add('CUIS')
     # name2<...> -> name2many
     if optimise_names:
         _optimise(cdb, NAME2MANY, NAME_DICT_NAMES_TO_COMBINE)
+        cdb._memory_optimised_parts.add('NAMES')
     if optimise_snames:
         # check snames based on cui2sanmes
         _optimise_snames(cdb, "cui2snames")
+        cdb._memory_optimised_parts.add('snames')
 
 
 def _attempt_fix_after_load(cdb: CDB, one2many_name: str, dict_names: List[str]):

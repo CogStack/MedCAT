@@ -95,6 +95,7 @@ class CDB(object):
         self._optim_params = None
         self.is_dirty = False
         self._hash: Optional[str] = None
+        self._memory_optimised_parts: Set[str] = set()
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -611,6 +612,8 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
         self.is_dirty = True
+        # reset memory optimisation state
+        self._memory_optimised_parts.clear()
 
     def make_stats(self):
         stats = {}
