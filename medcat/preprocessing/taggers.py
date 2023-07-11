@@ -2,6 +2,7 @@ from spacy.language import Language
 from spacy.tokens import Doc
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
+from pythainlp.util import isthai
 
 
 def tag_skip_and_punct(nlp: Language, name: str, config: Config) -> "_Tagger":
@@ -48,5 +49,9 @@ class _Tagger(PipeRunner):
                 token._.to_skip = True
             elif cnf_p['skip_stopwords'] and token.is_stop:
                 token._.to_skip = True
+            elif isthai(token.text, ignore_chars="01234567890+-.,"):
+                token._.lang = 'th'
+            else:
+                token._.lang = 'en'
 
         return doc

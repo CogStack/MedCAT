@@ -109,7 +109,7 @@ class CAT(object):
         self.pipe = Pipe(tokenizer=thai_tokenizer_factory, config=config)
         self.pipe.add_tagger(tagger=tag_skip_and_punct,
                              name='skip_and_punct',
-                             additional_fields=['is_punct'])
+                             additional_fields=['is_punct', 'lang'])
 
         if self.vocab is not None:
             spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)
