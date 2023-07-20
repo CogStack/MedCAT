@@ -42,7 +42,7 @@ setuptools.setup(
         'pydantic>=1.10.0,<2.0', # for spacy compatibility; avoid 2.0 due to breaking changes
         # the following are not direct dependencies of MedCAT but needed for docs/building
         # hopefully will no longer need the transitive dependencies
-        'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec <- datasets <- medcat
+        'aiohttp==3.8.5', # 3.8.3 is needed for compatibility with fsspec <- datasets <- medcat
         'blis<0.8.0,>=0.7.8', # as required by thinc <- spacy <- medcat
         # 'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
         # 'joblib~=1.2',
