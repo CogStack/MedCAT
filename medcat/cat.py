@@ -534,10 +534,14 @@ class CAT(object):
                             anns_norm.append((ann['start'], cui))
                             anns_examples.append({"text": doc['text'][max(0, ann['start']-60):ann['end']+60],
                                                   "cui": cui,
+                                                  "start": ann['start'],
+                                                  "end": ann['end'],
                                                   "source value": ann['value'],
                                                   "acc": 1,
                                                   "project name": project.get('name'),
-                                                  "document name": doc.get('name')})
+                                                  "document name": doc.get('name'),
+                                                  "project id": project.get('id'),
+                                                  "document id": doc.get('id')})
                         elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
                             anns_norm_neg.append((ann['start'], cui))
 
@@ -556,11 +560,14 @@ class CAT(object):
                     p_anns_norm.append((ann.start_char, cui))
                     p_anns_examples.append({"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
                                             "cui": cui,
+                                            "start": ann.start_char,
+                                            "end": ann.end_char,
                                             "source value": ann.text,
                                             "acc": float(ann._.context_similarity),
                                             "project name": project.get('name'),
-                                            "document name": doc.get('name')})
-
+                                            "document name": doc.get('name'),
+                                            "project id": project.get('id'),
+                                            "document id": doc.get('id')})
                 for iann, ann in enumerate(p_anns_norm):
                     cui = ann[1]
                     if ann in anns_norm:
