@@ -8,6 +8,7 @@ services:
     command: >
       bash -c "/etc/init.d/cron start &&
                python /webapp/manage.py runserver 0.0.0.0:8000"
+    restart: always
     volumes:
       - ./webapp/data:/webapp/data
       - ./webapp/db:/webapp/db
