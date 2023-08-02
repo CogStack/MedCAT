@@ -3,7 +3,7 @@ from typing import List, Union
 import pandas as pd
 import tqdm
 import os
-from typing import Dict, Set
+from typing import Dict
 
 _DEFAULT_COLUMNS: list = [
     "CUI",
@@ -240,7 +240,7 @@ class UMLS:
         cui_parent = cui_parent[cui_parent['PAUI'].notna()]
 
         # create dict
-        pt2ch: Dict[str, Set[str]] = {}
+        pt2ch: dict = {}
         for _, row in tqdm.tqdm(cui_parent.iterrows(), total=len(cui_parent.index)):
             cur_cui = row['CUI']
             paui = row['PAUI']

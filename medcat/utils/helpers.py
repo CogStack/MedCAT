@@ -3,6 +3,8 @@ from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
 from medcat.utils.other import TPL_ENT, TPL_ENTS
 
+from spacy import __version__ as spacy_version
+
 import logging
 
 logger = logging.getLogger(__name__)
@@ -517,3 +519,21 @@ def run_cv(cdb_path, data_path, vocab_path, cv=100, nepochs=16, test_size=0.1, l
                 fns[key] = [fn.get(key, 0)]
 
     return fps, fns, tps, ps, rs, f1s, cui_counts, examples
+
+
+def has_new_spacy() -> bool:
+    """Figures out whether or not a newer version of spacy is installed.
+
+    This plays a role in how some parts of the Span needs to be interacted with.
+
+    As of writing, the new version starts at v3.3.1.
+
+    Returns:
+        bool: Whether new version was detected.
+    """
+    major, minor, patch_plus = spacy_version.split('.')
+    major, minor = int(major), int(minor)
+    patch = int(patch_plus)
+    return (major > 3 or
+            (major == 3 and minor > 3) or
+            (major == 3 and minor == 3 and patch >= 1))

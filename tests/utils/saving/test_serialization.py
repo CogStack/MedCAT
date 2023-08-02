@@ -9,11 +9,13 @@ from medcat.cdb import CDB
 from medcat.cat import CAT
 from medcat.vocab import Vocab
 
-from medcat.utils.saving.serializer import JsonSetSerializer, CDBSerializer, SPECIALITY_NAMES
+from medcat.utils.saving.serializer import JsonSetSerializer, CDBSerializer, SPECIALITY_NAMES, ONE2MANY
+
+import medcat.utils.saving.coding as _
 
 
-class JSONSerialoizationTests(unittest.TestCase):
-    folder = os.path.join('temp', 'JSONSerialoizationTests')
+class JSONSerializationTests(unittest.TestCase):
+    folder = os.path.join('temp', 'JSONSerializationTests')
 
     def setUp(self) -> None:
         return super().setUp()
@@ -42,6 +44,11 @@ class CDBSerializationTests(unittest.TestCase):
         self.ser.serialize(self.cdb, overwrite=True)
         cdb = self.ser.deserialize(CDB)
         for name in SPECIALITY_NAMES:
+            if name in ONE2MANY:
+                # ignore cui2many and name2many
+                # since they don't exist if/when
+                # optimisation hasn't been done
+                continue
             with self.subTest(name):
                 orig = getattr(self.cdb, name)
                 now = getattr(cdb, name)
@@ -82,11 +89,19 @@ class ModelCreationTests(unittest.TestCase):
         json_path = os.path.join(model_pack_folder, "*.json")
         jsons = glob.glob(json_path)
         # there is also a model_card.json
-        self.assertGreaterEqual(len(jsons), len(SPECIALITY_NAMES))
+        # but nothing for cui2many or name2many
+        # so can remove the length of ONE2MANY
+        self.assertGreaterEqual(len(jsons), len(
+            SPECIALITY_NAMES) - len(ONE2MANY))
         for json in jsons:
             with self.subTest(f'JSON {json}'):
                 if json.endswith('model_card.json'):
                     continue  # ignore model card here
+                if any(name in json for name in ONE2MANY):
+                    # ignore cui2many and name2many
+                    # since they don't exist if/when
+                    # optimisation hasn't been done
+                    continue
                 self.assertTrue(
                     any(special_name in json for special_name in SPECIALITY_NAMES))
         return model_pack_folder
@@ -128,6 +143,11 @@ class ModelCreationTests(unittest.TestCase):
         self.assertEqual(cat.vocab.unigram_table,
                          self.undertest.vocab.unigram_table)
         for name in SPECIALITY_NAMES:
+            if name in ONE2MANY:
+                # ignore cui2many and name2many
+                # since they don't exist if/when
+                # optimisation hasn't been done
+                continue
             with self.subTest(f'CDB Name {name}'):
                 self.assertEqual(cat.cdb.__dict__[
                                  name], self.undertest.cdb.__dict__[name])

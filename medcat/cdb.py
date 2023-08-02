@@ -95,6 +95,7 @@ class CDB(object):
         self._optim_params = None
         self.is_dirty = False
         self._hash: Optional[str] = None
+        self._memory_optimised_parts: Set[str] = set()
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -180,9 +181,13 @@ class CDB(object):
         for name, cuis2status in self.name2cuis2status.items():
             if cui in cuis2status:
                 del cuis2status[cui]
-        self.snames = set()
-        for cuis in self.cui2snames.values():
-            self.snames |= cuis
+        if isinstance(self.snames, set):
+            # if this is a memory optimised CDB, this won't be a set
+            # but it also won't need to be changed since it
+            # relies directly on cui2snames
+            self.snames = set()
+            for cuis in self.cui2snames.values():
+                self.snames |= cuis
         self.name2count_train = {name: len(cuis) for name, cuis in self.name2cuis.items()}
         self.is_dirty = True
 
@@ -533,12 +538,37 @@ class CDB(object):
         self.reset_concept_similarity()
         self.is_dirty = True
 
+    def populate_cui2snames(self, force: bool = True) -> None:
+        """Populate the cui2snames dict if it's empty.
+
+        If the dict is not empty and the population is not force,
+        nothing will happen.
+
+        For now, this method simply populates all the names form
+        cui2names into cui2snames.
+
+        Args:
+            force (bool, optional): Whether to force the (re-)population. Defaults to True.
+        """
+        if not force and self.cui2snames:
+            return
+        self.cui2snames.clear() # in case forced re-population
+        # run through cui2names
+        # and create new sets so that they can be independently modified
+        for cui, names in self.cui2names.items():
+            self.cui2snames[cui] = set(names)  # new set
+        self.is_dirty = True
+
     def filter_by_cui(self, cuis_to_keep: Union[List[str], Set[str]]) -> None:
         """Subset the core CDB fields (dictionaries/maps). Note that this will potenitally keep a bit more CUIs
         then in cuis_to_keep. It will first find all names that link to the cuis_to_keep and then
         find all CUIs that link to those names and keep all of them.
         This also will not remove any data from cdb.addl_info - as this field can contain data of
         unknown structure.
+
+        As a side note, if the CDB has been memory-optimised, filtering will undo this memory optimisation.
+        This is because the dicts being involved will be rewritten.
+        However, the memory optimisation can be performed again afterwards.
 
         Args:
             cuis_to_keep (List[str]):
@@ -603,6 +633,8 @@ class CDB(object):
         self.cui2type_ids = new_cui2type_ids
         self.cui2preferred_name = new_cui2preferred_name
         self.is_dirty = True
+        # reset memory optimisation state
+        self._memory_optimised_parts.clear()
 
     def make_stats(self):
         stats = {}

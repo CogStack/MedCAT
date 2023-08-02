@@ -75,5 +75,12 @@ class CDBTests(unittest.TestCase):
         assert 'C0000039' not in self.undertest.name2cuis['virus~z']
         assert 'C0000039' not in self.undertest.name2cuis2status['virus~z']
 
+    def test_cui2snames_population(self):
+        self.undertest.cui2snames.clear()
+        self.undertest.populate_cui2snames()
+        for cui in self.undertest.cui2names:
+            with self.subTest(cui):
+                self.assertIn(cui, self.undertest.cui2snames)
+
 if __name__ == '__main__':
     unittest.main()
