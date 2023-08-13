@@ -5,7 +5,7 @@ from medcat.vocab import Vocab
 from medcat.pipe import Pipe
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.iterators import SimpleIter
-from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.preprocessing.taggers import tag_skip_punct_lang
 
 
 logger = logging.getLogger(__name__)
@@ -44,9 +44,9 @@ class MakeVocab(object):
 
         # Build the required spacy pipeline
         self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
-        self.pipe.add_tagger(tagger=tag_skip_and_punct,
-                             name='skip_and_punct',
-                             additional_fields=['is_punct'])
+        self.pipe.add_tagger(tagger=tag_skip_punct_lang,
+                             name='skip_punct_lang',
+                             additional_fields=['is_punct', 'lang'])
 
         # Get the tokenizer
         if word_tokenizer is not None:
