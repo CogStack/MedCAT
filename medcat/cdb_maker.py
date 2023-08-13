@@ -11,7 +11,7 @@ from medcat.config import Config
 # from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.preprocessing.tokenizers import thai_tokenizer_factory
 from medcat.preprocessing.cleaners import prepare_name
-from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.preprocessing.taggers import tag_skip_punct_lang
 
 
 logger = logging.getLogger(__name__)
@@ -45,9 +45,9 @@ class CDBMaker(object):
 
         # Build the required spacy pipeline
         self.pipe = Pipe(tokenizer=thai_tokenizer_factory, config=config)
-        self.pipe.add_tagger(tagger=tag_skip_and_punct,
-                             name='skip_and_punct',
-                             additional_fields=['is_punct'])
+        self.pipe.add_tagger(tagger=tag_skip_punct_lang,
+                             name='skip_punct_lang',
+                             additional_fields=['is_punct', 'lang'])
 
     def prepare_csvs(self,
                      csv_paths: Union[pd.DataFrame, List[str]],

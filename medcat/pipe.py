@@ -15,7 +15,7 @@ from medcat.ner.vocab_based_ner import NER
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
-from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.preprocessing.taggers import tag_skip_punct_lang
 from medcat.ner.transformers_ner import TransformersNER
 
 
@@ -192,7 +192,7 @@ class Pipe(object):
             inner_parallel = False
 
         component_cfg = {
-            tag_skip_and_punct.name: {  # type: ignore
+            tag_skip_punct_lang.name: {  # type: ignore
                 'parallel': inner_parallel
             },
             TokenNormalizer.name: {
