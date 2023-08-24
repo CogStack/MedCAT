@@ -24,6 +24,15 @@ problems. Please try again later.</p>
 </body></html>
 """
 
+ERROR_403 = b"""<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+"""
+
 SIMPLE_WORDS = """house	34444	 0.3232 0.123213 1.231231
 dog	14444	0.76762 0.76767 1.45454"""
 
@@ -54,6 +63,8 @@ class VocabDownloader:
             content = f.read()
         if content == ERROR_503:
             return False
+        if content == ERROR_403:
+            return False
         v = Vocab.load(self.vocab_path)
         if len(v.vocab) == 2:  # simple one
             self._has_simple = True
@@ -64,7 +75,7 @@ class VocabDownloader:
         if os.path.exists(self.vocab_path) and self.is_valid():
             return
         tmp = requests.get(self.url)
-        if tmp.content == ERROR_503:
+        if tmp.content == ERROR_503 or tmp.content == ERROR_403:
             print('Rosalind server unavailable')
             if self._has_simple:
                 print('Local simple vocab already present')
