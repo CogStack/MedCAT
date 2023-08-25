@@ -54,7 +54,7 @@ def generate_simple_vocab():
 
 
 class VocabDownloader:
-    url = 'https://medcat.rosalind.kcl.ac.uk/media/vocab.dat'
+    url = 'https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/vocab.dat'
     vocab_path = "./tmp_vocab.dat"
     _has_simple = False
 
