@@ -327,7 +327,7 @@ class Snomed:
             raise FileNotFoundError('Incorrect path to SNOMED CT directory')
         return paths, snomed_releases
 
-    def _refset_df2dict(refset_df: pd.DataFrame) -> dict:
+    def _refset_df2dict(self, refset_df: pd.DataFrame) -> dict:
         """
         This function takes a SNOMED refset DataFrame as an input and converts it into a dictionary.
         The DataFrame should contain the columns 'referencedComponentId','mapTarget','mapGroup','mapPriority','mapRule','mapAdvice'.
