@@ -24,6 +24,15 @@ problems. Please try again later.</p>
 </body></html>
 """
 
+ERROR_403 = b"""<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML 2.0//EN">
+<html><head>
+<title>403 Forbidden</title>
+</head><body>
+<h1>Forbidden</h1>
+<p>You don't have permission to access this resource.</p>
+</body></html>
+"""
+
 SIMPLE_WORDS = """house	34444	 0.3232 0.123213 1.231231
 dog	14444	0.76762 0.76767 1.45454"""
 
@@ -45,7 +54,7 @@ def generate_simple_vocab():
 
 
 class VocabDownloader:
-    url = 'https://medcat.rosalind.kcl.ac.uk/media/vocab.dat'
+    url = 'https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/vocab.dat'
     vocab_path = "./tmp_vocab.dat"
     _has_simple = False
 
@@ -53,6 +62,8 @@ class VocabDownloader:
         with open(self.vocab_path, 'rb') as f:
             content = f.read()
         if content == ERROR_503:
+            return False
+        if content == ERROR_403:
             return False
         v = Vocab.load(self.vocab_path)
         if len(v.vocab) == 2:  # simple one
@@ -64,7 +75,7 @@ class VocabDownloader:
         if os.path.exists(self.vocab_path) and self.is_valid():
             return
         tmp = requests.get(self.url)
-        if tmp.content == ERROR_503:
+        if tmp.content == ERROR_503 or tmp.content == ERROR_403:
             print('Rosalind server unavailable')
             if self._has_simple:
                 print('Local simple vocab already present')
