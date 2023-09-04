@@ -28,7 +28,11 @@ class FakeDict:
     """
 
     def __getitem__(self, arg: str) -> Any:
-        return getattr(self, arg)
+        try:
+            return getattr(self, arg)
+        except AttributeError as e:
+            raise KeyError from e
+
 
     def __setitem__(self, arg: str, val) -> None:
         setattr(self, arg, val)
