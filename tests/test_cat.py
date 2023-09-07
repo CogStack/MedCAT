@@ -272,15 +272,15 @@ class CATTests(unittest.TestCase):
         after = str(self.undertest.config.linking.filters)
         self.assertNotEqual(before, after)
         with open(data_path, 'r') as f:
-            project0 = json.load(f)['projects'][0]
-        filtered_cuis = project0['cuis'].split(',')
+            projects = json.load(f)['projects']
+        filtered_cuis = [cui for project in projects for cui in project['cuis'].split(',')]
         if extra_cui_filter and retain_extra_cui_filter:
             # in case of extra_cui_filter and its retention, only it is retained
             filtered_cuis = extra_cui_filter
         self.assertGreater(len(filtered_cuis), 0)
         for filtered_cui in filtered_cuis:
             with self.subTest(f'CUI: {filtered_cui}'):
-                self.assertTrue(filtered_cui in self.undertest.config.linking.filters.cuis)
+                self.assertIn(filtered_cui, self.undertest.config.linking.filters.cuis)
 
     def test_train_supervised_no_leak_extra_cui_filters(self):
         self.test_train_supervised_does_not_retain_MCT_filters_default(extra_cui_filter={'C123', 'C111'})
