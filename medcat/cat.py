@@ -1103,7 +1103,7 @@ class CAT(object):
                 if retain_filters and extra_cui_filter and not retain_extra_cui_filter:
                     # adding project filters without extra_cui_filters
                     self._set_project_filters(local_filters, project, set(), use_filters)
-                    self.config.linking.filters.merge_with(local_filters)
+                    orig_filters.merge_with(local_filters)
                     # adding extra_cui_filters, but NOT project filters
                     self._set_project_filters(local_filters, project, extra_cui_filter, False)
                     # refrain from doing it again for subsequent epochs
@@ -1149,7 +1149,7 @@ class CAT(object):
                         checkpoint.save(self.cdb, latest_trained_step)
                 # if retaining MCT filters AND (if they exist) extra_cui_filters
                 if retain_filters:
-                    self.config.linking.filters.merge_with(local_filters)
+                    orig_filters.merge_with(local_filters)
                     # refrain from doing it again for subsequent epochs
                     retain_filters = False
 
