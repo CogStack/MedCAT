@@ -490,7 +490,8 @@ class CAT(object):
         fp_docs: Set = set()
         fn_docs: Set = set()
 
-        local_filters = self.config.linking.filters.copy_of()
+        orig_filters = self.config.linking.filters.copy_of()
+        local_filters = self.config.linking.filters
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             local_filters.cuis = set()
 
@@ -644,6 +645,8 @@ class CAT(object):
 
         except Exception:
             traceback.print_exc()
+
+        self.config.linking.filters = orig_filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
@@ -1033,7 +1036,13 @@ class CAT(object):
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
-        local_filters = self.config.linking.filters.copy_of()
+        # the config.linking.filters stuff is used directly in
+        # medcat.linking.context_based_linker and medcat.linking.vector_context_model
+        # as such, they need to be kept up to date with per-project filters
+        # However, the original state needs to be kept track of
+        # so that it can be restored after training
+        orig_filters = self.config.linking.filters.copy_of()
+        local_filters = self.config.linking.filters
 
         fp = fn = tp = p = r = f1 = examples = {}
 
@@ -1094,7 +1103,7 @@ class CAT(object):
                 if retain_filters and extra_cui_filter and not retain_extra_cui_filter:
                     # adding project filters without extra_cui_filters
                     self._set_project_filters(local_filters, project, set(), use_filters)
-                    self.config.linking.filters.merge_with(local_filters)
+                    orig_filters.merge_with(local_filters)
                     # adding extra_cui_filters, but NOT project filters
                     self._set_project_filters(local_filters, project, extra_cui_filter, False)
                     # refrain from doing it again for subsequent epochs
@@ -1140,7 +1149,7 @@ class CAT(object):
                         checkpoint.save(self.cdb, latest_trained_step)
                 # if retaining MCT filters AND (if they exist) extra_cui_filters
                 if retain_filters:
-                    self.config.linking.filters.merge_with(local_filters)
+                    orig_filters.merge_with(local_filters)
                     # refrain from doing it again for subsequent epochs
                     retain_filters = False
 
@@ -1161,6 +1170,9 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
+
+        # reset the state of filters
+        self.config.linking.filters = orig_filters
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
