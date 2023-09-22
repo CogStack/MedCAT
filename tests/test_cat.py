@@ -367,7 +367,7 @@ class CATTests(unittest.TestCase):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(repr(cat._meta_cats), repr([meta_cat]))
@@ -377,7 +377,7 @@ class CATTests(unittest.TestCase):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(cat._meta_cats, [])
@@ -385,7 +385,7 @@ class CATTests(unittest.TestCase):
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
 
 
