@@ -5,7 +5,7 @@ import json
 import logging
 import aiofiles
 import numpy as np
-from typing import Dict, Set, Optional, List, Union
+from typing import Dict, Set, Optional, List, Union, cast
 from functools import partial
 import os
 
@@ -485,7 +485,7 @@ class CDB(object):
                                  "(the default save in this version)")
             # if the only config is in the separate config.json file
             # this should be the behaviour for all newer models
-            self.config = Config.load(config_path)
+            self.config = cast(Config, Config.load(config_path))
             logger.debug("Loaded config from CDB from %s", config_path)
         # mark config read from file
         self._config_from_file = True
