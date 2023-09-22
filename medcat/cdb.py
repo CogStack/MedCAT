@@ -7,6 +7,7 @@ import aiofiles
 import numpy as np
 from typing import Dict, Set, Optional, List, Union
 from functools import partial
+import os
 
 from medcat import __version__
 from medcat.utils.hasher import Hasher
@@ -61,8 +62,10 @@ class CDB(object):
     def __init__(self, config: Union[Config, None] = None) -> None:
         if config is None:
             self.config = Config()
+            self._config_from_file = False
         else:
             self.config = config
+            self._config_from_file = True
         self.name2cuis: Dict = {}
         self.name2cuis2status: Dict = {}
 
@@ -457,6 +460,35 @@ class CDB(object):
                 'cdb': {k: v for k, v in self.__dict__.items() if k != 'config'}
             }
             await f.write(dill.dumps(to_save))
+
+    def load_config(self, config_path: str) -> None:
+        if not os.path.exists(config_path):
+            if not self._config_from_file:
+                # if there's no config defined anywhere
+                raise ValueError("Could not find a config in the CDB nor ",
+                                 "in the config.json for this model "
+                                 f"({os.path.dirname(config_path)})",
+                                 )
+            # if there is a config, but it's defined in the cdb.dat file
+            logger.warning("Could not find config.json in model pack folder "
+                           f"({os.path.dirname(config_path)}). "
+                           "This is probably an older model. Please save the model "
+                           "again in the new format to avoid potential issues.")
+        else:
+            if self._config_from_file:
+                # if there's a config.json and one defined in the cbd.dat file
+                raise ValueError("Found a config in the CDB and in the config.json "
+                                 f"for model ({os.path.dirname(config_path)}) - "
+                                 "this is ambiguous. Please either remove the "
+                                 "config.json or load the CDB without the config.json "
+                                 "in the folder and re-save in the newer format "
+                                 "(the default save in this version)")
+            # if the only config is in the separate config.json file
+            # this should be the behaviour for all newer models
+            self.config = Config.load(config_path)
+            logger.debug("Loaded config from CDB from %s", config_path)
+        # mark config read from file
+        self._config_from_file = True
 
     @classmethod
     def load(cls, path: str, json_path: Optional[str] = None, config_dict: Optional[Dict] = None) -> "CDB":
