@@ -98,6 +98,12 @@ class CDB(object):
         self._optim_params = None
         self.is_dirty = False
         self._hash: Optional[str] = None
+        # the config hash is kept track of here so that
+        # the CDB hash can be re-calculated when the config changes
+        # it can also be used to make sure the config loaded with
+        # a CDB matches the config it was saved with
+        # since the config is now saved separately
+        self._config_hash: Optional[str] = None
         self._memory_optimised_parts: Set[str] = set()
 
     def get_name(self, cui: str) -> str:
@@ -809,8 +815,34 @@ which may or may not work. If you experience any compatibility issues, please re
 or download the compatible model."""
             )
 
+    def _should_recalc_hash(self, force_recalc: bool) -> bool:
+        if force_recalc:
+            return True
+        if self.config.hash is None:
+            # TODO - perhaps this is not the best?
+            # as this is a side effect
+            # get and save result in config
+            self.config.get_hash()
+        if not self._hash or self.is_dirty:
+            # if no hash saved or is dirty
+            # need to calculate
+            logger.debug("Recalculating hash due to %s",
+                         "no hash saved" if not self._hash else "CDB is dirty")
+            return True
+        # recalc config hash in case it changed
+        self.config.get_hash()
+        if self._config_hash is None or self._config_hash != self.config.hash:
+            # if no config hash saved
+            # or if the config hash is different from one saved in here
+            logger.debug("Recalculating hash due to %s",
+                         "no config hash saved" if not self._config_hash
+                         else "config hash has changed")
+            return True
+        return False
+
     def get_hash(self, force_recalc: bool = False):
-        if not force_recalc and self._hash and not self.is_dirty:
+        should_recalc = self._should_recalc_hash(force_recalc)
+        if not should_recalc:
             logger.info("Reusing old hash of CDB since the CDB has not changed: %s", self._hash)
             return self._hash
         self.is_dirty = False
@@ -823,13 +855,16 @@ or download the compatible model."""
         for k,v in self.__dict__.items():
             if k in ['cui2countext_vectors', 'name2cuis']:
                 hasher.update(v, length=False)
-            elif k in ['_hash', 'is_dirty']:
+            elif k in ['_hash', 'is_dirty', '_config_hash']:
                 # ignore _hash since if it previously didn't exist, the
                 # new hash would be different when the value does exist
                 # and ignore is_dirty so that we get the same hash as previously
                 continue
             elif k != 'config':
                 hasher.update(v, length=True)
+
+        # set cached config hash
+        self._config_hash = self.config.hash
 
         self._hash = hasher.hexdigest()
         logger.info("Found new CDB hash: %s", self._hash)
