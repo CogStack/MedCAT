@@ -24,7 +24,7 @@ setuptools.setup(
         'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
         'transformers>=4.19.2,<4.22.0', # upper bound is needed for the de-id model until it is retrained
-        'tokenizers>=0.12.0', # 0.13.1 doesn't seem to build
+        'tokenizers~=0.12', # 0.13.1 doesn't seem to build
         'torch>=1.13.0', # first to support 3.11
         'tqdm>=4.27',
         'scikit-learn>=1.1.3', # first to supporrt 3.11
