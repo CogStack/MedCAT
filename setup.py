@@ -23,7 +23,8 @@ setuptools.setup(
         'gensim>=4.3.0', # first to support 3.11
         'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
-        'transformers>=4.34',
+        'transformers>=4.34.0',
+        'accelerate>=0.23.0', # required by Trainer class in de-id
         'torch>=1.13.0', # first to support 3.11
         'tqdm>=4.27',
         'scikit-learn>=1.1.3', # first to supporrt 3.11
