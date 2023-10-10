@@ -15,7 +15,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
-              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.ner',
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner',
               'medcat.utils.saving', 'medcat.utils.regression'],
     install_requires=[
         'numpy>=1.22.0', # first to support 3.11
@@ -23,8 +23,8 @@ setuptools.setup(
         'gensim>=4.3.0', # first to support 3.11
         'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
-        'transformers>=4.19.2,<4.22.0', # upper bound is needed for the de-id model until it is retrained
-        'tokenizers~=0.12', # 0.13.1 doesn't seem to build
+        'transformers>=4.34.0',
+        'accelerate>=0.23.0', # required by Trainer class in de-id
         'torch>=1.13.0', # first to support 3.11
         'tqdm>=4.27',
         'scikit-learn>=1.1.3', # first to supporrt 3.11
@@ -34,7 +34,6 @@ setuptools.setup(
         'psutil>=5.8.0',
         # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
         'multiprocess~=0.70.12',  # 0.70.14 seemed to work just fine
-        'py2neo~=2021.2.3',
         'aiofiles>=0.8.0', # allow later versions, tested with 22.1.0
         'ipywidgets>=7.6.5', # allow later versions, tested with 0.8.0
         'xxhash>=3.0.0', # allow later versions, tested with 3.1.0
