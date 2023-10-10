@@ -18,7 +18,9 @@ setuptools.setup(
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner',
               'medcat.utils.saving', 'medcat.utils.regression'],
     install_requires=[
-        'numpy>=1.22.0', # first to support 3.11
+        # the max version is for scipy support while building docs
+        # (doesn't seem to affect other stuff)
+        'numpy>=1.22.0,<1.26.0', # first to support 3.11
         'pandas>=1.4.2', # first to support 3.11
         'gensim>=4.3.0', # first to support 3.11
         'spacy>=3.1.0',
