@@ -15,7 +15,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.cogstack', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
-              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.ner',
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner',
               'medcat.utils.saving', 'medcat.utils.regression'],
     install_requires=[
         'numpy>=1.21.4',
@@ -35,7 +35,6 @@ setuptools.setup(
         'psutil>=5.8.0',
         # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
         'multiprocess==0.70.12',  # seems to work better than standard mp
-        'py2neo==2021.2.3',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==3.0.0',
