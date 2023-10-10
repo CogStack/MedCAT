@@ -4,3 +4,4 @@ myst-parser~=0.17
 sphinx-autoapi~=1.8
 setuptools>=60.0
 aiohttp==3.8.5
+numpy>=1.22.0,<1.26.0
