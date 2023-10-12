@@ -40,7 +40,7 @@ setuptools.setup(
         'xxhash==3.0.0',
         'blis<=0.7.5',
         'click<=8.0.4',  # Spacy breaks without this
-        'pydantic!=1.8,!=1.8.1,<1.9.0,>=1.7.4', # identical constraints to thinc and spacy
+        'pydantic<1.8,>=1.7.4', # trying to lower the pydantic version
         # the following are not direct dependencies of MedCAT but needed for docs/building
         'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
         'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
