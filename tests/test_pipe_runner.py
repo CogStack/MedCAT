@@ -1,6 +1,6 @@
 import unittest
 from spacy.lang.en import English
-from spacy.tokens import Span
+from spacy.tokens import Span, Doc
 from medcat.pipeline.pipe_runner import PipeRunner
 
 
@@ -10,6 +10,9 @@ class PipeRunnerTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
         cls.nlp = English()
+        # this is also done in medcat.pipe
+        # but having it not done can cause issues
+        Doc.set_extension('ents', default=[], force=True)
 
     def test_pipe_multi_workers(self):
         docs = list(_PipeRunnerImpl(workers=2).pipe(
