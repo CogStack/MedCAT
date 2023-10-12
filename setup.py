@@ -20,7 +20,7 @@ setuptools.setup(
         'numpy>=1.21.4',
         'pandas<=1.4.2,>=1.1.5',
         'gensim~=4.1.2',
-        'spacy==3.7.0', # seems to be needed to work in 2023
+        'spacy<3.1.4,>=3.1.0',
         'scipy<=1.8.1,>=1.5.4',
         'transformers~=4.19.2',
         'torch>=1.0',
@@ -39,7 +39,7 @@ setuptools.setup(
         'xxhash==3.0.0',
         'blis<=0.7.5',
         'click<=8.0.4',  # Spacy breaks without this
-        'pydantic==1.10.13', # seems to be needed to work in 2023
+        'pydantic!=1.8,!=1.8.1,<1.9.0,>=1.7.4', # identical constraints to thinc and spacy
         # the following are not direct dependencies of MedCAT but needed for docs/building
         'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec
         'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
