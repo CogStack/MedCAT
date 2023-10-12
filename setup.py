@@ -20,7 +20,7 @@ setuptools.setup(
         'numpy>=1.21.4',
         'pandas<=1.4.2,>=1.1.5',
         'gensim~=4.1.2',
-        'spacy~=3.4.0', # seems to be needed to work in 2023
+        'spacy==3.7.0', # seems to be needed to work in 2023
         'scipy<=1.8.1,>=1.5.4',
         'transformers~=4.19.2',
         'torch>=1.0',
