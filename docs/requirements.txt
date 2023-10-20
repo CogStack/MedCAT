@@ -96,7 +96,7 @@ types-aiofiles==0.8.3
 types-setuptools==57.4.10
 typing-extensions==4.8.0
 tzdata==2023.3
-urllib3==2.0.6
+urllib3==2.0.7
 wasabi==0.10.1
 wcwidth==0.2.8
 widgetsnbextension==4.0.9
