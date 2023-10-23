@@ -1546,7 +1546,22 @@ class CAT(object):
 
         return docs
 
-    def multiprocessing_pipe(self,
+    @deprecated(message="Use `multiprocessing_batch_nr_of_docs` instead")
+    def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
+                             nproc: Optional[int] = None,
+                             batch_size: Optional[int] = None,
+                             only_cui: bool = False,
+                             addl_info: List[str] = [],
+                             return_dict: bool = True,
+                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
+        return self.multiprocessing_batch_nr_of_docs(in_data=in_data, nproc=nproc,
+                                                     batch_size=batch_size,
+                                                     only_cui=only_cui,
+                                                     addl_info=addl_info,
+                                                     return_dict=return_dict,
+                                                     batch_factor=batch_factor)
+
+    def multiprocessing_batch_nr_of_docs(self,
                              in_data: Union[List[Tuple], Iterable[Tuple]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
@@ -1554,7 +1569,12 @@ class CAT(object):
                              addl_info: List[str] = [],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        """Run multiprocessing NOT FOR TRAINING
+        """Run multiprocessing NOT FOR TRAINING.
+
+        Thios method batches the data based on the number of documents as specified by the user.
+
+        PS:
+        This method supports Windows.
 
         Args:
             in_data (Union[List[Tuple], Iterable[Tuple]]): List with format: [(id, text), (id, text), ...]
