@@ -60,7 +60,7 @@ class CATTests(unittest.TestCase):
             (2, ""),
             (3, None)
         ]
-        out = self.undertest.multiprocessing(in_data, nproc=1)
+        out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1)
 
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))

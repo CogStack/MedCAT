@@ -1327,6 +1327,7 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
+    @deprecated(message="Use `multiprocessing_batch_char_size` instead")
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
                         nproc: int = 2,
@@ -1337,8 +1338,30 @@ class CAT(object):
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
+        return self.multiprocessing_batch_char_size(data=data, nproc=nproc,
+                                                    batch_size_chars=batch_size_chars,
+                                                    only_cui=only_cui, addl_info=addl_info,
+                                                    separate_nn_components=separate_nn_components,
+                                                    out_split_size_chars=out_split_size_chars,
+                                                    save_dir_path=save_dir_path,
+                                                    min_free_memory=min_free_memory)
+
+    def multiprocessing_batch_char_size(self,
+                                        data: Union[List[Tuple], Iterable[Tuple]],
+                                        nproc: int = 2,
+                                        batch_size_chars: int = 5000 * 1000,
+                                        only_cui: bool = False,
+                                        addl_info: List[str] = [],
+                                        separate_nn_components: bool = True,
+                                        out_split_size_chars: Optional[int] = None,
+                                        save_dir_path: str = os.path.abspath(os.getcwd()),
+                                        min_free_memory=0.1) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
+
+        This method batches the data based on the number of characters as specified by user.
+
+        PS: This method is unlikely to work on a Windows machine.
 
         Args:
             data:
