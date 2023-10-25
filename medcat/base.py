@@ -29,7 +29,7 @@ class CATBase(ABC):
         Returns:
             str: The resulting hash
         """
-    
+
     @abstractmethod
     def get_model_card(self, as_dict: bool = False):
         """A minimal model card for MedCAT model packs.
@@ -70,7 +70,7 @@ class CATBase(ABC):
             str:
                 Model pack name
         """
-    
+
     @abstractmethod
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         """Push the text through the pipeline.
@@ -272,7 +272,7 @@ class CATBase(ABC):
         Returns:
             str: Json with fields {'entities': <>, 'text': text}.
         """
-    
+
     @abstractmethod
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
