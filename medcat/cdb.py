@@ -14,7 +14,7 @@ from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
 from medcat.utils.saving.serializer import CDBSerializer
-from medcat.base import CDBBase
+from medcat.cdbbase import CDBBase
 
 
 logger = logging.getLogger(__name__)
