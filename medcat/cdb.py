@@ -14,12 +14,13 @@ from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
 from medcat.utils.saving.serializer import CDBSerializer
+from medcat.base import CDBBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class CDB(object):
+class CDB(CDBBase):
     """Concept DataBase - holds all information necessary for NER+L.
 
     Properties:

@@ -1,14 +1,20 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Iterable, Dict, List, Union, Tuple, Set
-import json
 import os
 
 from spacy.tokens import Doc
 
 from medcat.utils.checkpoint import Checkpoint
+from medcat.config import Config
+from medcat.cdbbase import CDBBase
+
 
 class CATBase(ABC):
     DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
+
+    def __init__(self) -> None:
+        self.cdb: CDBBase
+        self.config: Config
 
     @abstractmethod
     def get_hash(self, force_recalc: bool = False) -> str:
