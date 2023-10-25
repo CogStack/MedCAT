@@ -41,6 +41,7 @@ from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
+from medcat.base import CATBase
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
@@ -49,7 +50,7 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 HAS_NEW_SPACY = has_new_spacy()
 
 
-class CAT(object):
+class CAT(CATBase):
     """The main MedCAT class used to annotate documents, it is built on top of spaCy
     and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
     be used as a spacy nlp model.
@@ -82,7 +83,6 @@ class CAT(object):
         >>> spacy_doc = cat("Put some text here")
         >>> print(spacy_doc.ents) # Detected entities
     """
-    DEFAULT_MODEL_PACK_NAME = "medcat_model_pack"
 
     def __init__(self,
                  cdb: CDB,
@@ -217,7 +217,7 @@ class CAT(object):
             version.medcat_version = __version__
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False,
+    def create_model_pack(self, save_dir_path: str, model_pack_name: str = CATBase.DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False,
             cdb_format: str = 'dill') -> str:
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
