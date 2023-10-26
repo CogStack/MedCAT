@@ -59,7 +59,7 @@ class StatsBuilder:
         self.filters.cuis = set()
 
         # Add extra filter if set
-        set_project_filters(self.addl_info, project, self.extra_cui_filter, self.use_project_filters)
+        set_project_filters(self.addl_info, self.filters, project, self.extra_cui_filter, self.use_project_filters)
 
         documents = project["documents"]
         for dind, doc in tqdm(
@@ -89,7 +89,7 @@ class StatsBuilder:
             p_anns = spacy_doc.ents
 
         (anns_norm, anns_norm_neg,
-         anns_examples, _) = self._preprocess_annotations(anns)
+         anns_examples, _) = self._preprocess_annotations(project_name, project_id, doc, anns)
 
         p_anns_norm, p_anns_examples = self._process_p_anns(project_name, project_id,
                                                             doc, p_anns)
@@ -167,7 +167,8 @@ class StatsBuilder:
                 "project id": project_id,
                 "document id": doc.get('id')}
 
-    def _preprocess_annotations(self, anns: List[Dict]) -> Tuple[list, list, list, list]:
+    def _preprocess_annotations(self, project_name: str, project_id: str,
+                                doc: Doc, anns: List[Dict]) -> Tuple[list, list, list, list]:
         anns_norm = []
         anns_norm_neg = []
         anns_examples = []
@@ -180,7 +181,7 @@ class StatsBuilder:
 
                 if ann.get('validated', True) and (not ann.get('killed', False) and not ann.get('deleted', False)):
                     anns_norm.append((ann['start'], cui))
-                    anns_examples.append()
+                    anns_examples.append(self._create_annoation(project_name, project_id, cui, doc, ann))
                 elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
                     anns_norm_neg.append((ann['start'], cui))
 

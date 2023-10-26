@@ -474,7 +474,7 @@ class CAT(CATBase):
             examples (dict):
                 Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
         """
-        return _print_stats(data=data, epoch=epoch, use_project_filters=use_project_filters,
+        return _print_stats(self, data=data, epoch=epoch, use_project_filters=use_project_filters,
                             use_overlaps=use_overlaps, use_cui_doc_limit=use_cui_doc_limit,
                             use_groups=use_groups, extra_cui_filter=extra_cui_filter)
 
