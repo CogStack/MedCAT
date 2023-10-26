@@ -267,14 +267,15 @@ class StatsBuilder:
                             extra_cui_filter=extra_cui_filter)
 
 
-def print_stats(cat: CATBase,
-                data: Dict,
-                epoch: int = 0,
-                use_project_filters: bool = False,
-                use_overlaps: bool = False,
-                use_cui_doc_limit: bool = False,
-                use_groups: bool = False,
-                extra_cui_filter: Optional[Set] = None) -> Tuple:
+def get_stats(cat: CATBase,
+              data: Dict,
+              epoch: int = 0,
+              use_project_filters: bool = False,
+              use_overlaps: bool = False,
+              use_cui_doc_limit: bool = False,
+              use_groups: bool = False,
+              extra_cui_filter: Optional[Set] = None,
+              do_print: bool = True) -> Tuple:
     """TODO: Refactor and make nice
     Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
@@ -314,6 +315,8 @@ def print_stats(cat: CATBase,
             Number of occurrence for each CUI.
         examples (dict):
             Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
+        do_print (bool):
+            Whether to print stats out. Defaults to True.
     """
     orig_filters = cat.config.linking.filters.copy_of()
     local_filters = cat.config.linking.filters
@@ -328,7 +331,7 @@ def print_stats(cat: CATBase,
         builder.process_project(project)
 
     # this is the part that prints out the stats
-    builder.finalise_report(epoch, do_print=True)
+    builder.finalise_report(epoch, do_print=do_print)
 
     cat.config.linking.filters = orig_filters
 

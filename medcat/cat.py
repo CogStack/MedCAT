@@ -38,7 +38,7 @@ from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
-from medcat.stats.stats import print_stats as _print_stats
+from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
 from medcat.base import CATBase
 
@@ -433,7 +433,8 @@ class CAT(CATBase):
                      use_overlaps: bool = False,
                      use_cui_doc_limit: bool = False,
                      use_groups: bool = False,
-                     extra_cui_filter: Optional[Set] = None) -> Tuple:
+                     extra_cui_filter: Optional[Set] = None,
+                     do_print: bool = True) -> Tuple:
         """TODO: Refactor and make nice
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
@@ -473,10 +474,12 @@ class CAT(CATBase):
                 Number of occurrence for each CUI.
             examples (dict):
                 Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
+            do_print (bool):
+                Whether to print stats out. Defaults to True.
         """
-        return _print_stats(self, data=data, epoch=epoch, use_project_filters=use_project_filters,
-                            use_overlaps=use_overlaps, use_cui_doc_limit=use_cui_doc_limit,
-                            use_groups=use_groups, extra_cui_filter=extra_cui_filter)
+        return get_stats(self, data=data, epoch=epoch, use_project_filters=use_project_filters,
+                         use_overlaps=use_overlaps, use_cui_doc_limit=use_cui_doc_limit,
+                         use_groups=use_groups, extra_cui_filter=extra_cui_filter, do_print=do_print)
 
     def _init_ckpts(self, is_resumed, checkpoint):
         if self.config.general.checkpoint.steps is not None or checkpoint is not None:
