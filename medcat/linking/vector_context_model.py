@@ -3,7 +3,7 @@ import logging
 from typing import Tuple, Dict, List, Union
 from spacy.tokens import Span, Doc
 from medcat.utils.matutils import unitvec
-from medcat.cdbbase import CDBBase
+from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.config import Config
 import random
@@ -21,7 +21,7 @@ class ContextModel(object):
         config (Config): The config to be used
     """
 
-    def __init__(self, cdb: CDBBase, vocab: Vocab, config: Config) -> None:
+    def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb
         self.vocab = vocab
         self.config = config

@@ -4,13 +4,13 @@ once the software is trained the main thing are the context vectors.
 import logging
 from typing import List, Optional
 from spacy.tokens import Span, Token, Doc
-from medcat.cdbbase import CDBBase
+from medcat.cdb import CDB
 from medcat.config import Config
 
 logger = logging.getLogger(__name__)
 
 
-def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDBBase, config: Config, label: str = 'concept') -> Optional[Span]:
+def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config: Config, label: str = 'concept') -> Optional[Span]:
     """Given a name it will check should it be annotated based on config rules. If yes
     the annotation will be added to the doc._.ents array.
 

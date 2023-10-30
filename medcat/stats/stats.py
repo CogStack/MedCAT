@@ -5,7 +5,6 @@ import traceback
 
 from spacy.tokens import Doc
 
-from medcat.base import CATBase
 from medcat.utils.filters import set_project_filters
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.config import LinkingFilters
@@ -247,7 +246,7 @@ class StatsBuilder:
                 self.cui_counts, self.examples)
 
     @classmethod
-    def from_cat(cls, cat: CATBase,
+    def from_cat(cls, cat,
                  local_filters: LinkingFilters,
                  use_project_filters: bool = False,
                  use_overlaps: bool = False,
@@ -268,7 +267,7 @@ class StatsBuilder:
                             extra_cui_filter=extra_cui_filter)
 
 
-def get_stats(cat: CATBase,
+def get_stats(cat,
               data: Dict,
               epoch: int = 0,
               use_project_filters: bool = False,
@@ -281,6 +280,8 @@ def get_stats(cat: CATBase,
     Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
     Args:
+        cat: (CAT):
+            The model pack.
         data (list of dict):
             The json object that we get from MedCATtrainer on export.
         epoch (int):

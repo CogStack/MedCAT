@@ -2,7 +2,7 @@ import logging
 from spacy.tokens import Doc
 from medcat.ner.vocab_based_annotator import maybe_annotate_name
 from medcat.pipeline.pipe_runner import PipeRunner
-from medcat.cdbbase import CDBBase
+from medcat.cdb import CDB
 from medcat.config import Config
 
 
@@ -15,7 +15,7 @@ class NER(PipeRunner):
     name = 'cat_ner'
 
     # Override
-    def __init__(self, cdb: CDBBase, config: Config) -> None:
+    def __init__(self, cdb: CDB, config: Config) -> None:
         self.config = config
         self.cdb = cdb
         super().__init__(self.config.general.workers)

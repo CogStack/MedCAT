@@ -4,7 +4,7 @@ from spacy.tokens import Doc
 
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.cat import CAT
-from medcat.cdbbase import CDBBase
+from medcat.cdb import CDB
 from medcat.config import Config
 
 
@@ -75,7 +75,7 @@ class NerModel:
         return self.cat.config
 
     @property
-    def cdb(self) -> CDBBase:
+    def cdb(self) -> CDB:
         return self.cat.cdb
 
     @classmethod

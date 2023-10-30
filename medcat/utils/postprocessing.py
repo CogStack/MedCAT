@@ -1,6 +1,6 @@
 from spacy.tokens import Span, Doc
 from typing import Optional, List
-from medcat.cdbbase import CDBBase
+from medcat.cdb import CDB
 from enum import Enum, auto
 
 
@@ -9,12 +9,12 @@ class LabelStyle(Enum):
     long = auto()
 
 
-def map_ents_to_groups(cdb: CDBBase, doc: Doc) -> None:
+def map_ents_to_groups(cdb: CDB, doc: Doc) -> None:
     for ent in doc.ents:
         ent._.cui = cdb.addl_info['cui2group'].get(ent._.cui, ent._.cui)
 
 
-def make_pretty_labels(cdb: CDBBase, doc: Doc, style: Optional[LabelStyle] = None) -> None:
+def make_pretty_labels(cdb: CDB, doc: Doc, style: Optional[LabelStyle] = None) -> None:
     ents = list(doc.ents)
 
     n_ents = []
@@ -34,7 +34,7 @@ def make_pretty_labels(cdb: CDBBase, doc: Doc, style: Optional[LabelStyle] = Non
     doc.ents = n_ents  # type: ignore
 
 
-def create_main_ann(cdb: CDBBase, doc: Doc, tuis: Optional[List] = None) -> None:
+def create_main_ann(cdb: CDB, doc: Doc, tuis: Optional[List] = None) -> None:
     # TODO: Separate into another piece of the pipeline
     """Creates annotation in the spacy ents list
     from all the annotations for this document.

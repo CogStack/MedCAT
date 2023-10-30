@@ -14,13 +14,12 @@ from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, weighted_average, workers
 from medcat.utils.saving.serializer import CDBSerializer
-from medcat.cdbbase import CDBBase
 
 
 logger = logging.getLogger(__name__)
 
 
-class CDB(CDBBase):
+class CDB(object):
     """Concept DataBase - holds all information necessary for NER+L.
 
     Properties:
@@ -485,7 +484,7 @@ class CDB(CDBBase):
 
         return cdb
 
-    def import_training(self, cdb: CDBBase, overwrite: bool = True) -> None:
+    def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
         """This will import vector embeddings from another CDB. No new concepts will be added.
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 

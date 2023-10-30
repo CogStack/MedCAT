@@ -4,7 +4,7 @@ from typing import Dict, Iterable, Iterator, List, Set, Any, Tuple, Union
 
 from pydantic import BaseModel
 
-from medcat.cdbbase import CDBBase
+from medcat.cdb import CDB
 
 from medcat.utils.regression.utils import loosely_match_enum
 
@@ -144,7 +144,7 @@ class TranslationLayer:
         return found_parents
 
     @classmethod
-    def from_CDB(cls, cdb: CDBBase) -> 'TranslationLayer':
+    def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
         """Construct a TranslationLayer object from a context database (CDB).
 
         This translation layer will refer to the same dicts that the CDB refers to.
