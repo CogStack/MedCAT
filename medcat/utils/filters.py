@@ -2,7 +2,6 @@ from typing import Optional, Set, Dict
 
 from medcat.config import LinkingFilters
 from medcat.utils.matutils import intersect_nonempty_set
-from medcat.cdbbase import CDBBase
 
 
 def check_filters(cui, filters):
