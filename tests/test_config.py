@@ -179,6 +179,35 @@ class ConfigTests(unittest.TestCase):
         config = Config.from_dict({"key": "value"})
         self.assertEqual("value", config.key)
 
+    def test_config_no_hash_before_get(self):
+        config = Config()
+        self.assertIsNone(config.hash)
+
+    def test_config_has_hash_after_get(self):
+        config = Config()
+        config.get_hash()
+        self.assertIsNotNone(config.hash)
+
+    def test_config_hash_recalc_same_def(self):
+        config = Config()
+        h1 = config.get_hash()
+        h2 = config.get_hash()
+        self.assertEqual(h1, h2)
+
+    def test_config_hash_changes_after_change(self):
+        config = Config()
+        h1 = config.get_hash()
+        config.linking.filters.cuis = {"a", "b"}
+        h2 = config.get_hash()
+        self.assertNotEqual(h1, h2)
+
+    def test_config_hash_recalc_same_changed(self):
+        config = Config()
+        config.linking.filters.cuis = {"a", "b"}
+        h1 = config.get_hash()
+        h2 = config.get_hash()
+        self.assertEqual(h1, h2)
+
 
 class ConfigLinkingFiltersTests(unittest.TestCase):
 

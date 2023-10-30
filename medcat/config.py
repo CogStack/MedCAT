@@ -548,6 +548,7 @@ class Config(MixingConfig, BaseModel):
     linking: Linking = Linking()
     word_skipper: re.Pattern = re.compile('') # empty pattern gets replaced upon init
     punct_checker: re.Pattern = re.compile('') # empty pattern gets replaced upon init
+    hash: Optional[str] = None
 
     class Config:
         # this if for word_skipper and punct_checker which would otherwise
@@ -572,6 +573,9 @@ class Config(MixingConfig, BaseModel):
     def get_hash(self):
         hasher = Hasher()
         for k, v in self.dict().items():
+            if k in ['hash', ]:
+                # ignore hash
+                continue
             if k not in ['version', 'general', 'linking']:
                 hasher.update(v, length=True)
             elif k == 'general':
@@ -587,5 +591,5 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=False)
                     else:
                         hasher.update(v2, length=True)
-
-        return hasher.hexdigest()
+        self.hash = hasher.hexdigest()
+        return self.hash

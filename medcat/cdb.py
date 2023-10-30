@@ -5,8 +5,9 @@ import json
 import logging
 import aiofiles
 import numpy as np
-from typing import Dict, Set, Optional, List, Union
+from typing import Dict, Set, Optional, List, Union, cast
 from functools import partial
+import os
 
 from medcat import __version__
 from medcat.utils.hasher import Hasher
@@ -61,8 +62,10 @@ class CDB(object):
     def __init__(self, config: Union[Config, None] = None) -> None:
         if config is None:
             self.config = Config()
+            self._config_from_file = False
         else:
             self.config = config
+            self._config_from_file = True
         self.name2cuis: Dict = {}
         self.name2cuis2status: Dict = {}
 
@@ -95,6 +98,12 @@ class CDB(object):
         self._optim_params = None
         self.is_dirty = False
         self._hash: Optional[str] = None
+        # the config hash is kept track of here so that
+        # the CDB hash can be re-calculated when the config changes
+        # it can also be used to make sure the config loaded with
+        # a CDB matches the config it was saved with
+        # since the config is now saved separately
+        self._config_hash: Optional[str] = None
         self._memory_optimised_parts: Set[str] = set()
 
     def get_name(self, cui: str) -> str:
@@ -458,6 +467,35 @@ class CDB(object):
             }
             await f.write(dill.dumps(to_save))
 
+    def load_config(self, config_path: str) -> None:
+        if not os.path.exists(config_path):
+            if not self._config_from_file:
+                # if there's no config defined anywhere
+                raise ValueError("Could not find a config in the CDB nor ",
+                                 "in the config.json for this model "
+                                 f"({os.path.dirname(config_path)})",
+                                 )
+            # if there is a config, but it's defined in the cdb.dat file
+            logger.warning("Could not find config.json in model pack folder "
+                           f"({os.path.dirname(config_path)}). "
+                           "This is probably an older model. Please save the model "
+                           "again in the new format to avoid potential issues.")
+        else:
+            if self._config_from_file:
+                # if there's a config.json and one defined in the cbd.dat file
+                raise ValueError("Found a config in the CDB and in the config.json "
+                                 f"for model ({os.path.dirname(config_path)}) - "
+                                 "this is ambiguous. Please either remove the "
+                                 "config.json or load the CDB without the config.json "
+                                 "in the folder and re-save in the newer format "
+                                 "(the default save in this version)")
+            # if the only config is in the separate config.json file
+            # this should be the behaviour for all newer models
+            self.config = cast(Config, Config.load(config_path))
+            logger.debug("Loaded config from CDB from %s", config_path)
+        # mark config read from file
+        self._config_from_file = True
+
     @classmethod
     def load(cls, path: str, json_path: Optional[str] = None, config_dict: Optional[Dict] = None) -> "CDB":
         """Load and return a CDB. This allows partial loads in probably not the right way at all.
@@ -777,8 +815,34 @@ which may or may not work. If you experience any compatibility issues, please re
 or download the compatible model."""
             )
 
+    def _should_recalc_hash(self, force_recalc: bool) -> bool:
+        if force_recalc:
+            return True
+        if self.config.hash is None:
+            # TODO - perhaps this is not the best?
+            # as this is a side effect
+            # get and save result in config
+            self.config.get_hash()
+        if not self._hash or self.is_dirty:
+            # if no hash saved or is dirty
+            # need to calculate
+            logger.debug("Recalculating hash due to %s",
+                         "no hash saved" if not self._hash else "CDB is dirty")
+            return True
+        # recalc config hash in case it changed
+        self.config.get_hash()
+        if self._config_hash is None or self._config_hash != self.config.hash:
+            # if no config hash saved
+            # or if the config hash is different from one saved in here
+            logger.debug("Recalculating hash due to %s",
+                         "no config hash saved" if not self._config_hash
+                         else "config hash has changed")
+            return True
+        return False
+
     def get_hash(self, force_recalc: bool = False):
-        if not force_recalc and self._hash and not self.is_dirty:
+        should_recalc = self._should_recalc_hash(force_recalc)
+        if not should_recalc:
             logger.info("Reusing old hash of CDB since the CDB has not changed: %s", self._hash)
             return self._hash
         self.is_dirty = False
@@ -791,13 +855,16 @@ or download the compatible model."""
         for k,v in self.__dict__.items():
             if k in ['cui2countext_vectors', 'name2cuis']:
                 hasher.update(v, length=False)
-            elif k in ['_hash', 'is_dirty']:
+            elif k in ['_hash', 'is_dirty', '_config_hash']:
                 # ignore _hash since if it previously didn't exist, the
                 # new hash would be different when the value does exist
                 # and ignore is_dirty so that we get the same hash as previously
                 continue
             elif k != 'config':
                 hasher.update(v, length=True)
+
+        # set cached config hash
+        self._config_hash = self.config.hash
 
         self._hash = hasher.hexdigest()
         logger.info("Found new CDB hash: %s", self._hash)

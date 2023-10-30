@@ -271,6 +271,10 @@ class CAT(object):
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
         self.cdb.save(cdb_path, json_path)
 
+        # Save the config
+        config_path = os.path.join(save_dir_path, "config.json")
+        self.cdb.config.save(config_path)
+
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
         if self.vocab is not None:
@@ -361,6 +365,10 @@ class CAT(object):
         json_path = model_pack_path if has_jsons else None
         logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
         cdb = CDB.load(cdb_path, json_path)
+
+        # load config
+        config_path = os.path.join(model_pack_path, "config.json")
+        cdb.load_config(config_path)
 
         # TODO load addl_ner
 

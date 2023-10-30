@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 import tempfile
 import unittest
 import unittest.mock
@@ -6,6 +7,7 @@ import unittest.mock
 from medcat.cat import CAT
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
+from medcat.config import Config
 
 
 class CDBHashingTests(unittest.TestCase):
@@ -28,6 +30,43 @@ class CDBHashingTests(unittest.TestCase):
 
         cdb = CDB.load(temp_file)
         self.assertEqual(h, cdb._hash)
+
+
+class CDBHashingWithConfigTests(unittest.TestCase):
+    temp_dir = tempfile.TemporaryDirectory()
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(
+            os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+        # ensure config has hash
+        h = cls.cdb.get_hash()
+        cls.config = cls.config_copy(cls.cdb.config)
+        cls._config_hash = cls.cdb.config.hash
+
+    @classmethod
+    def config_copy(cls, config: Optional[Config] = None) -> Config:
+        if config is None:
+            config = cls.config
+        return Config(**config.asdict())
+
+    def setUp(self) -> None:
+        # reset config
+        self.cdb.config = self.config_copy()
+        # reset config hash
+        self.cdb._config_hash = self._config_hash
+        self.cdb.config.hash = self._config_hash
+
+    def test_CDB_same_hash_no_need_recalc(self):
+        self.assertFalse(self.cdb._should_recalc_hash(force_recalc=False))
+
+    def test_CDB_hash_recalc_if_no_config_hash(self):
+        self.cdb._config_hash = None
+        self.assertTrue(self.cdb._should_recalc_hash(force_recalc=False))
+
+    def test_CDB_hash_recalc_after_config_change(self):
+        self.cdb.config.linking.filters.cuis = {"a", "b", "c"}
+        self.assertTrue(self.cdb._should_recalc_hash(force_recalc=False))
 
 
 class BaseCATHashingTests(unittest.TestCase):
@@ -75,8 +114,14 @@ class CATHashingTestsWithoutChangeRecalc(CATHashingTestsWithFakeHash):
 
 class CATHashingTestsWithoutChange(CATHashingTestsWithFakeHash):
 
-    def test_no_changes_no_calc(self):
+    def setUp(self) -> None:
+        self._calculate_hash = self.undertest.cdb.calculate_hash
+        # make sure the hash exists
+        self.undertest.cdb._config_hash = self.undertest.cdb.config.get_hash()
+        self.undertest.cdb.get_hash()
         self.undertest.cdb.calculate_hash = unittest.mock.Mock()
+
+    def test_no_changes_no_calc(self):
         hash = self.undertest.get_hash()
         self.assertIsInstance(hash, str)
         self.undertest.cdb.calculate_hash.assert_not_called()

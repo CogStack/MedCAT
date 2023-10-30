@@ -367,7 +367,7 @@ class CATTests(unittest.TestCase):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(repr(cat._meta_cats), repr([meta_cat]))
@@ -377,7 +377,7 @@ class CATTests(unittest.TestCase):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(cat._meta_cats, [])
@@ -385,8 +385,54 @@ class CATTests(unittest.TestCase):
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
+
+
+class ModelWithTwoConfigsLoadTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
+        cdb = CDB.load(os.path.join(cls.model_path, "cdb.dat"))
+        # save config next to the CDB
+        cls.config_path = os.path.join(cls.model_path, 'config.json')
+        cdb.config.save(cls.config_path)
+
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # REMOVE config next to the CDB
+        os.remove(cls.config_path)
+
+    def test_loading_model_pack_with_cdb_config_and_config_json_raises_exception(self):
+        with self.assertRaises(ValueError):
+            CAT.load_model_pack(self.model_path)
+
+
+class ModelWithZeroConfigsLoadTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cdb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat")
+        cdb = CDB.load(cdb_path)
+        vocab_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat")
+        # copy the CDB and vocab to a temp dir
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.cdb_path = os.path.join(cls.temp_dir.name, 'cdb.dat')
+        cdb.save(cls.cdb_path) # save without internal config
+        cls.vocab_path = os.path.join(cls.temp_dir.name, 'vocab.dat')
+        shutil.copyfile(vocab_path, cls.vocab_path)
+
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # REMOVE temp dir
+        cls.temp_dir.cleanup()
+
+    def test_loading_model_pack_without_any_config_raises_exception(self):
+        with self.assertRaises(ValueError):
+            CAT.load_model_pack(self.temp_dir.name)
 
 
 def _get_meta_cat(meta_cat_dir):
