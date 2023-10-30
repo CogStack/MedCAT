@@ -4,7 +4,7 @@ from typing import Dict, Iterable, Iterator, List, Set, Any, Tuple, Union
 
 from pydantic import BaseModel
 
-from medcat.cdb import CDB
+from medcat.cdbbase import CDBBase
 
 from medcat.utils.regression.utils import loosely_match_enum
 
@@ -25,12 +25,12 @@ class TranslationLayer:
 
     Args:
         cui2names (Dict[str, Set[str]]): The map from CUI to names
-        name2cuis (Dict[str, Set[str]]): The map from name to CUIs
+        name2cuis (Dict[str, List[str]]): The map from name to CUIs
         cui2type_ids (Dict[str, Set[str]]): The map from CUI to type_ids
         cui2children (Dict[str, Set[str]]): The map from CUI to child CUIs
     """
 
-    def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, Set[str]],
+    def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, List[str]],
                  cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]]) -> None:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
@@ -144,7 +144,7 @@ class TranslationLayer:
         return found_parents
 
     @classmethod
-    def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
+    def from_CDB(cls, cdb: CDBBase) -> 'TranslationLayer':
         """Construct a TranslationLayer object from a context database (CDB).
 
         This translation layer will refer to the same dicts that the CDB refers to.

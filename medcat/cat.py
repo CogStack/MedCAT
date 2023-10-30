@@ -1553,13 +1553,5 @@ class CAT(CATBase):
                 if hasattr(doc, "text"):
                     logger.warning("%s...", doc.text[:50])
 
-    @staticmethod
-    def _get_doc_annotations(doc: Doc):
-        if type(doc['annotations']) == list:  # type: ignore
-            return doc['annotations']  # type: ignore
-        if type(doc['annotations']) == dict:  # type: ignore
-            return doc['annotations'].values()  # type: ignore
-        return None
-
     def destroy_pipe(self):
         self.pipe.destroy()

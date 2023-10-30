@@ -15,7 +15,7 @@ class CDBBase(ABC):
         self.snames: Set
         self.cui2names: Dict[str, Set[str]]
         self.cui2snames: Dict[str, Set[str]]
-        self.cui2context_vectors: Dict[str, Dict[str, np.array]]
+        self.cui2context_vectors: Dict[str, Dict[str, np.ndarray]]
         self.cui2count_train: Dict[str, int]
         self.cui2info: Dict
         self.cui2tags: Dict[str, List[str]]
@@ -286,3 +286,11 @@ class CDBBase(ABC):
         Returns:
             str: The hash for this CDB.
         """
+
+    @abstractmethod
+    def make_stats(self) -> dict:
+        pass
+
+    @abstractmethod
+    def update_cui2average_confidence(self, cui: str, new_sim: float) -> None:
+        pass

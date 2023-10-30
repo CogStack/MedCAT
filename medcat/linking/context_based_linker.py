@@ -5,7 +5,7 @@ from spacy.tokens import Span, Doc
 from typing import Dict
 from medcat.linking.vector_context_model import ContextModel
 from medcat.pipeline.pipe_runner import PipeRunner
-from medcat.cdb import CDB
+from medcat.cdbbase import CDBBase
 from medcat.vocab import Vocab
 from medcat.config import Config
 from medcat.utils.postprocessing import map_ents_to_groups, make_pretty_labels, create_main_ann, LabelStyle
@@ -27,7 +27,7 @@ class Linker(PipeRunner):
     name = 'cat_linker'
 
     # Override
-    def __init__(self, cdb: CDB, vocab: Vocab, config: Config) -> None:
+    def __init__(self, cdb: CDBBase, vocab: Vocab, config: Config) -> None:
         self.cdb = cdb
         self.vocab = vocab
         self.config = config

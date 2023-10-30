@@ -485,7 +485,7 @@ class CDB(CDBBase):
 
         return cdb
 
-    def import_training(self, cdb: "CDB", overwrite: bool = True) -> None:
+    def import_training(self, cdb: CDBBase, overwrite: bool = True) -> None:
         """This will import vector embeddings from another CDB. No new concepts will be added.
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 

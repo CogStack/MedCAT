@@ -7,6 +7,7 @@ from typing import Dict, List, Optional, Union, Tuple, Any, Set
 from spacy.tokens.doc import Doc
 from spacy.tokens.span import Span
 from medcat.cdb import CDB
+from medcat.cdbbase import CDBBase
 from collections import defaultdict
 import random
 
@@ -791,7 +792,7 @@ def prepare_from_json_chars(data: Dict,
     return out_data
 
 
-def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
+def make_mc_train_test(data: Dict, cdb: CDBBase, test_size: float = 0.2) -> Tuple:
     """This is a disaster."""
     cnts: Dict = {}
     total_anns = 0

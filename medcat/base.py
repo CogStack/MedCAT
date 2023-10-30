@@ -347,3 +347,11 @@ class CATBase(ABC):
             Union[List[Tuple], Dict]:
                 {id: doc_json, id: doc_json, ...} or if return_dict is False, a list of tuples: [(id, doc_json), (id, doc_json), ...]
         """
+
+    @staticmethod
+    def _get_doc_annotations(doc: dict):
+        if type(doc['annotations']) == list:  # type: ignore
+            return doc['annotations']  # type: ignore
+        if type(doc['annotations']) == dict:  # type: ignore
+            return doc['annotations'].values()  # type: ignore
+        return None

@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Set, Tuple, Callable, List
+from typing import Dict, Optional, Set, Tuple, Callable, List, cast
 
 from tqdm import tqdm
 import traceback
@@ -16,11 +16,11 @@ class StatsBuilder:
     def __init__(self,
                  filters: LinkingFilters,
                  addl_info: dict,
-                 doc_getter: Callable[[str], Doc],
-                 doc_annotation_getter: Callable[[Doc], list],
+                 doc_getter: Callable[[Optional[str], bool], Optional[Doc]],
+                 doc_annotation_getter: Callable[[dict], list],
                  cui2group: Dict[str, str],
                  cui2preferred_name: Dict[str, str],
-                 cui2names: Dict[str, List[str]],
+                 cui2names: Dict[str, Set[str]],
                  use_project_filters: bool = False,
                  use_overlaps: bool = False,
                  use_cui_doc_limit: bool = False,
@@ -68,9 +68,10 @@ class StatsBuilder:
             total=len(documents),
             leave=False,
         ):
-            self.process_document(project.get('name'), project.get('id'), doc)
+            self.process_document(cast(str, project.get('name')),
+                                  cast(str, project.get('id')), doc)
 
-    def process_document(self, project_name: str, project_id: str, doc: Doc) -> None:
+    def process_document(self, project_name: str, project_id: str, doc: dict) -> None:
         anns = self._get_doc_annotations(doc)
 
         # Apply document level filtering, in this case project_filter is ignored while the extra_cui_filter is respected still
@@ -97,7 +98,7 @@ class StatsBuilder:
                                 p_anns_norm, p_anns_examples)
         self._process_anns_norm(doc, anns_norm, p_anns_norm, anns_examples)
 
-    def _process_anns_norm(self, doc: Doc, anns_norm: list, p_anns_norm: list,
+    def _process_anns_norm(self, doc: dict, anns_norm: list, p_anns_norm: list,
                            anns_examples: list) -> None:
         for iann, ann in enumerate(anns_norm):
             if ann not in p_anns_norm:
@@ -108,7 +109,7 @@ class StatsBuilder:
                 self.fns[cui] = self.fns.get(cui, 0) + 1
                 self.examples['fn'][cui] = self.examples['fn'].get(cui, []) + [anns_examples[iann]]
 
-    def _process_p_anns(self, project_name: str, project_id: str, doc: Doc, p_anns: list) -> Tuple[list, list]:
+    def _process_p_anns(self, project_name: str, project_id: str, doc: dict, p_anns: list) -> Tuple[list, list]:
         p_anns_norm = []
         p_anns_examples = []
         for ann in p_anns:
@@ -120,7 +121,7 @@ class StatsBuilder:
             p_anns_examples.append(self._create_annoation_2(project_name, project_id, cui, doc, ann))
         return p_anns_norm, p_anns_examples
 
-    def _count_p_anns_norm(self, doc: Doc, anns_norm: list, anns_norm_neg: list,
+    def _count_p_anns_norm(self, doc: dict, anns_norm: list, anns_norm_neg: list,
                            p_anns_norm: list, p_anns_examples: list) -> None:
         for iann, ann in enumerate(p_anns_norm):
             cui = ann[1]
@@ -143,7 +144,7 @@ class StatsBuilder:
 
                 self.examples['fp'][cui] = self.examples['fp'].get(cui, []) + [example]
 
-    def _create_annoation(self, project_name: str, project_id: str, cui: str, doc: Doc, ann: Dict) -> Dict:
+    def _create_annoation(self, project_name: str, project_id: str, cui: str, doc: dict, ann: Dict) -> Dict:
         return {"text": doc['text'][max(0, ann['start']-60):ann['end']+60],
                 "cui": cui,
                 "start": ann['start'],
@@ -155,7 +156,7 @@ class StatsBuilder:
                 "project id": project_id,
                 "document id": doc.get('id')}
 
-    def _create_annoation_2(self, project_name: str, project_id: str, cui: str, doc: Doc, ann) -> Dict:
+    def _create_annoation_2(self, project_name: str, project_id: str, cui: str, doc: dict, ann) -> Dict:
         return {"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
                 "cui": cui,
                 "start": ann.start_char,
@@ -168,7 +169,7 @@ class StatsBuilder:
                 "document id": doc.get('id')}
 
     def _preprocess_annotations(self, project_name: str, project_id: str,
-                                doc: Doc, anns: List[Dict]) -> Tuple[list, list, list, list]:
+                                doc: dict, anns: List[Dict]) -> Tuple[list, list, list, list]:
         anns_norm = []
         anns_norm_neg = []
         anns_examples = []
@@ -255,7 +256,7 @@ class StatsBuilder:
                  extra_cui_filter: Optional[Set] = None) -> 'StatsBuilder':
         return StatsBuilder(filters=local_filters,
                             addl_info=cat.cdb.addl_info,
-                            doc_getter=cat,
+                            doc_getter=cat.__call__,
                             doc_annotation_getter=cat._get_doc_annotations,
                             cui2group=cat.cdb.addl_info['cui2group'],
                             cui2preferred_name=cat.cdb.cui2preferred_name,
