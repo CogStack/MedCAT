@@ -1,7 +1,7 @@
 import unittest
 import pickle
 import tempfile
-from medcat.config import Config, MixingConfig, VersionInfo, General
+from medcat.config import Config, MixingConfig, VersionInfo, General, LinkingFilters
 from pydantic import ValidationError
 import os
 
@@ -178,6 +178,25 @@ class ConfigTests(unittest.TestCase):
     def test_from_dict(self):
         config = Config.from_dict({"key": "value"})
         self.assertEqual("value", config.key)
+
+
+class ConfigLinkingFiltersTests(unittest.TestCase):
+
+    def test_allows_empty_dict_for_cuis(self):
+        lf = LinkingFilters(cuis={})
+        self.assertIsNotNone(lf)
+
+    def test_empty_dict_converted_to_empty_set(self):
+        lf = LinkingFilters(cuis={})
+        self.assertEqual(lf.cuis, set())
+
+    def test_not_allow_nonempty_dict_for_cuis(self):
+        with self.assertRaises(ValidationError):
+            LinkingFilters(cuis={"KEY": "VALUE"})
+
+    def test_not_allow_empty_dict_for_cuis_exclude(self):
+        with self.assertRaises(ValidationError):
+            LinkingFilters(cuis_exclude={})
 
 
 if __name__ == '__main__':

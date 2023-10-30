@@ -433,6 +433,19 @@ class LinkingFilters(MixingConfig, BaseModel):
     cuis: Set[str] = set()
     cuis_exclude: Set[str] = set()
 
+    def __init__(self, **data):
+        if 'cuis' in data:
+            cuis = data['cuis']
+            if isinstance(cuis, dict) and len(cuis) == 0:
+                logger.warning("Loading an old model where "
+                               "config.linking.filters.cuis has been "
+                               "dict to an empty dict instead of an empty "
+                               "set. Converting the dict to a set in memory "
+                               "as that is what is expected. Please consider "
+                               "saving the model again.")
+                data['cuis'] = set(cuis.keys())
+        super().__init__(**data)
+
     def check_filters(self, cui: str) -> bool:
         """Checks is a CUI in the filters
 
