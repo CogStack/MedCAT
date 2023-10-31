@@ -1340,7 +1340,7 @@ class CAT(object):
                         nproc: int = 2,
                         batch_size_chars: int = 5000 * 1000,
                         only_cui: bool = False,
-                        addl_info: List[str] = [],
+                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
@@ -1536,7 +1536,7 @@ class CAT(object):
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
-                             addl_info: List[str] = [],
+                             addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         """Run multiprocessing NOT FOR TRAINING
