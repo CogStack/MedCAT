@@ -326,12 +326,13 @@ class CDB(object):
         elif name_status == 'P' and cui not in self.cui2preferred_name:
             # this means names is an empty `names` dict
             logger.warning("Did not manage to add a preferred name in `add_cui`. "
+                           "Was trying to do so for cui: '%s'"
                            "This means that the `names` dict passed was empty. "
                            "This is _usually_ caused by either no name or too short "
                            "a name passed to the `prepare_name` method. "
                            "The minimum length is defined in: "
                            "'config.cdb_maker.min_letters_required' and "
-                           "is currently set at %s", self.config.cdb_maker['min_letters_required'])
+                           "is currently set at %s", cui, self.config.cdb_maker['min_letters_required'])
 
         # Add other fields if full_build
         if full_build:
