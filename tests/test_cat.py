@@ -21,6 +21,7 @@ class CATTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
+        cls.vocab.make_unigram_table()
         cls.cdb.config.general.spacy_model = "en_core_web_md"
         cls.cdb.config.ner.min_name_len = 2
         cls.cdb.config.ner.upper_case_limit_len = 3
