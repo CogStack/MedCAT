@@ -834,7 +834,7 @@ class CAT(object):
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
-            self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
+            self.cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
 
         if spacy_entity is not None and spacy_doc is not None:

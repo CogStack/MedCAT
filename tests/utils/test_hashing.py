@@ -90,7 +90,7 @@ class CATHashingTestsWithChange(CATHashingTestsWithFakeHash):
 
     def test_when_changes_do_calc(self):
         with unittest.mock.patch.object(CDB, 'calculate_hash', return_value='abcd1234') as patch_method:
-            self.undertest.cdb.add_concept(**self.concept_kwargs)
+            self.undertest.cdb._add_concept(**self.concept_kwargs)
             hash = self.undertest.get_hash()
         self.assertIsInstance(hash, str)
         patch_method.assert_called()
@@ -106,10 +106,10 @@ class CATDirtTestsWithChange(CATHashingTestsWithFakeHash):
         self.assertFalse(self.undertest.cdb.is_dirty)
 
     def test_after_add_concept_is_dirty(self):
-        self.undertest.cdb.add_concept(**self.concept_kwargs)
+        self.undertest.cdb._add_concept(**self.concept_kwargs)
         self.assertTrue(self.undertest.cdb.is_dirty)
 
     def test_after_recalc_not_dirty(self):
-        self.undertest.cdb.add_concept(**self.concept_kwargs)
+        self.undertest.cdb._add_concept(**self.concept_kwargs)
         self.undertest.get_hash()
         self.assertFalse(self.undertest.cdb.is_dirty)
