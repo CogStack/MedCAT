@@ -803,96 +803,96 @@ or download the compatible model."""
         logger.info("Found new CDB hash: %s", self._hash)
         return self._hash
 
-@staticmethod
-def merge_cdb(cdb1 : CDB, cdb2 : CDB, overwrite : int = 0, vector_import : Dict = {}):
-    """Merge two CDB's together to produce a single CDB.
+    @staticmethod
+    def merge_cdb(cdb1 : CDB, cdb2 : CDB, overwrite : int = 0, vector_import : Dict = {}):
+        """Merge two CDB's together to produce a single CDB.
 
-        Args:
-            cdb1 (medcat.cdb.CDB):
-                The first medcat cdb to merge. In cases where merging isn't suitable isn't ideal (such as
-                cui2preferred_name), this cdb values will be prioritised over cdb2.
-            cdb2 (medcat.cdb.CDB):
-                The second medcat cdb to merge.
-            overwrite (bool):
-                NYI: Do not merge certain dictionaries, and prioritise a cdb.
-            vector_import (Dict[str, Dict[str, np.array]]):
-                NYI: Vectors to import, using the same format as cui2context_vectors. 
-    """
-    # TODO: overwriting, vector import
-    config = cdb1.config.copy()
-    cdb = CDB(config)
+            Args:
+                cdb1 (medcat.cdb.CDB):
+                    The first medcat cdb to merge. In cases where merging isn't suitable isn't ideal (such as
+                    cui2preferred_name), this cdb values will be prioritised over cdb2.
+                cdb2 (medcat.cdb.CDB):
+                    The second medcat cdb to merge.
+                overwrite (bool):
+                    NYI: Do not merge certain dictionaries, and prioritise a cdb.
+                vector_import (Dict[str, Dict[str, np.array]]):
+                    NYI: Vectors to import, using the same format as cui2context_vectors. 
+        """
+        # TODO: overwriting, vector import
+        config = cdb1.config.copy()
+        cdb = CDB(config)
 
-    # names - copy cdb 1 as that is priority, and save computation time
-    cdb.name2cuis = cdb1.name2cuis.copy()
-    cdb.name2cuis2status = cdb1.name2cuis2status.copy()
-    cdb.name2count_train = cdb1.name2count_train.copy()
-    cdb.name_isupper = cdb1.name_isupper.copy()
-    for name in cdb2.name2cuis:
-        if name in cdb1.name2cuis: #if they exist in both cdbs
-            cdb.name2cuis[name] = list(set(cdb1.name2cuis[name] + cdb2.name2cuis[name])) # unique CUI's only for each name
-            if name in cdb1.name2cuis2status: cdb.name2cuis2status[name] = {**cdb2.name2cuis2status[name], **cdb1.name2cuis2status[name]}
-            if name in cdb1.name2count_train: cdb.name2count_train[name] = str(int(cdb1.name2count_train[name]) + int(cdb2.name2count_train[name])) # these are strings for some reason
-        else: # if name only exists in cdb 2
-            cdb.name2cuis[name] = cdb2.name2cuis[name]
-            if name in cdb2.name2cuis2status: cdb.name2cuis2status[name] = cdb2.name2cuis2status[name]
-            if name in cdb2.name2count_train: cdb.name2count_train[name] = cdb2.name2count_train[name]
-            if name in cdb2.name_isupper: cdb.name_isupper[name] = cdb2.name_isupper[name]
+        # names - copy cdb 1 as that is priority, and save computation time
+        cdb.name2cuis = cdb1.name2cuis.copy()
+        cdb.name2cuis2status = cdb1.name2cuis2status.copy()
+        cdb.name2count_train = cdb1.name2count_train.copy()
+        cdb.name_isupper = cdb1.name_isupper.copy()
+        for name in cdb2.name2cuis:
+            if name in cdb1.name2cuis: #if they exist in both cdbs
+                cdb.name2cuis[name] = list(set(cdb1.name2cuis[name] + cdb2.name2cuis[name])) # unique CUI's only for each name
+                if name in cdb1.name2cuis2status: cdb.name2cuis2status[name] = {**cdb2.name2cuis2status[name], **cdb1.name2cuis2status[name]}
+                if name in cdb1.name2count_train: cdb.name2count_train[name] = str(int(cdb1.name2count_train[name]) + int(cdb2.name2count_train[name])) # these are strings for some reason
+            else: # if name only exists in cdb 2
+                cdb.name2cuis[name] = cdb2.name2cuis[name]
+                if name in cdb2.name2cuis2status: cdb.name2cuis2status[name] = cdb2.name2cuis2status[name]
+                if name in cdb2.name2count_train: cdb.name2count_train[name] = cdb2.name2count_train[name]
+                if name in cdb2.name_isupper: cdb.name_isupper[name] = cdb2.name_isupper[name]
 
-    # snames
-    cdb.snames = cdb1.snames.union(cdb2.snames)
+        # snames
+        cdb.snames = cdb1.snames.union(cdb2.snames)
 
-    # cui merging
-    cdb.cui2names = cdb1.cui2names.copy()
-    cdb.cui2snames = cdb1.cui2snames.copy()
-    cdb.cui2count_train = cdb1.cui2count_train.copy()
-    cdb.cui2info = cdb1.cui2info.copy()
-    cdb.cui2context_vectors = cdb1.cui2context_vectors.copy()
-    cdb.cui2tags = cdb1.cui2tags.copy()
-    cdb.cui2type_ids = cdb1.cui2type_ids.copy()
-    cdb.cui2preferred_name = cdb1.cui2preferred_name.copy()
+        # cui merging
+        cdb.cui2names = cdb1.cui2names.copy()
+        cdb.cui2snames = cdb1.cui2snames.copy()
+        cdb.cui2count_train = cdb1.cui2count_train.copy()
+        cdb.cui2info = cdb1.cui2info.copy()
+        cdb.cui2context_vectors = cdb1.cui2context_vectors.copy()
+        cdb.cui2tags = cdb1.cui2tags.copy()
+        cdb.cui2type_ids = cdb1.cui2type_ids.copy()
+        cdb.cui2preferred_name = cdb1.cui2preferred_name.copy()
 
-    cdb.cui2average_confidence = cdb1.cui2average_confidence.copy()
-    for cui in cdb2.cui2names:
-        if cui in cdb1.cui2names:
-            cdb.cui2names[cui] = cdb1.cui2names[cui].union(cdb2.cui2names[cui])
-            if cui in cdb1.cui2snames: cdb.cui2snames[cui] = cdb1.cui2snames[cui].union(cdb2.cui2snames[cui])
-            if cui in cdb1.cui2count_train: cdb.cui2count_train[cui] = cdb2.cui2names[cui] + cdb1.cui2count_train[cui]
-            # this is where cui2info would be
-            if cui in cdb1.cui2context_vectors:
-                contexts = set(cdb1.cui2context_vectors[cui].keys() + cdb2.cui2context_vectors[cui].keys()) # xlong, long, medium, short
-                norm = np.sum([cdb1.cui2count_train[cui], cdb2.cui2count_train[cui]]) 
-                weights = [cdb1.cui2count_train[cui]/norm, cdb2.cui2count_train[cui]/norm] 
-                for s in contexts:
-                    if s in cdb1.cui2context_vectors[cui] and s in cdb2.cui2context_vectors[cui]:
-                        cdb.cui2context_vectors[cui][s] = weights[0] * cdb1.cui2context_vectors[cui][s] +  weights[1] * cdb2.cui2context_vectors[cui][s]
-                    elif s in cdb1.cui2context_vectors[cui]:
-                        cdb.cui2context_vectors[cui][s] = cdb1.cui2context_vectors[cui][s] 
-                    else:
-                        cdb.cui2context_vectors[cui][s] = cdb2.cui2context_vectors[cui][s] 
-            if cui in cdb1.cui2tags: cdb.cui2tags[cui].append(cdb2.cui2tags[cui])
-            if cui in cdb1.cui2type_ids: cdb.cui2type_ids[cui] = cdb1.cui2type_ids[cui].union(cdb2.cui2type_ids[cui])
-            # Nothing to do with prefered name, unless overwrite
-        else:
-            cdb.cui2names[cui] = cdb2.cui2names[cui]
-            if cui in cdb2.cui2snames: cdb.cui2snames[cui] = cdb2.cui2snames[cui]
-            if cui in cdb2.cui2count_train: cdb.cui2count_train[cui] = cdb2.cui2names[cui]
-            if cui in cdb2.cui2info: cdb.cui2info[cui] = cdb2.cui2info[cui] # no idea what this is used for, so no merging will be done
-            if cui in cdb2.cui2context_vectors: cdb.cui2context_vectors[cui] = cdb2.cui2context_vectors[cui]
-            if cui in cdb2.cui2tags: cdb.cui2tags[cui] = cdb2.cui2tags[cui]
-            if cui in cdb2.cui2type_ids: cdb.cui2type_ids[cui] = cdb2.cui2type_ids[cui]
-            if cui in cdb2.cui2preferred_name: cdb.cui2preferred_name[cui] = cdb2.cui2preferred_name[cui]
+        cdb.cui2average_confidence = cdb1.cui2average_confidence.copy()
+        for cui in cdb2.cui2names:
+            if cui in cdb1.cui2names:
+                cdb.cui2names[cui] = cdb1.cui2names[cui].union(cdb2.cui2names[cui])
+                if cui in cdb1.cui2snames: cdb.cui2snames[cui] = cdb1.cui2snames[cui].union(cdb2.cui2snames[cui])
+                if cui in cdb1.cui2count_train: cdb.cui2count_train[cui] = cdb2.cui2names[cui] + cdb1.cui2count_train[cui]
+                # this is where cui2info would be
+                if cui in cdb1.cui2context_vectors:
+                    contexts = set(cdb1.cui2context_vectors[cui].keys() + cdb2.cui2context_vectors[cui].keys()) # xlong, long, medium, short
+                    norm = np.sum([cdb1.cui2count_train[cui], cdb2.cui2count_train[cui]]) 
+                    weights = [cdb1.cui2count_train[cui]/norm, cdb2.cui2count_train[cui]/norm] 
+                    for s in contexts:
+                        if s in cdb1.cui2context_vectors[cui] and s in cdb2.cui2context_vectors[cui]:
+                            cdb.cui2context_vectors[cui][s] = weights[0] * cdb1.cui2context_vectors[cui][s] +  weights[1] * cdb2.cui2context_vectors[cui][s]
+                        elif s in cdb1.cui2context_vectors[cui]:
+                            cdb.cui2context_vectors[cui][s] = cdb1.cui2context_vectors[cui][s] 
+                        else:
+                            cdb.cui2context_vectors[cui][s] = cdb2.cui2context_vectors[cui][s] 
+                if cui in cdb1.cui2tags: cdb.cui2tags[cui].append(cdb2.cui2tags[cui])
+                if cui in cdb1.cui2type_ids: cdb.cui2type_ids[cui] = cdb1.cui2type_ids[cui].union(cdb2.cui2type_ids[cui])
+                # Nothing to do with prefered name, unless overwrite
+            else:
+                cdb.cui2names[cui] = cdb2.cui2names[cui]
+                if cui in cdb2.cui2snames: cdb.cui2snames[cui] = cdb2.cui2snames[cui]
+                if cui in cdb2.cui2count_train: cdb.cui2count_train[cui] = cdb2.cui2names[cui]
+                if cui in cdb2.cui2info: cdb.cui2info[cui] = cdb2.cui2info[cui] # no idea what this is used for, so no merging will be done
+                if cui in cdb2.cui2context_vectors: cdb.cui2context_vectors[cui] = cdb2.cui2context_vectors[cui]
+                if cui in cdb2.cui2tags: cdb.cui2tags[cui] = cdb2.cui2tags[cui]
+                if cui in cdb2.cui2type_ids: cdb.cui2type_ids[cui] = cdb2.cui2type_ids[cui]
+                if cui in cdb2.cui2preferred_name: cdb.cui2preferred_name[cui] = cdb2.cui2preferred_name[cui]
 
-    cdb.addl_info = cdb1.addl_info.copy()
-    for key in cdb2.addl_info:
-        if key not in cdb1.addl_info: # doesn't / can't handle clashes TODO: Handle Overwrite Param
-            cdb.addl_info[key] = cdb2.addl_info[key]
-        
-    # vocab, adding counts if they occur in both
-    cdb.vocab = cdb1.vocab.copy()
-    for word in cdb2.vocab:
-        if word in cdb.vocab:
-            cdb.vocab[word] += cdb2.vocab[word]
-        else:
-            cdb.vocab[word] = cdb2.vocab[word]
+        cdb.addl_info = cdb1.addl_info.copy()
+        for key in cdb2.addl_info:
+            if key not in cdb1.addl_info: # doesn't / can't handle clashes TODO: Handle Overwrite Param
+                cdb.addl_info[key] = cdb2.addl_info[key]
+            
+        # vocab, adding counts if they occur in both
+        cdb.vocab = cdb1.vocab.copy()
+        for word in cdb2.vocab:
+            if word in cdb.vocab:
+                cdb.vocab[word] += cdb2.vocab[word]
+            else:
+                cdb.vocab[word] = cdb2.vocab[word]
 
-    return cdb
+        return cdb
