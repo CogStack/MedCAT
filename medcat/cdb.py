@@ -804,7 +804,7 @@ or download the compatible model."""
         return self._hash
 
     @staticmethod
-    def merge_cdb(cdb1: "CDB", cdb2: "CDB", overwrite: int = 0, vector_import: Dict = {}):
+    def merge_cdb(cdb1: "CDB", cdb2: "CDB", overwrite: int = 0, vector_import: dict[str, dict[str, np.array]] = {}):
         """Merge two CDB's together to produce a single CDB.
 
             Args:
@@ -863,12 +863,14 @@ or download the compatible model."""
                 if cui in cdb1.cui2snames: 
                     cdb.cui2snames[cui] = cdb1.cui2snames[cui].union(cdb2.cui2snames[cui])
                 if cui in cdb1.cui2count_train: 
-                    cdb.cui2count_train[cui] = cdb2.cui2names[cui] + cdb1.cui2count_train[cui]
+                    cdb.cui2count_train[cui] = cdb2.cui2count_train[cui] + cdb1.cui2count_train[cui]
                 # this is where cui2info would be
                 if cui in cdb1.cui2context_vectors:
-                    contexts = set(cdb1.cui2context_vectors[cui].keys() + cdb2.cui2context_vectors[cui].keys()) # xlong, long, medium, short
+                    contexts = set(list(cdb1.cui2context_vectors[cui]) + list(cdb2.cui2context_vectors[cui].keys())) # xlong, long, medium, short
                     norm = np.sum([cdb1.cui2count_train[cui], cdb2.cui2count_train[cui]]) 
-                    weights = [cdb1.cui2count_train[cui]/norm, cdb2.cui2count_train[cui]/norm] 
+                    print(cdb1.cui2count_train[cui])
+                    print(norm)
+                    weights = [np.divide(cdb1.cui2count_train[cui], norm), np.divide(cdb2.cui2count_train[cui], norm)] 
                     for s in contexts:
                         if s in cdb1.cui2context_vectors[cui] and s in cdb2.cui2context_vectors[cui]:
                             cdb.cui2context_vectors[cui][s] = weights[0] * cdb1.cui2context_vectors[cui][s] + weights[1] * cdb2.cui2context_vectors[cui][s]
