@@ -804,7 +804,7 @@ or download the compatible model."""
         return self._hash
 
     @staticmethod
-    def merge_cdb(cdb1 : CDB, cdb2 : CDB, overwrite : int = 0, vector_import : Dict = {}):
+    def merge_cdb(cdb1: "CDB", cdb2: "CDB", overwrite: int = 0, vector_import: Dict = {}):
         """Merge two CDB's together to produce a single CDB.
 
             Args:
@@ -828,7 +828,7 @@ or download the compatible model."""
         cdb.name2count_train = cdb1.name2count_train.copy()
         cdb.name_isupper = cdb1.name_isupper.copy()
         for name in cdb2.name2cuis:
-            if name in cdb1.name2cuis: #if they exist in both cdbs
+            if name in cdb1.name2cuis: # if they exist in both cdbs
                 cdb.name2cuis[name] = list(set(cdb1.name2cuis[name] + cdb2.name2cuis[name])) # unique CUI's only for each name
                 if name in cdb1.name2cuis2status: cdb.name2cuis2status[name] = {**cdb2.name2cuis2status[name], **cdb1.name2cuis2status[name]}
                 if name in cdb1.name2count_train: cdb.name2count_train[name] = str(int(cdb1.name2count_train[name]) + int(cdb2.name2count_train[name])) # these are strings for some reason
@@ -886,7 +886,7 @@ or download the compatible model."""
         for key in cdb2.addl_info:
             if key not in cdb1.addl_info: # doesn't / can't handle clashes TODO: Handle Overwrite Param
                 cdb.addl_info[key] = cdb2.addl_info[key]
-            
+
         # vocab, adding counts if they occur in both
         cdb.vocab = cdb1.vocab.copy()
         for word in cdb2.vocab:
@@ -896,3 +896,4 @@ or download the compatible model."""
                 cdb.vocab[word] = cdb2.vocab[word]
 
         return cdb
+    
