@@ -876,8 +876,10 @@ or download the compatible model."""
                             cdb.cui2context_vectors[cui][s] = cdb1.cui2context_vectors[cui][s] 
                         else:
                             cdb.cui2context_vectors[cui][s] = cdb2.cui2context_vectors[cui][s] 
-                if cui in cdb1.cui2tags: cdb.cui2tags[cui].append(cdb2.cui2tags[cui])
-                if cui in cdb1.cui2type_ids: cdb.cui2type_ids[cui] = cdb1.cui2type_ids[cui].union(cdb2.cui2type_ids[cui])
+                if cui in cdb1.cui2tags: 
+                    cdb.cui2tags[cui].append(cdb2.cui2tags[cui])
+                if cui in cdb1.cui2type_ids: 
+                    cdb.cui2type_ids[cui] = cdb1.cui2type_ids[cui].union(cdb2.cui2type_ids[cui])
                 # Nothing to do with prefered name, unless overwrite
             else:
                 cdb.cui2names[cui] = cdb2.cui2names[cui]
