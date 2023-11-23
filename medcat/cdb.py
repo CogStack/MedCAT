@@ -867,9 +867,7 @@ or download the compatible model."""
                 # this is where cui2info would be
                 if cui in cdb1.cui2context_vectors:
                     contexts = set(list(cdb1.cui2context_vectors[cui]) + list(cdb2.cui2context_vectors[cui].keys())) # xlong, long, medium, short
-                    norm = np.sum([cdb1.cui2count_train[cui], cdb2.cui2count_train[cui]]) 
-                    print(cdb1.cui2count_train[cui])
-                    print(norm)
+                    norm = np.sum([cdb1.cui2count_train[cui], cdb2.cui2count_train[cui]])
                     weights = [np.divide(cdb1.cui2count_train[cui], norm), np.divide(cdb2.cui2count_train[cui], norm)] 
                     for s in contexts:
                         if s in cdb1.cui2context_vectors[cui] and s in cdb2.cui2context_vectors[cui]:
