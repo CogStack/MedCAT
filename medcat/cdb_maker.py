@@ -173,7 +173,7 @@ class CDBMaker(object):
                             if len(raw_name) >= self.config.cdb_maker['remove_parenthesis']:
                                 prepare_name(raw_name, self.pipe.spacy_nlp, names, self.config)
 
-                    self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
+                    self.cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
                     logger.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",
