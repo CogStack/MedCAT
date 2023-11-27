@@ -60,7 +60,7 @@ class CATTests(unittest.TestCase):
             (2, ""),
             (3, None)
         ]
-        out = self.undertest.multiprocessing(in_data, nproc=1)
+        out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1)
 
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))
@@ -73,7 +73,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house."),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=False)
+        out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=False)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -89,7 +89,7 @@ class CATTests(unittest.TestCase):
             (2, ""),
             (3, None),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=1, batch_size=1, return_dict=False)
+        out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=1, batch_size=1, return_dict=False)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -105,7 +105,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house.")
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=True)
+        out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=True)
         self.assertTrue(type(out) == dict)
         self.assertEqual(3, len(out))
         self.assertEqual({'entities': {}, 'tokens': []}, out[1])
