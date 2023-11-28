@@ -2,13 +2,13 @@ import json
 import os
 import sys
 import unittest
-import unittest.mock
 import tempfile
 import shutil
+import logging
 from transformers import AutoTokenizer
 from medcat.vocab import Vocab
-from medcat.cdb import CDB
-from medcat.cat import CAT
+from medcat.cdb import CDB, logger as cdb_logger
+from medcat.cat import CAT, logger as cat_logger
 from medcat.utils.checkpoint import Checkpoint
 from medcat.meta_cat import MetaCAT
 from medcat.config_meta_cat import ConfigMetaCAT
@@ -390,45 +390,37 @@ class CATTests(unittest.TestCase):
         cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
 
-    def assert_patch_called(self, method, name: str, name_status: str, nr_of_calls: int):
+    def assertLogsDuringAddAndTrainConcept(self, logger: logging.Logger, log_level,
+                                           name: str, name_status: str, nr_of_calls: int):
         cui = 'CUI-%d'%(hash(name) + id(name))
-        self.undertest.add_and_train_concept(cui, name, name_status=name_status)
-        if nr_of_calls == 0:
-            method.assert_not_called()
-        elif nr_of_calls == 1:
-            method.assert_called_once()
-        else:
-            raise ValueError("Undefined")
+        with (self.assertLogs(logger=logger, level=log_level)
+              if nr_of_calls == 1
+              else self.assertNoLogs(logger=logger, level=log_level)):
+            self.undertest.add_and_train_concept(cui, name, name_status=name_status)
 
-    @unittest.mock.patch('medcat.cat.logger')
-    def test_add_and_train_concept_cat_nowarn_long_name(self, cat_logger):
+    def test_add_and_train_concept_cat_nowarn_long_name(self):
         long_name = 'a very long name'
-        self.assert_patch_called(cat_logger.warning, name=long_name, name_status='', nr_of_calls=0)
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=long_name, name_status='', nr_of_calls=0)
 
-    @unittest.mock.patch('medcat.cdb.logger')
-    def test_add_and_train_concept_cdb_nowarn_long_name(self, cdb_logger):
+    def test_add_and_train_concept_cdb_nowarn_long_name(self):
         long_name = 'a very long name'
-        self.assert_patch_called(cdb_logger.warning, name=long_name, name_status='', nr_of_calls=0)
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=long_name, name_status='', nr_of_calls=0)
 
-    @unittest.mock.patch('medcat.cat.logger')
-    def test_add_and_train_concept_cat_nowarn_short_name_not_pref(self, cat_logger):
+    def test_add_and_train_concept_cat_nowarn_short_name_not_pref(self):
         short_name = 'a'
-        self.assert_patch_called(cat_logger.warning, name=short_name, name_status='', nr_of_calls=0)
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=short_name, name_status='', nr_of_calls=0)
 
-    @unittest.mock.patch('medcat.cdb.logger')
-    def test_add_and_train_concept_cdb_nowarn_short_name_not_pref(self, cdb_logger):
+    def test_add_and_train_concept_cdb_nowarn_short_name_not_pref(self):
         short_name = 'a'
-        self.assert_patch_called(cdb_logger.warning, name=short_name, name_status='', nr_of_calls=0)
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='', nr_of_calls=0)
 
-    @unittest.mock.patch('medcat.cat.logger')
-    def test_add_and_train_concept_cat_warns_short_name(self, cat_logger):
+    def test_add_and_train_concept_cat_warns_short_name(self):
         short_name = 'a'
-        self.assert_patch_called(cat_logger.warning, name=short_name, name_status='P', nr_of_calls=1)
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
 
-    @unittest.mock.patch('medcat.cdb.logger')
-    def test_add_and_train_concept_cdb_warns_short_name(self, cdb_logger):
+    def test_add_and_train_concept_cdb_warns_short_name(self):
         short_name = 'a'
-        self.assert_patch_called(cdb_logger.warning, name=short_name, name_status='P', nr_of_calls=1)
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
 
 
 class ModelWithTwoConfigsLoadTests(unittest.TestCase):
