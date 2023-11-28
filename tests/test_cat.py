@@ -5,6 +5,7 @@ import unittest
 import tempfile
 import shutil
 import logging
+import contextlib
 from transformers import AutoTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB, logger as cdb_logger
@@ -390,12 +391,28 @@ class CATTests(unittest.TestCase):
         cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
 
+    def _assertNoLogs(self, logger: logging.Logger, level: int):
+        if hasattr(self, 'assertNoLogs'):
+            return self.assertNoLogs(logger=logger, level=level)
+        else:
+            return self.__assertNoLogs(logger=logger, level=level)
+    
+    @contextlib.contextmanager
+    def __assertNoLogs(self, logger: logging.Logger, level: int):
+        try:
+            with self.assertLogs(logger, level) as captured_logs:
+                yield
+        except AssertionError:
+            return
+        if captured_logs:
+            raise AssertionError("Logs were found: {}".format(captured_logs))
+
     def assertLogsDuringAddAndTrainConcept(self, logger: logging.Logger, log_level,
                                            name: str, name_status: str, nr_of_calls: int):
         cui = 'CUI-%d'%(hash(name) + id(name))
         with (self.assertLogs(logger=logger, level=log_level)
               if nr_of_calls == 1
-              else self.assertNoLogs(logger=logger, level=log_level)):
+              else self._assertNoLogs(logger=logger, level=log_level)):
             self.undertest.add_and_train_concept(cui, name, name_status=name_status)
 
     def test_add_and_train_concept_cat_nowarn_long_name(self):
