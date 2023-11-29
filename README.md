@@ -40,6 +40,7 @@ To download any of these models, please [follow this link](https://uts.nlm.nih.g
 
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
+PS: This link can take a long time to load the first time around. The machine spins up as needed and spins down when inactive.
 
 ## Tutorials
 A guide on how to use MedCAT is available at [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials). Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
