@@ -38,6 +38,15 @@ To download any of these models, please [follow this link](https://uts.nlm.nih.g
 - **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
 - ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md))
 
+## Installation
+To install the latest version of MedCAT run the following command:
+```
+pip install medcat
+```
+To install the latest version of MedCAT without torch GPU support run the following command:
+```
+pip install medcat --extra_index_url https://download.pytorch.org/whl/cpu/
+```
 ## Demo
 A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
 
