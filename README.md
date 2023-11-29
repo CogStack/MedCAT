@@ -43,6 +43,8 @@ To install the latest version of MedCAT run the following command:
 ```
 pip install medcat
 ```
+Normal installations of MedCAT will install torch-gpu and all relevant dependancies (such as CUDA). This can require as much as 10 GB more disk space, which isn't required for CPU only usage.
+
 To install the latest version of MedCAT without torch GPU support run the following command:
 ```
 pip install medcat --extra_index_url https://download.pytorch.org/whl/cpu/
