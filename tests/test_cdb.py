@@ -6,6 +6,7 @@ import asyncio
 import numpy as np
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
+from medcat.cdb import CDB
 
 
 class CDBTests(unittest.TestCase):
@@ -81,6 +82,32 @@ class CDBTests(unittest.TestCase):
         for cui in self.undertest.cui2names:
             with self.subTest(cui):
                 self.assertIn(cui, self.undertest.cui2snames)
+
+
+    def test_merge_cdb(self):
+        # generating CDBs
+        config = Config()
+        maker = CDBMaker(config) 
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "model_creator", "umls_sample.csv")
+        cdb1 = maker.prepare_csvs(csv_paths=[path])
+        cdb2 = cdb1.copy()
+
+        # generating vectors and setting up
+        zeroes = np.zeros(shape=(1,300))
+        ones = np.ones(shape=(1,300))
+        for i, cui in enumerate(cdb1.cui2names):
+            cdb1.cui2context_vectors[cui] = {"short" : zeroes}
+            cdb2.cui2context_vectors[cui] = {"short" : ones}
+            cdb1.cui2count_train[cui] = 1
+            cdb2.cui2count_train[cui] = i
+        test_add = {"test": {'tokens': "test_token", 'snames': "test_sname", 'raw_name': "test_raw_name", "is_upper" : "P"}}
+        cdb1.add_names("C0006826", test_add)
+
+        # merging
+        cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2)
+        # tests
+        
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -823,6 +823,7 @@ or download the compatible model."""
         cdb = CDB(config)
 
         # names - copy cdb 1 as that is priority, and save computation time
+        # TODO: CHECK BENEFITS OF USING ADD_NAMES HERE
         cdb.name2cuis = cdb1.name2cuis.copy()
         cdb.name2cuis2status = cdb1.name2cuis2status.copy()
         cdb.name2count_train = cdb1.name2count_train.copy()
