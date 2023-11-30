@@ -840,6 +840,10 @@ class CAT(object):
                 Refer to medcat.cat.cdb.CDB.add_concept
         """
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
+        if not names and cui not in self.cdb.cui2preferred_name and name_status == 'P':
+            logger.warning("No names were able to be prepared in CAT.add_and_train_concept "
+                           "method. As such no preferred name will be able to be specifeid. "
+                           "The CUI: '%s' and raw name: '%s'", cui, name)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
             self.cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,

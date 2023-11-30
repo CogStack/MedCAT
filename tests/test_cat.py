@@ -4,10 +4,12 @@ import sys
 import unittest
 import tempfile
 import shutil
+import logging
+import contextlib
 from transformers import AutoTokenizer
 from medcat.vocab import Vocab
-from medcat.cdb import CDB
-from medcat.cat import CAT
+from medcat.cdb import CDB, logger as cdb_logger
+from medcat.cat import CAT, logger as cat_logger
 from medcat.utils.checkpoint import Checkpoint
 from medcat.meta_cat import MetaCAT
 from medcat.config_meta_cat import ConfigMetaCAT
@@ -20,6 +22,7 @@ class CATTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
+        cls.vocab.make_unigram_table()
         cls.cdb.config.general.spacy_model = "en_core_web_md"
         cls.cdb.config.ner.min_name_len = 2
         cls.cdb.config.ner.upper_case_limit_len = 3
@@ -387,6 +390,54 @@ class CATTests(unittest.TestCase):
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
         cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
+
+    def _assertNoLogs(self, logger: logging.Logger, level: int):
+        if hasattr(self, 'assertNoLogs'):
+            return self.assertNoLogs(logger=logger, level=level)
+        else:
+            return self.__assertNoLogs(logger=logger, level=level)
+    
+    @contextlib.contextmanager
+    def __assertNoLogs(self, logger: logging.Logger, level: int):
+        try:
+            with self.assertLogs(logger, level) as captured_logs:
+                yield
+        except AssertionError:
+            return
+        if captured_logs:
+            raise AssertionError("Logs were found: {}".format(captured_logs))
+
+    def assertLogsDuringAddAndTrainConcept(self, logger: logging.Logger, log_level,
+                                           name: str, name_status: str, nr_of_calls: int):
+        cui = 'CUI-%d'%(hash(name) + id(name))
+        with (self.assertLogs(logger=logger, level=log_level)
+              if nr_of_calls == 1
+              else self._assertNoLogs(logger=logger, level=log_level)):
+            self.undertest.add_and_train_concept(cui, name, name_status=name_status)
+
+    def test_add_and_train_concept_cat_nowarn_long_name(self):
+        long_name = 'a very long name'
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=long_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cdb_nowarn_long_name(self):
+        long_name = 'a very long name'
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=long_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cat_nowarn_short_name_not_pref(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=short_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cdb_nowarn_short_name_not_pref(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cat_warns_short_name(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
+
+    def test_add_and_train_concept_cdb_warns_short_name(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
 
 
 class ModelWithTwoConfigsLoadTests(unittest.TestCase):
