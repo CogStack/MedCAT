@@ -28,11 +28,11 @@ class TransformerNERTest(unittest.TestCase):
         cls.undertest.create_eval_pipeline()
 
     def test_pipe(self):
-        doc = English().make_doc("Intracerebral hemorrhage is not Movar Virus")
+        doc = English().make_doc("\nPatient Name: John Smith\nAddress: 15 Maple Avenue\nCity: New York\nCC: Chronic back pain\n\nHX: Mr. Smith")
         doc = next(self.undertest.pipe([doc]))
         assert len(doc.ents) > 0, "No entities were recognised"
 
-    def test_train_with_callbacks(self):
+    def test_train(self):
         tracker = unittest.mock.Mock()
         class _DummyCallback(TrainerCallback):
             def __init__(self, trainer) -> None:
@@ -42,5 +42,9 @@ class TransformerNERTest(unittest.TestCase):
 
         train_data = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "resources", "deid_train_data.json")
         self.undertest.training_arguments.num_train_epochs = 1
-        self.undertest.train(train_data, trainer_callbacks=[_DummyCallback, _DummyCallback])
+        df, examples, dataset = self.undertest.train(train_data, trainer_callbacks=[_DummyCallback, _DummyCallback])
+        assert "fp" in examples
+        assert "fn" in examples
+        assert dataset["train"].num_rows == 48
+        assert dataset["test"].num_rows == 12
         self.assertEqual(tracker.call.call_count, 2)
