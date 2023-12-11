@@ -4,10 +4,12 @@ import sys
 import unittest
 import tempfile
 import shutil
+import logging
+import contextlib
 from transformers import AutoTokenizer
 from medcat.vocab import Vocab
-from medcat.cdb import CDB
-from medcat.cat import CAT
+from medcat.cdb import CDB, logger as cdb_logger
+from medcat.cat import CAT, logger as cat_logger
 from medcat.utils.checkpoint import Checkpoint
 from medcat.meta_cat import MetaCAT
 from medcat.config_meta_cat import ConfigMetaCAT
@@ -20,6 +22,7 @@ class CATTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
+        cls.vocab.make_unigram_table()
         cls.cdb.config.general.spacy_model = "en_core_web_md"
         cls.cdb.config.ner.min_name_len = 2
         cls.cdb.config.ner.upper_case_limit_len = 3
@@ -60,7 +63,7 @@ class CATTests(unittest.TestCase):
             (2, ""),
             (3, None)
         ]
-        out = self.undertest.multiprocessing(in_data, nproc=1)
+        out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1)
 
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))
@@ -73,7 +76,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house."),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=False)
+        out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=False)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -89,7 +92,7 @@ class CATTests(unittest.TestCase):
             (2, ""),
             (3, None),
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=1, batch_size=1, return_dict=False)
+        out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=1, batch_size=1, return_dict=False)
         self.assertTrue(type(out) == list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
@@ -105,7 +108,7 @@ class CATTests(unittest.TestCase):
             (2, "The dog is sitting outside the house."),
             (3, "The dog is sitting outside the house.")
         ]
-        out = self.undertest.multiprocessing_pipe(in_data, nproc=2, return_dict=True)
+        out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=True)
         self.assertTrue(type(out) == dict)
         self.assertEqual(3, len(out))
         self.assertEqual({'entities': {}, 'tokens': []}, out[1])
@@ -367,7 +370,7 @@ class CATTests(unittest.TestCase):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(repr(cat._meta_cats), repr([meta_cat]))
@@ -377,7 +380,7 @@ class CATTests(unittest.TestCase):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
         full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(cat._meta_cats, [])
@@ -385,8 +388,102 @@ class CATTests(unittest.TestCase):
     def test_hashing(self):
         save_dir_path = tempfile.TemporaryDirectory()
         full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = self.undertest.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
+
+    def _assertNoLogs(self, logger: logging.Logger, level: int):
+        if hasattr(self, 'assertNoLogs'):
+            return self.assertNoLogs(logger=logger, level=level)
+        else:
+            return self.__assertNoLogs(logger=logger, level=level)
+    
+    @contextlib.contextmanager
+    def __assertNoLogs(self, logger: logging.Logger, level: int):
+        try:
+            with self.assertLogs(logger, level) as captured_logs:
+                yield
+        except AssertionError:
+            return
+        if captured_logs:
+            raise AssertionError("Logs were found: {}".format(captured_logs))
+
+    def assertLogsDuringAddAndTrainConcept(self, logger: logging.Logger, log_level,
+                                           name: str, name_status: str, nr_of_calls: int):
+        cui = 'CUI-%d'%(hash(name) + id(name))
+        with (self.assertLogs(logger=logger, level=log_level)
+              if nr_of_calls == 1
+              else self._assertNoLogs(logger=logger, level=log_level)):
+            self.undertest.add_and_train_concept(cui, name, name_status=name_status)
+
+    def test_add_and_train_concept_cat_nowarn_long_name(self):
+        long_name = 'a very long name'
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=long_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cdb_nowarn_long_name(self):
+        long_name = 'a very long name'
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=long_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cat_nowarn_short_name_not_pref(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=short_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cdb_nowarn_short_name_not_pref(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='', nr_of_calls=0)
+
+    def test_add_and_train_concept_cat_warns_short_name(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cat_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
+
+    def test_add_and_train_concept_cdb_warns_short_name(self):
+        short_name = 'a'
+        self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
+
+
+class ModelWithTwoConfigsLoadTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
+        cdb = CDB.load(os.path.join(cls.model_path, "cdb.dat"))
+        # save config next to the CDB
+        cls.config_path = os.path.join(cls.model_path, 'config.json')
+        cdb.config.save(cls.config_path)
+
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # REMOVE config next to the CDB
+        os.remove(cls.config_path)
+
+    def test_loading_model_pack_with_cdb_config_and_config_json_raises_exception(self):
+        with self.assertRaises(ValueError):
+            CAT.load_model_pack(self.model_path)
+
+
+class ModelWithZeroConfigsLoadTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cdb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat")
+        cdb = CDB.load(cdb_path)
+        vocab_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat")
+        # copy the CDB and vocab to a temp dir
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        cls.cdb_path = os.path.join(cls.temp_dir.name, 'cdb.dat')
+        cdb.save(cls.cdb_path) # save without internal config
+        cls.vocab_path = os.path.join(cls.temp_dir.name, 'vocab.dat')
+        shutil.copyfile(vocab_path, cls.vocab_path)
+
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # REMOVE temp dir
+        cls.temp_dir.cleanup()
+
+    def test_loading_model_pack_without_any_config_raises_exception(self):
+        with self.assertRaises(ValueError):
+            CAT.load_model_pack(self.temp_dir.name)
 
 
 def _get_meta_cat(meta_cat_dir):

@@ -54,6 +54,13 @@ class CDBTests(unittest.TestCase):
             self.undertest.save(f.name)
             self.undertest.load(f.name)
 
+    def test_load_has_no_config(self):
+        with tempfile.NamedTemporaryFile() as f:
+            self.undertest.save(f.name)
+            cdb = CDB.load(f.name)
+            self.assertFalse(cdb._config_from_file)
+
+
     def test_save_async_and_load(self):
         with tempfile.NamedTemporaryFile() as f:
             asyncio.run(self.undertest.save_async(f.name))

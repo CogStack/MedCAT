@@ -87,7 +87,7 @@ class ModelCreationTests(unittest.TestCase):
         model_pack_folder = os.path.join(
             self.json_model_pack.name, model_pack_path)
         json_path = os.path.join(model_pack_folder, "*.json")
-        jsons = glob.glob(json_path)
+        jsons = [fn for fn in glob.glob(json_path) if not fn.endswith("config.json")]
         # there is also a model_card.json
         # but nothing for cui2many or name2many
         # so can remove the length of ONE2MANY

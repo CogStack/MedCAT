@@ -108,7 +108,7 @@ class CdbMakerArchiveTests(unittest.TestCase):
         for i in range(500):
             cui = "C" + str(i)
             type_ids = {'T-' + str(i%10)}
-            cdb.add_concept(cui=cui, names=prepare_name('Name: ' + str(i), self.maker.pipe.get_spacy_nlp(), {}, self.config), ontologies=set(),
+            cdb._add_concept(cui=cui, names=prepare_name('Name: ' + str(i), self.maker.pipe.get_spacy_nlp(), {}, self.config), ontologies=set(),
                             name_status='P', type_ids=type_ids, description='', full_build=True)
 
             vectors = {}

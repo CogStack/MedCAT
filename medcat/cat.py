@@ -271,6 +271,10 @@ class CAT(object):
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
         self.cdb.save(cdb_path, json_path)
 
+        # Save the config
+        config_path = os.path.join(save_dir_path, "config.json")
+        self.cdb.config.save(config_path)
+
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
         if self.vocab is not None:
@@ -361,6 +365,10 @@ class CAT(object):
         json_path = model_pack_path if has_jsons else None
         logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
         cdb = CDB.load(cdb_path, json_path)
+
+        # load config
+        config_path = os.path.join(model_pack_path, "config.json")
+        cdb.load_config(config_path)
 
         # TODO load addl_ner
 
@@ -832,9 +840,13 @@ class CAT(object):
                 Refer to medcat.cat.cdb.CDB.add_concept
         """
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
+        if not names and cui not in self.cdb.cui2preferred_name and name_status == 'P':
+            logger.warning("No names were able to be prepared in CAT.add_and_train_concept "
+                           "method. As such no preferred name will be able to be specifeid. "
+                           "The CUI: '%s' and raw name: '%s'", cui, name)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
-            self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
+            self.cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
 
         if spacy_entity is not None and spacy_doc is not None:
@@ -1327,18 +1339,41 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
+    @deprecated(message="Use `multiprocessing_batch_char_size` instead")
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
                         nproc: int = 2,
                         batch_size_chars: int = 5000 * 1000,
                         only_cui: bool = False,
-                        addl_info: List[str] = [],
+                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
+        return self.multiprocessing_batch_char_size(data=data, nproc=nproc,
+                                                    batch_size_chars=batch_size_chars,
+                                                    only_cui=only_cui, addl_info=addl_info,
+                                                    separate_nn_components=separate_nn_components,
+                                                    out_split_size_chars=out_split_size_chars,
+                                                    save_dir_path=save_dir_path,
+                                                    min_free_memory=min_free_memory)
+
+    def multiprocessing_batch_char_size(self,
+                                        data: Union[List[Tuple], Iterable[Tuple]],
+                                        nproc: int = 2,
+                                        batch_size_chars: int = 5000 * 1000,
+                                        only_cui: bool = False,
+                                        addl_info: List[str] = [],
+                                        separate_nn_components: bool = True,
+                                        out_split_size_chars: Optional[int] = None,
+                                        save_dir_path: str = os.path.abspath(os.getcwd()),
+                                        min_free_memory=0.1) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
+
+        This method batches the data based on the number of characters as specified by user.
+
+        PS: This method is unlikely to work on a Windows machine.
 
         Args:
             data:
@@ -1523,15 +1558,35 @@ class CAT(object):
 
         return docs
 
-    def multiprocessing_pipe(self,
-                             in_data: Union[List[Tuple], Iterable[Tuple]],
+    @deprecated(message="Use `multiprocessing_batch_docs_size` instead")
+    def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        """Run multiprocessing NOT FOR TRAINING
+        return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
+                                                     batch_size=batch_size,
+                                                     only_cui=only_cui,
+                                                     addl_info=addl_info,
+                                                     return_dict=return_dict,
+                                                     batch_factor=batch_factor)
+
+    def multiprocessing_batch_docs_size(self,
+                             in_data: Union[List[Tuple], Iterable[Tuple]],
+                             nproc: Optional[int] = None,
+                             batch_size: Optional[int] = None,
+                             only_cui: bool = False,
+                             addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                             return_dict: bool = True,
+                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
+        """Run multiprocessing NOT FOR TRAINING.
+
+        This method batches the data based on the number of documents as specified by the user.
+
+        PS:
+        This method supports Windows.
 
         Args:
             in_data (Union[List[Tuple], Iterable[Tuple]]): List with format: [(id, text), (id, text), ...]
