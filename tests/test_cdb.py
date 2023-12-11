@@ -6,6 +6,7 @@ import asyncio
 import numpy as np
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
+from medcat.cdb import CDB
 
 
 class CDBTests(unittest.TestCase):
@@ -53,6 +54,13 @@ class CDBTests(unittest.TestCase):
             self.undertest.save(f.name)
             self.undertest.load(f.name)
 
+    def test_load_has_no_config(self):
+        with tempfile.NamedTemporaryFile() as f:
+            self.undertest.save(f.name)
+            cdb = CDB.load(f.name)
+            self.assertFalse(cdb._config_from_file)
+
+
     def test_save_async_and_load(self):
         with tempfile.NamedTemporaryFile() as f:
             asyncio.run(self.undertest.save_async(f.name))
@@ -74,6 +82,13 @@ class CDBTests(unittest.TestCase):
         assert 'C0000039' not in self.undertest.cui2preferred_name
         assert 'C0000039' not in self.undertest.name2cuis['virus~z']
         assert 'C0000039' not in self.undertest.name2cuis2status['virus~z']
+
+    def test_cui2snames_population(self):
+        self.undertest.cui2snames.clear()
+        self.undertest.populate_cui2snames()
+        for cui in self.undertest.cui2names:
+            with self.subTest(cui):
+                self.assertIn(cui, self.undertest.cui2snames)
 
 if __name__ == '__main__':
     unittest.main()

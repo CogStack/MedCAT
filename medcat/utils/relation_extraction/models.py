@@ -1,4 +1,3 @@
-from email.utils import encode_rfc2231
 import torch
 from torch import nn
 

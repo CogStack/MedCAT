@@ -28,7 +28,7 @@ from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
 from medcat.utils.checkpoint import Checkpoint, CheckpointConfig, CheckpointManager
-from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters
+from medcat.utils.helpers import tkns_from_doc, get_important_config_parameters, has_new_spacy
 from medcat.utils.hasher import Hasher
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
@@ -41,10 +41,13 @@ from medcat.config import Config, LinkingFilters
 from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
-from medcat.utils.saving.serializer import SPECIALITY_NAMES
+from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
+
+
+HAS_NEW_SPACY = has_new_spacy()
 
 
 class CAT(object):
@@ -274,6 +277,10 @@ class CAT(object):
         cdb_path = os.path.join(save_dir_path, "cdb.dat")
         self.cdb.save(cdb_path, json_path)
 
+        # Save the config
+        config_path = os.path.join(save_dir_path, "config.json")
+        self.cdb.config.save(config_path)
+
         # Save the Vocab
         vocab_path = os.path.join(save_dir_path, "vocab.dat")
         if self.vocab is not None:
@@ -364,10 +371,15 @@ class CAT(object):
 
         # Load the CDB
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= len(SPECIALITY_NAMES)
+        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
+        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
         json_path = model_pack_path if has_jsons else None
         logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
         cdb = CDB.load(cdb_path, json_path)
+
+        # load config
+        config_path = os.path.join(model_pack_path, "config.json")
+        cdb.load_config(config_path)
 
         # TODO load addl_ner
 
@@ -504,7 +516,8 @@ class CAT(object):
         fp_docs: Set = set()
         fn_docs: Set = set()
 
-        local_filters = self.config.linking.filters.copy_of()
+        orig_filters = self.config.linking.filters.copy_of()
+        local_filters = self.config.linking.filters
         for pind, project in tqdm(enumerate(data['projects']), desc="Stats project", total=len(data['projects']), leave=False):
             local_filters.cuis = set()
 
@@ -548,10 +561,14 @@ class CAT(object):
                             anns_norm.append((ann['start'], cui))
                             anns_examples.append({"text": doc['text'][max(0, ann['start']-60):ann['end']+60],
                                                   "cui": cui,
+                                                  "start": ann['start'],
+                                                  "end": ann['end'],
                                                   "source value": ann['value'],
                                                   "acc": 1,
                                                   "project name": project.get('name'),
-                                                  "document name": doc.get('name')})
+                                                  "document name": doc.get('name'),
+                                                  "project id": project.get('id'),
+                                                  "document id": doc.get('id')})
                         elif ann.get('validated', True) and (ann.get('killed', False) or ann.get('deleted', False)):
                             anns_norm_neg.append((ann['start'], cui))
 
@@ -570,11 +587,14 @@ class CAT(object):
                     p_anns_norm.append((ann.start_char, cui))
                     p_anns_examples.append({"text": doc['text'][max(0, ann.start_char-60):ann.end_char+60],
                                             "cui": cui,
+                                            "start": ann.start_char,
+                                            "end": ann.end_char,
                                             "source value": ann.text,
                                             "acc": float(ann._.context_similarity),
                                             "project name": project.get('name'),
-                                            "document name": doc.get('name')})
-
+                                            "document name": doc.get('name'),
+                                            "project id": project.get('id'),
+                                            "document id": doc.get('id')})
                 for iann, ann in enumerate(p_anns_norm):
                     cui = ann[1]
                     if ann in anns_norm:
@@ -651,6 +671,8 @@ class CAT(object):
 
         except Exception:
             traceback.print_exc()
+
+        self.config.linking.filters = orig_filters
 
         return fps, fns, tps, cui_prec, cui_rec, cui_f1, cui_counts, examples
 
@@ -836,9 +858,13 @@ class CAT(object):
                 Refer to medcat.cat.cdb.CDB.add_concept
         """
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
+        if not names and cui not in self.cdb.cui2preferred_name and name_status == 'P':
+            logger.warning("No names were able to be prepared in CAT.add_and_train_concept "
+                           "method. As such no preferred name will be able to be specifeid. "
+                           "The CUI: '%s' and raw name: '%s'", cui, name)
         # Only if not negative, otherwise do not add the new name if in fact it should not be detected
         if do_add_concept and not negative:
-            self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
+            self.cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids, description=description,
                                  full_build=full_build)
 
         if spacy_entity is not None and spacy_doc is not None:
@@ -857,6 +883,8 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
+    @deprecated(message="Use train_supervised_from_json to train based on data "
+                "loaded from a json file")
     def train_supervised(self,
                          data_path: str,
                          reset_cui_count: bool = False,
@@ -876,9 +904,93 @@ class CAT(object):
                          checkpoint: Optional[Checkpoint] = None,
                          retain_filters: bool = False,
                          is_resumed: bool = False) -> Tuple:
-        """TODO: Refactor, left from old
-        Run supervised training on a dataset from MedCATtrainer. Please take care that this is more a simulated
-        online training then supervised.
+        """Train supervised by reading data from a json file.
+
+        Refer to `train_supervvised_from_json` and/or `train_supervised_raw`
+        for further details.
+        """
+        return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
+                                               print_stats, use_filters, terminate_last,
+                                               use_overlaps, use_cui_doc_limit, test_size,
+                                               devalue_others, use_groups, never_terminate,
+                                               train_from_false_positives, extra_cui_filter,
+                                               retain_extra_cui_filter, checkpoint,
+                                               retain_filters, is_resumed)
+
+    def train_supervised_from_json(self,
+                                   data_path: str,
+                                   reset_cui_count: bool = False,
+                                   nepochs: int = 1,
+                                   print_stats: int = 0,
+                                   use_filters: bool = False,
+                                   terminate_last: bool = False,
+                                   use_overlaps: bool = False,
+                                   use_cui_doc_limit: bool = False,
+                                   test_size: int = 0,
+                                   devalue_others: bool = False,
+                                   use_groups: bool = False,
+                                   never_terminate: bool = False,
+                                   train_from_false_positives: bool = False,
+                                   extra_cui_filter: Optional[Set] = None,
+                                   retain_extra_cui_filter: bool = False,
+                                   checkpoint: Optional[Checkpoint] = None,
+                                   retain_filters: bool = False,
+                                   is_resumed: bool = False) -> Tuple:
+        """
+        Run supervised training on a dataset from MedCATtrainer in JSON format.
+
+        Refer to `train_supervised_raw` for more details.
+        """
+        with open(data_path) as f:
+            data = json.load(f)
+        return self.train_supervised_raw(data, reset_cui_count, nepochs,
+                                         print_stats, use_filters, terminate_last,
+                                         use_overlaps, use_cui_doc_limit, test_size,
+                                         devalue_others, use_groups, never_terminate,
+                                         train_from_false_positives, extra_cui_filter,
+                                         retain_extra_cui_filter, checkpoint,
+                                         retain_filters, is_resumed)
+
+    def train_supervised_raw(self,
+                             data: Dict[str, List[Dict[str, dict]]],
+                             reset_cui_count: bool = False,
+                             nepochs: int = 1,
+                             print_stats: int = 0,
+                             use_filters: bool = False,
+                             terminate_last: bool = False,
+                             use_overlaps: bool = False,
+                             use_cui_doc_limit: bool = False,
+                             test_size: int = 0,
+                             devalue_others: bool = False,
+                             use_groups: bool = False,
+                             never_terminate: bool = False,
+                             train_from_false_positives: bool = False,
+                             extra_cui_filter: Optional[Set] = None,
+                             retain_extra_cui_filter: bool = False,
+                             checkpoint: Optional[Checkpoint] = None,
+                             retain_filters: bool = False,
+                             is_resumed: bool = False) -> Tuple:
+        """Train supervised based on the raw data provided.
+
+        The raw data is expected in the following format:
+        {'projects':
+            [ # list of projects
+                { # project 1
+                    'name': '<some name>',
+                    # list of documents
+                    'documents': [{'name': '<some name>',  # document 1
+                                    'text': '<text of the document>',
+                                    # list of annotations
+                                    'annotations': [{'start': -1,  # annotation 1
+                                                    'end': 1,
+                                                    'cui': 'cui',
+                                                    'value': '<text value>'}, ...],
+                                    }, ...]
+                }, ...
+            ]
+        }
+
+        Please take care that this is more a simulated online training then supervised.
 
         When filtering, the filters within the CAT model are used first,
         then the ones from MedCATtrainer (MCT) export filters,
@@ -887,8 +999,8 @@ class CAT(object):
         extra_cui_filter ⊆ MCT filter ⊆ Model/config filter.
 
         Args:
-            data_path (str):
-                The path to the json file that we get from MedCATtrainer on export.
+            data (Dict[str, List[Dict[str, dict]]]):
+                The raw data, e.g from MedCATtrainer on export.
             reset_cui_count (boolean):
                 Used for training with weight_decay (annealing). Each concept has a count that is there
                 from the beginning of the CDB, that count is used for annealing. Resetting the count will
@@ -954,12 +1066,16 @@ class CAT(object):
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
-        local_filters = self.config.linking.filters.copy_of()
+        # the config.linking.filters stuff is used directly in
+        # medcat.linking.context_based_linker and medcat.linking.vector_context_model
+        # as such, they need to be kept up to date with per-project filters
+        # However, the original state needs to be kept track of
+        # so that it can be restored after training
+        orig_filters = self.config.linking.filters.copy_of()
+        local_filters = self.config.linking.filters
 
         fp = fn = tp = p = r = f1 = examples = {}
-        
-        with open(data_path) as f:
-            data = json.load(f)
+
         cui_counts = {}
 
         if retain_filters:
@@ -1017,7 +1133,7 @@ class CAT(object):
                 if retain_filters and extra_cui_filter and not retain_extra_cui_filter:
                     # adding project filters without extra_cui_filters
                     self._set_project_filters(local_filters, project, set(), use_filters)
-                    self.config.linking.filters.merge_with(local_filters)
+                    orig_filters.merge_with(local_filters)
                     # adding extra_cui_filters, but NOT project filters
                     self._set_project_filters(local_filters, project, extra_cui_filter, False)
                     # refrain from doing it again for subsequent epochs
@@ -1063,7 +1179,7 @@ class CAT(object):
                         checkpoint.save(self.cdb, latest_trained_step)
                 # if retaining MCT filters AND (if they exist) extra_cui_filters
                 if retain_filters:
-                    self.config.linking.filters.merge_with(local_filters)
+                    orig_filters.merge_with(local_filters)
                     # refrain from doing it again for subsequent epochs
                     retain_filters = False
 
@@ -1084,6 +1200,9 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
+
+        # reset the state of filters
+        self.config.linking.filters = orig_filters
 
         return fp, fn, tp, p, r, f1, cui_counts, examples
 
@@ -1238,18 +1357,41 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
+    @deprecated(message="Use `multiprocessing_batch_char_size` instead")
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
                         nproc: int = 2,
                         batch_size_chars: int = 5000 * 1000,
                         only_cui: bool = False,
-                        addl_info: List[str] = [],
+                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                         separate_nn_components: bool = True,
                         out_split_size_chars: Optional[int] = None,
                         save_dir_path: str = os.path.abspath(os.getcwd()),
                         min_free_memory=0.1) -> Dict:
+        return self.multiprocessing_batch_char_size(data=data, nproc=nproc,
+                                                    batch_size_chars=batch_size_chars,
+                                                    only_cui=only_cui, addl_info=addl_info,
+                                                    separate_nn_components=separate_nn_components,
+                                                    out_split_size_chars=out_split_size_chars,
+                                                    save_dir_path=save_dir_path,
+                                                    min_free_memory=min_free_memory)
+
+    def multiprocessing_batch_char_size(self,
+                                        data: Union[List[Tuple], Iterable[Tuple]],
+                                        nproc: int = 2,
+                                        batch_size_chars: int = 5000 * 1000,
+                                        only_cui: bool = False,
+                                        addl_info: List[str] = [],
+                                        separate_nn_components: bool = True,
+                                        out_split_size_chars: Optional[int] = None,
+                                        save_dir_path: str = os.path.abspath(os.getcwd()),
+                                        min_free_memory=0.1) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
+
+        This method batches the data based on the number of characters as specified by user.
+
+        PS: This method is unlikely to work on a Windows machine.
 
         Args:
             data:
@@ -1434,15 +1576,35 @@ class CAT(object):
 
         return docs
 
-    def multiprocessing_pipe(self,
-                             in_data: Union[List[Tuple], Iterable[Tuple]],
+    @deprecated(message="Use `multiprocessing_batch_docs_size` instead")
+    def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
                              only_cui: bool = False,
                              addl_info: List[str] = [],
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        """Run multiprocessing NOT FOR TRAINING
+        return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
+                                                     batch_size=batch_size,
+                                                     only_cui=only_cui,
+                                                     addl_info=addl_info,
+                                                     return_dict=return_dict,
+                                                     batch_factor=batch_factor)
+
+    def multiprocessing_batch_docs_size(self,
+                             in_data: Union[List[Tuple], Iterable[Tuple]],
+                             nproc: Optional[int] = None,
+                             batch_size: Optional[int] = None,
+                             only_cui: bool = False,
+                             addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                             return_dict: bool = True,
+                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
+        """Run multiprocessing NOT FOR TRAINING.
+
+        This method batches the data based on the number of documents as specified by the user.
+
+        PS:
+        This method supports Windows.
 
         Args:
             in_data (Union[List[Tuple], Iterable[Tuple]]): List with format: [(id, text), (id, text), ...]
@@ -1524,6 +1686,43 @@ class CAT(object):
                         logger.warning(str(e))
         sleep(2)
 
+    def _add_nested_ent(self, doc: Doc, _ents: List[Span], _ent: Union[Dict, Span]) -> None:
+        # if the entities are serialised (PipeRunner.serialize_entities)
+        # then the entities are dicts
+        # otherwise they're Span objects
+        meta_anns = None
+        if isinstance(_ent, dict):
+            start = _ent['start']
+            end =_ent['end']
+            label = _ent['label']
+            cui = _ent['cui']
+            detected_name = _ent['detected_name']
+            context_similarity = _ent['context_similarity']
+            id = _ent['id']
+            if 'meta_anns' in _ent:
+                meta_anns = _ent['meta_anns']
+        else:
+            start = _ent.start
+            end = _ent.end
+            label = _ent.label
+            cui = _ent._.cui
+            detected_name = _ent._.detected_name
+            context_similarity = _ent._.context_similarity
+            if _ent._.has('meta_anns'):
+                meta_anns = _ent._.meta_anns
+            if HAS_NEW_SPACY:
+                id = _ent.id
+            else:
+                id = _ent.ent_id
+        entity = Span(doc, start, end, label=label)
+        entity._.cui = cui
+        entity._.detected_name = detected_name
+        entity._.context_similarity = context_similarity
+        entity._.id = id
+        if meta_anns is not None:
+            entity._.meta_anns = meta_anns
+        _ents.append(entity)
+
     def _doc_to_out(self,
                     doc: Doc,
                     only_cui: bool,
@@ -1534,16 +1733,9 @@ class CAT(object):
         if doc is not None:
             out_ent: Dict = {}
             if self.config.general.show_nested_entities:
-                _ents = []
+                _ents: List[Span] = []
                 for _ent in doc._.ents:
-                    entity = Span(doc, _ent['start'], _ent['end'], label=_ent['label'])
-                    entity._.cui = _ent['cui']
-                    entity._.detected_name = _ent['detected_name']
-                    entity._.context_similarity = _ent['context_similarity']
-                    entity._.id = _ent['id']
-                    if 'meta_anns' in _ent:
-                        entity._.meta_anns = _ent['meta_anns']
-                    _ents.append(entity)
+                    self._add_nested_ent(doc, _ents, _ent)
             else:
                 _ents = doc.ents  # type: ignore
 

@@ -16,7 +16,7 @@ setuptools.setup(
     url="https://github.com/CogStack/MedCAT",
 
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
-              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.neo', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
               'medcat.utils.saving', 'medcat.utils.regression'],
     install_requires=[
         'numpy>=1.22.0', # first to support 3.11
@@ -24,7 +24,8 @@ setuptools.setup(
         'gensim>=4.3.0', # first to support 3.11
         'spacy>=3.1.0',
         'scipy~=1.9.2', # first to support 3.11
-        'transformers>=4.19.2,<4.22.0', # upper bound is needed for the de-id model until it is retrained
+        'transformers>=4.34.0',
+        'accelerate>=0.23.0', # required by Trainer class in de-id
         'torch>=1.13.0', # first to support 3.11
         'tqdm>=4.27',
         'scikit-learn>=1.1.3', # first to supporrt 3.11
@@ -34,19 +35,12 @@ setuptools.setup(
         'psutil>=5.8.0',
         # 0.70.12 uses older version of dill (i.e less than 0.3.5) which is required for datasets
         'multiprocess~=0.70.12',  # 0.70.14 seemed to work just fine
-        'py2neo~=2021.2.3',
         'aiofiles>=0.8.0', # allow later versions, tested with 22.1.0
         'ipywidgets>=7.6.5', # allow later versions, tested with 0.8.0
         'xxhash>=3.0.0', # allow later versions, tested with 3.1.0
         'blis>=0.7.5', # allow later versions, tested with 0.7.9
         'click>=8.0.4', # allow later versions, tested with 8.1.3
         'pydantic>=1.10.0,<2.0', # for spacy compatibility; avoid 2.0 due to breaking changes
-        # the following are not direct dependencies of MedCAT but needed for docs/building
-        # hopefully will no longer need the transitive dependencies
-        'aiohttp==3.8.3', # 3.8.3 is needed for compatibility with fsspec <- datasets <- medcat
-        'blis<0.8.0,>=0.7.8', # as required by thinc <- spacy <- medcat
-        # 'smart-open==5.2.1', # 5.2.1 is needed for compatibility with pathy
-        # 'joblib~=1.2',
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

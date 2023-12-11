@@ -5,11 +5,13 @@ And to save as well as load them in some other way.
 """
 import os
 import logging
-from typing import cast, Dict, Optional, Union
+from typing import cast, Dict, Optional, Type
 import dill
 import json
 
 from medcat.config import Config
+from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook, default_postprocessing
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,35 +19,8 @@ __SPECIALITY_NAMES_CUI = set(["cui2names", "cui2snames", "cui2type_ids"])
 __SPECIALITY_NAMES_NAME = set(
     ["name2cuis", "name2cuis2status", "name_isupper"])
 __SPECIALITY_NAMES_OTHER = set(["snames", "addl_info"])
-SPECIALITY_NAMES = __SPECIALITY_NAMES_CUI | __SPECIALITY_NAMES_NAME | __SPECIALITY_NAMES_OTHER
-
-
-class SetEncode(json.JSONEncoder):
-    """JSONEncoder (and decoder) for sets.
-
-    Generally, JSON doesn't support serializing of sets natively.
-    This encoder adds a set identifier to the data when being serialized
-    and provides a method to read said identifier upon decoding."""
-    SET_IDENTIFIER = '==SET=='
-
-    def default(self, obj):
-        if isinstance(obj, set):
-            return {SetEncode.SET_IDENTIFIER: list(obj)}
-        return json.JSONEncoder.default(self, obj)
-
-    @staticmethod
-    def set_decode(dct: dict) -> Union[dict, set]:
-        """Decode sets from input dicts.
-
-        Args:
-            dct (dict): The input dict
-
-        Returns:
-            Union[dict, set]: The original dict if this was not a serialized set, the set otherwise
-        """
-        if SetEncode.SET_IDENTIFIER in dct:
-            return set(dct[SetEncode.SET_IDENTIFIER])
-        return dct
+ONE2MANY = set(['cui2many', 'name2many'])  # these may or may not exist
+SPECIALITY_NAMES = __SPECIALITY_NAMES_CUI | __SPECIALITY_NAMES_NAME | __SPECIALITY_NAMES_OTHER | ONE2MANY
 
 
 class JsonSetSerializer:
@@ -75,7 +50,11 @@ class JsonSetSerializer:
         logger.info('Writing data for "%s" into "%s"',
                     self.name, self.file_name)
         with open(self.file_name, 'w') as f:
-            json.dump(d, f, cls=SetEncode)
+            # the def_inst method, when called,
+            # returns the right type of object anyway
+
+            json.dump(d, f, cls=cast(Type[json.JSONEncoder],
+                                     CustomDelegatingEncoder.def_inst))
 
     def read(self) -> dict:
         """Read the json file specified by this serializer.
@@ -85,7 +64,8 @@ class JsonSetSerializer:
         """
         logger.info('Reading data for %s from %s', self.name, self.file_name)
         with open(self.file_name, 'r') as f:
-            data = json.load(f, object_hook=SetEncode.set_decode)
+            data = json.load(
+                f, object_hook=default_hook)
         return data
 
 
@@ -155,19 +135,20 @@ class CDBSerializer:
             raise ValueError(f'Unable to overwrite shelf path "{self.json_path}"'
                              ' - specify overrwrite=True if you wish to overwrite')
         to_save = {}
-        to_save['config'] = cdb.config.asdict()
         # This uses different names so as to not be ambiguous
         # when looking at files whether the json parts should
         # exist separately or not
         to_save['cdb_main' if self.jsons is not None else 'cdb'] = dict(
             ((key, val) for key, val in cdb.__dict__.items() if
-             key != 'config' and
+             key not in ('config', '_config_from_file') and
              (self.jsons is None or key not in SPECIALITY_NAMES)))
         logger.info('Dumping CDB to %s', self.main_path)
         with open(self.main_path, 'wb') as f:
             dill.dump(to_save, f)
         if self.jsons is not None:
             for name in SPECIALITY_NAMES:
+                if name not in cdb.__dict__:
+                    continue  # in case cui2many doesn't exit
                 self.jsons[name].write(cdb.__dict__[name])
 
     def deserialize(self, cdb_cls):
@@ -183,7 +164,17 @@ class CDBSerializer:
         logger.info('Reading CDB data from %s', self.main_path)
         with open(self.main_path, 'rb') as f:
             data = dill.load(f)
-        config = cast(Config, Config.from_dict(data['config']))
+        if 'config' in data:
+            logger.warning("Found config in CDB for model (%s). "
+                           "This is an old format. Please re-save the "
+                           "model in the new format to avoid potential issues",
+                           os.path.dirname(self.main_path))
+            config = cast(Config, Config.from_dict(data['config']))
+        else:
+            # by passing None as config to constructor
+            # the CDB should identify that there has been
+            # no config loaded
+            config = None
         cdb = cdb_cls(config=config)
         if self.jsons is None:
             cdb_main = data['cdb']
@@ -199,5 +190,10 @@ class CDBSerializer:
         # if applicable
         if self.jsons is not None:
             for name in SPECIALITY_NAMES:
+                if not os.path.exists(self.jsons[name].file_name):
+                    continue  # in case of non-memory-optimised where cui2many doesn't exist
                 cdb.__dict__[name] = self.jsons[name].read()
+        # if anything has
+        # been registered to postprocess the CDBs
+        default_postprocessing(cdb)
         return cdb

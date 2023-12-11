@@ -15,6 +15,7 @@ from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
+from medcat.utils.decorators import deprecated
 
 # It should be safe to do this always, as all other multiprocessing
 # will be finished before data comes to meta_cat
@@ -98,6 +99,7 @@ class MetaCAT(PipeRunner):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
+    @deprecated(message="Use `train_from_json` or `train_raw` instead")
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
@@ -109,8 +111,19 @@ class MetaCAT(PipeRunner):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
         """
-        g_config = self.config.general
-        t_config = self.config.train
+        return self.train_from_json(json_path, save_dir_path)
+
+    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
+        """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
+        continue training if an existing model is loaded or start new training if the model is blank/new.
+
+        Args:
+            json_path (Union[str, list]):
+                Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
+            save_dir_path (Optional[str]):
+                In case we have aut_save_model (meaning during the training the best model will be saved)
+                we need to set a save path. Defaults to `None`.
+        """
 
         # Load the medcattrainer export
         if isinstance(json_path, str):
@@ -131,6 +144,39 @@ class MetaCAT(PipeRunner):
         for path in json_path:
             with open(path, 'r') as f:
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
+        return self.train_raw(data_loaded, save_dir_path)
+
+    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None) -> Dict:
+        """Train or continue training a model given raw data. It will
+        continue training if an existing model is loaded or start new training if the model is blank/new.
+
+        The raw data is expected in the following format:
+        {'projects':
+            [ # list of projects
+                { # project 1
+                    'name': '<some name>',
+                    # list of documents
+                    'documents': [{'name': '<some name>',  # document 1
+                                    'text': '<text of the document>',
+                                    # list of annotations
+                                    'annotations': [{'start': -1,  # annotation 1
+                                                    'end': 1,
+                                                    'cui': 'cui',
+                                                    'value': '<text value>'}, ...],
+                                    }, ...]
+                }, ...
+            ]
+        }
+
+        Args:
+            data_loaded (Dict):
+                The raw data we want to train for.
+            save_dir_path (Optional[str]):
+                In case we have aut_save_model (meaning during the training the best model will be saved)
+                we need to set a save path. Defaults to `None`.
+        """
+        g_config = self.config.general
+        t_config = self.config.train
 
         # Create directories if they don't exist
         if t_config['auto_save_model']:
