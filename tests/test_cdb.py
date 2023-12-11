@@ -85,27 +85,40 @@ class CDBTests(unittest.TestCase):
 
 
     def test_merge_cdb(self):
-        # generating CDBs
+        # generating cdbs - two maker are requested as they point to the same created CDB. 
         config = Config()
-        maker = CDBMaker(config) 
+        config.general["spacy_model"] = "en_core_web_md"
+        maker1 = CDBMaker(config)
+        maker2 = CDBMaker(config) # second maker is required as it will otherwise point to same object
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "model_creator", "umls_sample.csv")
-        cdb1 = maker.prepare_csvs(csv_paths=[path])
-        cdb2 = cdb1.copy()
+        cdb1 = maker1.prepare_csvs(csv_paths=[path])
+        cdb2 = maker2.prepare_csvs(csv_paths=[path])
 
         # generating vectors and setting up
         zeroes = np.zeros(shape=(1,300))
         ones = np.ones(shape=(1,300))
         for i, cui in enumerate(cdb1.cui2names):
-            cdb1.cui2context_vectors[cui] = {"short" : zeroes}
-            cdb2.cui2context_vectors[cui] = {"short" : ones}
+            cdb1.cui2context_vectors[cui] = {"short" : ones}
+            cdb2.cui2context_vectors[cui] = {"short" : zeroes}
             cdb1.cui2count_train[cui] = 1
-            cdb2.cui2count_train[cui] = i
-        test_add = {"test": {'tokens': "test_token", 'snames': "test_sname", 'raw_name': "test_raw_name", "is_upper" : "P"}}
+            cdb2.cui2count_train[cui] = i + 1
+        test_add = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper" : "P"}}
         cdb1.add_names("C0006826", test_add)
+        unique_test = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper" : "P"}}
+        cdb2.add_names("UniqueTest", unique_test)
+        cdb2.cui2context_vectors["UniqueTest"] = {"short" : ones}
 
         # merging
         cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2)
+
         # tests
+        self.assertIn("test", cdb.cui2names["C0006826"])
+        self.assertIn("test_name", cdb.cui2snames["C0006826"])
+        self.assertEqual("Cancer", cdb.cui2preferred_name["C0006826"])
+        self.assertTrue(np.array_equal(np.ones(shape=(1,300)), cdb.cui2context_vectors["UniqueTest"]["short"]))
+        base = np.ones(shape=(1,300))
+        for i, cui in enumerate(cdb1.cui2names):
+            self.assertTrue(np.array_equal(cdb.cui2context_vectors[cui]["short"], np.divide(base, i+2)))
         
 
 
