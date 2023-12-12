@@ -967,7 +967,7 @@ or download the compatible model."""
         for cui in cdb2.cui2names:
             names = dict()
             for name in cdb2.cui2names[cui]:
-                names[name] = {'snames' : cdb2.cui2snames.get(cui, set()), 'is_upper' : cdb2.name_isupper.get(name, False), 'tokens' : {}}
+                names[name] = {'snames': cdb2.cui2snames.get(cui, set()), 'is_upper': cdb2.name_isupper.get(name, False), 'tokens': {}}
                 name_status = cdb2.name2cuis2status.get(name, 'A').get(cui, 'A') # get the name status if it exists, default to 'A'
             ontologies = set()
             description = ''
@@ -1013,7 +1013,7 @@ or download the compatible model."""
                     cdb.cui2tags[cui] = cdb2.cui2tags[cui]
                 if cui in cdb2.cui2type_ids: 
                     cdb.cui2type_ids[cui] = cdb2.cui2type_ids[cui]
-        
+
         for name in cdb2.name2cuis:
             if name in cdb1.name2cuis: # if they exist in both cdbs
                 if name in cdb1.name2count_train and name in cdb2.name2count_train:
