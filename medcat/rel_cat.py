@@ -2,7 +2,6 @@ import json
 import logging
 import os
 from tokenize import Token
-import torch
 
 import torch.nn
 import torch.optim
@@ -22,6 +21,7 @@ from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
+from torch.nn import DataParallel
 from medcat.utils.meta_cat.ml_utils import split_list_train_test
 
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
@@ -55,7 +55,7 @@ class RelCAT(PipeRunner):
         self.is_cuda_available = torch.cuda.is_available()
         self.device = torch.device("cuda" if self.is_cuda_available and self.config.general["device"] != "cpu" else "cpu")
         self.model_config = BertConfig()
-        self.model: BertModel_RelationExtraction
+        self.model: BertModel_RelationExtraction | DataParallel
         self.task = task
         self.checkpoint_path = "./"
         self.optimizer = None

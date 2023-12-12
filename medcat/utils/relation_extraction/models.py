@@ -9,6 +9,7 @@ from transformers import logging
 
 from medcat.config_rel_cat import ConfigRelCAT
 
+from torch.nn import DataParallel
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
     def __init__(self, pretrained_model_name_or_path, relcat_config: ConfigRelCAT, model_config: BertConfig, model_size: int, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):

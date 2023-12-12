@@ -346,7 +346,8 @@ class CAT(object):
                         zip_path: str,
                         meta_cat_config_dict: Optional[Dict] = None,
                         load_meta_models: bool = True,
-                        load_addl_ner: bool = True) -> "CAT":
+                        load_addl_ner: bool = True,
+                        load_rel_models: bool = True) -> "CAT":
         """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
         (if present)
 
@@ -408,14 +409,14 @@ class CAT(object):
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
                                           config_dict=meta_cat_config_dict))
 
-        # same is done for rel models
-        rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')]
+        # Find Rel models in model_pack
+        rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')] if load_rel_models else []
         rel_cats = []
         for rel_path in rel_paths:
             rel_cats.append(RelCAT.load(load_path=rel_path))
 
-        cls.log.info(cat.get_model_card()) # Print the model card
-        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, rel_cats=rel_cats, addl_ner=addl_ner)
+        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner,)
+        logger.info(cat.get_model_card())  # Print the model card
 
         return cat
 

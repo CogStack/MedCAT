@@ -185,7 +185,7 @@ class RelData(Dataset):
 
                     doc_length = len(text)
 
-                    tokenizer_data = self.tokenizer(text, add_special_tokens=self.config.general["tokenizer_special_tokens"])
+                    tokenizer_data = self.tokenizer(text)
 
                     ann_ids_ents: Dict[Any, Any] = {}
                     for ann in annotations: 
