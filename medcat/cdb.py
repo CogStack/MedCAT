@@ -1032,5 +1032,5 @@ or download the compatible model."""
                 cdb.vocab[word] += cdb2.vocab[word]
             else:
                 cdb.vocab[word] = cdb2.vocab[word]
-                
+
         return cdb
