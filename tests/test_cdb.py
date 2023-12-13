@@ -7,6 +7,7 @@ import numpy as np
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 from medcat.cdb import CDB
+from .helper import ForCDBMerging
 
 
 class CDBTests(unittest.TestCase):
@@ -92,34 +93,11 @@ class CDBTests(unittest.TestCase):
 
 
     def test_merge_cdb(self):
-        # generating cdbs - two maker are requested as they point to the same created CDB. 
-        config = Config()
-        config.general["spacy_model"] = "en_core_web_md"
-        maker1 = CDBMaker(config)
-        maker2 = CDBMaker(config) # second maker is required as it will otherwise point to same object
-        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "model_creator", "umls_sample.csv")
-        cdb1 = maker1.prepare_csvs(csv_paths=[path])
-        cdb2 = maker2.prepare_csvs(csv_paths=[path])
-
-        # generating context vectors here for for testing the weighted average function (based off cui2count_train)
+        to_merge = ForCDBMerging()
+        cdb1 = to_merge.cdb1
+        cdb2 = to_merge.cdb2
         zeroes = np.zeros(shape=(1,300))
         ones = np.ones(shape=(1,300))
-        for i, cui in enumerate(cdb1.cui2names):
-            cdb1.cui2context_vectors[cui] = {"short": ones}
-            cdb2.cui2context_vectors[cui] = {"short": zeroes}
-            cdb1.cui2count_train[cui] = 1
-            cdb2.cui2count_train[cui] = i + 1
-        # adding new names and cuis to each cdb to test after merging
-        test_add = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper": "P"}}
-        cdb1.add_names("C0006826", test_add)
-        unique_test = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper": "P"}}
-        cdb2.add_names("UniqueTest", unique_test)
-        cdb2.cui2context_vectors["UniqueTest"] = {"short": zeroes}
-        cdb2.addl_info["cui2ontologies"] = {}
-        cdb2.addl_info["cui2description"] = {}
-        for cui in cdb2.cui2names:
-            cdb2.addl_info["cui2ontologies"][cui] = ["test_ontology"]
-            cdb2.addl_info["cui2description"][cui] = "test_description"
 
         # merging
         cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2)
