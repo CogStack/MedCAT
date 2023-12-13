@@ -56,3 +56,41 @@ class SpacyModelFolderIdentifierTests(unittest.TestCase):
         for garbage in self.get_all_garbage():
             with self.subTest(garbage):
                 self.assertFalse(is_spacy_model_folder(garbage))
+
+
+class FindSpacyFolderJustOneFolderEmptyFilesTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls, spacy_folder_name='en_core_web_md') -> None:
+        # setup temp folder
+        cls.temp_folder = tempfile.TemporaryDirectory()
+        cls.fake_modelpack_folder_name = cls.temp_folder.name
+        # create spacy folder
+        cls.spacy_folder = os.path.join(cls.fake_modelpack_folder_name, spacy_folder_name)
+        os.makedirs(cls.spacy_folder)
+        # create 2 empty files
+        filenames = ["file1.dat", "file2.json"]
+        filenames = [os.path.join(cls.fake_modelpack_folder_name, fn) for fn in filenames]
+        for fn in filenames:
+            with open(fn, 'w'):
+                pass # open and write empty file
+    
+    @classmethod
+    def tearDownClass(cls) -> None:
+        cls.temp_folder.cleanup()
+
+    def test_finds(self):
+        found_folder_path = find_spacy_model_folder(self.fake_modelpack_folder_name)
+        self.assertEqual(found_folder_path, self.spacy_folder)
+
+
+class FindSpacyFolderMoreFoldersEmptyFilesTests(FindSpacyFolderJustOneFolderEmptyFilesTests):
+
+    @classmethod
+    def setUpClass(cls, spacy_folder_name='en_core_web_md') -> None:
+        super().setUpClass(spacy_folder_name)
+        # add a few folders
+        folder_names = ["meta_Presence", "garbage_in_garbage_out"]
+        folder_names = [os.path.join(cls.fake_modelpack_folder_name, fn) for fn in folder_names]
+        for folder in folder_names:
+            os.makedirs(folder)

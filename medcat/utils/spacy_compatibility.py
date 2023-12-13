@@ -31,3 +31,27 @@ def is_spacy_model_folder(folder_name: str) -> bool:
         # these are MetaCat stuff (or should be)
         return False
     return bool(SPACY_MODEL_REGEX.match(folder_name))
+
+def find_spacy_model_folder(model_pack_folder: str) -> str:
+    """Find the spacy model folder in a model pack folder.
+
+    Args:
+        model_pack_folder (str): The model pack folder
+
+    Raises:
+        ValueError: If it's ambiguous or there's no model folder.
+
+    Returns:
+        str: The full path to the model folder.
+    """
+    options: List[str] = []
+    for folder_name in os.listdir(model_pack_folder):
+        full_folder_path = os.path.join(model_pack_folder, folder_name)
+        if not os.path.isdir(full_folder_path):
+            continue
+        if is_spacy_model_folder(folder_name):
+            options.append(full_folder_path)
+    if len(options) != 1:
+        raise ValueError("Unable to determine spacy folder name from "
+                         f"{len(options)} ambiguous folders: {options}")
+    return os.path.join(model_pack_folder, options[0])
