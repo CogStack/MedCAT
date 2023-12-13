@@ -1,9 +1,11 @@
-from medcat.utils.spacy_compatibility import is_spacy_model_folder
+from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
 
 import unittest
 
 import random
 import string
+import tempfile
+import os
 
 
 class SpacyModelFolderIdentifierTests(unittest.TestCase):
@@ -31,6 +33,12 @@ class SpacyModelFolderIdentifierTests(unittest.TestCase):
     def test_works_legacy_models(self):
         for model_name in self.expected_working_legacy_names:
             with self.subTest(model_name):
+                self.assertTrue(is_spacy_model_folder(model_name))
+
+    def test_works_fill_path(self):
+        for model_name in self.expected_working_legacy_names:
+            full_folder_path = os.path.join("some", "folder", "structure", model_name)
+            with self.subTest(full_folder_path):
                 self.assertTrue(is_spacy_model_folder(model_name))
 
     def get_all_garbage(self) -> list:
