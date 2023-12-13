@@ -94,3 +94,8 @@ def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -
     spacy_model_folder = find_spacy_model_folder(model_pack_path)
     info = spacy.info(spacy_model_folder)
     return os.path.basename(spacy_model_folder), info
+
+
+def get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, str]:
+    name, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
+    return name, info['version']

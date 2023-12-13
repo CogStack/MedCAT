@@ -1,6 +1,7 @@
 from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
 from medcat.utils.spacy_compatibility import get_installed_spacy_version, get_installed_model_version
 from medcat.utils.spacy_compatibility import get_name_and_meta_of_spacy_model_in_medcat_modelpack
+from medcat.utils.spacy_compatibility import get_name_and_version_of_spacy_model_in_medcat_modelpack
 
 import unittest
 
@@ -120,14 +121,28 @@ class InstalledVersionChecker(unittest.TestCase):
         self.assertEqual(version, "N/A")
 
 
-class GetSpacyModelVersionTests(unittest.TestCase):
+class GetSpacyModelInfoTests(unittest.TestCase):
     fake_spacy_model_name = "ff_core_fake_dr"
     fake_spacy_model_dir = os.path.join("tests", "resources", fake_spacy_model_name)
     fake_modelpack_model_dir = os.path.join(fake_spacy_model_dir, '..')
     expected_version = "3.not.yeah"
 
-    def test_can_read_version(self):
-        name, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(self.fake_modelpack_model_dir)
-        version = info['version']
-        self.assertEqual(name, self.fake_spacy_model_name)
-        self.assertEqual(version, self.expected_version)
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.name, cls.info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(cls.fake_modelpack_model_dir)
+
+    def test_reads_name(self):
+        self.assertEqual(self.name, self.fake_spacy_model_name)
+
+    def test_reads_info(self):
+        self.assertIsInstance(self.info, dict)
+        self.assertTrue(self.info)  # not empty
+
+
+class GetSpacyModelVersionTests(GetSpacyModelInfoTests):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.name, cls.version = get_name_and_version_of_spacy_model_in_medcat_modelpack(cls.fake_modelpack_model_dir)
+
+    def test_version_correct(self):
+        self.assertEqual(self.version, self.expected_version)
