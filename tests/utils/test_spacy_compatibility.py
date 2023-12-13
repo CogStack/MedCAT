@@ -1,4 +1,5 @@
 from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
+from medcat.utils.spacy_compatibility import get_installed_spacy_version
 
 import unittest
 
@@ -94,3 +95,12 @@ class FindSpacyFolderMoreFoldersEmptyFilesTests(FindSpacyFolderJustOneFolderEmpt
         folder_names = [os.path.join(cls.fake_modelpack_folder_name, fn) for fn in folder_names]
         for folder in folder_names:
             os.makedirs(folder)
+
+
+class SpacyVersionTests(unittest.TestCase):
+
+    def test_version_received(self):
+        installed = get_installed_spacy_version()
+        import spacy
+        expected = spacy.__version__
+        self.assertEqual(installed, expected)
