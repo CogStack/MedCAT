@@ -32,6 +32,7 @@ def is_spacy_model_folder(folder_name: str) -> bool:
         return False
     return bool(SPACY_MODEL_REGEX.match(folder_name))
 
+
 def find_spacy_model_folder(model_pack_folder: str) -> str:
     """Find the spacy model folder in a model pack folder.
 
@@ -56,5 +57,17 @@ def find_spacy_model_folder(model_pack_folder: str) -> str:
                          f"{len(options)} ambiguous folders: {options}")
     return os.path.join(model_pack_folder, options[0])
 
+
 def get_installed_spacy_version() -> str:
+    """Get the spacy version installed currently.
+
+    Returns:
+        str: The currently installed spacy verison.
+    """
     return spacy.__version__
+
+
+def get_installed_model_version(model_name: str) -> str:
+    if model_name not in spacy.util.get_installed_models():
+        return 'N/A'
+    return spacy.info(model_name)['version']

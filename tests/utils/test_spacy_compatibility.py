@@ -1,5 +1,5 @@
 from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
-from medcat.utils.spacy_compatibility import get_installed_spacy_version
+from medcat.utils.spacy_compatibility import get_installed_spacy_version, get_installed_model_version
 
 import unittest
 
@@ -104,3 +104,16 @@ class SpacyVersionTests(unittest.TestCase):
         import spacy
         expected = spacy.__version__
         self.assertEqual(installed, expected)
+
+
+class InstalledVersionChecker(unittest.TestCase):
+
+    def test_existing(self, model_name: str = 'en_core_web_md'):
+        version = get_installed_model_version(model_name)
+        self.assertIsInstance(version, str)
+        self.assertNotEqual(version, "N/A")
+
+    def test_non_existing(self, model_name: str = 'en_core_web_lg'):
+        version = get_installed_model_version(model_name)
+        self.assertIsInstance(version, str)
+        self.assertEqual(version, "N/A")
