@@ -68,12 +68,28 @@ def get_installed_spacy_version() -> str:
 
 
 def get_installed_model_version(model_name: str) -> str:
+    """Get the version of a model installed in spacy.
+
+    Args:
+        model_name (str): The model name.
+
+    Returns:
+        str: The version of the installed model.
+    """
     if model_name not in spacy.util.get_installed_models():
         return 'N/A'
     return spacy.info(model_name)['version']
 
 
 def get_name_and_meta_of_spacy_model(model_pack_path: str) -> Tuple[str, dict]:
+    """Gets the name and meta information about a spacy model within a medcat model pack.
+
+    Args:
+        model_pack_path (str): The model pack path.
+
+    Returns:
+        Tuple[str, dict]: The name of the spacy model, and the meta information.
+    """
     spacy_model_folder = find_spacy_model_folder(model_pack_path)
     info = spacy.info(spacy_model_folder)
     return os.path.basename(spacy_model_folder), info
