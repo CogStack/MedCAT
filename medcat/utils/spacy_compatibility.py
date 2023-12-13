@@ -11,6 +11,7 @@ import spacy
 
 SPACY_MODEL_REGEX = re.compile(r"(\w{2}_core_(\w{3,4})_(sm|md|lg|trf|xxl|\w+))|(spacy_model)")
 
+
 def is_spacy_model_folder(folder_name: str) -> bool:
     """Check if a folder within a model pack contains a spacy model.
 
@@ -81,7 +82,7 @@ def get_installed_model_version(model_name: str) -> str:
     return spacy.info(model_name)['version']
 
 
-def get_name_and_meta_of_spacy_model(model_pack_path: str) -> Tuple[str, dict]:
+def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, dict]:
     """Gets the name and meta information about a spacy model within a medcat model pack.
 
     Args:
