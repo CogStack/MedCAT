@@ -71,3 +71,9 @@ def get_installed_model_version(model_name: str) -> str:
     if model_name not in spacy.util.get_installed_models():
         return 'N/A'
     return spacy.info(model_name)['version']
+
+
+def get_name_and_meta_of_spacy_model(model_pack_path: str) -> Tuple[str, dict]:
+    spacy_model_folder = find_spacy_model_folder(model_pack_path)
+    info = spacy.info(spacy_model_folder)
+    return os.path.basename(spacy_model_folder), info

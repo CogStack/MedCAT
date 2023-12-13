@@ -1,5 +1,6 @@
 from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
 from medcat.utils.spacy_compatibility import get_installed_spacy_version, get_installed_model_version
+from medcat.utils.spacy_compatibility import get_name_and_meta_of_spacy_model
 
 import unittest
 
@@ -117,3 +118,16 @@ class InstalledVersionChecker(unittest.TestCase):
         version = get_installed_model_version(model_name)
         self.assertIsInstance(version, str)
         self.assertEqual(version, "N/A")
+
+
+class GetSpacyModelVersionTests(unittest.TestCase):
+    fake_spacy_model_name = "ff_core_fake_dr"
+    fake_spacy_model_dir = os.path.join("tests", "resources", fake_spacy_model_name)
+    fake_modelpack_model_dir = os.path.join(fake_spacy_model_dir, '..')
+    expected_version = "3.not.yeah"
+
+    def test_can_read_version(self):
+        name, info = get_name_and_meta_of_spacy_model(self.fake_modelpack_model_dir)
+        version = info['version']
+        self.assertEqual(name, self.fake_spacy_model_name)
+        self.assertEqual(version, self.expected_version)
