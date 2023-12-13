@@ -2,7 +2,7 @@
 a model pack and (if necessary) compare it to the installed
 spacy version.
 """
-from typing import Tuple, List
+from typing import Tuple, List, cast
 import os
 import re
 
@@ -79,7 +79,9 @@ def get_installed_model_version(model_name: str) -> str:
     """
     if model_name not in spacy.util.get_installed_models():
         return 'N/A'
-    return spacy.info(model_name)['version']
+    # NOTE: I don't really know when spacy.info
+    # might return a str instead
+    return cast(dict, spacy.info(model_name))['version']
 
 
 def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, dict]:
@@ -92,7 +94,9 @@ def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -
         Tuple[str, dict]: The name of the spacy model, and the meta information.
     """
     spacy_model_folder = find_spacy_model_folder(model_pack_path)
-    info = spacy.info(spacy_model_folder)
+    # NOTE: I don't really know when spacy.info
+    # might return a str instead
+    info = cast(dict, spacy.info(spacy_model_folder))
     return os.path.basename(spacy_model_folder), info
 
 
