@@ -87,6 +87,11 @@ def get_installed_model_version(model_name: str) -> str:
 def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, dict]:
     """Gets the name and meta information about a spacy model within a medcat model pack.
 
+    PS: This gets the raw (folder) name of the spacy model.
+        While this is usually (in models created after v1.2.4)
+        identical to the spacy model version, that may not always
+        be the case.
+
     Args:
         model_pack_path (str): The model pack path.
 
@@ -103,11 +108,17 @@ def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -
 def get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, str]:
     """Get the name and version of a spacy model within a medcat model pack.
 
+    PS: This gets the real name of the spacy model.
+        While this is usually (in models created after v1.2.4)
+        identical to the folder name, that may not always
+        be the case.
+
     Args:
         model_pack_path (str): The model pack path.
 
     Returns:
         Tuple[str, str]: The name of the spacy model, and the version.
     """
-    name, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
-    return name, info['version']
+    _, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
+    true_name = info["lang"] + "_" + info['name']
+    return true_name, info['version']
