@@ -22,6 +22,10 @@ class CDBTests(unittest.TestCase):
         cdb_2_csv = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb_2.csv")
         self.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         os.makedirs(self.tmp_dir, exist_ok=True)
+        # resetting the CDB because otherwise the CDBMaker
+        # will refer to and modify the same instance of the CDB
+        # and this can (and does!) create side effects
+        CDBTests.cdb_maker.reset_cdb()
         self.undertest = CDBTests.cdb_maker.prepare_csvs([cdb_csv, cdb_2_csv], full_build=True)
 
     def tearDown(self) -> None:
