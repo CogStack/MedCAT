@@ -25,7 +25,8 @@ class ConfigRelCAT(MixingConfig):
                 'annotation_schema_tag_ids': [30522, 30523, 30524, 30525], # s1,s2,e1,e2 token id markers
                 'labels2idx': {},
                 'idx2labels': {},
-                'pin_memory': True
+                'pin_memory': True,
+                "seed": 13
         }
 
         self.model: Dict[str, Any] = {
