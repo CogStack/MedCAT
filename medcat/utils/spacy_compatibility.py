@@ -55,7 +55,7 @@ def find_spacy_model_folder(model_pack_folder: str) -> str:
     if len(options) != 1:
         raise ValueError("Unable to determine spacy folder name from "
                          f"{len(options)} ambiguous folders: {options}")
-    return os.path.join(model_pack_folder, options[0])
+    return options[0]
 
 
 def get_installed_spacy_version() -> str:
