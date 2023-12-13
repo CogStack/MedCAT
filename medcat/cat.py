@@ -415,7 +415,7 @@ class CAT(object):
         for rel_path in rel_paths:
             rel_cats.append(RelCAT.load(load_path=rel_path))
 
-        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner,)
+        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner, rel_cats=rel_cats)
         logger.info(cat.get_model_card())  # Print the model card
 
         return cat
@@ -1259,8 +1259,8 @@ class CAT(object):
                         elif out[i].get('text', '') != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))  # type: ignore
 
-                cnf_annotation_output = self.config.annotation_output
-                if not cnf_annotation_output.include_text_in_output:
+                cnf_annotation_output = getattr(self.config, 'annotation_output', {})
+                if not (cnf_annotation_output.get('include_text_in_output', False)):
                     for o in out:
                         if o is not None:
                             o.pop('text', None)

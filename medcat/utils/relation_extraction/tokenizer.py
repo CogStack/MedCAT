@@ -33,7 +33,7 @@ class TokenizerWrapperBERT(BertTokenizerFast):
                     }
         elif isinstance(text, list):
             results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True,
-                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length)
+                    add_special_tokens=self._add_special_tokens, max_length=self.max_seq_length)
             output = []
             for ind in range(len(results['input_ids'])):
                 output.append({

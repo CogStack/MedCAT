@@ -18,6 +18,7 @@ class ConfigRelCAT(MixingConfig):
                 'tokenizer_name': 'BERT_tokenizer_relation_extraction', # Tokenizer name used, "BERT_tokenizer_relation_extraction" default
                 'model_name': 'bert-base-uncased', # e.g "dmis-lab/biobert-base-cased-v1.2", "bert-large-uncased", "bert-base-uncased", "emilyalsentzer/Bio_ClinicalBERT"
                 'log_level': logging.INFO,
+                'max_seq_length': 512,
                 'padding_idx': -1,
                 'task': 'train',
                 'tokenizer_special_tokens': False,
@@ -38,6 +39,8 @@ class ConfigRelCAT(MixingConfig):
                 'batch_size': 25,
                 'nepochs': 2,
                 'lr': 0.00001,
+                'adam_epsilon': 1e-8,
+                'lr': 1e-5,
                 'test_size': 0.2,
                 'gradient_acc_steps': 1,
                 'multistep_milestones': [2,4,6,8,12,15,18,20,22,24,26,30],

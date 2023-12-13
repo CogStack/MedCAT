@@ -18,6 +18,7 @@ setuptools.setup(
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
               'medcat.utils.saving', 'medcat.utils.regression'],
+
     install_requires=[
         'numpy>=1.22.0', # first to support 3.11
         'pandas>=1.4.2', # first to support 3.11

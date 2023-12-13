@@ -111,6 +111,7 @@ def put_blanks(relation_data: List, blanking_threshold: float = 0.5):
 
 def create_tokenizer_pretrain(tokenizer, tokenizer_path):
     tokenizer.hf_tokenizers.add_tokens(["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
+    tokenizer.hf_tokenizers.add_tokens(["[s1]", "[e1]", "[s2]", "[e2]"], special_tokens=True)
     tokenizer.save(tokenizer_path)
 
 

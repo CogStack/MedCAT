@@ -33,15 +33,32 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         print("Model config: ", self.model_config)
 
-        self.init_weights()
+        self.init_weights() # type: ignore
 
     def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
         spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)   
 
+        # remove duplicate positions (some datasets arent fully clean)
+        initial_list = spec_idx[:, 1].tolist()
+
+        pos = [(i, initial_list[i]) for i in range(len(initial_list))]
+        pos_count = {}
+        for i in range(len(pos)):
+            if pos[i][0] not in list(pos_count.keys()):
+                pos_count[pos[i][0]] = [1, [pos[i][0]]]
+            else:
+                pos_count[pos[i][0]][0] += 1
+                pos_count[pos[i][0]][1].append(pos[i][0])
+
+        dupe_pos = [i for i in range(len(initial_list)) if pos_count[pos[i][0]][0] != 1]
+
+        for i in dupe_pos:
+            spec_idx = torch.cat((spec_idx[:i], spec_idx[(i+1):]))
+
         temp = []
         for idx in spec_idx:
             temp.append(sequence_output[idx[0]][idx[1]])
-            
+
         tags_rep = torch.stack(temp, dim=0)
 
         return tags_rep
@@ -55,22 +72,18 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
                 or an array or anything that we can use in a for loop
                 If True resume the previous training; If False, start a fresh new training.
         """
-
         classification_logits = None
         new_pooled_output = pooled_output
+
         if self.relcat_config.general["annotation_schema_tag_ids"]:
             seq_tags = []
             for each_tag in self.relcat_config.general["annotation_schema_tag_ids"]:
-                seq_tags.append(self.get_annotation_schema_tag(sequence_output, input_ids, each_tag)) #self.special_tag_representation(sequence_output, input_ids, each_tag))
+                seq_tags.append(self.get_annotation_schema_tag(sequence_output, input_ids, each_tag))
 
             seq_tags = torch.stack(seq_tags, dim=0)
 
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
-            
-            new_pooled_output = torch.squeeze(new_pooled_output, dim=1)
-
         else:
-            
             e1e2_output =[]  
             temp_e1 = []
             temp_e2 = []
@@ -88,16 +101,14 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             del e1e2_output
             del temp_e2
             del temp_e1
-      
+
         classification_logits = self.classification_layer(self.drop_out(new_pooled_output))
 
         return classification_logits
-
-
+    
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None,
                 head_mask=None, encoder_hidden_states=None, encoder_attention_mask=None,
                 Q=None, e1_e2_start=None, pooled_output=None):
-        
         if input_ids is not None:
             input_shape = input_ids.size()
         else:
@@ -126,7 +137,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         sequence_output = model_output[0] # (batch_size, sequence_length, hidden_size)
         pooled_output = model_output[1]
-
+        
         classification_logits = self.output2logits(pooled_output, sequence_output, input_ids, e1_e2_start)
 
         return model_output, classification_logits.to(device)
