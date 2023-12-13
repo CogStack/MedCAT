@@ -101,5 +101,13 @@ def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -
 
 
 def get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, str]:
+    """Get the name and version of a spacy model within a medcat model pack.
+
+    Args:
+        model_pack_path (str): The model pack path.
+
+    Returns:
+        Tuple[str, str]: The name of the spacy model, and the version.
+    """
     name, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
     return name, info['version']
