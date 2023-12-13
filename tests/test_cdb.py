@@ -101,32 +101,43 @@ class CDBTests(unittest.TestCase):
         cdb1 = maker1.prepare_csvs(csv_paths=[path])
         cdb2 = maker2.prepare_csvs(csv_paths=[path])
 
-        # generating vectors and setting up
+        # generating context vectors here for for testing the weighted average function (based off cui2count_train)
         zeroes = np.zeros(shape=(1,300))
         ones = np.ones(shape=(1,300))
         for i, cui in enumerate(cdb1.cui2names):
-            cdb1.cui2context_vectors[cui] = {"short" : ones}
-            cdb2.cui2context_vectors[cui] = {"short" : zeroes}
+            cdb1.cui2context_vectors[cui] = {"short": ones}
+            cdb2.cui2context_vectors[cui] = {"short": zeroes}
             cdb1.cui2count_train[cui] = 1
             cdb2.cui2count_train[cui] = i + 1
-        test_add = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper" : "P"}}
+        # adding new names and cuis to each cdb to test after merging
+        test_add = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper": "P"}}
         cdb1.add_names("C0006826", test_add)
-        unique_test = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper" : "P"}}
+        unique_test = {"test": {'tokens': "test_token", 'snames': ["test_name"], 'raw_name': "test_raw_name", "is_upper": "P"}}
         cdb2.add_names("UniqueTest", unique_test)
-        cdb2.cui2context_vectors["UniqueTest"] = {"short" : ones}
+        cdb2.cui2context_vectors["UniqueTest"] = {"short": zeroes}
+        cdb2.addl_info["cui2ontologies"] = {}
+        cdb2.addl_info["cui2description"] = {}
+        for cui in cdb2.cui2names:
+            cdb2.addl_info["cui2ontologies"][cui] = ["test_ontology"]
+            cdb2.addl_info["cui2description"][cui] = "test_description"
 
         # merging
         cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2)
+        overwrite_cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2, overwrite_training=2, full_build=True)
 
         # tests
         self.assertIn("test", cdb.cui2names["C0006826"])
         self.assertIn("test_name", cdb.cui2snames["C0006826"])
         self.assertEqual("Cancer", cdb.cui2preferred_name["C0006826"])
-        self.assertTrue(np.array_equal(np.ones(shape=(1,300)), cdb.cui2context_vectors["UniqueTest"]["short"]))
-        base = np.ones(shape=(1,300))
+        self.assertTrue(np.array_equal(zeroes, cdb.cui2context_vectors["UniqueTest"]["short"]))
         for i, cui in enumerate(cdb1.cui2names):
-            self.assertTrue(np.array_equal(cdb.cui2context_vectors[cui]["short"], np.divide(base, i+2)))
-        
+            self.assertTrue(np.array_equal(cdb.cui2context_vectors[cui]["short"], np.divide(ones, i+2)))
+        self.assertEqual(cdb.addl_info["cui2ontologies"], dict())
+        self.assertEqual(cdb.addl_info["cui2ontologies"], dict())
+        for cui in cdb2.cui2names:
+            self.assertTrue(np.array_equal(overwrite_cdb.cui2context_vectors[cui]["short"], zeroes))
+            self.assertEqual(overwrite_cdb.addl_info["cui2ontologies"][cui], {"test_ontology"})
+            self.assertEqual(overwrite_cdb.addl_info["cui2description"][cui], "test_description")
 
 
 if __name__ == '__main__':
