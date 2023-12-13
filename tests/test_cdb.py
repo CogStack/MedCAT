@@ -27,6 +27,12 @@ class CDBTests(unittest.TestCase):
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
 
+    def test_setup_changes_cdb(self):
+        id1 = id(self.undertest)
+        self.setUp()
+        id2 = id(self.undertest)
+        self.assertNotEqual(id1, id2)
+
     def test_name2cuis(self):
         self.assertEqual({
             'second~csv': ['C0000239'],
