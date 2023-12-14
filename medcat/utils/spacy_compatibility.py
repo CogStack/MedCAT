@@ -158,3 +158,17 @@ def medcat_model_pack_has_compatible_spacy_model(model_pack_path: str) -> bool:
     """
     _, _, spacy_range = get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path)
     return is_spacy_version_within_range(spacy_range)
+
+
+def is_older_spacy_version(model_version: str) -> bool:
+    """Checks if the specified version is older than the installed version.
+
+    Args:
+        model_version (str): The specified spacy version.
+
+    Returns:
+        bool: Whether the specified version is older.
+    """
+    installed_version = version.parse(get_installed_spacy_version())
+    model_version = version.parse(model_version)
+    return model_version <= installed_version
