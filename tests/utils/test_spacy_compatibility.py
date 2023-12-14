@@ -15,6 +15,11 @@ import os
 from contextlib import contextmanager
 
 
+FAKE_SPACY_MODEL_NAME = "ff_core_fake_dr"
+FAKE_SPACY_MODEL_DIR = os.path.join("tests", "resources", FAKE_SPACY_MODEL_NAME)
+FAKE_MODELPACK_MODEL_DIR = os.path.join(FAKE_SPACY_MODEL_DIR, '..')
+
+
 class SpacyModelFolderIdentifierTests(unittest.TestCase):
     expected_working_spacy_models = [
         "en_core_sci_sm",
@@ -126,17 +131,14 @@ class InstalledVersionChecker(unittest.TestCase):
 
 
 class GetSpacyModelInfoTests(unittest.TestCase):
-    fake_spacy_model_name = "ff_core_fake_dr"
-    fake_spacy_model_dir = os.path.join("tests", "resources", fake_spacy_model_name)
-    fake_modelpack_model_dir = os.path.join(fake_spacy_model_dir, '..')
     expected_version = "3.not.yeah"
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.name, cls.info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(cls.fake_modelpack_model_dir)
+        cls.name, cls.info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(FAKE_MODELPACK_MODEL_DIR)
 
     def test_reads_name(self):
-        self.assertEqual(self.name, self.fake_spacy_model_name)
+        self.assertEqual(self.name, FAKE_SPACY_MODEL_NAME)
 
     def test_reads_info(self):
         self.assertIsInstance(self.info, dict)
@@ -150,10 +152,10 @@ class GetSpacyModelVersionTests(GetSpacyModelInfoTests):
     def setUpClass(cls) -> None:
         (cls.name,
          cls.version,
-         cls.spacy_version) = get_name_and_version_of_spacy_model_in_medcat_modelpack(cls.fake_modelpack_model_dir)
+         cls.spacy_version) = get_name_and_version_of_spacy_model_in_medcat_modelpack(FAKE_MODELPACK_MODEL_DIR)
 
     def test_name_correct(self):
-        self.assertEqual(self.name, self.fake_spacy_model_name)
+        self.assertEqual(self.name, FAKE_SPACY_MODEL_NAME)
 
     def test_version_correct(self):
         self.assertEqual(self.version, self.expected_version)
