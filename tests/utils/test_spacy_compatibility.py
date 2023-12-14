@@ -4,6 +4,7 @@ from medcat.utils.spacy_compatibility import get_installed_spacy_version, get_in
 from medcat.utils.spacy_compatibility import get_name_and_meta_of_spacy_model_in_medcat_modelpack
 from medcat.utils.spacy_compatibility import get_name_and_version_of_spacy_model_in_medcat_modelpack
 from medcat.utils.spacy_compatibility import is_spacy_version_within_range
+from medcat.utils.spacy_compatibility import medcat_model_pack_has_compatible_spacy_model
 
 import unittest
 
@@ -173,7 +174,21 @@ def custom_spacy_version(mock_version: str):
     module_under_test.get_installed_spacy_version = _old_method
 
 
-class SpacyVersionInRangeOldRangeTests(unittest.TestCase):
+class SpacyVersionMockBaseTests(unittest.TestCase):
+
+    def _subtest_for(self, spacy_model_range: str, spacy_version: str, should_work: bool) -> None:
+        with self.subTest(spacy_version):
+            if should_work:
+                self.assertTrue(is_spacy_version_within_range(spacy_model_range))
+            else:
+                self.assertFalse(is_spacy_version_within_range(spacy_model_range))
+
+    def _check_version(self, spacy_model_range, spacy_version: str, should_work: bool = True) -> None:
+        with custom_spacy_version(spacy_version):
+            self._subtest_for(spacy_model_range, spacy_version, should_work)
+
+
+class SpacyVersionInRangeOldRangeTests(SpacyVersionMockBaseTests):
     """This is for versions before 1.7.0.
     Those versions used to have spacy constraints of 'spacy<3.1.4,>=3.1.0'
     and as such, they used v3.1.0 of en_core_web_md.
@@ -182,24 +197,20 @@ class SpacyVersionInRangeOldRangeTests(unittest.TestCase):
     useful_spacy_versions = ["3.1.0", "3.1.2", "3.1.3"]
     unsupported_spacy_versions = ["3.2.0", "3.5.3", "3.6.0"]
 
-    def _subtest_for(self, spacy_version: str, should_work: bool) -> None:
+    def _subtest_for(self, spacy_model_range: str, spacy_version: str, should_work: bool) -> None:
         with self.subTest(spacy_version):
             if should_work:
-                self.assertTrue(is_spacy_version_within_range(self.spacy_model_range))
+                self.assertTrue(is_spacy_version_within_range(spacy_model_range))
             else:
-                self.assertFalse(is_spacy_version_within_range(self.spacy_model_range))
-
-    def _check_version(self, spacy_version: str, should_work: bool = True) -> None:
-        with custom_spacy_version(spacy_version):
-            self._subtest_for(spacy_version, should_work)
+                self.assertFalse(is_spacy_version_within_range(spacy_model_range))
 
     def test_works_in_range(self):
         for spacy_version in self.useful_spacy_versions:
-            self._check_version(spacy_version, should_work=True)
+            self._check_version(self.spacy_model_range, spacy_version, should_work=True)
 
     def test_not_suitable_outside_range(self):
         for spacy_version in self.unsupported_spacy_versions:
-            self._check_version(spacy_version, should_work=False)
+            self._check_version(self.spacy_model_range, spacy_version, should_work=False)
 
 
 class SpacyVersionInRangeNewRangeTests(SpacyVersionInRangeOldRangeTests):
