@@ -1,7 +1,9 @@
+import medcat.utils.spacy_compatibility as module_under_test
 from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
 from medcat.utils.spacy_compatibility import get_installed_spacy_version, get_installed_model_version
 from medcat.utils.spacy_compatibility import get_name_and_meta_of_spacy_model_in_medcat_modelpack
 from medcat.utils.spacy_compatibility import get_name_and_version_of_spacy_model_in_medcat_modelpack
+from medcat.utils.spacy_compatibility import is_spacy_version_within_range
 
 import unittest
 
@@ -9,6 +11,7 @@ import random
 import string
 import tempfile
 import os
+from contextlib import contextmanager
 
 
 class SpacyModelFolderIdentifierTests(unittest.TestCase):
@@ -156,3 +159,65 @@ class GetSpacyModelVersionTests(GetSpacyModelInfoTests):
 
     def test_spacy_version_correct(self):
         self.assertEqual(self.spacy_version, self.expected_spacy_version)
+
+
+@contextmanager
+def custom_spacy_version(mock_version: str):
+    """Changes the apparently installed spacy version.
+    """
+    print(f"Mocking spacy version to: {mock_version}")
+    _old_method = module_under_test.get_installed_spacy_version
+    module_under_test.get_installed_spacy_version = lambda: mock_version
+    yield mock_version
+    print("Returning regular spacy version getter")
+    module_under_test.get_installed_spacy_version = _old_method
+
+
+class SpacyVersionInRangeOldRangeTests(unittest.TestCase):
+    """This is for versions before 1.7.0.
+    Those versions used to have spacy constraints of 'spacy<3.1.4,>=3.1.0'
+    and as such, they used v3.1.0 of en_core_web_md.
+    """
+    spacy_model_range = ">=3.1.0,<3.2.0"  # model range for en_core_web_md-3.1.0
+    useful_spacy_versions = ["3.1.0", "3.1.2", "3.1.3"]
+    unsupported_spacy_versions = ["3.2.0", "3.5.3", "3.6.0"]
+
+    def _subtest_for(self, spacy_version: str, should_work: bool) -> None:
+        with self.subTest(spacy_version):
+            if should_work:
+                self.assertTrue(is_spacy_version_within_range(self.spacy_model_range))
+            else:
+                self.assertFalse(is_spacy_version_within_range(self.spacy_model_range))
+
+    def _check_version(self, spacy_version: str, should_work: bool = True) -> None:
+        with custom_spacy_version(spacy_version):
+            self._subtest_for(spacy_version, should_work)
+
+    def test_works_in_range(self):
+        for spacy_version in self.useful_spacy_versions:
+            self._check_version(spacy_version, should_work=True)
+
+    def test_not_suitable_outside_range(self):
+        for spacy_version in self.unsupported_spacy_versions:
+            self._check_version(spacy_version, should_work=False)
+
+
+class SpacyVersionInRangeNewRangeTests(SpacyVersionInRangeOldRangeTests):
+    """This is for versions AFTER (and includring) 1.7.0.
+    Those versions used to have spacy constraints of 'spacy>=3.1.0'
+    and as such, we use v3.4.0 of en_core_web_md.
+
+    In this setup, generally (in GHA at 14.12.2023)
+    the spacy version for python version:
+        3.8  -> spacy-3.7.2
+        3.9  -> spacy-3.7.2
+        3.10 -> spacy-3.7.2
+        3.11 -> spacy-3.7.2
+    Alongside the `en_core_web_md-3.4.0` is installed.
+    It technically has the compatibility of >=3.4.0,<3.5.0.
+    But practically, I've seen no issues with spacy==3.7.2.
+    """
+    spacy_model_range = ">=3.1.0"  # model range for medcat>=1.7.0
+    useful_spacy_versions = ["3.1.0", "3.1.2", "3.1.3",
+                             "3.7.2", "3.6.3"]
+    unsupported_spacy_versions = ["3.0.0"]

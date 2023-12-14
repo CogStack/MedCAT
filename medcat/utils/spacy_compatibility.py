@@ -5,6 +5,8 @@ spacy version.
 from typing import Tuple, List, cast
 import os
 import re
+from packaging import version
+from packaging.specifiers import SpecifierSet
 
 import spacy
 
@@ -122,3 +124,24 @@ def get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path: str
     _, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
     true_name = info["lang"] + "_" + info['name']
     return true_name, info['version'], info["spacy_version"]
+
+
+def is_spacy_version_within_range(spacy_version_range: str) -> bool:
+    """Checks whether the spacy version is within the specified range.
+
+    The expected format of the version range is similar to that used
+    in requirements and/or pip installs. E.g:
+        - >=3.1.0,<3.2.0
+        - ==3.1.0
+        - >=3.1.0
+        - <3.20
+
+    Args:
+        spacy_version_range (str): The requires spacy version range.
+
+    Returns:
+        bool: Whether the specified range is compatible.
+    """
+    spacy_version = version.parse(get_installed_spacy_version())
+    range = SpecifierSet(spacy_version_range)
+    return range.contains(spacy_version)
