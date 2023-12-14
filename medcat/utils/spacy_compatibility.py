@@ -172,3 +172,40 @@ def is_older_spacy_version(model_version: str) -> bool:
     installed_version = version.parse(get_installed_spacy_version())
     model_version = version.parse(model_version)
     return model_version <= installed_version
+
+
+def medcat_model_pack_has_semi_compatible_spacy_model(model_pack_path: str) -> bool:
+    """Checks whether the spacy model within a medcat model pack is
+        compatible or older than the installed spacy version.
+
+    This method returns `True` if the spacy model is compatible or
+    released with a lower version number compared to the spacy
+    version currently installed.
+
+    We've found that most of the time older models will work with
+    a newer version of spacy. Though there is a warning on spacy's
+    side and they do not guarantee 100% compatibility, we've not
+    seen issues so far.
+
+    E.g for installed spacy 3.4.4 all the following will be suiable:
+        - en_core_web_md-3.1.0
+        - en_core_web_md-3.2.0
+        - en_core_web_md-3.3.0
+        - en_core_web_md-3.4.1
+    However, for the same version, the following would not be suitable:
+        - en_core_web_md-3.5.0
+        - en_core_web_md-3.6.0
+        - en_core_web_md-3.7.1
+
+    Args:
+        model_pack_path (str): The model pack path.
+
+    Returns:
+        bool: Whether the spacy model in the model pack is
+    """
+    (_,
+     model_version,
+     spacy_range) = get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path)
+    if is_spacy_version_within_range(spacy_range):
+        return True
+    return is_older_spacy_version(model_version)

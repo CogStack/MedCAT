@@ -276,3 +276,27 @@ class IsOlderSpacyVersionTests(VersionMockBaseTests):
     def test_newer_fails(self):
         for model_version in self.expected_newer:
             self._check_version(model_version, should_work=False)
+
+
+class HasSemiCompatibleSpacyModelTests(unittest.TestCase):
+    # model version on file is 3.1.0,
+    # and spacy_version range >=3.1.0,<3.2.0"
+    good_spacy_version = "3.1.3"
+    semi_good_spacy_version = "3.4.4"  # newer than the model
+    bad_spacy_version = "3.0.0"  # older than the model
+
+    def run_subtest(self, spacy_version: str, should_work: bool) -> None:
+        with custom_spacy_version(spacy_version):
+            if should_work:
+                self.assertTrue(medcat_model_pack_has_semi_compatible_spacy_model(FAKE_MODELPACK_MODEL_DIR))
+            else:
+                self.assertFalse(medcat_model_pack_has_semi_compatible_spacy_model(FAKE_MODELPACK_MODEL_DIR))
+
+    def test_works_compatible_spacy_version(self):
+        self.run_subtest(self.good_spacy_version, should_work=True)
+
+    def test_works_semi_compatible_spacy_version(self):
+        self.run_subtest(self.semi_good_spacy_version, should_work=True)
+
+    def test_fails_incompatible_spacy_version(self):
+        self.run_subtest(self.bad_spacy_version, should_work=False)
