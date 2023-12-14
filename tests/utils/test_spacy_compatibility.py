@@ -6,6 +6,7 @@ from medcat.utils.spacy_compatibility import get_name_and_version_of_spacy_model
 from medcat.utils.spacy_compatibility import is_spacy_version_within_range
 from medcat.utils.spacy_compatibility import medcat_model_pack_has_compatible_spacy_model
 from medcat.utils.spacy_compatibility import is_older_spacy_version
+from medcat.utils.spacy_compatibility import medcat_model_pack_has_semi_compatible_spacy_model
 
 import unittest
 
@@ -133,7 +134,7 @@ class InstalledVersionChecker(unittest.TestCase):
 
 
 class GetSpacyModelInfoTests(unittest.TestCase):
-    expected_version = "3.not.yeah"
+    expected_version = "3.1.0"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -265,13 +266,13 @@ class IsOlderSpacyVersionTests(VersionMockBaseTests):
     expected_older = ["3.1.0", "3.2.0", "3.3.0", "3.4.0"]
     expected_newer = ["3.5.0", "3.6.0", "3.7.1"]
 
-    def _check_version(self, test_spacy_version, spacy_version: str, should_work: bool = True) -> None:
-        self.base_check_version(is_older_spacy_version, spacy_version, test_spacy_version, should_work)
+    def _check_version(self, model_version: str, should_work: bool = True) -> None:
+        self.base_check_version(is_older_spacy_version, model_version, self.test_spacy_version, should_work)
 
     def test_older_works(self):
         for model_version in self.expected_older:
-            self._check_version(self.test_spacy_version, model_version, should_work=True)
+            self._check_version(model_version, should_work=True)
 
     def test_newer_fails(self):
         for model_version in self.expected_newer:
-            self._check_version(self.test_spacy_version, model_version, should_work=False)
+            self._check_version(model_version, should_work=False)
