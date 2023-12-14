@@ -234,3 +234,20 @@ class SpacyVersionInRangeNewRangeTests(SpacyVersionInRangeOldRangeTests):
     useful_spacy_versions = ["3.1.0", "3.1.2", "3.1.3",
                              "3.7.2", "3.6.3"]
     unsupported_spacy_versions = ["3.0.0"]
+
+
+class ModelPackHasCompatibleSpacyRangeTests(unittest.TestCase):
+    test_spacy_version = "3.1.0"
+
+    def test_is_in_range(self):
+        with custom_spacy_version(self.test_spacy_version):
+            b = medcat_model_pack_has_compatible_spacy_model(FAKE_MODELPACK_MODEL_DIR)
+            self.assertTrue(b)
+
+class ModelPackHasInCompatibleSpacyRangeTests(unittest.TestCase):
+    test_spacy_version = "3.2.0"
+
+    def test_is_in_range(self):
+        with custom_spacy_version(self.test_spacy_version):
+            b = medcat_model_pack_has_compatible_spacy_model(FAKE_MODELPACK_MODEL_DIR)
+            self.assertFalse(b)

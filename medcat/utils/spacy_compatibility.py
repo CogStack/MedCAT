@@ -145,3 +145,16 @@ def is_spacy_version_within_range(spacy_version_range: str) -> bool:
     spacy_version = version.parse(get_installed_spacy_version())
     range = SpecifierSet(spacy_version_range)
     return range.contains(spacy_version)
+
+
+def medcat_model_pack_has_compatible_spacy_model(model_pack_path: str) -> bool:
+    """Checks whether a medcat model pack has a spacy model compatible with installed spacy version.
+
+    Args:
+        model_pack_path (str): The model pack path.
+
+    Returns:
+        bool: Whether the spacy model in the model pack is compatible.
+    """
+    _, _, spacy_range = get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path)
+    return is_spacy_version_within_range(spacy_range)
