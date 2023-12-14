@@ -119,5 +119,5 @@ class ForCDBMerging:
         self.cdb2.addl_info["cui2ontologies"] = {}
         self.cdb2.addl_info["cui2description"] = {}
         for cui in self.cdb2.cui2names:
-            self.cdb2.addl_info["cui2ontologies"][cui] = ["test_ontology"]
+            self.cdb2.addl_info["cui2ontologies"][cui] = {"test_ontology"}
             self.cdb2.addl_info["cui2description"][cui] = "test_description"

@@ -7,7 +7,6 @@ import numpy as np
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 from medcat.cdb import CDB
-from .helper import ForCDBMerging
 
 
 class CDBTests(unittest.TestCase):
@@ -90,32 +89,6 @@ class CDBTests(unittest.TestCase):
         for cui in self.undertest.cui2names:
             with self.subTest(cui):
                 self.assertIn(cui, self.undertest.cui2snames)
-
-
-    def test_merge_cdb(self):
-        to_merge = ForCDBMerging()
-        cdb1 = to_merge.cdb1
-        cdb2 = to_merge.cdb2
-        zeroes = np.zeros(shape=(1,300))
-        ones = np.ones(shape=(1,300))
-
-        # merging
-        cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2)
-        overwrite_cdb = CDB.merge_cdb(cdb1=cdb1, cdb2=cdb2, overwrite_training=2, full_build=True)
-
-        # tests
-        self.assertIn("test", cdb.cui2names["C0006826"])
-        self.assertIn("test_name", cdb.cui2snames["C0006826"])
-        self.assertEqual("Cancer", cdb.cui2preferred_name["C0006826"])
-        self.assertTrue(np.array_equal(zeroes, cdb.cui2context_vectors["UniqueTest"]["short"]))
-        for i, cui in enumerate(cdb1.cui2names):
-            self.assertTrue(np.array_equal(cdb.cui2context_vectors[cui]["short"], np.divide(ones, i+2)))
-        self.assertEqual(cdb.addl_info["cui2ontologies"], dict())
-        self.assertEqual(cdb.addl_info["cui2ontologies"], dict())
-        for cui in cdb2.cui2names:
-            self.assertTrue(np.array_equal(overwrite_cdb.cui2context_vectors[cui]["short"], zeroes))
-            self.assertEqual(overwrite_cdb.addl_info["cui2ontologies"][cui], {"test_ontology"})
-            self.assertEqual(overwrite_cdb.addl_info["cui2description"][cui], "test_description")
 
 
 if __name__ == '__main__':
