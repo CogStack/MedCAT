@@ -140,9 +140,19 @@ class GetSpacyModelInfoTests(unittest.TestCase):
 
 
 class GetSpacyModelVersionTests(GetSpacyModelInfoTests):
+    expected_spacy_version = ">=3.1.0,<3.2.0"
+
     @classmethod
     def setUpClass(cls) -> None:
-        cls.name, cls.version = get_name_and_version_of_spacy_model_in_medcat_modelpack(cls.fake_modelpack_model_dir)
+        (cls.name,
+         cls.version,
+         cls.spacy_version) = get_name_and_version_of_spacy_model_in_medcat_modelpack(cls.fake_modelpack_model_dir)
+
+    def test_name_correct(self):
+        self.assertEqual(self.name, self.fake_spacy_model_name)
 
     def test_version_correct(self):
         self.assertEqual(self.version, self.expected_version)
+
+    def test_spacy_version_correct(self):
+        self.assertEqual(self.spacy_version, self.expected_spacy_version)
