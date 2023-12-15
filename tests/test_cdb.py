@@ -90,6 +90,5 @@ class CDBTests(unittest.TestCase):
             with self.subTest(cui):
                 self.assertIn(cui, self.undertest.cui2snames)
 
-
 if __name__ == '__main__':
     unittest.main()
