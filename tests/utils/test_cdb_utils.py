@@ -6,14 +6,15 @@ from medcat.utils.cdb_utils import merge_cdb
 
 class CDBMergeTests(unittest.TestCase):
 
-    def setUp(self) -> None:
+    @classmethod
+    def setUpClass(cls):
         to_merge = ForCDBMerging()
-        self.cdb1 = to_merge.cdb1
-        self.cdb2 = to_merge.cdb2
-        self.merged_cdb = merge_cdb(cdb1=self.cdb1, cdb2=self.cdb2)
-        self.overwrite_cdb = merge_cdb(cdb1=self.cdb1, cdb2=self.cdb2, overwrite_training=2, full_build=True)
-        self.zeroes = np.zeros(shape=(1,300))
-        self.ones = np.ones(shape=(1,300))
+        cls.cdb1 = to_merge.cdb1
+        cls.cdb2 = to_merge.cdb2
+        cls.merged_cdb = merge_cdb(cdb1=cls.cdb1, cdb2=cls.cdb2)
+        cls.overwrite_cdb = merge_cdb(cdb1=cls.cdb1, cdb2=cls.cdb2, overwrite_training=2, full_build=True)
+        cls.zeroes = np.zeros(shape=(1,300))
+        cls.ones = np.ones(shape=(1,300))
 
     def test_merge_inserts(self):
         self.assertIn("test", self.merged_cdb.cui2names["C0006826"])
