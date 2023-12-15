@@ -9,8 +9,6 @@ from transformers import logging
 
 from medcat.config_rel_cat import ConfigRelCAT
 
-from torch.nn import DataParallel
-
 class BertModel_RelationExtraction(BertPreTrainedModel):
     def __init__(self, pretrained_model_name_or_path, relcat_config: ConfigRelCAT, model_config: BertConfig, model_size: int, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):
         super(BertModel_RelationExtraction, self).__init__(model_config, ignore_mismatched_sizes)
@@ -20,7 +18,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         self.nclasses = nclasses
         self.task = task
         self.hidden_size = model_size
-        self.model= BertModel(model_config)
+        self.bert_model = BertModel(model_config)
         self.drop_out = nn.Dropout(model_config.hidden_dropout_prob)
 
         if self.task == "pretrain":
@@ -28,8 +26,6 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             self.cls = BertPreTrainingHeads(self.model_config)
 
         self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
-
-        logging.set_verbosity_error()
 
         print("Model config: ", self.model_config)
 
@@ -129,9 +125,9 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         attention_mask = attention_mask.to(device)
         encoder_attention_mask = encoder_attention_mask.to(device)
 
-        self.model = self.model.to(device)
+        self.bert_model = self.bert_model.to(device)
 
-        model_output = self.model(input_ids=input_ids, attention_mask=attention_mask,
+        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
                                   encoder_hidden_states=encoder_hidden_states,
                                   encoder_attention_mask=encoder_attention_mask)
 

@@ -35,7 +35,7 @@ class RelCAT(PipeRunner):
 
 
     name = "rel_cat"
-
+    
     log = logging.getLogger(__package__)
     # Add file and console handlers
     log = add_handlers(log)
@@ -145,7 +145,7 @@ class RelCAT(PipeRunner):
             logging.error("%s", str(e))
             print("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
-                                                                        model_size=model_config.hidden_size,
+                                                                        model_size=config.model["hidden_size"],
                                                                         relcat_config=config,
                                                                         model_config=model_config,
                                                                         task=config.general["task"],
@@ -201,10 +201,12 @@ class RelCAT(PipeRunner):
             print("Training on device:", torch.cuda.get_device_name(0), self.device)
 
         self.model = self.model.to(self.device)
+
+        # resize vocab just in case more tokens have been added
         self.model_config.vocab_size = len(self.tokenizer.hf_tokenizers)
 
         train_rel_data = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
-        test_rel_data = RelData(cdb=CDB(self.cdb.config), config=self.config, tokenizer=self.tokenizer)
+        test_rel_data = RelData(cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)
 
         if train_csv_path != "":
             if test_csv_path != "":
@@ -221,20 +223,21 @@ class RelCAT(PipeRunner):
         else:
             raise ValueError("NO DATA HAS BEEN PROVIDED (JSON/CSV/spacy_DOCS)")
 
+
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
-        train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=False,
+        train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train["shuffle_data"],
                                   num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general["pin_memory"])
 
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
-        test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=False,
+        test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train["shuffle_data"],
                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general["pin_memory"])
 
         criterion = nn.CrossEntropyLoss(ignore_index=-1)    
 
         if self.optimizer is None:
-            self.optimizer = torch.optim.Adam([{"params": self.model.module.parameters(), "lr": self.config.train["adam_epsilon"]}])
+            self.optimizer = torch.optim.Adam([{"params": self.model.bert_model.parameters(), "lr": self.config.train["adam_epsilon"]}])
 
         if self.scheduler is None:
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(self.optimizer, milestones=self.config.train["multistep_milestones"], gamma=self.config.train["multistep_lr_gamma"])
@@ -245,8 +248,8 @@ class RelCAT(PipeRunner):
 
         losses_per_epoch, accuracy_per_epoch, f1_per_epoch = load_results(path=checkpoint_path)
 
-        if train_rel_data.dataset["nclasses"] > self.model.module.nclasses:
-            self.model.module.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
+        if train_rel_data.dataset["nclasses"] > self.model.nclasses:
+            self.model.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
 
         self.config.general["labels2idx"].update(train_rel_data.dataset["labels2idx"])
         self.config.general["idx2labels"] = {int(v): k for k, v in self.config.general["labels2idx"].items()}
@@ -285,7 +288,7 @@ class RelCAT(PipeRunner):
                             e1_e2_start=e1_e2_start
                           )
 
-                batch_loss = criterion(classification_logits.view(-1, self.model.module.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss = criterion(classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
                 batch_loss = batch_loss / gradient_acc_steps
 
                 total_loss += batch_loss.item() / current_batch_size
@@ -313,11 +316,11 @@ class RelCAT(PipeRunner):
 
             if len(loss_per_batch) > 0:
                 losses_per_epoch.append(sum(loss_per_batch)/len(loss_per_batch))
-                print("Losses at Epoch %d: %.5f" % (epoch, losses_per_epoch[-1]))
+                self.log.info("Losses at Epoch %d: %.5f" % (epoch, losses_per_epoch[-1]))
 
             if len(accuracy_per_batch) > 0:
                 accuracy_per_epoch.append(sum(accuracy_per_batch)/len(accuracy_per_batch))
-                print("Train accuracy at Epoch %d: %.5f" % (epoch, accuracy_per_epoch[-1]))
+                self.log.info("Train accuracy at Epoch %d: %.5f" % (epoch, accuracy_per_epoch[-1]))
 
             total_loss = total_loss / (i + 1)
 
@@ -327,7 +330,7 @@ class RelCAT(PipeRunner):
 
             f1_per_epoch.append(results['f1'])
 
-            print("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)) + " seconds")
+            self.log.info("Epoch finished, took " + str(datetime.combine(date.today(), end_time) - datetime.combine(date.today(), start_time)) + " seconds")
 
             self.epoch += 1
 
@@ -430,7 +433,7 @@ class RelCAT(PipeRunner):
                 model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,
                             e1_e2_start=e1_e2_start)
 
-                batch_loss = criterion(pred_classification_logits.view(-1, self.model.module.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
                 total_loss += batch_loss.item()
 
                 batch_accuracy, batch_recall, batch_precision, batch_f1, pred_labels, true_labels, batch_stats_per_label = \

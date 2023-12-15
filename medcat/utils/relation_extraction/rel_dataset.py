@@ -55,7 +55,7 @@ class RelData(Dataset):
 
         output_relations = df.values.tolist()
 
-        print("No. of relations detected:", len(output_relations), " from : ", csv_path) 
+        print("No. of relations detected:", len(output_relations), " from : ", csv_path, "classes: ", str(idx2label)) 
 
         # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
@@ -185,7 +185,7 @@ class RelData(Dataset):
 
                     doc_length = len(text)
 
-                    tokenizer_data = self.tokenizer(text, add_special_tokens=self.config.general["tokenizer_special_tokens"]) # type: ignore
+                    tokenizer_data = self.tokenizer(text)
 
                     ann_ids_ents: Dict[Any, Any] = {}
                     for ann in annotations: 
