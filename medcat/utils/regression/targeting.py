@@ -25,12 +25,12 @@ class TranslationLayer:
 
     Args:
         cui2names (Dict[str, Set[str]]): The map from CUI to names
-        name2cuis (Dict[str, Set[str]]): The map from name to CUIs
+        name2cuis (Dict[str, List[str]]): The map from name to CUIs
         cui2type_ids (Dict[str, Set[str]]): The map from CUI to type_ids
         cui2children (Dict[str, Set[str]]): The map from CUI to child CUIs
     """
 
-    def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, Set[str]],
+    def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, List[str]],
                  cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]]) -> None:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
