@@ -10,7 +10,7 @@ class ConfigRelCAT(MixingConfig):
         self.general: Dict[str, Any] = {
                 'device': 'cuda', # possible values: 'cuda', 'cpu'
                 'relation_type_filter_pairs': [], # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
-                'vocab_size': None, # Will be set automatically if the tokenizer is provided during meta_cat init
+                'vocab_size': None, # Will be set automatically if the tokenizer is provided during rel_cat init/load
                 'lowercase': True, # If true all input text will be lowercased
                 'ent_context_left': 2, # Number of entities to take from the left of the concept
                 'ent_context_right': 2, # Number of entities to take from the right of the concept

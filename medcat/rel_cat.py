@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-from tokenize import Token
 
 import torch.nn
 import torch.optim
@@ -21,7 +20,6 @@ from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
-from medcat.utils.meta_cat.ml_utils import split_list_train_test
 from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
 
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction

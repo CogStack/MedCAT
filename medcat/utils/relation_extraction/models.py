@@ -5,8 +5,6 @@ from transformers import BertPreTrainedModel
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
 from transformers.models.bert.configuration_bert import BertConfig
 
-from transformers import logging
-
 from medcat.config_rel_cat import ConfigRelCAT
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
@@ -127,7 +125,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         self.bert_model = self.bert_model.to(device)
 
-        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
+        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,
                                   encoder_hidden_states=encoder_hidden_states,
                                   encoder_attention_mask=encoder_attention_mask)
 
