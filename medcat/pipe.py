@@ -57,7 +57,6 @@ class Pipe(object):
             # medcat.utils.normalizers.TokenNormalizer.__init__
             config.general.spacy_model = DEFAULT_SPACY_MODEL
             self._nlp = self._init_nlp(config)
-            print("TYPE", type(self._nlp))
         if config.preprocessing.stopwords is not None:
             self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
