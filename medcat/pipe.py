@@ -51,7 +51,7 @@ class Pipe(object):
                            "For best compatibility, we'd recommend "
                            "packaging and using your model pack with "
                            "the spacy model it was designed for",
-                           config.general.spacy_model)
+                           config.general.spacy_model, exc_info=e)
             # we're changing the config value so that this propages
             # to other places that try to load the model. E.g:
             # medcat.utils.normalizers.TokenNormalizer.__init__
