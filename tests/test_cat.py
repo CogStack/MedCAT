@@ -10,6 +10,7 @@ from transformers import AutoTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB, logger as cdb_logger
 from medcat.cat import CAT, logger as cat_logger
+from medcat.pipe import logger as pipe_logger
 from medcat.utils.checkpoint import Checkpoint
 from medcat.meta_cat import MetaCAT
 from medcat.config_meta_cat import ConfigMetaCAT
@@ -497,6 +498,34 @@ class ModelWithTwoConfigsLoadTests(unittest.TestCase):
     def test_loading_model_pack_with_cdb_config_and_config_json_raises_exception(self):
         with self.assertRaises(ValueError):
             CAT.load_model_pack(self.model_path)
+
+
+class ModelLoadsUnreadableSpacy(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
+        cdb = CDB.load(os.path.join(model_path, 'cdb.dat'))
+        cdb.config.general.spacy_model = os.path.join(cls.temp_dir.name, "en_core_web_md")
+        # save CDB in new location
+        cdb.save(os.path.join(cls.temp_dir.name, 'cdb.dat'))
+        # save config in new location
+        cdb.config.save(os.path.join(cls.temp_dir.name, 'config.json'))
+        # copy vocab into new location
+        vocab_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat")
+        cls.vocab_path = os.path.join(cls.temp_dir.name, 'vocab.dat')
+        shutil.copyfile(vocab_path, cls.vocab_path)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # REMOVE temp dir
+        cls.temp_dir.cleanup()
+
+    def test_loads_without_specified_spacy_model(self):
+        with self.assertLogs(logger=pipe_logger, level=logging.WARNING):
+            cat = CAT.load_model_pack(self.temp_dir.name)
+        self.assertTrue(isinstance(cat, CAT))
 
 
 class ModelWithZeroConfigsLoadTests(unittest.TestCase):
