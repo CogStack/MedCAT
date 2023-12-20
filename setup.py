@@ -14,11 +14,9 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
-
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
-              'medcat.utils.saving', 'medcat.utils.regression'],
-
+              'medcat.utils.saving', 'medcat.utils.regression', 'medcat.stats'],
     install_requires=[
         'numpy>=1.22.0', # first to support 3.11
         'pandas>=1.4.2', # first to support 3.11
