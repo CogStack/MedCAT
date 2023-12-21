@@ -526,7 +526,7 @@ class CDB(object):
         if not os.path.exists(config_path):
             if not self._config_from_file:
                 # if there's no config defined anywhere
-                raise ValueError("Could not find a config in the CDB nor ",
+                raise ValueError("Could not find a config in the CDB nor "
                                  "in the config.json for this model "
                                  f"({os.path.dirname(config_path)})",
                                  )
