@@ -39,7 +39,8 @@ class Pipe(object):
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         if config.preprocessing.stopwords is not None:
-            cls = spacy.util.get_lang_class('en')
+            lang = config.general.spacy_model.split('_', 1)[0]
+            cls = spacy.util.get_lang_class(lang)
             cls.Defaults.stop_words = set(config.preprocessing.stopwords)
         self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
