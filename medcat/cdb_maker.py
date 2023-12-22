@@ -49,6 +49,14 @@ class CDBMaker(object):
                              name='skip_and_punct',
                              additional_fields=['is_punct'])
 
+    def reset_cdb(self) -> None:
+        """This will re-create a new internal CDB based on the same config.
+
+        This will be necessary if/when you're wishing to call `prepare_csvs`
+        multiple times on the same object `CDBMaker` instance.
+        """
+        self.cdb = CDB(config=self.config)
+
     def prepare_csvs(self,
                      csv_paths: Union[pd.DataFrame, List[str]],
                      sep: str = ',',
@@ -58,6 +66,12 @@ class CDBMaker(object):
                      full_build: bool = False,
                      only_existing_cuis: bool = False, **kwargs) -> CDB:
         r"""Compile one or multiple CSVs into a CDB.
+
+        Note: This class/method generally uses the same instance of the CDB.
+              So if you're using the same CDBMaker and calling `prepare_csvs`
+              multiple times, you are likely to get leakage from prior calls
+              into new ones.
+              To reset the CDB, call `reset_cdb`.
 
         Args:
             csv_paths (Union[pd.DataFrame, List[str]]):

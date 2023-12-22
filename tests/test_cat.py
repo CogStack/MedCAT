@@ -10,6 +10,8 @@ from transformers import AutoTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB, logger as cdb_logger
 from medcat.cat import CAT, logger as cat_logger
+from medcat.config import Config
+from medcat.pipe import logger as pipe_logger
 from medcat.utils.checkpoint import Checkpoint
 from medcat.meta_cat import MetaCAT
 from medcat.config_meta_cat import ConfigMetaCAT
@@ -17,6 +19,7 @@ from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 
 
 class CATTests(unittest.TestCase):
+    SUPERVISED_TRAINING_JSON = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -215,7 +218,7 @@ class CATTests(unittest.TestCase):
     def test_train_supervised(self):
         nepochs = 3
         num_of_documents = 27
-        data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
+        data_path = self.SUPERVISED_TRAINING_JSON
         ckpt_dir_path = tempfile.TemporaryDirectory().name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
         fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
@@ -392,6 +395,42 @@ class CATTests(unittest.TestCase):
         cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
 
+    def test_print_stats(self):
+        # based on current JSON
+        EXP_FALSE_NEGATIVES = {'C0017168': 2, 'C0020538': 43, 'C0038454': 4, 'C0007787': 1, 'C0155626': 4, 'C0011860': 12,
+                               'C0042029': 6, 'C0010068': 2, 'C0007222': 1, 'C0027051': 6, 'C0878544': 1, 'C0020473': 12,
+                               'C0037284': 21, 'C0003864': 4, 'C0011849': 12, 'C0005686': 1, 'C0085762': 3, 'C0030920': 2,
+                               'C0854135': 3, 'C0004096': 4, 'C0010054': 10, 'C0497156': 10, 'C0011334': 2, 'C0018939': 1,
+                               'C1561826': 2, 'C0276289': 2, 'C0041834': 9, 'C0000833': 2, 'C0238792': 1, 'C0040034': 3,
+                               'C0035078': 5, 'C0018799': 5, 'C0042109': 1, 'C0035439': 1, 'C0035435': 1, 'C0018099': 1,
+                               'C1277187': 1, 'C0024117': 7, 'C0004238': 4, 'C0032227': 6, 'C0008679': 1, 'C0013146': 6,
+                               'C0032285': 1, 'C0002871': 7, 'C0149871': 4, 'C0442886': 1, 'C0022104': 1, 'C0034065': 5,
+                               'C0011854': 6, 'C1398668': 1, 'C0020676': 2, 'C1301700': 1, 'C0021167': 1, 'C0029456': 2,
+                               'C0011570': 10, 'C0009324': 1, 'C0011882': 1, 'C0020615': 1, 'C0242510': 2, 'C0033581': 2,
+                               'C0011168': 3, 'C0039082': 2, 'C0009241': 2, 'C1404970': 1, 'C0018524': 3, 'C0150063': 1,
+                               'C0917799': 1, 'C0178417': 1, 'C0033975': 1, 'C0011253': 1, 'C0018802': 8, 'C0022661': 4,
+                               'C0017658': 1, 'C0023895': 2, 'C0003123': 1, 'C0041582': 4, 'C0085096': 4, 'C0403447': 2,
+                               'C2363741': 2, 'C0457949': 1, 'C0040336': 1, 'C0037315': 2, 'C0024236': 3, 'C0442874': 1,
+                               'C0028754': 4, 'C0520679': 5, 'C0028756': 2, 'C0029408': 5, 'C0409959': 2, 'C0018801': 1, 
+                               'C3844825': 1, 'C0022660': 2, 'C0005779': 4, 'C0011175': 1, 'C0018965': 4, 'C0018889': 1,
+                               'C0022354': 2, 'C0033377': 1, 'C0042769': 1, 'C0035222': 1, 'C1456868': 2, 'C1145670': 1,
+                               'C0018790': 1, 'C0263746': 1, 'C0206172': 1, 'C0021400': 1, 'C0243026': 1, 'C0020443': 1,
+                               'C0001883': 1, 'C0031350': 1, 'C0010709': 4, 'C1565489': 7, 'C3489393': 1, 'C0005586': 2,
+                               'C0158288': 5, 'C0700594': 4, 'C0158266': 3, 'C0006444': 2, 'C0024003': 1}
+        with open(self.SUPERVISED_TRAINING_JSON) as f:
+            data = json.load(f)
+        (fps, fns, tps,
+         cui_prec, cui_rec, cui_f1,
+         cui_counts, examples) = self.undertest._print_stats(data)
+        self.assertEqual(fps, {})
+        self.assertEqual(fns, EXP_FALSE_NEGATIVES)
+        self.assertEqual(tps, {})
+        self.assertEqual(cui_prec, {})
+        self.assertEqual(cui_rec, {})
+        self.assertEqual(cui_f1, {})
+        self.assertEqual(len(cui_counts), 136)
+        self.assertEqual(len(examples), 3)
+
     def _assertNoLogs(self, logger: logging.Logger, level: int):
         if hasattr(self, 'assertNoLogs'):
             return self.assertNoLogs(logger=logger, level=level)
@@ -450,35 +489,36 @@ class GetEntitiesWithStopWords(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
+        cls.cdb1 = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
+        cls.cdb2 = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
         cls.vocab.make_unigram_table()
-        cls.cdb.config.general.spacy_model = "en_core_web_md"
-        cls.cdb.config.ner.min_name_len = 2
-        cls.cdb.config.ner.upper_case_limit_len = 3
-        cls.cdb.config.general.spell_check = True
-        cls.cdb.config.linking.train_count_threshold = 10
-        cls.cdb.config.linking.similarity_threshold = 0.3
-        cls.cdb.config.linking.train = True
-        cls.cdb.config.linking.disamb_length_limit = 5
-        cls.cdb.config.general.full_unlink = True
+        cls.cdb1.config.general.spacy_model = "en_core_web_md"
+        cls.cdb1.config.ner.min_name_len = 2
+        cls.cdb1.config.ner.upper_case_limit_len = 3
+        cls.cdb1.config.general.spell_check = True
+        cls.cdb1.config.linking.train_count_threshold = 10
+        cls.cdb1.config.linking.similarity_threshold = 0.3
+        cls.cdb1.config.linking.train = True
+        cls.cdb1.config.linking.disamb_length_limit = 5
+        cls.cdb1.config.general.full_unlink = True
+        cls.cdb2.config = Config.from_dict(cls.cdb1.config.asdict())
         # the regular CAT without stopwords
-        cls.no_stopwords = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
+        cls.no_stopwords = CAT(cdb=cls.cdb1, config=cls.cdb1.config, vocab=cls.vocab, meta_cats=[])
         # this (the following two lines)
         # needs to be done before initialising the CAT
         # since that initialises the pipe
-        cls.cdb.config.preprocessing.stopwords = {"stop", "words"}
-        cls.cdb.config.preprocessing.skip_stopwords = True
+        cls.cdb2.config.preprocessing.stopwords = {"stop", "words"}
+        cls.cdb2.config.preprocessing.skip_stopwords = True
         # the CAT that skips the stopwords
-        cls.w_stopwords = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
+        cls.w_stopwords = CAT(cdb=cls.cdb2, config=cls.cdb2.config, vocab=cls.vocab, meta_cats=[])
 
     def test_stopwords_are_skipped(self, text: str = "second words csv"):
         # without stopwords no entities are captured
         # with stopwords, the `second words csv` entity is captured
         doc_no_stopwords = self.no_stopwords(text)
-        self.cdb.config.preprocessing.skip_stopwords = True
         doc_w_stopwords = self.w_stopwords(text)
-        self.assertGreater(len(doc_no_stopwords), len(doc_w_stopwords))
+        self.assertGreater(len(doc_w_stopwords._.ents), len(doc_no_stopwords._.ents))
 
 
 class ModelWithTwoConfigsLoadTests(unittest.TestCase):
@@ -500,6 +540,34 @@ class ModelWithTwoConfigsLoadTests(unittest.TestCase):
     def test_loading_model_pack_with_cdb_config_and_config_json_raises_exception(self):
         with self.assertRaises(ValueError):
             CAT.load_model_pack(self.model_path)
+
+
+class ModelLoadsUnreadableSpacy(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.temp_dir = tempfile.TemporaryDirectory()
+        model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
+        cdb = CDB.load(os.path.join(model_path, 'cdb.dat'))
+        cdb.config.general.spacy_model = os.path.join(cls.temp_dir.name, "en_core_web_md")
+        # save CDB in new location
+        cdb.save(os.path.join(cls.temp_dir.name, 'cdb.dat'))
+        # save config in new location
+        cdb.config.save(os.path.join(cls.temp_dir.name, 'config.json'))
+        # copy vocab into new location
+        vocab_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat")
+        cls.vocab_path = os.path.join(cls.temp_dir.name, 'vocab.dat')
+        shutil.copyfile(vocab_path, cls.vocab_path)
+
+    @classmethod
+    def tearDownClass(cls) -> None:
+        # REMOVE temp dir
+        cls.temp_dir.cleanup()
+
+    def test_loads_without_specified_spacy_model(self):
+        with self.assertLogs(logger=pipe_logger, level=logging.WARNING):
+            cat = CAT.load_model_pack(self.temp_dir.name)
+        self.assertTrue(isinstance(cat, CAT))
 
 
 class ModelWithZeroConfigsLoadTests(unittest.TestCase):
