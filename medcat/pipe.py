@@ -1,4 +1,5 @@
 import types
+import os
 import spacy
 import gc
 import logging
@@ -42,7 +43,7 @@ class Pipe(object):
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         if config.preprocessing.stopwords is not None:
-            lang = config.general.spacy_model.split('_', 1)[0]
+            lang = os.path.basename(config.general.spacy_model).split('_', 1)[0]
             cls = spacy.util.get_lang_class(lang)
             cls.Defaults.stop_words = set(config.preprocessing.stopwords)
         try:
