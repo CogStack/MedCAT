@@ -43,7 +43,6 @@ class Pipe(object):
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
         if config.preprocessing.stopwords is not None:
             lang = config.general.spacy_model.split('_', 1)[0]
-            print("(stopwords) LANG", lang)
             cls = spacy.util.get_lang_class(lang)
             cls.Defaults.stop_words = set(config.preprocessing.stopwords)
         try:
@@ -262,7 +261,6 @@ class Pipe(object):
 
     def __call__(self, text: Union[str, Iterable[str]]) -> Union[Doc, List[Doc]]:
         if isinstance(text, str):
-            print("Pipe.__call__ w", id(self._nlp))
             return self._nlp(text) if len(text) > 0 else None  # type: ignore
         elif isinstance(text, Iterable):
             docs = []
