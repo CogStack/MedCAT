@@ -85,8 +85,9 @@ class PipeTests(unittest.TestCase):
     
     def test_stopwords_loading(self):
         self.assertEqual(PipeTests.undertest._nlp.Defaults.stop_words, PipeTests.config.preprocessing.stopwords)
-        self.assertEqual(PipeTests.undertest._nlp(PipeTests.text)[0].is_stop, True)
-        self.assertEqual(PipeTests.undertest._nlp(PipeTests.text)[1].is_stop, False)
+        doc = PipeTests.undertest(PipeTests.text)
+        self.assertEqual(doc[0].is_stop, True)
+        self.assertEqual(doc[1].is_stop, False)
 
     def test_batch_multi_process(self):
         PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
