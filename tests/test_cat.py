@@ -10,6 +10,7 @@ from transformers import AutoTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB, logger as cdb_logger
 from medcat.cat import CAT, logger as cat_logger
+from medcat.config import Config
 from medcat.pipe import logger as pipe_logger
 from medcat.utils.checkpoint import Checkpoint
 from medcat.meta_cat import MetaCAT
@@ -477,6 +478,47 @@ class CATTests(unittest.TestCase):
     def test_add_and_train_concept_cdb_warns_short_name(self):
         short_name = 'a'
         self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
+
+
+class GetEntitiesWithStopWords(unittest.TestCase):
+    # NB! The order in which the different CDBs are created
+    # is important here since the way that the stop words are
+    # set is class-based, it creates the side effect of having
+    # the same stop words the next time around
+    # regardless of whether or not they should've been set
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb1 = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
+        cls.cdb2 = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
+        cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
+        cls.vocab.make_unigram_table()
+        cls.cdb1.config.general.spacy_model = "en_core_web_md"
+        cls.cdb1.config.ner.min_name_len = 2
+        cls.cdb1.config.ner.upper_case_limit_len = 3
+        cls.cdb1.config.general.spell_check = True
+        cls.cdb1.config.linking.train_count_threshold = 10
+        cls.cdb1.config.linking.similarity_threshold = 0.3
+        cls.cdb1.config.linking.train = True
+        cls.cdb1.config.linking.disamb_length_limit = 5
+        cls.cdb1.config.general.full_unlink = True
+        cls.cdb2.config = Config.from_dict(cls.cdb1.config.asdict())
+        # the regular CAT without stopwords
+        cls.no_stopwords = CAT(cdb=cls.cdb1, config=cls.cdb1.config, vocab=cls.vocab, meta_cats=[])
+        # this (the following two lines)
+        # needs to be done before initialising the CAT
+        # since that initialises the pipe
+        cls.cdb2.config.preprocessing.stopwords = {"stop", "words"}
+        cls.cdb2.config.preprocessing.skip_stopwords = True
+        # the CAT that skips the stopwords
+        cls.w_stopwords = CAT(cdb=cls.cdb2, config=cls.cdb2.config, vocab=cls.vocab, meta_cats=[])
+
+    def test_stopwords_are_skipped(self, text: str = "second words csv"):
+        # without stopwords no entities are captured
+        # with stopwords, the `second words csv` entity is captured
+        doc_no_stopwords = self.no_stopwords(text)
+        doc_w_stopwords = self.w_stopwords(text)
+        self.assertGreater(len(doc_w_stopwords._.ents), len(doc_no_stopwords._.ents))
 
 
 class ModelWithTwoConfigsLoadTests(unittest.TestCase):

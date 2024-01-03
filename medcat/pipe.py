@@ -1,4 +1,5 @@
 import types
+import os
 import spacy
 import gc
 import logging
@@ -41,6 +42,10 @@ class Pipe(object):
     """
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
+        if config.preprocessing.stopwords is not None:
+            lang = os.path.basename(config.general.spacy_model).split('_', 1)[0]
+            cls = spacy.util.get_lang_class(lang)
+            cls.Defaults.stop_words = set(config.preprocessing.stopwords)
         try:
             self._nlp = self._init_nlp(config)
         except Exception as e:
@@ -57,8 +62,6 @@ class Pipe(object):
             # medcat.utils.normalizers.TokenNormalizer.__init__
             config.general.spacy_model = DEFAULT_SPACY_MODEL
             self._nlp = self._init_nlp(config)
-        if config.preprocessing.stopwords is not None:
-            self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
         # Set max document length
         self._nlp.max_length = config.preprocessing.max_document_length
