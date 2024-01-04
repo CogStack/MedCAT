@@ -1,9 +1,9 @@
 import medcat.utils.spacy_compatibility as module_under_test
-from medcat.utils.spacy_compatibility import is_spacy_model_folder, find_spacy_model_folder
+from medcat.utils.spacy_compatibility import _is_spacy_model_folder, _find_spacy_model_folder
 from medcat.utils.spacy_compatibility import get_installed_spacy_version, get_installed_model_version
-from medcat.utils.spacy_compatibility import get_name_and_meta_of_spacy_model_in_medcat_modelpack
+from medcat.utils.spacy_compatibility import _get_name_and_meta_of_spacy_model_in_medcat_modelpack
 from medcat.utils.spacy_compatibility import get_name_and_version_of_spacy_model_in_medcat_modelpack
-from medcat.utils.spacy_compatibility import is_spacy_version_within_range
+from medcat.utils.spacy_compatibility import _is_spacy_version_within_range
 from medcat.utils.spacy_compatibility import medcat_model_pack_has_compatible_spacy_model
 from medcat.utils.spacy_compatibility import is_older_spacy_version
 from medcat.utils.spacy_compatibility import medcat_model_pack_has_semi_compatible_spacy_model
@@ -43,18 +43,18 @@ class SpacyModelFolderIdentifierTests(unittest.TestCase):
     def test_works_expected_models(self):
         for model_name in self.expected_working_spacy_models:
             with self.subTest(model_name):
-                self.assertTrue(is_spacy_model_folder(model_name))
+                self.assertTrue(_is_spacy_model_folder(model_name))
 
     def test_works_legacy_models(self):
         for model_name in self.expected_working_legacy_names:
             with self.subTest(model_name):
-                self.assertTrue(is_spacy_model_folder(model_name))
+                self.assertTrue(_is_spacy_model_folder(model_name))
 
     def test_works_fill_path(self):
         for model_name in self.expected_working_legacy_names:
             full_folder_path = os.path.join("some", "folder", "structure", model_name)
             with self.subTest(full_folder_path):
-                self.assertTrue(is_spacy_model_folder(model_name))
+                self.assertTrue(_is_spacy_model_folder(model_name))
 
     def get_all_garbage(self) -> list:
         """Generate garbage "spacy names".
@@ -70,7 +70,7 @@ class SpacyModelFolderIdentifierTests(unittest.TestCase):
     def test_does_not_work_grabage(self):
         for garbage in self.get_all_garbage():
             with self.subTest(garbage):
-                self.assertFalse(is_spacy_model_folder(garbage))
+                self.assertFalse(_is_spacy_model_folder(garbage))
 
 
 class FindSpacyFolderJustOneFolderEmptyFilesTests(unittest.TestCase):
@@ -95,7 +95,7 @@ class FindSpacyFolderJustOneFolderEmptyFilesTests(unittest.TestCase):
         cls.temp_folder.cleanup()
 
     def test_finds(self):
-        found_folder_path = find_spacy_model_folder(self.fake_modelpack_folder_name)
+        found_folder_path = _find_spacy_model_folder(self.fake_modelpack_folder_name)
         self.assertEqual(found_folder_path, self.spacy_folder)
 
 
@@ -138,7 +138,7 @@ class GetSpacyModelInfoTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.name, cls.info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(FAKE_MODELPACK_MODEL_DIR)
+        cls.name, cls.info = _get_name_and_meta_of_spacy_model_in_medcat_modelpack(FAKE_MODELPACK_MODEL_DIR)
 
     def test_reads_name(self):
         self.assertEqual(self.name, FAKE_SPACY_MODEL_NAME)
@@ -197,11 +197,11 @@ class VersionMockBaseTests(unittest.TestCase):
 class SpacyVersionMockBaseTests(VersionMockBaseTests):
 
     def _subtest_for(self, spacy_model_range: str, spacy_version: str, should_work: bool) -> None:
-        return self.base_subtest_for(is_spacy_version_within_range,
+        return self.base_subtest_for(_is_spacy_version_within_range,
                                     spacy_model_range, spacy_version, should_work)
 
     def _check_version(self, spacy_model_range: str, spacy_version: str, should_work: bool = True) -> None:
-        return self.base_check_version(is_spacy_version_within_range,
+        return self.base_check_version(_is_spacy_version_within_range,
                                       spacy_model_range, spacy_version, should_work)
 
 

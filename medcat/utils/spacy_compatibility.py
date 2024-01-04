@@ -14,7 +14,7 @@ import spacy
 SPACY_MODEL_REGEX = re.compile(r"(\w{2}_core_(\w{3,4})_(sm|md|lg|trf|xxl|\w+))|(spacy_model)")
 
 
-def is_spacy_model_folder(folder_name: str) -> bool:
+def _is_spacy_model_folder(folder_name: str) -> bool:
     """Check if a folder within a model pack contains a spacy model.
 
     The idea is to do this without loading the model. That is because
@@ -36,7 +36,7 @@ def is_spacy_model_folder(folder_name: str) -> bool:
     return bool(SPACY_MODEL_REGEX.match(folder_name))
 
 
-def find_spacy_model_folder(model_pack_folder: str) -> str:
+def _find_spacy_model_folder(model_pack_folder: str) -> str:
     """Find the spacy model folder in a model pack folder.
 
     Args:
@@ -53,7 +53,7 @@ def find_spacy_model_folder(model_pack_folder: str) -> str:
         full_folder_path = os.path.join(model_pack_folder, folder_name)
         if not os.path.isdir(full_folder_path):
             continue
-        if is_spacy_model_folder(folder_name):
+        if _is_spacy_model_folder(folder_name):
             options.append(full_folder_path)
     if len(options) != 1:
         raise ValueError("Unable to determine spacy folder name from "
@@ -86,7 +86,7 @@ def get_installed_model_version(model_name: str) -> str:
     return cast(dict, spacy.info(model_name))['version']
 
 
-def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, dict]:
+def _get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -> Tuple[str, dict]:
     """Gets the name and meta information about a spacy model within a medcat model pack.
 
     PS: This gets the raw (folder) name of the spacy model.
@@ -100,7 +100,7 @@ def get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path: str) -
     Returns:
         Tuple[str, dict]: The name of the spacy model, and the meta information.
     """
-    spacy_model_folder = find_spacy_model_folder(model_pack_path)
+    spacy_model_folder = _find_spacy_model_folder(model_pack_path)
     # NOTE: I don't really know when spacy.info
     # might return a str instead
     info = cast(dict, spacy.info(spacy_model_folder))
@@ -121,12 +121,12 @@ def get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path: str
     Returns:
         Tuple[str, str, str]: The name of the spacy model, its version, and supported spacy version.
     """
-    _, info = get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
+    _, info = _get_name_and_meta_of_spacy_model_in_medcat_modelpack(model_pack_path)
     true_name = info["lang"] + "_" + info['name']
     return true_name, info['version'], info["spacy_version"]
 
 
-def is_spacy_version_within_range(spacy_version_range: str) -> bool:
+def _is_spacy_version_within_range(spacy_version_range: str) -> bool:
     """Checks whether the spacy version is within the specified range.
 
     The expected format of the version range is similar to that used
@@ -157,7 +157,7 @@ def medcat_model_pack_has_compatible_spacy_model(model_pack_path: str) -> bool:
         bool: Whether the spacy model in the model pack is compatible.
     """
     _, _, spacy_range = get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path)
-    return is_spacy_version_within_range(spacy_range)
+    return _is_spacy_version_within_range(spacy_range)
 
 
 def is_older_spacy_version(model_version: str) -> bool:
@@ -206,6 +206,6 @@ def medcat_model_pack_has_semi_compatible_spacy_model(model_pack_path: str) -> b
     (_,
      model_version,
      spacy_range) = get_name_and_version_of_spacy_model_in_medcat_modelpack(model_pack_path)
-    if is_spacy_version_within_range(spacy_range):
+    if _is_spacy_version_within_range(spacy_range):
         return True
     return is_older_spacy_version(model_version)
