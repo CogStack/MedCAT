@@ -201,7 +201,7 @@ def medcat_model_pack_has_semi_compatible_spacy_model(model_pack_path: str) -> b
         model_pack_path (str): The model pack path.
 
     Returns:
-        bool: Whether the spacy model in the model pack is
+        bool: Whether the spacy model in the model pack is compatible.
     """
     (_,
      model_version,
