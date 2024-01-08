@@ -25,7 +25,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
 
-        print("Model config: ", self.model_config)
+        print("RelCAT Model config: ", self.model_config)
 
         self.init_weights() # type: ignore
 
@@ -126,12 +126,12 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         self.bert_model = self.bert_model.to(device)
 
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,
-                                  encoder_hidden_states=encoder_hidden_states,
-                                  encoder_attention_mask=encoder_attention_mask)
-
+                                    encoder_hidden_states=encoder_hidden_states,
+                                    encoder_attention_mask=encoder_attention_mask)
+        
         sequence_output = model_output[0] # (batch_size, sequence_length, hidden_size)
         pooled_output = model_output[1]
-        
+
         classification_logits = self.output2logits(pooled_output, sequence_output, input_ids, e1_e2_start)
 
         return model_output, classification_logits.to(device)

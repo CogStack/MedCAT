@@ -123,10 +123,11 @@ class RelCAT(PipeRunner):
                 print("Config for HF model not found: ", config.general["model_name"], ". Using bert-base-uncased.")
                 model_config = BertConfig.from_pretrained(pretrained_model_name_or_path="bert-base-uncased") # type: ignore
 
-        model_config.vocab_size = len(tokenizer.hf_tokenizers)
+        model_config.vocab_size = tokenizer.hf_tokenizers.vocab_size
 
         rel_cat = cls(cdb=cdb, config=config, tokenizer=tokenizer, task=config.general["task"])
         rel_cat.model_config = model_config
+        
 
         device = torch.device("cuda" if torch.cuda.is_available() and config.general["device"] != "cpu" else "cpu")
 
@@ -149,6 +150,8 @@ class RelCAT(PipeRunner):
                                                                         task=config.general["task"],
                                                                         nclasses=config.model["nclasses"],
                                                                         ignore_mismatched_sizes=True) 
+
+        rel_cat.model.bert_model.resize_token_embeddings(tokenizer.hf_tokenizers.vocab_size)
 
         rel_cat.model = torch.nn.DataParallel(rel_cat.model) # type: ignore
         rel_cat.model = rel_cat.model.to(device) # type: ignore
