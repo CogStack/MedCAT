@@ -1,4 +1,5 @@
 import types
+import os
 import spacy
 import gc
 import logging
@@ -17,9 +18,13 @@ from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.ner.transformers_ner import TransformersNER
+from medcat.utils.helpers import ensure_spacy_model
 
 
 logger = logging.getLogger(__name__) # different logger from the package-level one
+
+
+DEFAULT_SPACY_MODEL = 'en_core_web_md'
 
 
 class Pipe(object):
@@ -38,15 +43,36 @@ class Pipe(object):
     """
 
     def __init__(self, tokenizer: Tokenizer, config: Config) -> None:
-        self._nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
         if config.preprocessing.stopwords is not None:
-            self._nlp.Defaults.stop_words = set(config.preprocessing.stopwords)
+            lang = os.path.basename(config.general.spacy_model).split('_', 1)[0]
+            cls = spacy.util.get_lang_class(lang)
+            cls.Defaults.stop_words = set(config.preprocessing.stopwords)
+        try:
+            self._nlp = self._init_nlp(config)
+        except Exception as e:
+            if config.general.spacy_model == DEFAULT_SPACY_MODEL:
+                raise e
+            logger.warning("Could not load spacy model from '%s'. "
+                           "Falling back to installed en_core_web_md. "
+                           "For best compatibility, we'd recommend "
+                           "packaging and using your model pack with "
+                           "the spacy model it was designed for",
+                           config.general.spacy_model, exc_info=e)
+            # we're changing the config value so that this propages
+            # to other places that try to load the model. E.g:
+            # medcat.utils.normalizers.TokenNormalizer.__init__
+            ensure_spacy_model(DEFAULT_SPACY_MODEL)
+            config.general.spacy_model = DEFAULT_SPACY_MODEL
+            self._nlp = self._init_nlp(config)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
         # Set max document length
         self._nlp.max_length = config.preprocessing.max_document_length
         self.config = config
         # Set log level
         logger.setLevel(self.config.general.log_level)
+
+    def _init_nlp(selef, config: Config) -> Language:
+        return spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
 
     def add_tagger(self, tagger: Callable, name: Optional[str] = None, additional_fields: List[str] = []) -> None:
         """Add any kind of a tagger for tokens.
