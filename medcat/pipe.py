@@ -18,6 +18,7 @@ from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.ner.transformers_ner import TransformersNER
+from medcat.utils.helpers import ensure_spacy_model
 
 
 logger = logging.getLogger(__name__) # different logger from the package-level one
@@ -60,6 +61,7 @@ class Pipe(object):
             # we're changing the config value so that this propages
             # to other places that try to load the model. E.g:
             # medcat.utils.normalizers.TokenNormalizer.__init__
+            ensure_spacy_model(DEFAULT_SPACY_MODEL)
             config.general.spacy_model = DEFAULT_SPACY_MODEL
             self._nlp = self._init_nlp(config)
         self._nlp.tokenizer = tokenizer(self._nlp, config)
