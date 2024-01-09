@@ -71,6 +71,15 @@ jobs:
           "s/node-and-date/no-local-version/g"
           setup.py
 
+      - name: Determine if it's a pre-release
+        id: check_prerelease
+        # run: echo ::set-output name=is_prerelease::${{ github.event.release.prerelease }}
+        # NOTE: For the sake of normal workflow, all releases are pre-releases.
+        #       The idea is that if the pre-release works, so does the regular release.
+        #       The other option would be to run for pre-release and regular release
+        #       but the trivial version for that would duplicate a bunch of the YAML.
+        run: echo ::set-output name=is_prerelease::true
+
       - name: Build a binary wheel and a source tarball
         run: >-
           python -m
@@ -78,11 +87,13 @@ jobs:
           --sdist
           --wheel
           --outdir dist/
+          ${{ steps.check_prerelease.outputs.is_prerelease == 'true' && '--pre' || '' }}
           .
 
       - name: Publish dev distribution to Test PyPI
         uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+          prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
           repository_url: https://test.pypi.org/legacy/
         continue-on-error: true
