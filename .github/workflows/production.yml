@@ -48,7 +48,6 @@ jobs:
           --sdist
           --wheel
           --outdir dist/
-          ${{ steps.check_prerelease.outputs.is_prerelease == 'true' && '--pre' || '' }}
           .
 
       - name: Publish production distribution to PyPI
