@@ -37,9 +37,6 @@ jobs:
 
   publish-to-test-pypi:
 
-    if: |
-      github.repository == 'CogStack/MedCAT' &&
-      github.event_name == 'push'
     runs-on: ubuntu-20.04
     concurrency: publish-to-test-pypi
     needs: [build]
