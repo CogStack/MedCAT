@@ -73,12 +73,12 @@ jobs:
 
       - name: Determine if it's a pre-release
         id: check_prerelease
-        # run: echo ::set-output name=is_prerelease::${{ github.event.release.prerelease }}
+        # run: echo "IS_PRERELEASE=${{ github.event.release.prerelease }}" >> $GITHUB_ENV
         # NOTE: For the sake of normal workflow, all releases are pre-releases.
         #       The idea is that if the pre-release works, so does the regular release.
         #       The other option would be to run for pre-release and regular release
         #       but the trivial version for that would duplicate a bunch of the YAML.
-        run: echo ::set-output name=is_prerelease::true
+        run: echo "IS_PRERELEASE=true" >> $GITHUB_ENV
 
       - name: Build a binary wheel and a source tarball
         run: >-
@@ -93,6 +93,6 @@ jobs:
         uses: pypa/gh-action-pypi-publish@v1.4.2
         with:
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-          prerelease: ${{ steps.check_prerelease.outputs.is_prerelease == 'true' }}
+          prerelease: ${{ env.IS_PRERELEASE == 'true' }}
           repository_url: https://test.pypi.org/legacy/
         continue-on-error: true
