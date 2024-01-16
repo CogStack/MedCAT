@@ -31,7 +31,7 @@ class ConfigRelCAT(MixingConfig):
 
         self.model: Dict[str, Any] = {
                 'input_size': 300,
-                'hidden_size': 768, # model_size
+                'hidden_size': 512, # model_size
                 'dropout': 0.1,
                 'nclasses': 2, # Number of classes that this model will output
                 }

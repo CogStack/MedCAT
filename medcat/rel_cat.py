@@ -249,8 +249,8 @@ class RelCAT(PipeRunner):
 
         losses_per_epoch, accuracy_per_epoch, f1_per_epoch = load_results(path=checkpoint_path)
 
-        if train_rel_data.dataset["nclasses"] > self.model.nclasses:
-            self.model.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
+        if train_rel_data.dataset["nclasses"] > self.config.model["nclasses"]:
+            self.nclasses = self.config.model["nclasses"] = train_rel_data.dataset["nclasses"]
 
         self.config.general["labels2idx"].update(train_rel_data.dataset["labels2idx"])
         self.config.general["idx2labels"] = {int(v): k for k, v in self.config.general["labels2idx"].items()}
@@ -289,7 +289,7 @@ class RelCAT(PipeRunner):
                             e1_e2_start=e1_e2_start
                           )
 
-                batch_loss = criterion(classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss = criterion(classification_logits.view(-1, self.nclasses).to(self.device), labels.squeeze(1))
                 batch_loss = batch_loss / gradient_acc_steps
 
                 total_loss += batch_loss.item() / current_batch_size
@@ -434,7 +434,7 @@ class RelCAT(PipeRunner):
                 model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,
                             e1_e2_start=e1_e2_start)
 
-                batch_loss = criterion(pred_classification_logits.view(-1, self.model.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss = criterion(pred_classification_logits.view(-1, self.config.model["nclasses"]).to(self.device), labels.squeeze(1))
                 total_loss += batch_loss.item()
 
                 batch_accuracy, batch_recall, batch_precision, batch_f1, pred_labels, true_labels, batch_stats_per_label = \

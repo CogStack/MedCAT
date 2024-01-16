@@ -8,12 +8,12 @@ from transformers.models.bert.configuration_bert import BertConfig
 from medcat.config_rel_cat import ConfigRelCAT
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
-    def __init__(self, pretrained_model_name_or_path, relcat_config: ConfigRelCAT, model_config: BertConfig, model_size: int, task: str = "train", nclasses: int = 2, ignore_mismatched_sizes: bool = False):
+    def __init__(self, pretrained_model_name_or_path, relcat_config: ConfigRelCAT, model_config: BertConfig, model_size: int, task: str = "train", ignore_mismatched_sizes: bool = False):
         super(BertModel_RelationExtraction, self).__init__(model_config, ignore_mismatched_sizes)
 
         self.relcat_config = relcat_config
         self.model_config = model_config
-        self.nclasses = nclasses
+        self.nclasses = relcat_config.model["nclasses"]
         self.task = task
         self.hidden_size = model_size
         self.bert_model = BertModel(model_config)
@@ -23,14 +23,14 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
 
-        self.classification_layer = nn.Linear(self.hidden_size, self.nclasses)
+        self.classification_layer = nn.Linear(self.hidden_size * 5, self.nclasses)
 
         print("RelCAT Model config: ", self.model_config)
 
         self.init_weights() # type: ignore
 
     def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
-        spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)   
+        spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)
 
         # remove duplicate positions (some datasets arent fully clean)
         initial_list = spec_idx[:, 1].tolist()
@@ -66,7 +66,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
                 or an array or anything that we can use in a for loop
                 If True resume the previous training; If False, start a fresh new training.
         """
-        classification_logits = None
+
         new_pooled_output = pooled_output
 
         if self.relcat_config.general["annotation_schema_tag_ids"]:
@@ -77,6 +77,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             seq_tags = torch.stack(seq_tags, dim=0)
 
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
+            new_pooled_output = torch.squeeze(new_pooled_output, dim=1)
         else:
             e1e2_output =[]  
             temp_e1 = []
@@ -90,7 +91,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             e1e2_output.append(torch.stack(temp_e1, dim=0))
             e1e2_output.append(torch.stack(temp_e2, dim=0))
 
-            new_pooled_output=torch.cat((pooled_output, *e1e2_output), dim=1)
+            new_pooled_output = torch.cat((pooled_output, *e1e2_output), dim=1)
 
             del e1e2_output
             del temp_e2
@@ -110,8 +111,6 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         device = input_ids.device
 
-        self.classification_layer = nn.Linear(self.hidden_size, self.nclasses, device=device)
-
         if attention_mask is None:
             attention_mask = torch.ones(input_shape, device=device)
         if encoder_attention_mask is None:
@@ -126,8 +125,9 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         self.bert_model = self.bert_model.to(device)
 
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,
-                                    encoder_hidden_states=encoder_hidden_states,
-                                    encoder_attention_mask=encoder_attention_mask)
+                            encoder_hidden_states=encoder_hidden_states,
+                            encoder_attention_mask=encoder_attention_mask)
+
         
         sequence_output = model_output[0] # (batch_size, sequence_length, hidden_size)
         pooled_output = model_output[1]
