@@ -28,6 +28,7 @@ class PipeTests(unittest.TestCase):
         cls.config.ner['max_skip_tokens'] = 1
         cls.config.ner['upper_case_limit_len'] = 4
         cls.config.linking['disamb_length_limit'] = 2
+        cls.config.preprocessing.stopwords = {'stop', 'words'}
         cls.cdb = CDB(config=cls.config)
 
         downloader = VocabDownloader()
@@ -42,7 +43,7 @@ class PipeTests(unittest.TestCase):
         _tokenizer = TokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
         cls.meta_cat = MetaCAT(tokenizer=_tokenizer)
 
-        cls.text = "CDB - I was running and then Movar Virus attacked and CDb"
+        cls.text = "stop of CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
 
     @classmethod
@@ -81,6 +82,12 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
         self.assertEqual(PipeTests.meta_cat.name, Language.get_factory_meta(PipeTests.meta_cat.name).factory)
+    
+    def test_stopwords_loading(self):
+        self.assertEqual(PipeTests.undertest._nlp.Defaults.stop_words, PipeTests.config.preprocessing.stopwords)
+        doc = PipeTests.undertest(PipeTests.text)
+        self.assertEqual(doc[0].is_stop, True)
+        self.assertEqual(doc[1].is_stop, False)
 
     def test_batch_multi_process(self):
         PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, additional_fields=["is_punct"])
