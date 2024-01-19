@@ -8,22 +8,19 @@ from transformers.models.bert.configuration_bert import BertConfig
 from medcat.config_rel_cat import ConfigRelCAT
 
 class BertModel_RelationExtraction(BertPreTrainedModel):
-    def __init__(self, pretrained_model_name_or_path, relcat_config: ConfigRelCAT, model_config: BertConfig, model_size: int, task: str = "train", ignore_mismatched_sizes: bool = False):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig, ignore_mismatched_sizes: bool = False):
         super(BertModel_RelationExtraction, self).__init__(model_config, ignore_mismatched_sizes)
 
         self.relcat_config = relcat_config
         self.model_config = model_config
-        self.nclasses = relcat_config.model["nclasses"]
-        self.task = task
-        self.hidden_size = model_size
         self.bert_model = BertModel(model_config)
         self.drop_out = nn.Dropout(model_config.hidden_dropout_prob)
 
-        if self.task == "pretrain":
+        if relcat_config.general.task == "pretrain":
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
 
-        self.classification_layer = nn.Linear(self.hidden_size * 5, self.nclasses)
+        self.classification_layer = nn.Linear(self.relcat_config.model.hidden_size * 5, relcat_config.train.nclasses)
 
         print("RelCAT Model config: ", self.model_config)
 
@@ -69,9 +66,9 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         new_pooled_output = pooled_output
 
-        if self.relcat_config.general["annotation_schema_tag_ids"]:
+        if self.relcat_config.general.annotation_schema_tag_ids:
             seq_tags = []
-            for each_tag in self.relcat_config.general["annotation_schema_tag_ids"]:
+            for each_tag in self.relcat_config.general.annotation_schema_tag_ids:
                 seq_tags.append(self.get_annotation_schema_tag(sequence_output, input_ids, each_tag))
 
             seq_tags = torch.stack(seq_tags, dim=0)

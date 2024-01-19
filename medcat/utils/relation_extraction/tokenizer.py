@@ -3,7 +3,6 @@ from typing import Optional
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 
 
-
 class TokenizerWrapperBERT(BertTokenizerFast):
     ''' Wrapper around a huggingface BERT tokenizer so that it works with the
     RelCAT models.

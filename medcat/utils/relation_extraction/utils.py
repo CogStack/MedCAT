@@ -60,12 +60,12 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
         model.to(device)
 
         if optimizer is None:
-            optimizer = torch.optim.Adam([{"params": model.module.parameters(), "lr": config.train["lr"]}]) 
+            optimizer = torch.optim.Adam([{"params": model.module.parameters(), "lr": config.train.lr}]) 
 
         if scheduler is None:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                            milestones=config.train["multistep_milestones"],
-                                                            gamma=config.train["multistep_lr_gamma"]) 
+                                                            milestones=config.train.multistep_milestones,
+                                                            gamma=config.train.multistep_lr_gamma)
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['scheduler'])
         print("Loaded model and optimizer.")

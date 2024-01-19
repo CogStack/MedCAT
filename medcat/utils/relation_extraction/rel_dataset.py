@@ -16,11 +16,11 @@ class RelData(Dataset):
         self.cdb = cdb
         self.config = config
         self.tokenizer = tokenizer
-        self.blank_label_id = self.config.general["padding_idx"]
+        self.blank_label_id = self.config.general.padding_idx
         self.dataset: Dict[Any, Any] = {}
-        self.window_size = self.config.general["window_size"]
-        self.ent_context_left = self.config.general["ent_context_left"]
-        self.ent_context_right = self.config.general["ent_context_right"]
+        self.window_size = self.config.general.window_size
+        self.ent_context_left = self.config.general.cntx_left
+        self.ent_context_right = self.config.general.cntx_right
 
     def generate_base_relations(self, docs: Iterable[Doc]) -> List[Any]:
         '''
@@ -171,7 +171,7 @@ class RelData(Dataset):
 
         punct_symbols = ['?', '.', ',', ';', ':', '#', '-', ]
 
-        relation_type_filter_pairs = self.config.general["relation_type_filter_pairs"]
+        relation_type_filter_pairs = self.config.general.relation_type_filter_pairs
 
         for project in data['projects']:
             for doc_id, document in enumerate(project['documents']):
@@ -180,7 +180,7 @@ class RelData(Dataset):
                     annotations = document['annotations']
                     relations = document['relations']
 
-                    if self.config.general['lowercase']:
+                    if self.config.general.lowercase:
                         text = text.lower()
 
                     doc_length = len(text)
@@ -280,7 +280,7 @@ class RelData(Dataset):
         idx2label: Dict[int, str] = {}
         class_ids = 0
 
-        config_labels2idx = config.general["labels2idx"]
+        config_labels2idx = config.general.labels2idx
 
         if len(list(config_labels2idx.values())) > 0:
             class_ids = max(list(config_labels2idx.values())) + 1
@@ -301,7 +301,7 @@ class RelData(Dataset):
 
             idx2label[labels2idx[relation_label]] = relation_label
 
-        config.general["labels2idx"] = config_labels2idx
+        config.general.labels2idx = config_labels2idx
 
         return len(labels2idx.keys()), labels2idx, idx2label, 
 

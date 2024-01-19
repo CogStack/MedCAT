@@ -1,55 +1,87 @@
 import logging
-from typing import Dict, Any
-from medcat.config import MixingConfig
+from typing import Dict, Any, List
+from medcat.config import MixingConfig, BaseModel, Optional, Extra
+
+class General(MixingConfig, BaseModel):
+    """The General part of the MetaCAT config"""
+    device: str = "cpu"
+    relation_type_filter_pairs: List = []
+    """Map from category values to ID, if empty it will be autocalculated during training"""
+    vocab_size: Optional[int] = None
+    lowercase: bool = True
+    """If true all input text will be lowercased"""
+    cntx_left: int = 15
+    """Number of tokens to take from the left of the concept"""
+    cntx_right: int = 10
+    """Number of tokens to take from the right of the concept"""
+    window_size: int = 300
+    """Max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)"""
+    tokenizer_name: str = "BERT_tokenizer_relation_extraction"
+    model_name: str = "bert-base-uncased"
+    log_level: int = logging.INFO
+    max_seq_length: int = 512
+    padding_idx: int = -1
+    tokenizer_special_tokens: bool = False
+    annotation_schema_tag_ids: List = []
+    """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
+    copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce"""
+    labels2idx: Dict = {}
+    idx2labels: Dict = {}
+    pin_memory: bool = True
+    seed: int = 13
+    task: str = "train"
+
+class Model(MixingConfig, BaseModel):
+    """The model part of the metaCAT config"""   
+    input_size: int = 300
+    hidden_size: int = 300
+    dropout: float = 0.1
+    num_directions: int = 2
+    """2 - bidirectional model, 1 - unidirectional"""
+
+    padding_idx: int = -1
+    emb_grad: bool = True
+    """If True the embeddings will also be trained"""
+    ignore_cpos: bool = False
+    """If set to True center positions will be ignored when calculating represenation"""
+
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
 
 
-class ConfigRelCAT(MixingConfig):
+class Train(MixingConfig, BaseModel):
+    """The train part of the metaCAT config"""
+    nclasses: int = 2
+    """Number of classes that this model will output"""
+    batch_size: int = 25
+    nepochs: int = 2
+    lr: float = 1e-5
+    adam_epsilon: float = 1e-8
+    test_size: float = 0.2
+    gradient_acc_steps: int = 1
+    multistep_milestones: List[int] = [2,4,6,8,12,15,18,20,22,24,26,30]
+    multistep_lr_gamma: float = 0.8
+    max_grad_norm: float = 1.0
+    shuffle_data: bool = True
+    """Used only during training, if set the dataset will be shuffled before train/test split"""
+    class_weights: float = None
+    score_average: str = "weighted"
+    """What to use for averaging F1/P/R across labels"""
+    auto_save_model: bool = True
+    """Should the model be saved during training for best results"""
+    
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
 
-    def __init__(self) -> None:
 
-        self.general: Dict[str, Any] = {
-                'device': 'cuda', # possible values: 'cuda', 'cpu'
-                'relation_type_filter_pairs': [], # these are the pairs of relations that are to be predicted , form of : [("Disease", "Symptom"), ("entity1_type", "entity2_type") ...]
-                'vocab_size': None, # Will be set automatically if the tokenizer is provided during rel_cat init/load
-                'lowercase': True, # If true all input text will be lowercased
-                'ent_context_left': 2, # Number of entities to take from the left of the concept
-                'ent_context_right': 2, # Number of entities to take from the right of the concept
-                'window_size': 300, # max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)
-                'tokenizer_name': 'BERT_tokenizer_relation_extraction', # Tokenizer name used, "BERT_tokenizer_relation_extraction" default
-                'model_name': 'bert-base-uncased', # e.g "dmis-lab/biobert-base-cased-v1.2", "bert-large-uncased", "bert-base-uncased", "emilyalsentzer/Bio_ClinicalBERT"
-                'log_level': logging.INFO,
-                'max_seq_length': 512,
-                'padding_idx': -1,
-                'task': 'train',
-                'tokenizer_special_tokens': False,
-                'annotation_schema_tag_ids': [30522, 30523, 30524, 30525], # s1,s2,e1,e2 token id markers
-                'labels2idx': {},
-                'idx2labels': {},
-                'pin_memory': True,
-                "seed": 13
-        }
+class ConfigRelCAT(MixingConfig, BaseModel):
+    """The MetaCAT part of the config"""
+    general: General = General()
+    model: Model = Model()
+    train: Train = Train()
 
-        self.model: Dict[str, Any] = {
-                'input_size': 300,
-                'hidden_size': 512, # model_size
-                'dropout': 0.1,
-                'nclasses': 2, # Number of classes that this model will output
-                }
-
-        self.train: Dict[str, Any] = {
-                'batch_size': 25,
-                'nepochs': 2,
-                'lr': 0.00001,
-                'adam_epsilon': 1e-8,
-                'lr': 1e-5,
-                'test_size': 0.2,
-                'gradient_acc_steps': 1,
-                'multistep_milestones': [2,4,6,8,12,15,18,20,22,24,26,30],
-                'multistep_lr_gamma': 0.8,
-                'max_grad_norm': 1.0,
-                'shuffle_data': True, # Used only during training, if set the dataset will be shuffled before train/test split
-                'class_weights': None,
-                'score_average': 'weighted', # What to use for averaging F1/P/R across labels
-                'prerequisites': {},
-                'auto_save_model': True, # Should do model be saved during training for best results
-                }
+    class Config:
+        extra = Extra.allow
+        validate_assignment = True
