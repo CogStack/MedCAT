@@ -14,7 +14,6 @@ from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
-from medcat.utils.loggers import add_handlers
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 from spacy.tokens import Doc
 from typing import Iterable, Iterator, cast
@@ -35,8 +34,6 @@ class RelCAT(PipeRunner):
     name = "rel_cat"
     
     log = logging.getLogger(__package__)
-    # Add file and console handlers
-    log = add_handlers(log)
 
     def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train"):
         self.config = config
