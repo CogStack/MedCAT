@@ -5,7 +5,7 @@ import torch
 import numpy
 from multiprocessing import Lock
 from torch import nn, Tensor
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Span
 from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.utils.hasher import Hasher
@@ -356,6 +356,17 @@ class MetaCAT(PipeRunner):
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
         return meta_cat
+    
+    def get_ents(self, doc: Doc) -> List[Span]:
+        span_group_name = self.config.general.span_group
+        if span_group_name:
+            return doc.spans[span_group_name]
+
+        # Should we annotate overlapping entities
+        if self.config.general['annotate_overlapping']:
+            return doc._.ents
+
+        return doc.ents
 
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
         """Prepares document.
@@ -381,11 +392,7 @@ class MetaCAT(PipeRunner):
         cntx_right = config.general['cntx_right']
         replace_center = config.general['replace_center']
 
-        # Should we annotate overlapping entities
-        if config.general['annotate_overlapping']:
-            ents = doc._.ents
-        else:
-            ents = doc.ents
+        ents = self.get_ents(doc)
 
         samples = []
         last_ind = 0
@@ -522,10 +529,7 @@ class MetaCAT(PipeRunner):
 
                     predictions = all_predictions[start_ind:end_ind]
                     confidences = all_confidences[start_ind:end_ind]
-                    if config.general['annotate_overlapping']:
-                        ents = doc._.ents
-                    else:
-                        ents = doc.ents
+                    ents = self.get_ents(doc)
 
                     for ent in ents:
                         ent_ind = ent_id2ind[ent._.id]
