@@ -357,10 +357,13 @@ class MetaCAT(PipeRunner):
 
         return meta_cat
     
-    def get_ents(self, doc: Doc) -> List[Span]:
-        span_group_name = self.config.general.span_group
-        if span_group_name:
-            return doc.spans[span_group_name]
+    def get_ents(self, doc: Doc) -> Iterable[Span]:
+        spangroup_name = self.config.general.span_group
+        if spangroup_name:
+            try:
+                return doc.spans[spangroup_name]
+            except KeyError:
+                raise Exception(f"Configuration error MetaCAT was configured to set meta_anns on {spangroup_name} but this spangroup was not set on the doc.")
 
         # Should we annotate overlapping entities
         if self.config.general['annotate_overlapping']:

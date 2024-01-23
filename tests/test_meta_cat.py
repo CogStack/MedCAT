@@ -45,32 +45,49 @@ class MetaCATTests(unittest.TestCase):
 
         self.assertEqual(f1, n_f1)
 
-    def test_predict_spangroup(self):
+    def _prepare_doc_w_spangroup(self, spangroup_name: str):
+        """
+        Create spans under an arbitrary spangroup key
+        """
         Span.set_extension('id', default=0, force=True)
         Span.set_extension('meta_anns', default=None, force=True)
+        nlp = spacy.blank("en")
+        doc = nlp("Pt has diabetes and copd.")
+        span_0 = doc.char_span(7,15, label="diabetes")
+        assert span_0.text == 'diabetes'
 
+        span_1 = doc.char_span(20,24, label="copd")
+        assert span_1.text == 'copd'
+        doc.spans[spangroup_name] = [span_0, span_1]
+        return doc
 
+    def test_predict_spangroup(self):
         json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources', 'mct_export_for_meta_cat_test.json')
         self.meta_cat.train(json_path, save_dir_path=self.tmp_dir)
         self.meta_cat.save(self.tmp_dir)
         n_meta_cat = MetaCAT.load(self.tmp_dir)
-        assert n_meta_cat.config.general.span_group is None 
 
-        spangroup_name = 'predict_spangroup'
+        spangroup_name = "mock_span_group"
         n_meta_cat.config.general.span_group = spangroup_name
-        nlp = spacy.blank("en")
-        doc = nlp("No history of diabetes.")
-        span = doc.char_span(14, 22, label="foo_spantype")
-        assert span.text == 'diabetes'
-        doc.spans[spangroup_name] = [span]
+
+        doc = self._prepare_doc_w_spangroup(spangroup_name)
         doc = n_meta_cat(doc)
+        spans = doc.spans[spangroup_name]
+        self.assertEqual(len(spans), 2)
 
-        # set back to None
+        # All spans are annotate
+        for span in spans:
+            self.assertEqual(span._.meta_anns['Status']['value'], "Affirmed")
+
+        # Informative error if spangroup is not set
+        doc = self._prepare_doc_w_spangroup("foo")
+        n_meta_cat.config.general.span_group = "bar"
+        try:
+            doc = n_meta_cat(doc)
+        except Exception as error:
+            self.assertIn("Configuration error", str(error))
+
         n_meta_cat.config.general.span_group = None
-        assert doc.spans[spangroup_name][0]._.meta_anns['Status']['value'] == 'Affirmed'
-
-
-
 
 
 if __name__ == '__main__':
