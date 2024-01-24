@@ -72,6 +72,7 @@ class DeIdModel(NerModel):
         Returns:
             str: The deidentified text.
         """
+        self.cat.get_entities
         return deid_text(self.cat, text, redact=redact)
 
     @classmethod
