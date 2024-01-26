@@ -34,7 +34,7 @@ The wrapper also exposes some CAT parts directly:
 - config
 - cdb
 """
-from typing import Union, Tuple, Any, List, Iterable, Optional, Dict
+from typing import Union, Tuple, Any, List, Iterable, Optional
 
 from medcat.cat import CAT
 from medcat.utils.ner.model import NerModel
