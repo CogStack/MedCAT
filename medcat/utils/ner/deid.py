@@ -80,7 +80,7 @@ class DeIdModel(NerModel):
                          redact: bool = False,
                          addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
                          n_process: Optional[int] = None,
-                         batch_size: Optional[int] = None) -> List[Dict]:
+                         batch_size: Optional[int] = None) -> List[str]:
         """Deidentify text on multiple branches
 
         Args:
@@ -91,7 +91,7 @@ class DeIdModel(NerModel):
             batch_size (Optional[int], optional): The size of a batch. Defaults to None.
 
         Returns:
-            List[Dict]: List of entity documents.
+            List[str]: List of deidentified documents.
         """
         entities = self.cat.get_entities_multi_texts(texts, addl_info=addl_info,
                                                      n_process=n_process, batch_size=batch_size)
