@@ -96,8 +96,15 @@ class DeIdModel(NerModel):
         entities = self.cat.get_entities_multi_texts(texts, addl_info=addl_info,
                                                      n_process=n_process, batch_size=batch_size)
         out = []
-        for text, _ents in zip(texts, entities):
+        for raw_text, _ents in zip(texts, entities):
             ents = _ents['entities']
+            text: str
+            if isinstance(raw_text, tuple):
+                text = raw_text[1]
+            elif isinstance(raw_text, str):
+                text = raw_text
+            else:
+                raise ValueError(f"Unknown raw text: {type(raw_text)}: {raw_text}")
             new_text = replace_entities_in_text(text, ents, get_cui_name=self.cat.cdb.get_name, redact=redact)
             out.append(new_text)
         return out
