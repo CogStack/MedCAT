@@ -356,7 +356,7 @@ class MetaCAT(PipeRunner):
         meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
         return meta_cat
-    
+
     def get_ents(self, doc: Doc) -> Iterable[Span]:
         spangroup_name = self.config.general.span_group
         if spangroup_name:
