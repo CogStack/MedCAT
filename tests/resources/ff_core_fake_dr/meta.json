@@ -4,5 +4,5 @@
     "version":"3.1.0",
     "description":"This is a FAKE model",
     "author":"Fakio Martimus",
-    "spacy_version":">=3.1.0,<3.2.0"
+    "spacy_version":">=3.1.0,<4.0.0"
   }

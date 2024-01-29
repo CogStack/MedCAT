@@ -149,7 +149,7 @@ class GetSpacyModelInfoTests(unittest.TestCase):
 
 
 class GetSpacyModelVersionTests(GetSpacyModelInfoTests):
-    expected_spacy_version = ">=3.1.0,<3.2.0"
+    expected_spacy_version = ">=3.1.0,<4.0.0"
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -253,9 +253,9 @@ class ModelPackHasCompatibleSpacyRangeTests(unittest.TestCase):
             self.assertTrue(b)
 
 class ModelPackHasInCompatibleSpacyRangeTests(unittest.TestCase):
-    test_spacy_version = "3.2.0"
+    test_spacy_version = "3.0.0"
 
-    def test_is_in_range(self):
+    def test_is_not_in_range(self):
         with custom_spacy_version(self.test_spacy_version):
             b = medcat_model_pack_has_compatible_spacy_model(FAKE_MODELPACK_MODEL_DIR)
             self.assertFalse(b)

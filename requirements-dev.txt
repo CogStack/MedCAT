@@ -1,5 +1,5 @@
 .
-https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.4.0/en_core_web_md-3.4.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.6.0/en_core_web_md-3.6.0-py3-none-any.whl
 flake8==4.0.1
 mypy==1.0.0
 mypy-extensions==0.4.3
