@@ -1053,6 +1053,15 @@ class CAT(object):
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
+            except RuntimeError as e:
+                if e.args == ('_share_filename_: only available on CPU',):
+                    raise ValueError("Issue while performing multiprocessing. "
+                                     "This is mostly likely to happen when "
+                                     "using NER models (i.e DeId). If that is "
+                                     "the case you could either a) save the "
+                                     "model on disk and then load it back up; "
+                                     "or b) install cpu-only toch.") from e
+                raise e
             finally:
                 self.pipe.reset_error_handler()
 
