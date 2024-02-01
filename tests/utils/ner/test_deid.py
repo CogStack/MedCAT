@@ -72,6 +72,7 @@ def train_model_once(model: deid.DeIdModel,
             mpn = model.cat.create_model_pack(dir_name)
             print("Loading model")
             model = deid.DeIdModel.load_model_pack(os.path.join(dir_name, mpn))
+            print("Loaded model off disk")
         _trained.append((retval, model))
     return _trained[0]
 
@@ -120,7 +121,10 @@ class DeIDModelWorks(unittest.TestCase):
     def test_model_works_deid_text(self):
         anon_text = self.deid_model.deid_text(input_text)
         self.assertIn("[DOCTOR]", anon_text)
+        self.assertNotIn("M. Sully", anon_text)
         self.assertIn("[HOSPITAL]", anon_text)
+        self.assertNotIn("Dublin", anon_text)
+        self.assertNotIn("7 Eccles Street", anon_text)
 
     def test_model_works_dunder_call(self):
         anon_doc = self.deid_model(input_text)
@@ -130,7 +134,10 @@ class DeIDModelWorks(unittest.TestCase):
         anon_text = self.deid_model.deid_text(input_text, redact=True)
         self.assertIn("****", anon_text)
         self.assertNotIn("[DOCTOR]", anon_text)
+        self.assertNotIn("M. Sully", anon_text)
         self.assertNotIn("[HOSPITAL]", anon_text)
+        self.assertNotIn("Dublin", anon_text)
+        self.assertNotIn("7 Eccles Street", anon_text)
 
 class DeIDModelMultiprocessingWorks(unittest.TestCase):
     processes = 2
