@@ -10,7 +10,6 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-    timeout-minutes: 20
     strategy:
       matrix:
         python-version: [ '3.8', '3.9', '3.10', '3.11' ]
@@ -34,7 +33,7 @@ jobs:
           flake8 medcat
       - name: Test
         run: |
-          timeout 19m python -m unittest discover
+          timeout 17m python -m unittest discover
         continue-on-error: true
 
   publish-to-test-pypi:
