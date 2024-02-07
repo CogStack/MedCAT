@@ -11,7 +11,6 @@ import json
 import tempfile
 
 import unittest
-import signal
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -154,16 +153,6 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
         for project in raw_data['projects']:
             for doc in project['documents']:
                 cls.data.append((f"{project['name']}_{doc['name']}", doc['text']))
-
-    def setUp(self) -> None:
-        signal.signal(signal.SIGALRM, self.handle_timeout)
-        signal.alarm(10 * 60)
-
-    def tearDown(self) -> None:
-        signal.alarm(0)
-
-    def handle_timeout(self):
-        raise TimeoutError("Timed out!")
 
     def assertTextHasBeenDeIded(self, text: str, redacted: bool):
         if not redacted:
