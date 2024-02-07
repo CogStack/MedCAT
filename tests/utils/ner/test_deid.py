@@ -11,6 +11,7 @@ import json
 import tempfile
 
 import unittest
+import timeout_decorator
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -168,12 +169,14 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
                 return
         raise AssertionError("None of the CUIs found")
 
+    @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     def test_model_can_multiprocess_no_redact(self):
         processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes)
         for tid, new_text in enumerate(processed):
             with self.subTest(str(tid)):
                 self.assertTextHasBeenDeIded(new_text, redacted=False)
 
+    @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     def test_model_can_multiprocess_redact(self):
         processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes, redact=True)
         for tid, new_text in enumerate(processed):

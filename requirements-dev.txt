@@ -6,3 +6,4 @@ mypy-extensions>=1.0.0
 types-aiofiles==0.8.3
 types-PyYAML==6.0.3
 types-setuptools==57.4.10
+timeout-decorator==0.5.0
