@@ -76,7 +76,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
             new_pooled_output = torch.squeeze(new_pooled_output, dim=1)
         else:
-            e1e2_output =[]  
+            e1e2_output = []  
             temp_e1 = []
             temp_e2 = []
 
@@ -96,7 +96,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         classification_logits = self.classification_layer(self.drop_out(new_pooled_output))
 
-        return classification_logits
+        return classification_logits.to(self.relcat_config.general.device)
     
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None,
                 head_mask=None, encoder_hidden_states=None, encoder_attention_mask=None,
@@ -106,20 +106,18 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         else:
             raise ValueError("You have to specify input_ids")
 
-        device = input_ids.device
-
         if attention_mask is None:
-            attention_mask = torch.ones(input_shape, device=device)
+            attention_mask = torch.ones(input_shape, device=self.relcat_config.general.device)
         if encoder_attention_mask is None:
-            encoder_attention_mask = torch.ones(input_shape, device=device)
+            encoder_attention_mask = torch.ones(input_shape, device=self.relcat_config.general.device)
         if token_type_ids is None:
-            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=device)
+            token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=self.relcat_config.general.device)
 
-        input_ids = input_ids.to(device)
-        attention_mask = attention_mask.to(device)
-        encoder_attention_mask = encoder_attention_mask.to(device)
+        input_ids = input_ids.to(self.relcat_config.general.device)
+        attention_mask = attention_mask.to(self.relcat_config.general.device)
+        encoder_attention_mask = encoder_attention_mask.to(self.relcat_config.general.device)
 
-        self.bert_model = self.bert_model.to(device)
+        self.bert_model = self.bert_model.to(self.relcat_config.general.device)
 
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,
                             encoder_hidden_states=encoder_hidden_states,
@@ -131,4 +129,4 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         classification_logits = self.output2logits(pooled_output, sequence_output, input_ids, e1_e2_start)
 
-        return model_output, classification_logits.to(device)
+        return model_output, classification_logits.to(self.relcat_config.general.device)

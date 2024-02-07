@@ -221,12 +221,12 @@ class RelCAT(PipeRunner):
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
         train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
-                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
+                                  num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory, pin_memory_device=self.device)
 
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,
-                                 num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
+                                 num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory, pin_memory_device=self.device)
 
         criterion = nn.CrossEntropyLoss(ignore_index=-1)    
 
@@ -320,6 +320,10 @@ class RelCAT(PipeRunner):
 
             end_time = datetime.now().time()
 
+            print("======================== TRAIN SET TEST RESULTS ========================")
+            train_results = self.evaluate_results(train_dataloader, self.pad_id)
+
+            print("======================== TEST SET TEST RESULTS ========================")
             results = self.evaluate_results(test_dataloader, self.pad_id)
 
             f1_per_epoch.append(results['f1'])
@@ -419,8 +423,8 @@ class RelCAT(PipeRunner):
         for i, data in enumerate(data_loader):
             with torch.no_grad():
                 token_ids, e1_e2_start, labels, _, _, _ = data
-                attention_mask = (token_ids != pad_id).float()
-                token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long()
+                attention_mask = (token_ids != pad_id).float().to(self.device)
+                token_type_ids = torch.zeros((token_ids.shape[0], token_ids.shape[1])).long().to(self.device)
 
                 labels = labels.to(self.device)
 

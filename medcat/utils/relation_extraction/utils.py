@@ -41,7 +41,7 @@ def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_nam
 def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()):
 
     model_name = model_name.replace("/", "_")
-    print("Attempting to load RelCAT model on device: ", device.type)
+    print("Attempting to load RelCAT model on device: ", device)
     checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
     best_path = os.path.join(path, file_prefix + "_model_best_%s.dat" % model_name)
     start_epoch, best_f1, checkpoint = 0, 0, None
