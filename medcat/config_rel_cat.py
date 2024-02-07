@@ -2,6 +2,7 @@ import logging
 from typing import Dict, Any, List
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
+
 class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = "cpu"
@@ -31,8 +32,9 @@ class General(MixingConfig, BaseModel):
     seed: int = 13
     task: str = "train"
 
+
 class Model(MixingConfig, BaseModel):
-    """The model part of the metaCAT config"""   
+    """The model part of the metaCAT config"""
     input_size: int = 300
     hidden_size: int = 300
     dropout: float = 0.1
@@ -60,7 +62,8 @@ class Train(MixingConfig, BaseModel):
     adam_epsilon: float = 1e-8
     test_size: float = 0.2
     gradient_acc_steps: int = 1
-    multistep_milestones: List[int] = [2,4,6,8,12,15,18,20,22,24,26,30]
+    multistep_milestones: List[int] = [
+        2, 4, 6, 8, 12, 15, 18, 20, 22, 24, 26, 30]
     multistep_lr_gamma: float = 0.8
     max_grad_norm: float = 1.0
     shuffle_data: bool = True
@@ -70,7 +73,7 @@ class Train(MixingConfig, BaseModel):
     """What to use for averaging F1/P/R across labels"""
     auto_save_model: bool = True
     """Should the model be saved during training for best results"""
-    
+
     class Config:
         extra = Extra.allow
         validate_assignment = True

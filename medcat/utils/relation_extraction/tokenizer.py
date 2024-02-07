@@ -21,18 +21,18 @@ class TokenizerWrapperBERT(BertTokenizerFast):
     def __call__(self, text):
         if isinstance(text, str):
             result = self.hf_tokenizers.encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True, return_attention_mask=True,
-                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length, padding="longest", truncation=True)
+                                                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length, padding="longest", truncation=True)
 
             return {'offset_mapping': result['offset_mapping'],
                     'input_ids': result['input_ids'],
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(result['input_ids']),
                     'token_type_ids': result['token_type_ids'],
                     'attention_mask': result['attention_mask'],
-                    'length' : result['length']
+                    'length': result['length']
                     }
         elif isinstance(text, list):
             results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True,
-                    add_special_tokens=self._add_special_tokens, max_length=self.max_seq_length)
+                                                            add_special_tokens=self._add_special_tokens, max_length=self.max_seq_length)
             output = []
             for ind in range(len(results['input_ids'])):
                 output.append({
@@ -41,11 +41,12 @@ class TokenizerWrapperBERT(BertTokenizerFast):
                     'tokens':  self.hf_tokenizers.convert_ids_to_tokens(results['input_ids'][ind]),
                     'token_type_ids': results['token_type_ids'][ind],
                     'attention_mask': results['attention_mask'][ind],
-                    'length' : result['length']
-                    })
+                    'length': result['length']
+                })
             return output
         else:
-            raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
+            raise Exception(
+                "Unsuported input type, supported: text/list, but got: {}".format(type(text)))
 
     def save(self, dir_path):
         path = os.path.join(dir_path, self.name)
@@ -55,7 +56,8 @@ class TokenizerWrapperBERT(BertTokenizerFast):
     def load(cls, dir_path, **kwargs):
         tokenizer = cls()
         path = os.path.join(dir_path, cls.name)
-        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
+        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
+            path, **kwargs)
 
         return tokenizer
 

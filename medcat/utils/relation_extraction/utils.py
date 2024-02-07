@@ -29,21 +29,23 @@ def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_nam
     if not is_checkpoint:
         file_name = "%s_best_%s.dat" % (task, model_name)
 
-    torch.save({ 
-            'epoch': epoch,
-            'state_dict': model.state_dict(),
-            'best_f1':  best_f1,  
-            'optimizer': optimizer.state_dict(),
-            'scheduler': scheduler.state_dict()
-        }, os.path.join(path, file_name))
+    torch.save({
+        'epoch': epoch,
+        'state_dict': model.state_dict(),
+        'best_f1':  best_f1,
+        'optimizer': optimizer.state_dict(),
+        'scheduler': scheduler.state_dict()
+    }, os.path.join(path, file_name))
 
 
 def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()):
 
     model_name = model_name.replace("/", "_")
     print("Attempting to load RelCAT model on device: ", device)
-    checkpoint_path = os.path.join(path, file_prefix + "_checkpoint_%s.dat" % model_name)
-    best_path = os.path.join(path, file_prefix + "_model_best_%s.dat" % model_name)
+    checkpoint_path = os.path.join(
+        path, file_prefix + "_checkpoint_%s.dat" % model_name)
+    best_path = os.path.join(
+        path, file_prefix + "_model_best_%s.dat" % model_name)
     start_epoch, best_f1, checkpoint = 0, 0, None
 
     if load_best is True and os.path.isfile(best_path):
@@ -60,12 +62,13 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
         model.to(device)
 
         if optimizer is None:
-            optimizer = torch.optim.Adam([{"params": model.module.parameters(), "lr": config.train.lr}]) 
+            optimizer = torch.optim.Adam(
+                [{"params": model.module.parameters(), "lr": config.train.lr}])
 
         if scheduler is None:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                            milestones=config.train.multistep_milestones,
-                                                            gamma=config.train.multistep_lr_gamma)
+                                                             milestones=config.train.multistep_milestones,
+                                                             gamma=config.train.multistep_lr_gamma)
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['scheduler'])
         print("Loaded model and optimizer.")
@@ -74,13 +77,16 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
 
 
 def save_results(data, model_name="BERT", path="./", file_prefix="train"):
-    save_bin_file(file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" % model_name, data, path)
+    save_bin_file(file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" %
+                  model_name, data, path)
 
 
 def load_results(path, model_name="BERT", file_prefix="train"):
-    data_dict_path = os.path.join(path, file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" % model_name)
+    data_dict_path = os.path.join(
+        path, file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" % model_name)
 
-    data_dict = {"losses_per_epoch": [], "accuracy_per_epoch": [], "f1_per_epoch": []}
+    data_dict = {"losses_per_epoch": [],
+                 "accuracy_per_epoch": [], "f1_per_epoch": []}
     if os.path.isfile(data_dict_path):
         data_dict = load_bin_file(data_dict_path)
 
@@ -92,26 +98,31 @@ def put_blanks(relation_data: List, blanking_threshold: float = 0.5):
         Args:
             `relation_data` : tuple containing token (sentence_token_span , ent1 , ent2)
         Puts blanks randomly in the relation. Used for pre-training.
-    """    
+    """
     blank_ent1 = np.random.uniform()
     blank_ent2 = np.random.uniform()
 
     blanked_relation = relation_data
 
-    sentence_token_span, ent1, ent2, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = (*relation_data, )
+    sentence_token_span, ent1, ent2, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = (
+        *relation_data, )
 
     if blank_ent1 >= blanking_threshold:
-        blanked_relation = [sentence_token_span, "[BLANK]", ent2, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id]
+        blanked_relation = [sentence_token_span, "[BLANK]", ent2, label, label_id,
+                            ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id]
 
     if blank_ent2 >= blanking_threshold:
-        blanked_relation = [sentence_token_span, ent1, "[BLANK]", label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id]
+        blanked_relation = [sentence_token_span, ent1, "[BLANK]", label, label_id,
+                            ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id]
 
     return blanked_relation
 
 
 def create_tokenizer_pretrain(tokenizer, tokenizer_path):
-    tokenizer.hf_tokenizers.add_tokens(["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
-    tokenizer.hf_tokenizers.add_tokens(["[s1]", "[e1]", "[s2]", "[e2]"], special_tokens=True)
+    tokenizer.hf_tokenizers.add_tokens(
+        ["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
+    tokenizer.hf_tokenizers.add_tokens(
+        ["[s1]", "[e1]", "[s2]", "[e2]"], special_tokens=True)
     tokenizer.save(tokenizer_path)
 
 
@@ -124,37 +135,46 @@ def tokenize(relations_dataset: Series, tokenizer: TokenizerWrapperBERT, mask_pr
 
     tokens = [token.lower() for token in tokens if tokens != '[BLANK]']
 
-    forbidden_indices = [i for i in range(span_1_pos[0], span_1_pos[1])] + [i for i in range(span_2_pos[0], span_2_pos[1])]
+    forbidden_indices = [i for i in range(
+        span_1_pos[0], span_1_pos[1])] + [i for i in range(span_2_pos[0], span_2_pos[1])]
 
-    pool_indices = [i for i in range(len(tokens)) if i not in forbidden_indices]
+    pool_indices = [i for i in range(
+        len(tokens)) if i not in forbidden_indices]
 
     masked_indices = np.random.choice(pool_indices,
-                                        size=round(mask_probability * len(pool_indices)),
-                                        replace=False)
+                                      size=round(mask_probability *
+                                                 len(pool_indices)),
+                                      replace=False)
 
-    masked_for_pred = [token.lower() for idx, token in enumerate(tokens) if (idx in masked_indices)]
+    masked_for_pred = [token.lower() for idx, token in enumerate(
+        tokens) if (idx in masked_indices)]
 
-    tokens = [token if (idx not in masked_indices) else tokenizer.hf_tokenizers.mask_token for idx, token in enumerate(tokens)]
+    tokens = [token if (idx not in masked_indices)
+              else tokenizer.hf_tokenizers.mask_token for idx, token in enumerate(tokens)]
 
     if (ent1_text == "[BLANK]") and (ent2_text != "[BLANK]"):
-        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]","[BLANK]", "[/ENT1]"] + \
+        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]", "[BLANK]", "[/ENT1]"] + \
             tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
 
     elif (ent1_text == "[BLANK]") and (ent2_text == "[BLANK]"):
-        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]","[BLANK]", "[/ENT1]"] + \
-            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]", "[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
+        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]", "[BLANK]", "[/ENT1]"] + \
+            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]",
+                                                   "[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
 
     elif (ent1_text != "[BLANK]") and (ent2_text == "[BLANK]"):
         tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
-            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]", "[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
+            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]",
+                                                   "[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
 
     elif (ent1_text != "[BLANK]") and (ent2_text != "[BLANK]"):
         tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
             tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
 
-    ent1_ent2_start = ([i for i, e in enumerate(tokens) if e == "[ENT1]"][0], [i for i, e in enumerate(tokens) if e == "[ENT2]"][0])
+    ent1_ent2_start = ([i for i, e in enumerate(tokens) if e == "[ENT1]"][0], [
+                       i for i, e in enumerate(tokens) if e == "[ENT2]"][0])
 
     token_ids = tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
-    masked_for_pred = tokenizer.hf_tokenizers.convert_tokens_to_ids(masked_for_pred)
+    masked_for_pred = tokenizer.hf_tokenizers.convert_tokens_to_ids(
+        masked_for_pred)
 
     return token_ids, masked_for_pred, ent1_ent2_start
