@@ -90,7 +90,7 @@ class RelCAT(PipeRunner):
             config = cast(ConfigRelCAT, ConfigRelCAT.load(os.path.join(load_path, "config.json")))
 
         tokenizer = None
-        tokenizer_path = os.path.join([load_path, config.general.tokenizer_name])
+        tokenizer_path = os.path.join(load_path, config.general.tokenizer_name)
 
         if os.path.exists(tokenizer_path):
             tokenizer = TokenizerWrapperBERT.load(tokenizer_path)

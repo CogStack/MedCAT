@@ -65,7 +65,7 @@ class Train(MixingConfig, BaseModel):
     max_grad_norm: float = 1.0
     shuffle_data: bool = True
     """Used only during training, if set the dataset will be shuffled before train/test split"""
-    class_weights: float = None
+    class_weights: Optional[Any] = None
     score_average: str = "weighted"
     """What to use for averaging F1/P/R across labels"""
     auto_save_model: bool = True
