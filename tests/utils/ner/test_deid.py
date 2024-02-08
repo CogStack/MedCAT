@@ -172,6 +172,7 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
     @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     def test_model_can_multiprocess_no_redact(self):
         processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes)
+        self.assertEqual(len(processed), 5)
         for tid, new_text in enumerate(processed):
             with self.subTest(str(tid)):
                 self.assertTextHasBeenDeIded(new_text, redacted=False)
@@ -179,6 +180,7 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
     @timeout_decorator.timeout(3 * 60)  # 3 minutes max
     def test_model_can_multiprocess_redact(self):
         processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes, redact=True)
+        self.assertEqual(len(processed), 5)
         for tid, new_text in enumerate(processed):
             with self.subTest(str(tid)):
                 self.assertTextHasBeenDeIded(new_text, redacted=True)
