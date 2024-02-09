@@ -241,12 +241,12 @@ class RelCAT(PipeRunner):
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
         train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
-                                      num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory, pin_memory_device=self.device)
+                                      num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
 
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,
-                                     num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory, pin_memory_device=self.device)
+                                     num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
 
         criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
