@@ -1005,11 +1005,11 @@ class CAT(object):
         return out
 
     def get_entities_multi_texts(self,
-                     texts: Union[Iterable[str], Iterable[Tuple]],
-                     only_cui: bool = False,
-                     addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                     n_process: Optional[int] = None,
-                     batch_size: Optional[int] = None) -> List[Dict]:
+                                 texts: Union[Iterable[str], Iterable[Tuple]],
+                                 only_cui: bool = False,
+                                 addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                                 n_process: Optional[int] = None,
+                                 batch_size: Optional[int] = None) -> List[Dict]:
         """Get entities
 
         Args:
@@ -1053,6 +1053,15 @@ class CAT(object):
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
+            except RuntimeError as e:
+                if e.args == ('_share_filename_: only available on CPU',):
+                    raise ValueError("Issue while performing multiprocessing. "
+                                     "This is mostly likely to happen when "
+                                     "using NER models (i.e DeId). If that is "
+                                     "the case you could either a) save the "
+                                     "model on disk and then load it back up; "
+                                     "or b) install cpu-only toch.") from e
+                raise e
             finally:
                 self.pipe.reset_error_handler()
 
@@ -1375,20 +1384,20 @@ class CAT(object):
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
-                                                     batch_size=batch_size,
-                                                     only_cui=only_cui,
-                                                     addl_info=addl_info,
-                                                     return_dict=return_dict,
-                                                     batch_factor=batch_factor)
+                                                    batch_size=batch_size,
+                                                    only_cui=only_cui,
+                                                    addl_info=addl_info,
+                                                    return_dict=return_dict,
+                                                    batch_factor=batch_factor)
 
     def multiprocessing_batch_docs_size(self,
-                             in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
-                             batch_size: Optional[int] = None,
-                             only_cui: bool = False,
-                             addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                             return_dict: bool = True,
-                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
+                                        in_data: Union[List[Tuple], Iterable[Tuple]],
+                                        nproc: Optional[int] = None,
+                                        batch_size: Optional[int] = None,
+                                        only_cui: bool = False,
+                                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                                        return_dict: bool = True,
+                                        batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         """Run multiprocessing NOT FOR TRAINING.
 
         This method batches the data based on the number of documents as specified by the user.
