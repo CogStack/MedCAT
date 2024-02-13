@@ -154,6 +154,13 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
         for project in raw_data['projects']:
             for doc in project['documents']:
                 cls.data.append((f"{project['name']}_{doc['name']}", doc['text']))
+        # NOTE: Comment and subsequent code
+        #       copied from CAT.multiprocessing_batch_char_size
+        #       (lines 1234 - 1237)
+        # Hack for torch using multithreading, which is not good if not
+        #separate_nn_components, need for CPU runs only
+        import torch
+        torch.set_num_threads(1)
 
     def assertTextHasBeenDeIded(self, text: str, redacted: bool):
         if not redacted:
