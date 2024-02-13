@@ -34,7 +34,6 @@ jobs:
       - name: Test
         run: |
           timeout 17m python -m unittest discover
-        continue-on-error: true
 
   publish-to-test-pypi:
 
