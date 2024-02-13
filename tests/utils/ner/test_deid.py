@@ -1,23 +1,17 @@
 from medcat.utils.ner import deid
-import instld
+from medcat.utils.ner import make_or_update_cdb
 
-from .helper import TORCH_VERSION, CPU_ONLY_TORCH_URL
+from medcat.ner import transformers_ner
 
-with instld('torch==' + TORCH_VERSION, catch_output=True,
-            index_url=CPU_ONLY_TORCH_URL):
-    from medcat.utils.ner import make_or_update_cdb
+from spacy.tokens import Doc, Span
 
-    from medcat.ner import transformers_ner
+from typing import Any, List, Tuple
+import os
+import json
+import tempfile
 
-    from spacy.tokens import Doc, Span
-
-    from typing import Any, List, Tuple
-    import os
-    import json
-    import tempfile
-
-    import unittest
-    import timeout_decorator
+import unittest
+import timeout_decorator
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
