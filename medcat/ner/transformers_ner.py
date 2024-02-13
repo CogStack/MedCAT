@@ -79,6 +79,10 @@ class TransformersNER(object):
 
     def create_eval_pipeline(self):
         self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer)
+        if not hasattr(self.ner_pipe.tokenizer, '_in_target_context_manager'):
+            # NOTE: this will fix the DeID model(s) created before medcat 1.9.3
+            #       though this fix may very well be unstable
+            self.ner_pipe.tokenizer._in_target_context_manager = False
         self.ner_pipe.device = self.model.device
 
     def get_hash(self):

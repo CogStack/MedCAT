@@ -3,12 +3,15 @@ from medcat.utils.ner import make_or_update_cdb
 
 from medcat.ner import transformers_ner
 
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Span
 
 from typing import Any, List, Tuple
 import os
+import json
+import tempfile
 
 import unittest
+import timeout_decorator
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
@@ -19,6 +22,9 @@ FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 # DO NOT USE THIS DATA ELSEWHERE - IT WILL NOT BE USEFUL
 TRAIN_DATA = os.path.join(FILE_DIR, "..", "..",
                           "resources", "deid_train_data.json")
+
+TEST_DATA = os.path.join(FILE_DIR, "..", "..",
+                         "resources", "deid_test_data.json")
 
 
 class DeIDmodelCreationTests(unittest.TestCase):
@@ -57,6 +63,17 @@ def train_model_once(model: deid.DeIdModel,
                      ) -> Tuple[Tuple[Any, Any, Any], deid.DeIdModel]:
     if not _trained:
         retval = model.train(TRAIN_DATA)
+        # mpp = 'temp/deid_multiprocess/dumps/temp_model_save'
+        # NOTE: it seems that after training the model leaves
+        #       it in a state where it can no longer be used
+        #       for multiprocessing. So in order to avoid that
+        #       we save the model on disk and load it agains
+        with tempfile.TemporaryDirectory() as dir_name:
+            print("Saving model on disk")
+            mpn = model.cat.create_model_pack(dir_name)
+            print("Loading model")
+            model = deid.DeIdModel.load_model_pack(os.path.join(dir_name, mpn))
+            print("Loaded model off disk")
         _trained.append((retval, model))
     return _trained[0]
 
@@ -105,7 +122,10 @@ class DeIDModelWorks(unittest.TestCase):
     def test_model_works_deid_text(self):
         anon_text = self.deid_model.deid_text(input_text)
         self.assertIn("[DOCTOR]", anon_text)
+        self.assertNotIn("M. Sully", anon_text)
         self.assertIn("[HOSPITAL]", anon_text)
+        # self.assertNotIn("Dublin", anon_text)
+        self.assertNotIn("7 Eccles Street", anon_text)
 
     def test_model_works_dunder_call(self):
         anon_doc = self.deid_model(input_text)
@@ -115,4 +135,52 @@ class DeIDModelWorks(unittest.TestCase):
         anon_text = self.deid_model.deid_text(input_text, redact=True)
         self.assertIn("****", anon_text)
         self.assertNotIn("[DOCTOR]", anon_text)
+        self.assertNotIn("M. Sully", anon_text)
         self.assertNotIn("[HOSPITAL]", anon_text)
+        # self.assertNotIn("Dublin", anon_text)
+        self.assertNotIn("7 Eccles Street", anon_text)
+
+class DeIDModelMultiprocessingWorks(unittest.TestCase):
+    processes = 2
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        Span.set_extension('link_candidates', default=None, force=True)
+        _add_model(cls)
+        cls.deid_model = train_model_once(cls.deid_model)[1]
+        with open(TEST_DATA) as f:
+            raw_data = json.load(f)
+        cls.data = []
+        for project in raw_data['projects']:
+            for doc in project['documents']:
+                cls.data.append((f"{project['name']}_{doc['name']}", doc['text']))
+
+    def assertTextHasBeenDeIded(self, text: str, redacted: bool):
+        if not redacted:
+            for cui in self.deid_model.cdb.cui2names:
+                cui_name = self.deid_model.cdb.get_name(cui)
+                if cui_name in text:
+                    # all good
+                    return
+        else:
+            # if redacted, only check once...
+            if "******" in text:
+                # all good
+                return
+        raise AssertionError("None of the CUIs found")
+
+    @timeout_decorator.timeout(3 * 60)  # 3 minutes max
+    def test_model_can_multiprocess_no_redact(self):
+        processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes)
+        self.assertEqual(len(processed), 5)
+        for tid, new_text in enumerate(processed):
+            with self.subTest(str(tid)):
+                self.assertTextHasBeenDeIded(new_text, redacted=False)
+
+    @timeout_decorator.timeout(3 * 60)  # 3 minutes max
+    def test_model_can_multiprocess_redact(self):
+        processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes, redact=True)
+        self.assertEqual(len(processed), 5)
+        for tid, new_text in enumerate(processed):
+            with self.subTest(str(tid)):
+                self.assertTextHasBeenDeIded(new_text, redacted=True)
