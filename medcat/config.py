@@ -227,11 +227,11 @@ class MixingConfig(FakeDict):
         """
         return cast(BaseModel, self).model_dump()
 
-    def fields(self) -> Dict:
+    def fields(self) -> Dict[str, FieldInfo]:
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, Field]: The dictionary of the field names and fields
+            Dict[str, FieldInfo]: The dictionary of the field names and fields
         """
         return cast(BaseModel, self).model_fields
 
