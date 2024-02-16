@@ -80,11 +80,11 @@ class Snomed:
         self.uk_ext = uk_ext
         self.uk_drug_ext = uk_drug_ext
         self.opcs_refset_id = "1126441000000105"
-        if (self.uk_ext or self.uk_drug_ext and
+        if ((self.uk_ext or self.uk_drug_ext) and
                 # using lexicographical comparison below
                 # e.g "20240101" > "20231122" results in True
                 # yet "20231121" > "20231122" reults in False
-                len(self.release) == len("20231122") and self.release > "20231122"):
+                len(self.release) == len("20231122") and self.release >= "20231122"):
             # NOTE for UK extensions starting from 20231122 the
             #      OPCS4 refset ID seems to be different
             self.opcs_refset_id = '1382401000000109'
