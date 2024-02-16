@@ -37,6 +37,11 @@ class CATTests(unittest.TestCase):
         cls.cdb.config.general.full_unlink = True
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
+        # making the weighted averge function be the default
+        # otherwise there may be issues with hash equality
+        # between calls to get_hash
+        from medcat.config import _DefPartial
+        cls.undertest.config.linking.weighted_average_function = _DefPartial
         cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
 
     @classmethod
