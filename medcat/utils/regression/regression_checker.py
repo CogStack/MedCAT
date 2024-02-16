@@ -45,7 +45,7 @@ def main(model_pack_dir: Path, test_suite_file: Path,
     res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
     if jsonpath:
         logger.info('Writing to %s', str(jsonpath))
-        jsonpath.write_text(json.dumps(res.dict(), indent=jsonindent))
+        jsonpath.write_text(json.dumps(res.model_dump(), indent=jsonindent))
     else:
         logger.info(res.get_report(phrases_separately=phrases,
                     hide_empty=hide_empty, show_failures=not hide_failures))

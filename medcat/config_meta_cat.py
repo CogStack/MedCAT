@@ -84,7 +84,7 @@ class Train(MixingConfig, BaseModel):
     """If set only this CUIs will be used for training"""
     auto_save_model: bool = True
     """Should do model be saved during training for best results"""
-    last_train_on: Optional[int] = None
+    last_train_on: Optional[float] = None
     """When was the last training run"""
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""

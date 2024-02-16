@@ -1,6 +1,6 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
-from pydantic.fields import ModelField
+from pydantic.fields import FieldInfo
 from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union
 from multiprocessing import cpu_count
 import logging
@@ -120,7 +120,7 @@ class MixingConfig(FakeDict):
                 attr = None # new attribute
             value = config_dict[key]
             if isinstance(value, BaseModel):
-                value = value.dict()
+                value = value.model_dump()
             if isinstance(attr, MixingConfig):
                 attr.merge_config(value)
             else:
@@ -169,7 +169,7 @@ class MixingConfig(FakeDict):
     def _calc_hash(self, hasher: Optional[Hasher] = None) -> Hasher:
         if hasher is None:
             hasher = Hasher()
-        for _, v in cast(BaseModel, self).dict().items():
+        for _, v in cast(BaseModel, self).model_dump().items():
             if isinstance(v, MixingConfig):
                 v._calc_hash(hasher)
             else:
@@ -181,7 +181,7 @@ class MixingConfig(FakeDict):
         return hasher.hexdigest()
 
     def __str__(self) -> str:
-        return str(cast(BaseModel, self).dict())
+        return str(cast(BaseModel, self).model_dump())
 
     @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
@@ -225,15 +225,15 @@ class MixingConfig(FakeDict):
         Returns:
             Dict[str, Any]: The dictionary associated with this config
         """
-        return cast(BaseModel, self).dict()
+        return cast(BaseModel, self).model_dump()
 
-    def fields(self) -> Dict[str, ModelField]:
+    def fields(self) -> Dict:
         """Get the fields associated with this config.
 
         Returns:
             Dict[str, Field]: The dictionary of the field names and fields
         """
-        return cast(BaseModel, self).__fields__
+        return cast(BaseModel, self).model_fields
 
 
 class VersionInfo(MixingConfig, BaseModel):
@@ -571,7 +571,7 @@ class Config(MixingConfig, BaseModel):
     # Override
     def get_hash(self):
         hasher = Hasher()
-        for k, v in self.dict().items():
+        for k, v in self.model_dump().items():
             if k in ['hash', ]:
                 # ignore hash
                 continue

@@ -14,7 +14,7 @@ class General(MixingConfig, BaseModel):
     ner_aggregation_strategy: str = 'simple'
     """Agg strategy for HF pipeline for NER"""
     test_size: float = 0.2
-    last_train_on: Optional[int] = None
+    last_train_on: Optional[float] = None
     verbose_metrics: bool = False
 
     class Config:
