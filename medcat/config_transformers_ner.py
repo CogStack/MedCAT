@@ -1,4 +1,4 @@
-from medcat.config import MixingConfig, BaseModel, Optional, Extra
+from medcat.config import MixingConfig, BaseModel, Optional
 
 
 class General(MixingConfig, BaseModel):
@@ -18,7 +18,7 @@ class General(MixingConfig, BaseModel):
     verbose_metrics: bool = False
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -27,5 +27,5 @@ class ConfigTransformersNER(MixingConfig, BaseModel):
     general: General = General()
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True

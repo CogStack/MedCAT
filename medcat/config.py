@@ -1,5 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Extra, ValidationError
+from pydantic import BaseModel, ValidationError
 from pydantic.fields import FieldInfo
 from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union
 from multiprocessing import cpu_count
@@ -259,7 +259,7 @@ class VersionInfo(MixingConfig, BaseModel):
     """Which version of medcat was used to build the CDB"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -277,7 +277,7 @@ class CDBMaker(MixingConfig, BaseModel):
     """Minimum number of letters required in a name to be accepted for a concept"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -290,7 +290,7 @@ class AnnotationOutput(MixingConfig, BaseModel):
     include_text_in_output: bool = False
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -304,7 +304,7 @@ class CheckPoint(MixingConfig, BaseModel):
     """When training the maximum checkpoints will be kept on the disk"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -349,7 +349,7 @@ class General(MixingConfig, BaseModel):
     """If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -374,7 +374,7 @@ class Preprocessing(MixingConfig, BaseModel):
     """Documents longer  than this will be trimmed"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -394,7 +394,7 @@ class Ner(MixingConfig, BaseModel):
     """Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -532,7 +532,7 @@ class Linking(MixingConfig, BaseModel):
     """If true when the context of a concept is calculated (embedding) the words making that concept are not taken into accout"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -553,7 +553,7 @@ class Config(MixingConfig, BaseModel):
         # this if for word_skipper and punct_checker which would otherwise
         # not have a validator
         arbitrary_types_allowed = True
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
     def __init__(self, *args, **kwargs):

@@ -1,6 +1,6 @@
 from typing import Dict, Any
 
-from medcat.config import MixingConfig, BaseModel, Optional, Extra
+from medcat.config import MixingConfig, BaseModel, Optional
 
 
 class General(MixingConfig, BaseModel):
@@ -42,7 +42,7 @@ class General(MixingConfig, BaseModel):
     Otherwise defaults to doc._.ents or doc.ents per the annotate_overlapping settings"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -64,7 +64,7 @@ class Model(MixingConfig, BaseModel):
     """If set to True center positions will be ignored when calculating represenation"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -90,7 +90,7 @@ class Train(MixingConfig, BaseModel):
     """What metric should be used for choosing the best model"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -101,5 +101,5 @@ class ConfigMetaCAT(MixingConfig, BaseModel):
     train: Train = Train()
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
