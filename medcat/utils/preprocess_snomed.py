@@ -35,6 +35,32 @@ def get_all_children(sctid, pt2ch):
     return result
 
 
+def get_direct_refset_mapping(in_dict: dict) -> dict:
+    """This method uses the output from Snomed.map_snomed2icd10 or
+    Snomed.map_snomed2opcs4 and removes the metadata and maps each
+    SNOMED CUI to the prioritised list of the target ontology CUIs.
+
+    The input dict is expected to be in the following format:
+    - Keys are SnomedCT CUIs
+    - The values are lists of dictionaries, each list item (at least)
+      - Has a key 'code' that specifies the target onotlogy CUI
+      - Has a key 'mapPriority' that specifies the priority
+
+    Args:
+        in_dict (dict): The input dict.
+
+    Returns:
+        dict: The map from Snomed CUI to list of priorities list of target ontology CUIs.
+    """
+    ret_dict = dict()
+    for k, vals in in_dict.items():
+        # sort such that highest priority values are first
+        svals = sorted(vals, key=lambda el: el['mapPriority'], reverse=True)
+        # only keep the code / CUI
+        ret_dict[k] = [v['code'] for v in svals]
+    return ret_dict
+
+
 class Snomed:
     """
     Pre-process SNOMED CT release files.
