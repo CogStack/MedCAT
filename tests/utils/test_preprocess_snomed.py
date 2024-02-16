@@ -44,3 +44,21 @@ class DirectMappingTest(unittest.TestCase):
     def test_example_no_codfe_fails(self):
         with self.assertRaises(KeyError):
             preprocess_snomed.get_direct_refset_mapping(EXAMPLE_REFSET_DICT_NO_CODE)
+
+EXAMPLE_SNOMED_PATH_OLD = "SnomedCT_InternationalRF2_PRODUCTION_20220831T120000Z"
+EXAMPLE_SNOMED_PATH_NEW = "SnomedCT_UKClinicalRF2_PRODUCTION_20231122T000001Z"
+
+
+class TestSnomedVersionsOPCS4(unittest.TestCase):
+
+    def test_old_gets_old_OPCS4_mapping_nonuk_ext(self):
+        snomed = preprocess_snomed.Snomed(EXAMPLE_SNOMED_PATH_OLD, uk_ext=False)
+        self.assertEqual(snomed.opcs_refset_id, "1126441000000105")
+
+    def test_old_gets_old_OPCS4_mapping_uk_ext(self):
+        snomed = preprocess_snomed.Snomed(EXAMPLE_SNOMED_PATH_OLD, uk_ext=True)
+        self.assertEqual(snomed.opcs_refset_id, "1126441000000105")
+
+    def test_new_gets_new_OCPS4_mapping_uk_ext(self):
+        snomed = preprocess_snomed.Snomed(EXAMPLE_SNOMED_PATH_NEW, uk_ext=True)
+        self.assertEqual(snomed.opcs_refset_id, "1382401000000109")
