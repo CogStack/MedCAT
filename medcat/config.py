@@ -1,8 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
-from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
 from pydantic.fields import ModelField
-from typing import List, Set, Tuple, cast
+from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
