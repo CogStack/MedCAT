@@ -65,6 +65,9 @@ class DeIdModel(NerModel):
     def deid_text(self, text: str, redact: bool = False) -> str:
         """Deidentify text and potentially redact information.
 
+        v2: Changed to address the limit of 512 tokens. Adding chunking (break down the document into mini-documents and then run the model)
+        v3 planned: Add overlapping window instead of a straight cut
+
         Args:
             text (str): The text to deidentify.
             redact (bool): Whether to redact the information.
@@ -72,8 +75,41 @@ class DeIdModel(NerModel):
         Returns:
             str: The deidentified text.
         """
-        self.cat.get_entities
-        return deid_text(self.cat, text, redact=redact)
+
+        blocks = [[]]
+        for name, proc in self.cat.pipe._nlp.pipeline:
+            if name == 'deid':
+                tok_output = proc.ner_pipe.tokenizer(text, return_offsets_mapping=True)
+                for token, (start, end) in zip(tok_output['input_ids'], tok_output['offset_mapping']):
+                    if token in [0, 2]:
+                        continue
+                    if len(blocks[-1]) == 505:
+                        to_append_block = []
+                        idx_chunk = -1
+                        for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1):
+                            if " " in proc.ner_pipe.tokenizer.decode(blocks[-1][i][0],
+                                                                     clean_up_tokenization_spaces=False):
+                                idx_chunk = i
+                                break
+
+                        if idx_chunk != -1:
+                            to_append_block.extend(blocks[-1][i:])
+                            del blocks[-1][idx_chunk:]
+
+                        to_append_block.append((token, (start, end)))
+                        blocks.append(to_append_block)
+
+                    else:
+                        blocks[-1].append((token, (start, end)))
+                break
+
+        anon_text = []
+        for block in blocks:
+            this_text = text[block[0][-1][0]:block[-1][-1][-1]]
+            anon_ = deid_text(self.cat, this_text, redact=redact)
+            anon_text.append(anon_)
+
+        return " ".join(anon_text)
 
     def deid_multi_texts(self,
                          texts: Union[Iterable[str], Iterable[Tuple]],
