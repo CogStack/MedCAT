@@ -15,6 +15,8 @@ class General(MixingConfig, BaseModel):
     """Agg strategy for HF pipeline for NER"""
     test_size: float = 0.2
     last_train_on: Optional[int] = None
+    maximum_tokens_model: Optional[int] = 510
+    """Maxiumum number of tokens to be passed to the model"""
     verbose_metrics: bool = False
 
     class Config:
