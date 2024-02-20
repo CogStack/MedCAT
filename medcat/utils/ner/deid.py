@@ -77,6 +77,8 @@ class DeIdModel(NerModel):
 
         blocks = [[]]
         whitespace_pattern = re.compile(r'\s')
+        if config is None:
+            config = ConfigTransformersNER()
         maximum_tkns = min(510, config.general['maximum_tokens_model'])
         for name, proc in self.cat.pipe._nlp.pipeline:
             if name == 'deid':
