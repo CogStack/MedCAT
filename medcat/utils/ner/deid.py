@@ -37,6 +37,7 @@ The wrapper also exposes some CAT parts directly:
 from typing import Union, Tuple, Any, List, Iterable, Optional
 import re
 from medcat.cat import CAT
+import warnings
 from medcat.utils.ner.model import NerModel
 from medcat.config_transformers_ner import ConfigTransformersNER
 from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_in_text
@@ -61,6 +62,46 @@ class DeIdModel(NerModel):
               *args, **kwargs) -> Tuple[Any, Any, Any]:
         return super().train(json_path, *args, train_nr=0, **kwargs)  # type: ignore
 
+    def get_chunks(self, text:str, de_id_pipe,maximum_tkns) -> List[List[Any]]:
+
+        blocks = [[]]
+        if 'Roberta' in de_id_pipe.ner_pipe.tokenizer.__class__.__name__:
+
+            whitespace_pattern = re.compile(r'\s')
+            tok_output = de_id_pipe.ner_pipe.tokenizer(text, return_offsets_mapping=True)
+            for token, (start, end) in zip(tok_output['input_ids'], tok_output['offset_mapping']):
+                if token in [0, 2]:
+                    continue
+                if len(blocks[-1]) == maximum_tkns:
+                    to_append_block = []
+                    idx_chunk = -1
+                    for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1):
+                        # This method to avoid sub-word division is specific for RoBERTA's tokenizer (BPE)
+                        if re.search(whitespace_pattern, de_id_pipe.ner_pipe.tokenizer.decode(blocks[-1][i][0],clean_up_tokenization_spaces=False)):
+                            idx_chunk = i
+                            break
+
+                    if idx_chunk != -1:
+                        to_append_block.extend(blocks[-1][i:])
+                        del blocks[-1][idx_chunk:]
+
+                    to_append_block.append((token, (start, end)))
+                    blocks.append(to_append_block)
+
+                else:
+                    blocks[-1].append((token, (start, end)))
+
+        else:
+            # print("***********WARNING:************\nChunking functionality is implemented for RoBERTa model. The model detected is not RoBERTa, chunking omitted.\nPII information MAY BE REVEALED.")
+            warnings.warn("\n\nChunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, as PII information MAY BE REVEALED.")
+            tok_output = de_id_pipe.ner_pipe.tokenizer(text, return_offsets_mapping=True)
+            for token, (start, end) in zip(tok_output['input_ids'], tok_output['offset_mapping']):
+                if token in [0, 2]:
+                    continue
+                blocks[-1].append((token, (start, end)))
+
+        return blocks
+
     def deid_text(self, text: str, redact: bool = False,config: Optional[ConfigTransformersNER] = None) -> str:
         """Deidentify text and potentially redact information.
 
@@ -75,37 +116,12 @@ class DeIdModel(NerModel):
             str: The deidentified text.
         """
 
-        blocks = [[]]
-        whitespace_pattern = re.compile(r'\s')
         if config is None:
             config = ConfigTransformersNER()
-        maximum_tkns = min(510, config.general['maximum_tokens_model'])
-        for name, proc in self.cat.pipe._nlp.pipeline:
-            if name == 'deid':
-                tok_output = proc.ner_pipe.tokenizer(text, return_offsets_mapping=True)
-                for token, (start, end) in zip(tok_output['input_ids'], tok_output['offset_mapping']):
-                    if token in [0, 2]:
-                        continue
-                    if len(blocks[-1]) == maximum_tkns:
-                        to_append_block = []
-                        idx_chunk = -1
-                        for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1):
-                            if re.search(whitespace_pattern, proc.ner_pipe.tokenizer.decode(blocks[-1][i][0],
-                                                                                            clean_up_tokenization_spaces=False)):
-                                idx_chunk = i
-                                break
+        maximum_tkns = min(510,config.general['maximum_tokens_model']) # This is specific to RoBERTa model, with a maximum token limit is 512.
+        de_id_pipe = self.cat.pipe._nlp.get_pipe("deid")
 
-                        if idx_chunk != -1:
-                            to_append_block.extend(blocks[-1][i:])
-                            del blocks[-1][idx_chunk:]
-
-                        to_append_block.append((token, (start, end)))
-                        blocks.append(to_append_block)
-
-                    else:
-                        blocks[-1].append((token, (start, end)))
-                break
-
+        blocks = self.get_chunks(text,de_id_pipe,maximum_tkns)
         anon_text = []
         for block in blocks:
             this_text = text[block[0][-1][0]:block[-1][-1][-1]]
