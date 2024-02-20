@@ -35,12 +35,11 @@ The wrapper also exposes some CAT parts directly:
 - cdb
 """
 from typing import Union, Tuple, Any, List, Iterable, Optional
-
+import re
 from medcat.cat import CAT
 from medcat.utils.ner.model import NerModel
-
+from medcat.config_transformers_ner import ConfigTransformersNER
 from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_in_text
-
 
 class DeIdModel(NerModel):
     """The DeID model.
@@ -62,7 +61,7 @@ class DeIdModel(NerModel):
               *args, **kwargs) -> Tuple[Any, Any, Any]:
         return super().train(json_path, *args, train_nr=0, **kwargs)  # type: ignore
 
-    def deid_text(self, text: str, redact: bool = False) -> str:
+    def deid_text(self, text: str, redact: bool = False,config: Optional[ConfigTransformersNER] = None) -> str:
         """Deidentify text and potentially redact information.
 
         v2: Changed to address the limit of 512 tokens. Adding chunking (break down the document into mini-documents and then run the model)
@@ -77,18 +76,20 @@ class DeIdModel(NerModel):
         """
 
         blocks = [[]]
+        whitespace_pattern = re.compile(r'\s')
+        maximum_tkns = min(510, config.general['maximum_tokens_model'])
         for name, proc in self.cat.pipe._nlp.pipeline:
             if name == 'deid':
                 tok_output = proc.ner_pipe.tokenizer(text, return_offsets_mapping=True)
                 for token, (start, end) in zip(tok_output['input_ids'], tok_output['offset_mapping']):
                     if token in [0, 2]:
                         continue
-                    if len(blocks[-1]) == 505:
+                    if len(blocks[-1]) == maximum_tkns:
                         to_append_block = []
                         idx_chunk = -1
                         for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1):
-                            if " " in proc.ner_pipe.tokenizer.decode(blocks[-1][i][0],
-                                                                     clean_up_tokenization_spaces=False):
+                            if re.search(whitespace_pattern, proc.ner_pipe.tokenizer.decode(blocks[-1][i][0],
+                                                                                            clean_up_tokenization_spaces=False)):
                                 idx_chunk = i
                                 break
 
