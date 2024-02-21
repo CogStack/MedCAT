@@ -8,11 +8,14 @@ logging.basicConfig(level=logging.WARNING)
 
 MAX_TOKENS_ROBERTA = 510
 
-def get_chunks(text:str, tokenizer, config: Union[ConfigTransformersNER, None] = None) -> List[str]:
+def get_chunks(text:str, tokenizer, config: Optional[ConfigTransformersNER] = None) -> List[str]:
     """Chunking class for De_Id
 
     This utility is to be used with the De_Id wrapper to create chunks of input text.
     It provides methods for creating chunks based on the NER model used.
+
+    v1: Changed to address the limit of 512 tokens. Added chunking - breaking down the document into mini-documents
+    v2 planned: Add overlapping window instead of a straight cut
 
     """
 
@@ -39,7 +42,7 @@ def get_chunks_roberta(text:str, tokenizer, config: ConfigTransformersNER) -> Li
     blocks: List[List[tuple]] = [[]]
     if config.general['maximum_tokens_model']>510:
         logger.warning(
-            "Number of tokens per chunk is greater than the limit for RoBERTa model. Reverted back to 510 tokens per chunk")
+            "Number of tokens per chunk is greater than the limit for RoBERTa model. Reverting back to default 510 tokens per chunk")
 
     maximum_tkns = min(MAX_TOKENS_ROBERTA, config.general['maximum_tokens_model'])  # This is specific to RoBERTa model, with a maximum token limit is 512.
     whitespace_pattern = re.compile(r'\s')
