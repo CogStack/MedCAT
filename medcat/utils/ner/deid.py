@@ -35,9 +35,7 @@ The wrapper also exposes some CAT parts directly:
 - cdb
 """
 from typing import Union, Tuple, Any, List, Iterable, Optional
-import re
 from medcat.cat import CAT
-import warnings
 from medcat.utils.ner.model import NerModel
 from medcat.config_transformers_ner import ConfigTransformersNER
 from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_in_text
