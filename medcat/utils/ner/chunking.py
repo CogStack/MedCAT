@@ -25,7 +25,7 @@ def get_chunks(text:str, tokenizer, config: ConfigTransformersNER = None) -> Lis
             "Chunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, as PII information MAY BE REVEALED.")
         return [text]
 
-def get_chunks_roberta(self, text:str, tokenizer, config: ConfigTransformersNER) -> List[str]:
+def get_chunks_roberta(text:str, tokenizer, config: ConfigTransformersNER) -> List[str]:
     """Create chunks from the given input text.
 
        Args:
