@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.WARNING)
 
 MAX_TOKENS_ROBERTA = 510
 
-def get_chunks(text:str, tokenizer, config: ConfigTransformersNER = None) -> List[str]:
+def get_chunks(text:str, tokenizer, config: Union[ConfigTransformersNER, None] = None) -> List[str]:
     """Chunking class for De_Id
 
     This utility is to be used with the De_Id wrapper to create chunks of input text.
