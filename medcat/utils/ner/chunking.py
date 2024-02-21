@@ -1,5 +1,5 @@
 from medcat.config_transformers_ner import ConfigTransformersNER
-from typing import Union, Tuple, Any, List, Iterable, Optional
+from typing import List, Optional
 import re
 import logging
 
@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.WARNING)
 
 MAX_TOKENS_ROBERTA = 510
+
 
 def get_chunks(text:str, tokenizer, config: Optional[ConfigTransformersNER] = None) -> List[str]:
     """Chunking class for De_Id
@@ -29,8 +30,9 @@ def get_chunks(text:str, tokenizer, config: Optional[ConfigTransformersNER] = No
             "Chunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, as PII information MAY BE REVEALED.")
         return [text]
 
+
 def get_chunks_roberta(text:str, tokenizer, config: ConfigTransformersNER) -> List[str]:
-    """Create chunks from the given input text.
+    """Create chunks from the given input text for Roberta model.
 
        Args:
            text (str): The text to deidentify.
@@ -53,7 +55,7 @@ def get_chunks_roberta(text:str, tokenizer, config: ConfigTransformersNER) -> Li
         if len(blocks[-1]) == maximum_tkns:
             to_append_block = []
             idx_chunk = -1
-            for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1):
+            for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1): # Checking back 20 tokens to ensure no sub-word division
                 # This method to avoid sub-word division is specific for RoBERTA's tokenizer (BPE)
                 if re.search(whitespace_pattern, tokenizer.decode(blocks[-1][i][0],clean_up_tokenization_spaces=False)):
                     idx_chunk = i
