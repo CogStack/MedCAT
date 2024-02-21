@@ -42,6 +42,7 @@ from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_i
 from medcat.utils.ner.chunking import get_chunks
 from spacy.pipeline.ner import EntityRecognizer
 
+
 class DeIdModel(NerModel):
     """The DeID model.
 
