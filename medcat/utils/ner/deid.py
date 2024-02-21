@@ -66,8 +66,7 @@ class DeIdModel(NerModel):
     def deid_text(self, text: str, redact: bool = False,config: Optional[ConfigTransformersNER] = None) -> str:
         """Deidentify text and potentially redact information.
 
-        v2: Changed to address the limit of 512 tokens. Adding chunking (break down the document into mini-documents and then run the model)
-        v3 planned: Add overlapping window instead of a straight cut
+        v2: Changed to add support for chunking functionality 
 
         Args:
             text (str): The text to deidentify.
