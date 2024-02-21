@@ -41,6 +41,10 @@ from medcat.config_transformers_ner import ConfigTransformersNER
 from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_in_text
 from medcat.utils.ner.chunking import get_chunks
 from spacy.pipeline.ner import EntityRecognizer
+import logging
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.WARNING)
 
 
 class DeIdModel(NerModel):
@@ -104,6 +108,7 @@ class DeIdModel(NerModel):
         Returns:
             List[str]: List of deidentified documents.
         """
+        logger.warning("Deidentify text on multiple does not include chunking functionality. Be cautions, as chunking is not utilised, PII data MAY BE REVEALED.")
         entities = self.cat.get_entities_multi_texts(texts, addl_info=addl_info,
                                                      n_process=n_process, batch_size=batch_size)
         out = []

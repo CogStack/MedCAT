@@ -27,7 +27,7 @@ def get_chunks(text:str, tokenizer, config: Optional[ConfigTransformersNER] = No
         return get_chunks_roberta(text, tokenizer, config)
     else:
         logger.warning(
-            "Chunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, as PII information MAY BE REVEALED.")
+            "Chunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, as PII data MAY BE REVEALED.")
         return [text]
 
 
