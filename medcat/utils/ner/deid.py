@@ -42,6 +42,7 @@ from medcat.utils.ner.model import NerModel
 from medcat.config_transformers_ner import ConfigTransformersNER
 from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_in_text
 from medcat.utils.ner.chunking import get_chunks
+from spacy.pipeline.ner import EntityRecognizer
 
 class DeIdModel(NerModel):
     """The DeID model.
@@ -76,7 +77,7 @@ class DeIdModel(NerModel):
         Returns:
             str: The deidentified text.
         """
-
+        de_id_pipe: EntityRecognizer
         de_id_pipe = self.cat.pipe._nlp.get_pipe("deid")
         chunked_text = get_chunks(text,de_id_pipe.ner_pipe.tokenizer,config)
 
