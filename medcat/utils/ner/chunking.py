@@ -4,6 +4,7 @@ import re
 import logging
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.WARNING)
 
 MAX_TOKENS_ROBERTA = 510
 
