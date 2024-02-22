@@ -85,7 +85,7 @@ class DeIdModel(NerModel):
         chunked_text = get_chunks(text,de_id_pipe.ner_pipe.tokenizer,config)
         anon_text = []
         for text_ in chunked_text:
-            anon_ = deid_text(self.cat, text_, redact=redact)
+            anon_ = deid_text(self.cat, text_, redact=redact, chunk=False)
             anon_text.append(anon_)
 
         return "".join(anon_text)

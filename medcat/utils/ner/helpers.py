@@ -1,9 +1,9 @@
-from typing import Callable, Dict
-
+from typing import Callable, Dict, List
 from medcat.utils.data_utils import count_annotations
 from medcat.cdb import CDB
-
 from medcat.utils.decorators import deprecated
+from medcat.utils.ner.chunking import get_chunks
+from spacy.pipeline.ner import EntityRecognizer
 
 
 # For now, we will keep this method separate from the above class
@@ -11,7 +11,7 @@ from medcat.utils.decorators import deprecated
 # when calling the method from .helpers where it used to be.
 # After the deprecated method in .helpers is removed, we can
 # move this to a proper class method.
-def _deid_text(cat, text: str, redact: bool = False) -> str:
+def _deid_text(cat, text: str, redact: bool = False, chunk: bool = True) -> str:
     """De-identify text.
 
     De-identified text.
@@ -19,6 +19,7 @@ def _deid_text(cat, text: str, redact: bool = False) -> str:
     replaced with starts (e.g `*****`).
     Otherwise, the replacement will be the CUI or in other words,
     the type of information that was hidden (e.g [PATIENT]).
+    v2: Updated to add support for chunking
 
 
     Args:
@@ -29,8 +30,19 @@ def _deid_text(cat, text: str, redact: bool = False) -> str:
     Returns:
         str: The de-identified document.
     """
-    entities = cat.get_entities(text)['entities']
-    return replace_entities_in_text(text, entities, cat.cdb.get_name, redact=redact)
+    if chunk:
+        de_id_pipe: EntityRecognizer
+        de_id_pipe = cat.pipe._nlp.get_pipe("deid")
+        chunked_text = get_chunks(text, de_id_pipe.ner_pipe.tokenizer)
+        anon_text: List[str] = []
+        for text_ in chunked_text:
+            entities = cat.get_entities(text_)['entities']
+            anon_ = replace_entities_in_text(text_, entities, cat.cdb.get_name, redact=redact)
+            anon_text.append(anon_)
+        return "".join(anon_text)
+    else:
+        entities = cat.get_entities(text)['entities']
+        return replace_entities_in_text(text, entities, cat.cdb.get_name, redact=redact)
 
 
 def replace_entities_in_text(text: str,
