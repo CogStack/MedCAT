@@ -73,6 +73,7 @@ class DeIdModel(NerModel):
         v2: Changed to add support for chunking functionality 
 
         Args:
+            config: TransformersNER configuration containing the number of tokens per chunk
             text (str): The text to deidentify.
             redact (bool): Whether to redact the information.
 
@@ -82,13 +83,12 @@ class DeIdModel(NerModel):
         de_id_pipe: EntityRecognizer
         de_id_pipe = self.cat.pipe._nlp.get_pipe("deid")
         chunked_text = get_chunks(text,de_id_pipe.ner_pipe.tokenizer,config)
-
         anon_text = []
         for text_ in chunked_text:
             anon_ = deid_text(self.cat, text_, redact=redact)
             anon_text.append(anon_)
 
-        return " ".join(anon_text)
+        return "".join(anon_text)
 
     def deid_multi_texts(self,
                          texts: Union[Iterable[str], Iterable[Tuple]],
@@ -108,7 +108,7 @@ class DeIdModel(NerModel):
         Returns:
             List[str]: List of deidentified documents.
         """
-        logger.warning("Deidentify text on multiple does not include chunking functionality. Be cautions, as chunking is not utilised, PII data MAY BE REVEALED.")
+        logger.warning("Deidentify text on multiple does not include chunking functionality. Be cautious, as chunking is not utilised, PII data MAY BE REVEALED.")
         entities = self.cat.get_entities_multi_texts(texts, addl_info=addl_info,
                                                      n_process=n_process, batch_size=batch_size)
         out = []

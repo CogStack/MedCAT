@@ -27,7 +27,7 @@ def get_chunks(text:str, tokenizer, config: Optional[ConfigTransformersNER] = No
         return get_chunks_roberta(text, tokenizer, config)
     else:
         logger.warning(
-            "Chunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, as PII data MAY BE REVEALED.")
+            "Chunking functionality is implemented for RoBERTa models. The detected model is not RoBERTa, so chunking is omitted. Be cautious, PII data MAY BE REVEALED.")
         return [text]
 
 
@@ -55,11 +55,12 @@ def get_chunks_roberta(text:str, tokenizer, config: ConfigTransformersNER) -> Li
         if len(blocks[-1]) == maximum_tkns:
             to_append_block = []
             idx_chunk = -1
-            for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1): # Checking back 20 tokens to ensure no sub-word division
-                # This method to avoid sub-word division is specific for RoBERTA's tokenizer (BPE)
-                if re.search(whitespace_pattern, tokenizer.decode(blocks[-1][i][0],clean_up_tokenization_spaces=False)):
-                    idx_chunk = i
-                    break
+            # This method to avoid sub-word division is specific for RoBERTA's tokenizer (BPE)
+            if not re.match(whitespace_pattern, tokenizer.decode(token,clean_up_tokenization_spaces=False)):
+                for i in range(len(blocks[-1]) - 1, len(blocks[-1]) - 21, -1): # Checking back 20 tokens to ensure no sub-word division
+                    if re.match(whitespace_pattern, tokenizer.decode(blocks[-1][i][0],clean_up_tokenization_spaces=False)):
+                        idx_chunk = i
+                        break
 
             if idx_chunk != -1:
                 to_append_block.extend(blocks[-1][i:])
@@ -73,7 +74,8 @@ def get_chunks_roberta(text:str, tokenizer, config: ConfigTransformersNER) -> Li
 
     chunked_text: List = []
     for block in blocks:
-        this_text = text[block[0][-1][0]:block[-1][-1][-1]]
+        tokens_block = [x[0] for x in block]
+        this_text = tokenizer.decode(tokens_block, clean_up_tokenization_spaces=False)
         chunked_text.append(this_text)
 
     return chunked_text
