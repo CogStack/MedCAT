@@ -77,7 +77,7 @@ class TransformersNER(object):
             self.training_arguments = training_arguments
 
     def create_eval_pipeline(self):
-        self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer)#,stride=self.config.general['chunking_overlap_window'])
+        self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer,stride=self.config.general['chunking_overlap_window'])
         if not hasattr(self.ner_pipe.tokenizer, '_in_target_context_manager'):
             # NOTE: this will fix the DeID model(s) created before medcat 1.9.3
             #       though this fix may very well be unstable
