@@ -385,7 +385,7 @@ class CAT(object):
         trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')] if load_addl_ner else []
         addl_ner = []
         for trf_path in trf_paths:
-            trf = TransformersNER.load(save_dir_path=trf_path)
+            trf = TransformersNER.load(save_dir_path=trf_path,config_dict=meta_cat_config_dict)
             trf.cdb = cdb # Set the cat.cdb to be the CDB of the TRF model
             addl_ner.append(trf)
 
