@@ -106,5 +106,5 @@ class NerModel:
         Returns:
             NerModel: The resulting DeI model.
         """
-        cat = CAT.load_model_pack(model_pack_path,meta_cat_config_dict=config)
+        cat = CAT.load_model_pack(model_pack_path,ner_config_dict=config)
         return cls(cat)
