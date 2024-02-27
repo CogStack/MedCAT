@@ -15,6 +15,11 @@ import timeout_decorator
 
 FILE_DIR = os.path.dirname(os.path.realpath(__file__))
 
+# set medcat log output to DEBUG
+import medcat
+medcat.add_default_log_handlers()
+medcat.logger.setLevel("DEBUG")
+
 
 # NB! This 'training data' is extremely flawed
 # it is only (somewhat) useful for the purpose of this
