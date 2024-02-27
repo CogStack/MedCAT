@@ -349,7 +349,7 @@ class CAT(object):
                 Defaults to None.
             ner_config_dict (Optional[Dict]):
                 A config dict that will overwrite existing configs in transformers ner.
-                e.g. ner_config_dict = {'general': {'device': 'cpu'}}.
+                e.g. ner_config_dict = {'general': {'chunking_overlap_window': 6}.
                 Defaults to None.
             load_meta_models (bool):
                 Whether to load MetaCAT models if present (Default value True).
