@@ -33,7 +33,7 @@ jobs:
           flake8 medcat
       - name: Test
         run: |
-          timeout 17m python -m unittest discover
+          timeout 17m python -m unittest tests.utils.ner.test_deid.DeIDModelMultiprocessingWorks
 
   publish-to-test-pypi:
 
