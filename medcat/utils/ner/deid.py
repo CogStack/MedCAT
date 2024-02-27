@@ -34,7 +34,7 @@ The wrapper also exposes some CAT parts directly:
 - config
 - cdb
 """
-from typing import Union, Tuple, Any, List, Iterable, Optional
+from typing import Union, Tuple, Any, List, Iterable, Optional, Dict
 
 from medcat.cat import CAT
 from medcat.utils.ner.model import NerModel
@@ -110,7 +110,7 @@ class DeIdModel(NerModel):
         return out
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str) -> 'DeIdModel':
+    def load_model_pack(cls, model_pack_path: str, config: Optional[Dict] = None) -> 'DeIdModel':
         """Load DeId model from model pack.
 
         The method first loads the CAT instance.
@@ -119,6 +119,7 @@ class DeIdModel(NerModel):
         valid DeId model.
 
         Args:
+            config: Config for DeId model pack (primarily for stride of overlap window)
             model_pack_path (str): The model pack path.
 
         Raises:
@@ -127,7 +128,7 @@ class DeIdModel(NerModel):
         Returns:
             DeIdModel: The resulting DeI model.
         """
-        ner_model = NerModel.load_model_pack(model_pack_path)
+        ner_model = NerModel.load_model_pack(model_pack_path,config=config)
         cat = ner_model.cat
         if not cls._is_deid_model(cat):
             raise ValueError(
