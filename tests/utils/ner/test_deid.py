@@ -140,6 +140,16 @@ class DeIDModelWorks(unittest.TestCase):
         # self.assertNotIn("Dublin", anon_text)
         self.assertNotIn("7 Eccles Street", anon_text)
 
+
+def timeit(fun):
+    import time
+    def wrapper(*args, **kwargs):
+        st = time.perf_counter()
+        v = fun(*args, **kwargs)
+        print(fun.__name__, "Took", time.perf_counter() - st)
+        return v
+    return wrapper
+
 class DeIDModelMultiprocessingWorks(unittest.TestCase):
     processes = 2
 
@@ -177,6 +187,7 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
         raise AssertionError("None of the CUIs found")
 
     @timeout_decorator.timeout(3 * 60)  # 3 minutes max
+    @timeit
     def test_model_can_multiprocess_no_redact(self):
         processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes)
         self.assertEqual(len(processed), 5)
@@ -185,6 +196,7 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
                 self.assertTextHasBeenDeIded(new_text, redacted=False)
 
     @timeout_decorator.timeout(3 * 60)  # 3 minutes max
+    @timeit
     def test_model_can_multiprocess_redact(self):
         processed = self.deid_model.deid_multi_texts(self.data, n_process=self.processes, redact=True)
         self.assertEqual(len(processed), 5)
