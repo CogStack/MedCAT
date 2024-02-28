@@ -45,6 +45,7 @@ from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_i
 
 logger = logging.getLogger(__name__)
 
+
 class DeIdModel(NerModel):
     """The DeID model.
 
