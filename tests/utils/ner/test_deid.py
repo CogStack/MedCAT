@@ -177,6 +177,7 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
         import torch
         torch.set_num_threads(1)
         cls.deid_model.cat._addl_ner[0].config.general.chunking_overlap_window = 0
+        cls.deid_model.cat._addl_ner[0].create_eval_pipeline()
 
     def assertTextHasBeenDeIded(self, text: str, redacted: bool):
         if not redacted:
