@@ -51,7 +51,7 @@ def _add_model(cls):
     cdb = make_or_update_cdb(TRAIN_DATA)
     config = transformers_ner.ConfigTransformersNER()
     config.general['test_size'] = 0.1  # Usually set this to 0.1-0.2
-    config.general.chunking_overlap_window = 0
+    config.general.chunking_overlap_window = None
     cls.ner = transformers_ner.TransformersNER(cdb=cdb, config=config)
     cls.ner.training_arguments.num_train_epochs = 1  # Use 5-10 normally
     # As we are NOT training on a GPU that can, we'll set it to 1
