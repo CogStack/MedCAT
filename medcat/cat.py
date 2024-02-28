@@ -334,6 +334,7 @@ class CAT(object):
     def load_model_pack(cls,
                         zip_path: str,
                         meta_cat_config_dict: Optional[Dict] = None,
+                        ner_config_dict: Optional[Dict] = None,
                         load_meta_models: bool = True,
                         load_addl_ner: bool = True) -> "CAT":
         """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
@@ -345,6 +346,10 @@ class CAT(object):
             meta_cat_config_dict (Optional[Dict]):
                 A config dict that will overwrite existing configs in meta_cat.
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
+            ner_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in transformers ner.
+                e.g. ner_config_dict = {'general': {'chunking_overlap_window': 6}.
                 Defaults to None.
             load_meta_models (bool):
                 Whether to load MetaCAT models if present (Default value True).
@@ -381,15 +386,15 @@ class CAT(object):
         else:
             vocab = None
 
-        # Find meta models in the model_pack
+        # Find ner models in the model_pack
         trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')] if load_addl_ner else []
         addl_ner = []
         for trf_path in trf_paths:
-            trf = TransformersNER.load(save_dir_path=trf_path)
+            trf = TransformersNER.load(save_dir_path=trf_path,config_dict=ner_config_dict)
             trf.cdb = cdb # Set the cat.cdb to be the CDB of the TRF model
             addl_ner.append(trf)
 
-        # Find meta models in the model_pack
+        # Find metacat models in the model_pack
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
         meta_cats = []
         for meta_path in meta_paths:
