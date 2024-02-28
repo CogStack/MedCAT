@@ -51,6 +51,7 @@ def _add_model(cls):
     cdb = make_or_update_cdb(TRAIN_DATA)
     config = transformers_ner.ConfigTransformersNER()
     config.general['test_size'] = 0.1  # Usually set this to 0.1-0.2
+    config.general.chunking_overlap_window = 0
     cls.ner = transformers_ner.TransformersNER(cdb=cdb, config=config)
     cls.ner.training_arguments.num_train_epochs = 1  # Use 5-10 normally
     # As we are NOT training on a GPU that can, we'll set it to 1
@@ -176,8 +177,6 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
         #separate_nn_components, need for CPU runs only
         import torch
         torch.set_num_threads(1)
-        cls.deid_model.cat._addl_ner[0].config.general.chunking_overlap_window = 0
-        cls.deid_model.cat._addl_ner[0].create_eval_pipeline(no_stride=True)
 
     def assertTextHasBeenDeIded(self, text: str, redacted: bool):
         if not redacted:
