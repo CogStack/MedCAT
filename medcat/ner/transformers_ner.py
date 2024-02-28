@@ -77,6 +77,9 @@ class TransformersNER(object):
             self.training_arguments = training_arguments
 
     def create_eval_pipeline(self):
+
+        if self.config.general['chunking_overlap_window'] is None:
+            logger.warning("Chunking overlap window attribute in the config is set to None, hence chunking is disabled. Be cautious, PII data MAY BE REVEALED. To enable chunking, set the value to 0 or above.")
         self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer,stride=self.config.general['chunking_overlap_window'])
         if not hasattr(self.ner_pipe.tokenizer, '_in_target_context_manager'):
             # NOTE: this will fix the DeID model(s) created before medcat 1.9.3
