@@ -1,0 +1,8 @@
+{
+    "lang":"ff",
+    "name":"core_fake_dr",
+    "version":"3.1.0",
+    "description":"This is a FAKE model",
+    "author":"Fakio Martimus",
+    "spacy_version":">=3.1.0,<4.0.0"
+  }

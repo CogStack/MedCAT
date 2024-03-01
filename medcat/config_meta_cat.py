@@ -37,6 +37,9 @@ class General(MixingConfig, BaseModel):
     a deployment."""
     pipe_batch_size_in_chars: int = 20000000
     """How many characters are piped at once into the meta_cat class"""
+    span_group: Optional[str] = None
+    """If set, the spacy span group that the metacat model will assign annotations.
+    Otherwise defaults to doc._.ents or doc.ents per the annotate_overlapping settings"""
 
     class Config:
         extra = Extra.allow

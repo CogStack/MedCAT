@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any, List, Tuple, Union, Optional, Dict
 
 from spacy.tokens import Doc
 
@@ -94,16 +94,17 @@ class NerModel:
         return cls(cat)
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str) -> 'NerModel':
+    def load_model_pack(cls, model_pack_path: str,config: Optional[Dict] = None) -> 'NerModel':
         """Load NER model from model pack.
 
         The method first wraps the loaded CAT instance.
 
         Args:
+            config: Config for DeId model pack (primarily for stride of overlap window)
             model_pack_path (str): The model pack path.
 
         Returns:
             NerModel: The resulting DeI model.
         """
-        cat = CAT.load_model_pack(model_pack_path)
+        cat = CAT.load_model_pack(model_pack_path,ner_config_dict=config)
         return cls(cat)
