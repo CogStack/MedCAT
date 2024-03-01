@@ -18,11 +18,11 @@ setuptools.setup(
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner',
               'medcat.utils.saving', 'medcat.utils.regression', 'medcat.stats'],
     install_requires=[
-        'numpy>=1.22.0,<1.26.0',  # 1.22.0 is first to support python 3.11; post 1.26.0 there's issues with scipy
+        'numpy>=1.26.0',  # 1.26.0 is first to support python 3.12
         'pandas>=1.4.2', # first to support 3.11
-        'gensim>=4.3.0,<5.0.0',  # 5.3.0 is first to support 3.11; avoid major version bump
+        'gensim>=4.3.0,<5.0.0',  # 4.3.0 is first to support 3.11; avoid major version bump
         'spacy>=3.6.0,<4.0.0',  # Some later model packs (e.g HPO) are made with 3.6.0 spacy model; avoid major version bump
-        'scipy>=1.9.2', # first to support 3.11
+        'scipy>=1.11.2', # first to support 3.12
         'transformers>=4.34.0,<5.0.0',  # avoid major version bump
         'accelerate>=0.23.0', # required by Trainer class in de-id
         'torch>=1.13.0,<3.0.0', # 1.13 is first to support 3.11; 2.1.2 has been compatible, but avoid major 3.0.0 for now
