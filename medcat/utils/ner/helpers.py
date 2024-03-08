@@ -1,3 +1,5 @@
+from typing import Callable, Dict
+
 from medcat.utils.data_utils import count_annotations
 from medcat.cdb import CDB
 
@@ -27,11 +29,18 @@ def _deid_text(cat, text: str, redact: bool = False) -> str:
     Returns:
         str: The de-identified document.
     """
-    new_text = str(text)
     entities = cat.get_entities(text)['entities']
+    return replace_entities_in_text(text, entities, cat.cdb.get_name, redact=redact)
+
+
+def replace_entities_in_text(text: str,
+                             entities: Dict,
+                             get_cui_name: Callable[[str], str],
+                             redact: bool = False) -> str:
+    new_text = str(text)
     for ent in sorted(entities.values(), key=lambda ent: ent['start'], reverse=True):
         r = "*"*(ent['end']-ent['start']
-                 ) if redact else cat.cdb.get_name(ent['cui'])
+                 ) if redact else get_cui_name(ent['cui'])
         new_text = new_text[:ent['start']] + f'[{r}]' + new_text[ent['end']:]
     return new_text
 

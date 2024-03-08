@@ -344,6 +344,7 @@ class CAT(object):
     def load_model_pack(cls,
                         zip_path: str,
                         meta_cat_config_dict: Optional[Dict] = None,
+                        ner_config_dict: Optional[Dict] = None,
                         load_meta_models: bool = True,
                         load_addl_ner: bool = True,
                         load_rel_models: bool = True) -> "CAT":
@@ -356,6 +357,10 @@ class CAT(object):
             meta_cat_config_dict (Optional[Dict]):
                 A config dict that will overwrite existing configs in meta_cat.
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
+            ner_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in transformers ner.
+                e.g. ner_config_dict = {'general': {'chunking_overlap_window': 6}.
                 Defaults to None.
             load_meta_models (bool):
                 Whether to load MetaCAT models if present (Default value True).
@@ -393,15 +398,15 @@ class CAT(object):
         else:
             vocab = None
 
-        # Find meta models in the model_pack
+        # Find ner models in the model_pack
         trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')] if load_addl_ner else []
         addl_ner = []
         for trf_path in trf_paths:
-            trf = TransformersNER.load(save_dir_path=trf_path)
+            trf = TransformersNER.load(save_dir_path=trf_path,config_dict=ner_config_dict)
             trf.cdb = cdb # Set the cat.cdb to be the CDB of the TRF model
             addl_ner.append(trf)
 
-        # Find meta models in the model_pack
+        # Find metacat models in the model_pack
         meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
         meta_cats = []
         for meta_path in meta_paths:
@@ -1024,11 +1029,11 @@ class CAT(object):
         return out
 
     def get_entities_multi_texts(self,
-                     texts: Union[Iterable[str], Iterable[Tuple]],
-                     only_cui: bool = False,
-                     addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                     n_process: Optional[int] = None,
-                     batch_size: Optional[int] = None) -> List[Dict]:
+                                 texts: Union[Iterable[str], Iterable[Tuple]],
+                                 only_cui: bool = False,
+                                 addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                                 n_process: Optional[int] = None,
+                                 batch_size: Optional[int] = None) -> List[Dict]:
         """Get entities
 
         Args:
@@ -1072,6 +1077,15 @@ class CAT(object):
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
+            except RuntimeError as e:
+                if e.args == ('_share_filename_: only available on CPU',):
+                    raise ValueError("Issue while performing multiprocessing. "
+                                     "This is mostly likely to happen when "
+                                     "using NER models (i.e DeId). If that is "
+                                     "the case you could either a) save the "
+                                     "model on disk and then load it back up; "
+                                     "or b) install cpu-only toch.") from e
+                raise e
             finally:
                 self.pipe.reset_error_handler()
 
@@ -1394,20 +1408,20 @@ class CAT(object):
                              return_dict: bool = True,
                              batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
-                                                     batch_size=batch_size,
-                                                     only_cui=only_cui,
-                                                     addl_info=addl_info,
-                                                     return_dict=return_dict,
-                                                     batch_factor=batch_factor)
+                                                    batch_size=batch_size,
+                                                    only_cui=only_cui,
+                                                    addl_info=addl_info,
+                                                    return_dict=return_dict,
+                                                    batch_factor=batch_factor)
 
     def multiprocessing_batch_docs_size(self,
-                             in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
-                             batch_size: Optional[int] = None,
-                             only_cui: bool = False,
-                             addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                             return_dict: bool = True,
-                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
+                                        in_data: Union[List[Tuple], Iterable[Tuple]],
+                                        nproc: Optional[int] = None,
+                                        batch_size: Optional[int] = None,
+                                        only_cui: bool = False,
+                                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
+                                        return_dict: bool = True,
+                                        batch_factor: int = 2) -> Union[List[Tuple], Dict]:
         """Run multiprocessing NOT FOR TRAINING.
 
         This method batches the data based on the number of documents as specified by the user.
