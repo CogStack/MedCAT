@@ -1,5 +1,5 @@
 from ast import literal_eval
-from typing import Any, Iterable, List, Dict
+from typing import Any, Iterable, List, Dict, Tuple
 from torch.utils.data import Dataset
 from spacy.tokens import Doc
 import pandas
@@ -7,6 +7,7 @@ import torch
 
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
+from medcat.utils.meta_cat.data_utils import Span
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 
 
@@ -42,17 +43,26 @@ class RelData(Dataset):
                              sep='\t', encoding='utf-8')
 
         tmp_col_rel_token_col = df.pop("relation_token_span_ids")
+
         df.insert(0, "relation_token_span_ids", tmp_col_rel_token_col)
 
         text_cols = ["sents", "text"]
-        for col in df.columns:
-            if col in text_cols:
-                df["relation_token_span_ids"] = [
-                    self.tokenizer(text)["input_ids"] for text in df[col]]
-                df = df.drop(columns=col)
 
-        df["ent1_ent2_start"] = df["ent1_ent2_start"].apply(
+        df["ent1_ent2_start"] =  df["ent1_ent2_start"].apply(
             lambda x: literal_eval(str(x)))
+
+        for col in text_cols:
+            if col in df.columns:
+                
+                out_rels = []
+                for row_idx in range(len(df[col])):
+                    _text = df.iloc[row_idx][col]
+                    _ent1_ent2_start = df.iloc[row_idx]["ent1_ent2_start"]
+                    out_rels.append(self.create_base_relations_from_doc(_text, doc_id=row_idx, ent1_ent2_tokens_char_start_pos=_ent1_ent2_start))
+                
+                df["relation_token_span_ids"] = [ rel["output_relations"][0] for rel in out_rels]
+                df = df.drop(columns=col)
+                break
 
         nclasses, labels2idx, idx2label = RelData.get_labels(
             df["label"], self.config)
@@ -68,7 +78,7 @@ class RelData(Dataset):
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
-    def create_base_relations_from_doc(self, doc, doc_id) -> Dict:
+    def create_base_relations_from_doc(self, doc: Doc | str, doc_id: str, ent1_ent2_tokens_char_start_pos: List | Tuple = (-1, -1)) -> Dict:
         """  
             doc : SpacyDoc
             window_size : int, Character distance between any two entities start positions.
@@ -83,89 +93,131 @@ class RelData(Dataset):
                                  ]
         """
         relation_instances = []
-        doc_length = len(doc)
 
-        chars_to_exclude = ":!@#$%^&*()-+?_=,<>/"
+        chars_to_exclude = ":!@#$%^&*()-+?_=.,;<>/[]{}"
+        tokenizer_data = None
 
-        tokenizer_data = self.tokenizer(doc.text)
+        if isinstance(doc, str):
+            tokenizer_data = self.tokenizer(doc)
+            doc_text = doc
+        elif isinstance(doc, Doc):
+            tokenizer_data = self.tokenizer(doc.text)
+            doc_text = doc.text
 
-        ent1pos = 1
-        for ent1 in doc.ents:
-            ent1pos += 1
-            ent_dist_counter = 0
+        doc_length = len(tokenizer_data["offset_mapping"])
 
-            ent1_type_id = list(self.cdb.cui2type_ids.get(ent1._.cui, ''))
-            ent1_types = [self.cdb.addl_info['type_id2name'].get(
-                tui, '') for tui in ent1_type_id]
+        if ent1_ent2_tokens_char_start_pos != (-1, -1):
+            ent1_token_pos, ent2_token_pos = -1, -1
+            for i in range(0, doc_length):
+                if ent1_ent2_tokens_char_start_pos[0] in range(tokenizer_data["offset_mapping"][i][0],tokenizer_data["offset_mapping"][i][1] + 1):
+                    ent1_token_pos = i
+                if ent1_ent2_tokens_char_start_pos[1] in range(tokenizer_data["offset_mapping"][i][0],tokenizer_data["offset_mapping"][i][1] + 1):
+                    ent2_token_pos = i
+            
+            ent1_start_char_pos, _ = tokenizer_data["offset_mapping"][ent1_token_pos]
+            ent2_start_char_pos, _ = tokenizer_data["offset_mapping"][ent2_token_pos]
 
-            ent2pos = ent1pos
-            for ent2 in doc.ents[ent1pos:]:
-                ent2pos += 1
-                if ent1.text.lower() != ent2.text.lower() and self.window_size and 1 < ent2.start - ent1.start <= self.window_size and ent_dist_counter < self.ent_context_left:
+            if ent2_start_char_pos - ent1_start_char_pos <= self.window_size:
+                ent1_left_ent_context_token_pos_end = ent1_token_pos - self.ent_context_left
+                if ent1_left_ent_context_token_pos_end < 0:
+                    ent1_left_ent_context_token_pos_end = 0
 
-                    ent2_type_id = list(
-                        self.cdb.cui2type_ids.get(ent2._.cui, ''))
-                    ent2_types = [self.cdb.addl_info['type_id2name'].get(
-                        tui, '') for tui in ent2_type_id]
+                ent2_right_ent_context_token_pos_end = ent2_token_pos + self.ent_context_right
+                if ent2_right_ent_context_token_pos_end >= doc_length:
+                    ent2_right_ent_context_token_pos_end = doc_length - 1
 
-                    is_char_punctuation = False
-                    start_pos = ent1.start
+                left_context_start_char_pos = tokenizer_data["offset_mapping"][ent1_left_ent_context_token_pos_end][0]
+                right_context_start_end_pos = tokenizer_data["offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
-                    while not is_char_punctuation and start_pos >= 0:
-                        is_char_punctuation = doc[start_pos].is_punct
-                        start_pos -= 1
+                ent1_token = tokenizer_data["tokens"][ent1_token_pos]
+                ent2_token = tokenizer_data["tokens"][ent2_token_pos]
+                
+                window_tokenizer_data = self.tokenizer(doc_text[left_context_start_char_pos:right_context_start_end_pos])
+                
+                ent1token_new = [tkn for tkn in window_tokenizer_data["tokens"] if tkn in ent1_token][0]
+                ent2token_new = [tkn for tkn in window_tokenizer_data["tokens"] if tkn in ent2_token][0]
+        
+                ent1_token_id = self.tokenizer.token_to_id(ent1token_new)
+                ent2_token_id = self.tokenizer.token_to_id(ent2token_new)
+            
+                ent1_token_pos = [pos for pos, token_id in enumerate(
+                    window_tokenizer_data["input_ids"]) if token_id == ent1_token_id][0]
+                ent2_token_pos = [pos for pos, token_id in enumerate(
+                    window_tokenizer_data["input_ids"]) if token_id == ent2_token_id][0]
+                
+                ent1_ent2_new_start = (ent1_token_pos, ent2_token_pos)
+                en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_pos]
+                en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_pos]
 
-                    left_sentence_context = start_pos + 1 if start_pos > 0 else 0
+                relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1token_new, ent2token_new, "UNK", self.blank_label_id,
+                                None,None, None,None, None, None, doc_id, "",
+                                en1_start, en1_end, en2_start, en2_end])
+        elif isinstance(doc, Doc):
+            for ent1_idx in range(0, len(doc.ents)):
+                ent1_token: Span = doc.ents[ent1_idx]
 
-                    is_char_punctuation = False
-                    start_pos = ent2.end
+                if ent1_token not in chars_to_exclude:
+                    ent1_type_id = list(self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
+                    ent1_types = [self.cdb.addl_info['type_id2name'].get(
+                        tui, '') for tui in ent1_type_id]
+                    
+                    ent2pos = ent1_idx
+                    ent1_start = ent1_token.start
+                    
+                    ent1_left_ent_context_token_pos_end = ent1_idx - self.ent_context_left
+                    if ent1_left_ent_context_token_pos_end < 0:
+                        ent1_left_ent_context_token_pos_end = 0
 
-                    while not is_char_punctuation and start_pos < doc_length:
-                        is_char_punctuation = doc[start_pos].is_punct
-                        start_pos += 1
+                    ent2_right_ent_context_token_pos_end = ent2pos + self.ent_context_right
+                    if ent2_right_ent_context_token_pos_end >= doc_length:
+                        ent2_right_ent_context_token_pos_end = doc_length - 1
+                    
+                    left_context_start_char_pos = doc.ents[ent1_left_ent_context_token_pos_end].start
+                    
+                    for ent2_idx in range(len(doc.ents[ent2pos:ent2_right_ent_context_token_pos_end])):
+                        ent2pos += 1
 
-                    right_sentence_context = start_pos + 1 if start_pos > 0 else doc_length
+                        ent2_token: Span = doc.ents[ent2_idx]
 
-                    if self.window_size < (right_sentence_context - left_sentence_context):
-                        continue
+                        if ent2_token not in chars_to_exclude:
 
-                    sentence_window_tokens = []
+                            ent2_type_id = list(
+                                self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
+                            ent2_types = [self.cdb.addl_info['type_id2name'].get(
+                                tui, '') for tui in ent2_type_id]
+                    
+                            ent2_start = ent2_token.start
+                            if ent2_token != ent1_token and 1 < (ent2_start - ent1_start) <= self.window_size:
+                                 # update val
+                                ent2_right_ent_context_token_pos_end = ent2pos + self.ent_context_right
+                                if ent2_right_ent_context_token_pos_end >= doc_length:
+                                    ent2_right_ent_context_token_pos_end = doc_length
 
-                    for token in doc[left_sentence_context:right_sentence_context]:
-                        text = token.text.strip().lower()
-                        if text != "" and not any(chr in chars_to_exclude for chr in text):
-                            sentence_window_tokens.append(text)
+                                right_context_start_end_pos = doc.ents[ent2_right_ent_context_token_pos_end].end
 
-                    tokenizer_data = self.tokenizer(sentence_window_tokens)
-                    token_ids = [tokenized_text["input_ids"][0]
-                                 for tokenized_text in tokenizer_data]
-                    new_tokens = [tokenized_text["tokens"][0]
-                                  for tokenized_text in tokenizer_data]
-                    ent1token = [
-                        tkn for tkn in new_tokens if tkn in ent1.text.lower()]
-                    ent2token = [
-                        tkn for tkn in new_tokens if tkn in ent2.text.lower()]
+                                window_tokenizer_data = self.tokenizer(doc_text[left_context_start_char_pos:right_context_start_end_pos])
 
-                    if len(ent1token) > 0 and len(ent2token) > 0:
-                        ent1token = ent1token[0]
-                        ent2token = ent2token[0]
-                    else:
-                        continue
-
-                    ent1_token_id = self.tokenizer.token_to_id(ent1token)
-                    ent2_token_id = self.tokenizer.token_to_id(ent2token)
-
-                    ent1_token_pos = [pos for pos, token_id in enumerate(
-                        token_ids) if token_id == ent1_token_id][0]
-                    ent2_token_pos = [pos for pos, token_id in enumerate(
-                        token_ids) if token_id == ent2_token_id][0]
-                    ent1_ent2_new_start = (ent1_token_pos, ent2_token_pos)
-
-                    relation_instances.append([token_ids, ent1_ent2_new_start, ent1.text, ent2.text, "UNK", self.blank_label_id,
-                                               ent1_types, ent2_types, ent1._.id, ent2._.id, ent1._.cui, ent2._.cui, doc_id, "",
-                                               ent1.start, ent1.end, ent2.start, ent2.end])
-                    ent_dist_counter += 1
-
+                                ent1token_new = [
+                                    tkn for tkn in window_tokenizer_data["tokens"] if tkn in ent1_token][0]
+                                ent2token_new = [
+                                    tkn for tkn in window_tokenizer_data["tokens"] if tkn in ent2_token][0]
+                        
+                                ent1_token_id = self.tokenizer.token_to_id(ent1token_new)
+                                ent2_token_id = self.tokenizer.token_to_id(ent2token_new)
+                            
+                                ent1_token_pos = [pos for pos, token_id in enumerate(
+                                    window_tokenizer_data["input_ids"]) if token_id == ent1_token_id][0]
+                                ent2_token_pos = [pos for pos, token_id in enumerate(
+                                    window_tokenizer_data["input_ids"]) if token_id == ent2_token_id][0]
+                                
+                                ent1_ent2_new_start = (ent1_token_pos, ent2_token_pos)
+                                en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_pos]
+                                en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_pos]
+                                
+                                relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1token_new, ent2token_new, "UNK", self.blank_label_id,
+                                ent1_types, ent2_types, ent1_token._.id, ent2_token._.id, ent1_token._.cui, ent2_token._.cui, doc_id, "",
+                                en1_start, en1_end, en2_start, en2_end])
+       
         return {"output_relations": relation_instances, "nclasses": self.blank_label_id, "labels2idx": {}, "idx2label": {}}
 
     def create_relations_from_export(self, data: Dict):

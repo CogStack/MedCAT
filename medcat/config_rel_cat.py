@@ -13,7 +13,7 @@ class General(MixingConfig, BaseModel):
     """If true all input text will be lowercased"""
     cntx_left: int = 15
     """Number of tokens to take from the left of the concept"""
-    cntx_right: int = 10
+    cntx_right: int = 15
     """Number of tokens to take from the right of the concept"""
     window_size: int = 300
     """Max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)"""
