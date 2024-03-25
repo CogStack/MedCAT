@@ -4,7 +4,7 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
 class General(MixingConfig, BaseModel):
-    """The General part of the MetaCAT config"""
+    """The General part of the RelCAT config"""
     device: str = "cpu"
     relation_type_filter_pairs: List = []
     """Map from category values to ID, if empty it will be autocalculated during training"""
@@ -21,7 +21,6 @@ class General(MixingConfig, BaseModel):
     model_name: str = "bert-base-uncased"
     log_level: int = logging.INFO
     max_seq_length: int = 512
-    padding_idx: int = -1
     tokenizer_special_tokens: bool = False
     annotation_schema_tag_ids: List = []
     """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
@@ -34,7 +33,7 @@ class General(MixingConfig, BaseModel):
 
 
 class Model(MixingConfig, BaseModel):
-    """The model part of the metaCAT config"""
+    """The model part of the RelCAT config"""
     input_size: int = 300
     hidden_size: int = 300
     dropout: float = 0.1
@@ -53,7 +52,7 @@ class Model(MixingConfig, BaseModel):
 
 
 class Train(MixingConfig, BaseModel):
-    """The train part of the metaCAT config"""
+    """The train part of the RelCAT config"""
     nclasses: int = 2
     """Number of classes that this model will output"""
     batch_size: int = 25
@@ -80,7 +79,7 @@ class Train(MixingConfig, BaseModel):
 
 
 class ConfigRelCAT(MixingConfig, BaseModel):
-    """The MetaCAT part of the config"""
+    """The RelCAT part of the config"""
     general: General = General()
     model: Model = Model()
     train: Train = Train()

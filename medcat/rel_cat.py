@@ -242,7 +242,7 @@ class RelCAT(PipeRunner):
         batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
         train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
                                       num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
-
+        
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,
@@ -550,7 +550,7 @@ class RelCAT(PipeRunner):
 
         for doc_id, doc in enumerate(stream, 0):
             predict_rel_dataset.dataset, _ = self.create_test_train_datasets(
-                predict_rel_dataset.create_base_relations_from_doc(doc, doc_id), False)
+                predict_rel_dataset.create_base_relations_from_doc(doc, str(doc_id)), False)
 
             predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False, batch_size=self.config.train.batch_size,
                                             num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
@@ -573,7 +573,7 @@ class RelCAT(PipeRunner):
                         token_ids.shape[0], token_ids.shape[1]).long()
 
                     model_output, pred_classification_logits = self.model(
-                        token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, e1_e2_start=e1_e2_start)  # type: ignore
+                        token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, e1_e2_start=e1_e2_start)   # type: ignore
 
                     for i, pred_rel_logits in enumerate(pred_classification_logits):
                         rel_idx += 1
