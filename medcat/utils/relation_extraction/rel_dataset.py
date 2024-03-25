@@ -48,7 +48,8 @@ class RelData(Dataset):
 
         text_cols = ["sents", "text"]
 
-        df["ent1_ent2_start"] =  df["ent1_ent2_start"].apply(lambda x: literal_eval(str(x)))
+        df["ent1_ent2_start"] = df["ent1_ent2_start"].apply(
+            lambda x: literal_eval(str(x)))
 
         for col in text_cols:
             if col in df.columns:
@@ -56,27 +57,30 @@ class RelData(Dataset):
                 for row_idx in range(len(df[col])):
                     _text = df.iloc[row_idx][col]
                     _ent1_ent2_start = df.iloc[row_idx]["ent1_ent2_start"]
-                    _rels = self.create_base_relations_from_doc(_text, doc_id=row_idx, ent1_ent2_tokens_char_start_pos=_ent1_ent2_start)
+                    _rels = self.create_base_relations_from_doc(
+                        _text, doc_id=row_idx, ent1_ent2_tokens_char_start_pos=_ent1_ent2_start)
 
                     out_rels.append(_rels)
-                
+
                 rows_to_remove = []
                 for row_idx in range(len(out_rels)):
                     if len(out_rels[row_idx]["output_relations"]) < 1:
                         rows_to_remove.append(row_idx)
-                    
+
                 relation_token_span_ids = []
                 out_ent1_ent2_starts = []
 
                 for rel in out_rels:
                     if len(rel["output_relations"]) > 0:
-                        relation_token_span_ids.append(rel["output_relations"][0][0])
-                        out_ent1_ent2_starts.append(rel["output_relations"][0][1])
+                        relation_token_span_ids.append(
+                            rel["output_relations"][0][0])
+                        out_ent1_ent2_starts.append(
+                            rel["output_relations"][0][1])
                     else:
                         relation_token_span_ids.append([])
                         out_ent1_ent2_starts.append([])
 
-                df["relation_token_span_ids"] = relation_token_span_ids 
+                df["relation_token_span_ids"] = relation_token_span_ids
                 df["ent1_ent2_start"] = out_ent1_ent2_starts
 
                 df = df.drop(index=rows_to_remove)
@@ -129,42 +133,46 @@ class RelData(Dataset):
 
             # add + 1 to the pos cause of [CLS]
             ent1_token_start_pos, ent2_token_start_pos = ent1_ent2_tokens_char_start_pos[0] + 1,\
-                                            ent1_ent2_tokens_char_start_pos[1] + 1
+                ent1_ent2_tokens_char_start_pos[1] + 1
 
             ent1_start_char_pos, _ = tokenizer_data["offset_mapping"][ent1_token_start_pos]
             ent2_start_char_pos, _ = tokenizer_data["offset_mapping"][ent2_token_start_pos]
 
             if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.window_size:
                 ent1_left_ent_context_token_pos_end = ent1_token_start_pos - self.ent_context_left
-                
+
                 left_context_start_char_pos = 0
                 right_context_start_end_pos = len(doc_text) - 1
 
                 if ent1_left_ent_context_token_pos_end < 0:
                     ent1_left_ent_context_token_pos_end = 0
                 else:
-                    left_context_start_char_pos = tokenizer_data["offset_mapping"][ent1_left_ent_context_token_pos_end][0]
-                
+                    left_context_start_char_pos = tokenizer_data[
+                        "offset_mapping"][ent1_left_ent_context_token_pos_end][0]
+
                 ent2_right_ent_context_token_pos_end = ent2_token_start_pos + self.ent_context_right
 
                 # get end of 2nd ent token (if using tags)
                 if self.config.general.annotation_schema_tag_ids:
                     far_pos = -1
                     for tkn_id in self.config.general.annotation_schema_tag_ids:
-                        pos = [i for i in range(0, doc_length) if tokenizer_data["input_ids"][i] == tkn_id][0]
+                        pos = [i for i in range(
+                            0, doc_length) if tokenizer_data["input_ids"][i] == tkn_id][0]
                         far_pos = pos if far_pos < pos else far_pos
                     ent2_right_ent_context_token_pos_end = far_pos
 
                 if ent2_right_ent_context_token_pos_end >= doc_length - 1:
                     ent2_right_ent_context_token_pos_end = doc_length - 2
                 else:
-                    right_context_start_end_pos = tokenizer_data["offset_mapping"][ent2_right_ent_context_token_pos_end][1]
+                    right_context_start_end_pos = tokenizer_data[
+                        "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
                 ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
                 ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
-                
-                window_tokenizer_data = self.tokenizer(doc_text[left_context_start_char_pos:right_context_start_end_pos])
-                
+
+                window_tokenizer_data = self.tokenizer(
+                    doc_text[left_context_start_char_pos:right_context_start_end_pos])
+
                 ent1_token_id = self.tokenizer.token_to_id(ent1_token)
                 ent2_token_id = self.tokenizer.token_to_id(ent2_token)
 
@@ -172,27 +180,29 @@ class RelData(Dataset):
                     window_tokenizer_data["input_ids"]) if token_id == ent1_token_id][0]
                 ent2_token_start_pos = [pos for pos, token_id in enumerate(
                     window_tokenizer_data["input_ids"]) if token_id == ent2_token_id][0]
-                
-                ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
+
+                ent1_ent2_new_start = (
+                    ent1_token_start_pos, ent2_token_start_pos)
                 en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
                 en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]
 
                 relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1_token, ent2_token, "UNK", self.blank_label_id,
-                                None,None, None,None, None, None, doc_id, "",
-                                en1_start, en1_end, en2_start, en2_end])
-                
+                                           None, None, None, None, None, None, doc_id, "",
+                                           en1_start, en1_end, en2_start, en2_end])
+
         elif isinstance(doc, Doc):
             for ent1_idx in range(0, len(doc.ents)):
                 ent1_token: Span = doc.ents[ent1_idx]   # type: ignore
 
                 if ent1_token not in chars_to_exclude:
-                    ent1_type_id = list(self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
+                    ent1_type_id = list(
+                        self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
                     ent1_types = [self.cdb.addl_info['type_id2name'].get(
                         tui, '') for tui in ent1_type_id]
-                    
+
                     ent2pos = ent1_idx
                     ent1_start = ent1_token.start
-                    
+
                     ent1_left_ent_context_token_pos_end = ent1_idx - self.ent_context_left
                     if ent1_left_ent_context_token_pos_end < 0:
                         ent1_left_ent_context_token_pos_end = 0
@@ -200,9 +210,9 @@ class RelData(Dataset):
                     ent2_right_ent_context_token_pos_end = ent2pos + self.ent_context_right
                     if ent2_right_ent_context_token_pos_end >= doc_length - 1:
                         ent2_right_ent_context_token_pos_end = doc_length - 2
-                    
+
                     left_context_start_char_pos = doc.ents[ent1_left_ent_context_token_pos_end].start
-                    
+
                     for ent2_idx in range(len(doc.ents[ent2pos:ent2_right_ent_context_token_pos_end])):
                         ent2pos += 1
 
@@ -214,7 +224,7 @@ class RelData(Dataset):
                                 self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
                             ent2_types = [self.cdb.addl_info['type_id2name'].get(
                                 tui, '') for tui in ent2_type_id]
-                    
+
                             ent2_start = ent2_token.start
                             if ent2_token != ent1_token and abs(ent2_start - ent1_start) <= self.window_size:
                                 ent2_right_ent_context_token_pos_end = ent2pos + self.ent_context_right
@@ -223,24 +233,29 @@ class RelData(Dataset):
 
                                 right_context_start_end_pos = doc.ents[ent2_right_ent_context_token_pos_end].end
 
-                                window_tokenizer_data = self.tokenizer(doc_text[left_context_start_char_pos:right_context_start_end_pos])
-                        
-                                ent1_token_id = self.tokenizer.token_to_id(ent1_token)
-                                ent2_token_id = self.tokenizer.token_to_id(ent2_token)
-                            
+                                window_tokenizer_data = self.tokenizer(
+                                    doc_text[left_context_start_char_pos:right_context_start_end_pos])
+
+                                ent1_token_id = self.tokenizer.token_to_id(
+                                    ent1_token)
+                                ent2_token_id = self.tokenizer.token_to_id(
+                                    ent2_token)
+
                                 ent1_token_start_pos = [pos for pos, token_id in enumerate(
                                     window_tokenizer_data["input_ids"]) if token_id == ent1_token_id][0]
                                 ent2_token_pos = [pos for pos, token_id in enumerate(
                                     window_tokenizer_data["input_ids"]) if token_id == ent2_token_id][0]
-                                
-                                ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_pos)
-                                en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
+
+                                ent1_ent2_new_start = (
+                                    ent1_token_start_pos, ent2_token_pos)
+                                en1_start, en1_end = window_tokenizer_data[
+                                    "offset_mapping"][ent1_token_start_pos]
                                 en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_pos]
-                                
+
                                 relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1_token, ent2_token, "UNK", self.blank_label_id,
-                                ent1_types, ent2_types, ent1_token._.id, ent2_token._.id, ent1_token._.cui, ent2_token._.cui, doc_id, "",
-                                en1_start, en1_end, en2_start, en2_end])
-       
+                                                           ent1_types, ent2_types, ent1_token._.id, ent2_token._.id, ent1_token._.cui, ent2_token._.cui, doc_id, "",
+                                                           en1_start, en1_end, en2_start, en2_end])
+
         return {"output_relations": relation_instances, "nclasses": self.blank_label_id, "labels2idx": {}, "idx2label": {}}
 
     def create_relations_from_export(self, data: Dict):
@@ -257,8 +272,6 @@ class RelData(Dataset):
 
         output_relations = []
 
-        punct_symbols = ['?', '.', ',', ';', ':', '#', '-', ]
-
         relation_type_filter_pairs = self.config.general.relation_type_filter_pairs
 
         for project in data['projects']:
@@ -274,7 +287,6 @@ class RelData(Dataset):
                     tokenizer_data = self.tokenizer(text)
 
                     doc_length_tokens = len(tokenizer_data["tokens"])
-                    doc_length_text = len(text)
 
                     ann_ids_ents: Dict[Any, Any] = {}
                     for ann in annotations:
@@ -292,10 +304,7 @@ class RelData(Dataset):
 
                     for relation in relations:
                         ann_start_start_pos = relation['start_entity_start_idx']
-                        ann_start_end_pos = relation['start_entity_end_idx']
-
                         ann_end_start_pos = relation['end_entity_start_idx']
-                        ann_end_end_pos = relation['end_entity_end_idx']
 
                         start_entity_value = relation['start_entity_value']
                         end_entity_value = relation['end_entity_value']
@@ -306,17 +315,14 @@ class RelData(Dataset):
                         # if somehow the annotations belong to the same relation but make sense in reverse
                         if ann_start_start_pos > ann_end_start_pos:
                             ann_end_start_pos = relation['start_entity_start_idx']
-                            ann_end_end_pos = relation['start_entity_end_idx']
-
                             ann_start_start_pos = relation['end_entity_start_idx']
-                            ann_start_end_pos = relation['end_entity_end_idx']
 
                             end_entity_value = relation['start_entity_value']
                             start_entity_value = relation['end_entity_value']
 
-                            start_entity_id =  relation['end_entity']
+                            start_entity_id = relation['end_entity']
                             end_entity_id = relation['start_entity']
- 
+
                         start_entity_types = ann_ids_ents[start_entity_id]['types']
                         end_entity_types = ann_ids_ents[end_entity_id]['types']
                         start_entity_cui = ann_ids_ents[start_entity_id]['cui']
@@ -332,50 +338,58 @@ class RelData(Dataset):
                         relation_label = relation['relation']
 
                         if start_entity_id != end_entity_id and relation.get('validated', True):
-                            
+
                             if abs(ann_start_start_pos - ann_end_start_pos) <= self.window_size:
-                                
-                                ent1_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_start_start_pos \
-                                                in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
-                                ent2_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_end_start_pos \
-                                                in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
-                                
+
+                                ent1_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_start_start_pos
+                                                        in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
+                                ent2_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_end_start_pos
+                                                        in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
+
                                 ent1_left_ent_context_token_pos_end = ent1_token_start_pos - self.ent_context_left
-                
+
                                 left_context_start_char_pos = 0
                                 right_context_start_end_pos = len(text) - 1
 
                                 if ent1_left_ent_context_token_pos_end < 0:
                                     ent1_left_ent_context_token_pos_end = 0
                                 else:
-                                    left_context_start_char_pos = tokenizer_data["offset_mapping"][ent1_left_ent_context_token_pos_end][0]
-                                
+                                    left_context_start_char_pos = tokenizer_data[
+                                        "offset_mapping"][ent1_left_ent_context_token_pos_end][0]
+
                                 ent2_right_ent_context_token_pos_end = ent2_token_start_pos + self.ent_context_right
                                 if ent2_right_ent_context_token_pos_end >= doc_length_tokens - 1:
                                     ent2_right_ent_context_token_pos_end = doc_length_tokens - 2
                                 else:
-                                    right_context_start_end_pos = tokenizer_data["offset_mapping"][ent2_right_ent_context_token_pos_end][1]
+                                    right_context_start_end_pos = tokenizer_data[
+                                        "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
                                 ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
                                 ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
 
-                                window_tokenizer_data = self.tokenizer(text[left_context_start_char_pos:right_context_start_end_pos])
-                
-                                ent1_token_id = self.tokenizer.token_to_id(ent1_token)
-                                ent2_token_id = self.tokenizer.token_to_id(ent2_token)
+                                window_tokenizer_data = self.tokenizer(
+                                    text[left_context_start_char_pos:right_context_start_end_pos])
+
+                                ent1_token_id = self.tokenizer.token_to_id(
+                                    ent1_token)
+                                ent2_token_id = self.tokenizer.token_to_id(
+                                    ent2_token)
 
                                 ent1_token_start_pos = [pos for pos, token_id in enumerate(
                                     window_tokenizer_data["input_ids"]) if token_id == ent1_token_id][0]
                                 ent2_token_start_pos = [pos for pos, token_id in enumerate(
                                     window_tokenizer_data["input_ids"]) if token_id == ent2_token_id][0]
-                                
-                                ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
-                                en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
-                                en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]
+
+                                ent1_ent2_new_start = (
+                                    ent1_token_start_pos, ent2_token_start_pos)
+                                en1_start, en1_end = window_tokenizer_data[
+                                    "offset_mapping"][ent1_token_start_pos]
+                                en2_start, en2_end = window_tokenizer_data[
+                                    "offset_mapping"][ent2_token_start_pos]
 
                                 relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, start_entity_value, end_entity_value, relation_label, self.blank_label_id,
-                                                        start_entity_types, end_entity_types, start_entity_id, end_entity_id, start_entity_cui, end_entity_cui, doc_id, "",
-                                                        en1_start, en1_end, en2_start, en2_end])
+                                                           start_entity_types, end_entity_types, start_entity_id, end_entity_id, start_entity_cui, end_entity_cui, doc_id, "",
+                                                           en1_start, en1_end, en2_start, en2_end])
 
                     output_relations.extend(relation_instances)
 
