@@ -22,8 +22,7 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
 
-        self.classification_layer = nn.Linear(
-            self.relcat_config.model.hidden_size * 5, relcat_config.train.nclasses)
+        self.classification_layer = nn.Linear(self.relcat_config.model.model_size, relcat_config.train.nclasses)
 
         print("RelCAT Model config: ", self.model_config)
 
@@ -75,6 +74,8 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             for each_tag in self.relcat_config.general.annotation_schema_tag_ids:
                 seq_tags.append(self.get_annotation_schema_tag(
                     sequence_output, input_ids, each_tag))
+                
+           # print(seq_tags)
 
             seq_tags = torch.stack(seq_tags, dim=0)
 

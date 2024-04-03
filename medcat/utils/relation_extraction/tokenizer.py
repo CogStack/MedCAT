@@ -18,10 +18,10 @@ class TokenizerWrapperBERT(BertTokenizerFast):
         self.max_seq_length = max_seq_length
         self.add_special_tokens = add_special_tokens
 
-    def __call__(self, text):
+    def __call__(self, text, truncation: Optional[bool] = True):
         if isinstance(text, str):
             result = self.hf_tokenizers.encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True, return_attention_mask=True,
-                                                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length, padding="longest", truncation=True)
+                                                    add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length, padding="longest", truncation=truncation)
 
             return {'offset_mapping': result['offset_mapping'],
                     'input_ids': result['input_ids'],
@@ -32,7 +32,7 @@ class TokenizerWrapperBERT(BertTokenizerFast):
                     }
         elif isinstance(text, list):
             results = self.hf_tokenizers._batch_encode_plus(text, return_offsets_mapping=True, return_length=True, return_token_type_ids=True,
-                                                            add_special_tokens=self._add_special_tokens, max_length=self.max_seq_length)
+                                                            add_special_tokens=self.add_special_tokens, max_length=self.max_seq_length,truncation=truncation)
             output = []
             for ind in range(len(results['input_ids'])):
                 output.append({

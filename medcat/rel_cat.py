@@ -65,13 +65,20 @@ class RelCAT(PipeRunner):
 
         set_all_seeds(config.general.seed)
 
-    def save(self, save_path) -> None:
+    def save(self, save_path: str) -> None:
+
+        assert self.config is not None
         self.config.save(os.path.join(save_path, "config.json"))
+
+        assert self.model_config is not None
         self.model_config.to_json_file(
             os.path.join(save_path, "model_config.json"))
+        
+        assert self.tokenizer is not None
         self.tokenizer.save(os.path.join(
-            save_path, self.config.general["tokenizer_name"]))
+            save_path, self.config.general.tokenizer_name))
 
+        assert self.model is not None
         save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1,
                    save_path, self.config.general.model_name,
                    self.task, is_checkpoint=False
@@ -139,20 +146,18 @@ class RelCAT(PipeRunner):
 
         try:
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
-                                                                         model_size=config.model.hidden_size,
-                                                                         relcat_config=config,
-                                                                         model_config=model_config,
-                                                                         ignore_mismatched_sizes=True)
+                                                                        relcat_config=config,
+                                                                        model_config=model_config,
+                                                                        ignore_mismatched_sizes=True)
             print("Loaded HF model : ", config.general["model_name"])
         except Exception as e:
             logging.error("%s", str(e))
             print(
                 "Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
-                                                                         model_size=config.model.hidden_size,
-                                                                         relcat_config=config,
-                                                                         model_config=model_config,
-                                                                         ignore_mismatched_sizes=True)
+                                                                        relcat_config=config,
+                                                                        model_config=model_config,
+                                                                        ignore_mismatched_sizes=True)
 
         rel_cat.model.bert_model.resize_token_embeddings(
             tokenizer.hf_tokenizers.vocab_size)
