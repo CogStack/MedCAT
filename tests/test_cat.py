@@ -645,5 +645,18 @@ def _get_meta_cat(meta_cat_dir):
     return meta_cat
 
 
+class TestLoadingOldWeights(unittest.TestCase):
+    model_pack_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cat = CAT.load_model_pack(cls.model_pack_path)
+        cls.wf = cls.cat.config.linking.weighted_average_function
+
+    def test_can_call_weights(self):
+        res = self.wf(step=1)
+        self.assertIsInstance(res, float)
+
+
 if __name__ == "__main__":
     unittest.main()
