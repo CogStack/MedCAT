@@ -32,7 +32,7 @@ setuptools.setup(
         'jsonpickle~=2.0.0',
         'psutil<6.0.0,>=5.8.0',
         'multiprocess', # seems to work better than standard mp
-        'py2neo==2021.2.3',
+        'py2neo==2021.2.4',
         'aiofiles~=0.8.0',
         'ipywidgets~=7.6.5',
         'xxhash==2.0.2',
