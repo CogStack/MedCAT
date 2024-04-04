@@ -646,12 +646,13 @@ def _get_meta_cat(meta_cat_dir):
 
 
 class TestLoadingOldWeights(unittest.TestCase):
-    model_pack_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
+    cdb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            "..", "examples", "cdb_new.dat")
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.cat = CAT.load_model_pack(cls.model_pack_path)
-        cls.wf = cls.cat.config.linking.weighted_average_function
+        cls.cdb = CDB.load(cls.cdb_path)
+        cls.wf = cls.cdb.config.linking.weighted_average_function
 
     def test_can_call_weights(self):
         res = self.wf(step=1)
