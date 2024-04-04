@@ -647,7 +647,7 @@ def _get_meta_cat(meta_cat_dir):
 
 class TestLoadingOldWeights(unittest.TestCase):
     cdb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                            "..", "examples", "cdb_new.dat")
+                            "..", "examples", "cdb_old_broken_weights_in_config.dat")
 
     @classmethod
     def setUpClass(cls) -> None:
