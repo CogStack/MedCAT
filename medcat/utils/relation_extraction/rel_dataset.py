@@ -4,7 +4,6 @@ from torch.utils.data import Dataset
 from spacy.tokens import Doc
 import pandas
 import torch
-
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.meta_cat.data_utils import Span
@@ -98,7 +97,7 @@ class RelData(Dataset):
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
-    def create_base_relations_from_doc(self, doc: Union[Doc, str], doc_id: str, ent1_ent2_tokens_char_start_pos: List | Tuple = (-1, -1)) -> Dict:
+    def create_base_relations_from_doc(self, doc: Union[Doc, str], doc_id: str, ent1_ent2_tokens_char_start_pos: Union[List,Tuple] = (-1, -1)) -> Dict:
         """  
             doc : SpacyDoc
             window_size : int, Character distance between any two entities start positions.
