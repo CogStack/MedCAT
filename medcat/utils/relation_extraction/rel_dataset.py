@@ -39,8 +39,7 @@ class RelData(Dataset):
         # "label_id", "ent1_type", "ent2_type", "ent1_id", "ent2_id", "ent1_cui", "ent2_cui", "doc_id", "sents"],
         # last column is the actual source text
 
-        df = pandas.read_csv(csv_path, index_col=False,
-                             sep='\t', encoding='utf-8')
+        df = pandas.read_csv(csv_path, index_col=False, encoding='utf-8')
 
         tmp_col_rel_token_col = df.pop("relation_token_span_ids")
 

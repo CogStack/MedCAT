@@ -1,61 +1,86 @@
 import torch
 from torch import nn
-
 from transformers import BertPreTrainedModel
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
+from transformers import BertPreTrainedModel, BertModel, BertConfig
 from transformers.models.bert.configuration_bert import BertConfig
-
 from medcat.config_rel_cat import ConfigRelCAT
 
 
-class BertModel_RelationExtraction(BertPreTrainedModel):
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig, ignore_mismatched_sizes: bool = False):
-        super(BertModel_RelationExtraction, self).__init__(
-            model_config, ignore_mismatched_sizes)
-
+class BertModel_RelationExtraction(nn.Module):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig,
+                 ignore_mismatched_sizes: bool = False):
+        super(BertModel_RelationExtraction, self).__init__()
+        self.config = model_config
         self.relcat_config = relcat_config
         self.model_config = model_config
-        self.bert_model = BertModel(model_config)
+        self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+        for param in self.bert_model.parameters():
+            param.requires_grad = False
         self.drop_out = nn.Dropout(model_config.hidden_dropout_prob)
-
         if relcat_config.general.task == "pretrain":
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
 
-        self.classification_layer = nn.Linear(self.relcat_config.model.model_size, relcat_config.train.nclasses)
+        self.relu = nn.ReLU()
+        # dense layers
+        self.fc1 = nn.Linear(self.relcat_config.model.model_size, self.relcat_config.model.hidden_size)
+        self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
+        self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), relcat_config.train.nclasses)
 
         print("RelCAT Model config: ", self.model_config)
-
-        self.init_weights()  # type: ignore
+        # self.init_weights()  # type: ignore
 
     def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
-        spec_idx = (input_ids == special_tag).nonzero(as_tuple=False)
 
-        # remove duplicate positions (some datasets arent fully clean)
-        initial_list = spec_idx[:, 1].tolist()
+        idx_start = torch.where(input_ids == special_tag[0])
+        idx_end = torch.where(input_ids == special_tag[1])
 
-        pos = [(i, initial_list[i]) for i in range(len(initial_list))]
-        pos_count = {}
-        for i in range(len(pos)):
-            if pos[i][0] not in list(pos_count.keys()):
-                pos_count[pos[i][0]] = [1, [pos[i][0]]]
+        seen = []  # Dictionary to store seen elements and their indices
+        duplicate_indices = []
+
+        for i in range(len(idx_start[0])):
+            if idx_start[0][i] in seen:
+                duplicate_indices.append(i)
             else:
-                pos_count[pos[i][0]][0] += 1
-                pos_count[pos[i][0]][1].append(pos[i][0])
+                seen.append(idx_start[0][i])
 
-        dupe_pos = [i for i in range(
-            len(initial_list)) if pos_count[pos[i][0]][0] != 1]
+        if len(duplicate_indices) > 0:
+            print("Duplicate entities found, removing them...")
+            for idx_remove in duplicate_indices:
+                idx_start_0 = torch.cat((idx_start[0][:idx_remove], idx_start[0][idx_remove + 1:]))
+                idx_start_1 = torch.cat((idx_start[1][:idx_remove], idx_start[1][idx_remove + 1:]))
+                idx_start = (idx_start_0, idx_start_1)
 
-        for i in dupe_pos:
-            spec_idx = torch.cat((spec_idx[:i], spec_idx[(i+1):]))
+        seen = []
+        duplicate_indices = []
 
-        temp = []
-        for idx in spec_idx:
-            temp.append(sequence_output[idx[0]][idx[1]])
+        for i in range(len(idx_end[0])):
+            if idx_end[0][i] in seen:
+                duplicate_indices.append(i)
+            else:
+                seen.append(idx_end[0][i])
 
-        tags_rep = torch.stack(temp, dim=0)
+        if len(duplicate_indices) > 0:
+            print("Duplicate entities found, removing them...")
+            for idx_remove in duplicate_indices:
+                idx_end_0 = torch.cat((idx_end[0][:idx_remove], idx_end[0][idx_remove + 1:]))
+                idx_end_1 = torch.cat((idx_end[1][:idx_remove], idx_end[1][idx_remove + 1:]))
+                idx_end = (idx_end_0, idx_end_1)
 
-        return tags_rep
+        assert len(idx_start[0]) == input_ids.shape[0]
+        assert len(idx_start[0]) == len(idx_end[0])
+        sequence_output_entities = []
+
+        for i in range(len(idx_start[0])):
+            to_append = sequence_output[i, idx_start[1][i] + 1:idx_end[1][i], ]
+
+            # to_append = torch.sum(to_append, dim=0)
+            to_append, _ = torch.max(to_append, axis=0)
+
+            sequence_output_entities.append(to_append)
+        sequence_output_entities = torch.stack(sequence_output_entities)
+        return sequence_output_entities
 
     def output2logits(self, pooled_output, sequence_output, input_ids, e1_e2_start):
         """
@@ -70,17 +95,16 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
         new_pooled_output = pooled_output
 
         if self.relcat_config.general.annotation_schema_tag_ids:
+            annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
+                                          range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
             seq_tags = []
-            for each_tag in self.relcat_config.general.annotation_schema_tag_ids:
+            for each_tags in annotation_schema_tag_ids_:
                 seq_tags.append(self.get_annotation_schema_tag(
-                    sequence_output, input_ids, each_tag))
-                
-           # print(seq_tags)
+                    sequence_output, input_ids, each_tags))
 
             seq_tags = torch.stack(seq_tags, dim=0)
 
             new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
-            new_pooled_output = torch.squeeze(new_pooled_output, dim=1)
         else:
             e1e2_output = []
             temp_e1 = []
@@ -100,9 +124,11 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
             del temp_e2
             del temp_e1
 
-        classification_logits = self.classification_layer(
-            self.drop_out(new_pooled_output))
-
+        x = self.drop_out(new_pooled_output)
+        x = self.fc1(x)
+        x = self.drop_out(x)
+        x = self.fc2(x)
+        classification_logits = self.fc3(x)
         return classification_logits.to(self.relcat_config.general.device)
 
     def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None,
@@ -130,7 +156,8 @@ class BertModel_RelationExtraction(BertPreTrainedModel):
 
         self.bert_model = self.bert_model.to(self.relcat_config.general.device)
 
-        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids,
+        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
+                                       token_type_ids=token_type_ids,
                                        encoder_hidden_states=encoder_hidden_states,
                                        encoder_attention_mask=encoder_attention_mask)
 

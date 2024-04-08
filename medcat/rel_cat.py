@@ -1,12 +1,9 @@
 import json
 import logging
 import os
-
-import torch.nn
 import torch.optim
 import torch
 import torch.nn as nn
-
 from tqdm import tqdm
 from datetime import date, datetime
 from transformers import BertConfig
@@ -16,21 +13,19 @@ from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, cast
+from typing import Iterable, Iterator, cast, List, Any
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
-
+from sklearn.metrics import classification_report, precision_recall_fscore_support,f1_score, confusion_matrix, accuracy_score,ConfusionMatrixDisplay
+import numpy as np
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
-
 from medcat.utils.relation_extraction.utils import create_tokenizer_pretrain,  load_results, load_state, save_results, save_state
-
 from medcat.utils.relation_extraction.rel_dataset import RelData
 
 
 class RelCAT(PipeRunner):
-
     name = "rel_cat"
 
     log = logging.getLogger(__package__)
@@ -73,7 +68,6 @@ class RelCAT(PipeRunner):
         assert self.model_config is not None
         self.model_config.to_json_file(
             os.path.join(save_path, "model_config.json"))
-        
         assert self.tokenizer is not None
         self.tokenizer.save(os.path.join(
             save_path, self.config.general.tokenizer_name))
@@ -106,16 +100,18 @@ class RelCAT(PipeRunner):
         if os.path.exists(tokenizer_path):
             tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
         elif config.general["model_name"]:
-            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general.model_name),
-                                             max_seq_length=config.general.max_seq_length,
-                                             add_special_tokens=config.general.tokenizer_special_tokens
-                                             )
+            tokenizer = TokenizerWrapperBERT(
+                AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general.model_name),
+                max_seq_length=config.general.max_seq_length,
+                add_special_tokens=config.general.tokenizer_special_tokens
+            )
             create_tokenizer_pretrain(tokenizer, tokenizer_path)
         else:
-            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"),
-                                             max_seq_length=config.general.max_seq_length,
-                                             add_special_tokens=config.general.tokenizer_special_tokens
-                                             )
+            tokenizer = TokenizerWrapperBERT(
+                AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"),
+                max_seq_length=config.general.max_seq_length,
+                add_special_tokens=config.general.tokenizer_special_tokens
+            )
 
         model_config = BertConfig()
         model_config_path = os.path.join(load_path, "model_config.json")
@@ -146,6 +142,7 @@ class RelCAT(PipeRunner):
 
         try:
             rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
+                                                                        model_size=config.model.hidden_layers,
                                                                         relcat_config=config,
                                                                         model_config=model_config,
                                                                         ignore_mismatched_sizes=True)
@@ -154,10 +151,11 @@ class RelCAT(PipeRunner):
             logging.error("%s", str(e))
             print(
                 "Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
-            rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
-                                                                        relcat_config=config,
-                                                                        model_config=model_config,
-                                                                        ignore_mismatched_sizes=True)
+            rel_cat.model = BertModel_RelationExtraction.from_pretrained(
+                pretrained_model_name_or_path="bert-base-uncased",
+                relcat_config=config,
+                model_config=model_config,
+                ignore_mismatched_sizes=True)
 
         rel_cat.model.bert_model.resize_token_embeddings(
             tokenizer.hf_tokenizers.vocab_size)
@@ -192,11 +190,22 @@ class RelCAT(PipeRunner):
                 test_data["output_relations"][idx][5] = test_data["labels2idx"][test_data["output_relations"][idx][4]]
         else:
             train_data["output_relations"] = data["output_relations"]
-
         for k, v in data.items():
             if k != "output_relations":
                 train_data[k] = []
                 test_data[k] = []
+        entity_tags_ = self.config.general.annotation_schema_tag_ids
+
+        idx_ = 0
+        for rec in train_data["output_relations"]:
+            index_start_e1 = rec[0].index(entity_tags_[0])
+            index_end_e2 = rec[0].index(entity_tags_[3])
+
+            index_start_e1 = max(0, index_start_e1 - self.config.general.cntx_left)
+            index_end_e2 = min(len(rec[0]), index_end_e2 + self.config.general.cntx_right)
+
+            train_data["output_relations"][idx_][0] = rec[0][index_start_e1:index_end_e2 + 1]
+            idx_ += 1
 
         train_data_label_names = [rec[4]
                                   for rec in train_data["output_relations"]]
@@ -246,21 +255,25 @@ class RelCAT(PipeRunner):
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
         train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
-                                      num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)        
+                                      num_workers=0, collate_fn=self.padding_seq,
+                                      pin_memory=self.config.general.pin_memory)
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,
-                                     num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
+                                     num_workers=0, collate_fn=self.padding_seq,
+                                     pin_memory=self.config.general.pin_memory)
 
         criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
         if self.optimizer is None:
+            parameters = filter(lambda p: p.requires_grad, self.model.parameters())
             self.optimizer = torch.optim.Adam(
-                [{"params": self.model.bert_model.parameters(), "lr": self.config.train.adam_epsilon}])
+                parameters,lr= self.config.train.lr)
 
         if self.scheduler is None:
             self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
-                self.optimizer, milestones=self.config.train.multistep_milestones, gamma=self.config.train.multistep_lr_gamma)
+                self.optimizer, milestones=self.config.train.multistep_milestones,
+                gamma=self.config.train.multistep_lr_gamma)
 
         self.epoch, self.best_f1 = load_state(
             self.model, self.optimizer, self.scheduler, load_best=False, path=checkpoint_path, device=self.device)
@@ -297,13 +310,13 @@ class RelCAT(PipeRunner):
 
             for i, data in enumerate(train_dataloader, 0):
                 self.model.train()
-                self.model.zero_grad()
+                # self.model.zero_grad()
 
                 current_batch_size = len(data[0])
                 token_ids, e1_e2_start, labels, _, _, _ = data
 
                 attention_mask = (
-                    token_ids != self.pad_id).float().to(self.device)
+                        token_ids != self.pad_id).float().to(self.device)
                 token_type_ids = torch.zeros(
                     (token_ids.shape[0], token_ids.shape[1])).long().to(self.device)
                 labels = labels.to(self.device)
@@ -317,11 +330,10 @@ class RelCAT(PipeRunner):
 
                 batch_loss = criterion(
                     classification_logits.view(-1, self.nclasses).to(self.device), labels.squeeze(1))
+                batch_loss.backward()
                 batch_loss = batch_loss / gradient_acc_steps
 
                 total_loss += batch_loss.item() / current_batch_size
-
-                batch_loss.backward()
 
                 batch_acc, _, batch_precision, batch_f1, _, _, batch_stats_per_label = self.evaluate_(
                     classification_logits, labels, ignore_idx=-1)
@@ -337,8 +349,9 @@ class RelCAT(PipeRunner):
                     self.scheduler.step()
 
                 if ((i + 1) % current_batch_size == 0):
-                    self.log.debug("[Epoch: %d, loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f]" %
-                                   (epoch, loss_per_batch[-1], accuracy_per_batch[-1], total_loss / (i + 1), total_loss))
+                    self.log.debug(
+                        "[Epoch: %d, loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f]" %
+                        (epoch, loss_per_batch[-1], accuracy_per_batch[-1], total_loss / (i + 1), total_loss))
 
                 pbar.update(current_batch_size)
 
@@ -346,13 +359,13 @@ class RelCAT(PipeRunner):
 
             if len(loss_per_batch) > 0:
                 losses_per_epoch.append(
-                    sum(loss_per_batch)/len(loss_per_batch))
+                    sum(loss_per_batch) / len(loss_per_batch))
                 self.log.info("Losses at Epoch %d: %.5f" %
                               (epoch, losses_per_epoch[-1]))
 
             if len(accuracy_per_batch) > 0:
                 accuracy_per_epoch.append(
-                    sum(accuracy_per_batch)/len(accuracy_per_batch))
+                    sum(accuracy_per_batch) / len(accuracy_per_batch))
                 self.log.info("Train accuracy at Epoch %d: %.5f" %
                               (epoch, accuracy_per_epoch[-1]))
 
@@ -371,7 +384,8 @@ class RelCAT(PipeRunner):
             f1_per_epoch.append(results['f1'])
 
             self.log.info("Epoch finished, took " + str(datetime.combine(date.today(),
-                          end_time) - datetime.combine(date.today(), start_time)) + " seconds")
+                                                                         end_time) - datetime.combine(date.today(),
+                                                                                                      start_time)) + " seconds")
 
             self.epoch += 1
 
@@ -382,7 +396,7 @@ class RelCAT(PipeRunner):
 
             if (epoch % 1) == 0:
                 save_results({"losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch,
-                             "f1_per_epoch": f1_per_epoch, "epoch": epoch}, file_prefix="train", path=checkpoint_path)
+                              "f1_per_epoch": f1_per_epoch, "epoch": epoch}, file_prefix="train", path=checkpoint_path)
                 save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1, checkpoint_path,
                            model_name=self.config.general.model_name, task=self.task)
 
@@ -426,14 +440,14 @@ class RelCAT(PipeRunner):
                     total_tn += 1
 
             lbl_tp_tn = stat_per_label[label]["tn"] + \
-                stat_per_label[label]["tp"]
+                        stat_per_label[label]["tp"]
 
             lbl_tp_fn = stat_per_label[label]["fn"] + \
-                stat_per_label[label]["tp"]
+                        stat_per_label[label]["tp"]
             lbl_tp_fn = lbl_tp_fn if lbl_tp_fn > 0.0 else 1.0
 
             lbl_tp_fp = stat_per_label[label]["tp"] + \
-                stat_per_label[label]["fp"]
+                        stat_per_label[label]["fp"]
             lbl_tp_fp = lbl_tp_fp if lbl_tp_fp > 0.0 else 1.0
 
             stat_per_label[label]["acc"] = lbl_tp_tn / batch_size
@@ -441,11 +455,12 @@ class RelCAT(PipeRunner):
             stat_per_label[label]["recall"] = stat_per_label[label]["tp"] / lbl_tp_fn
 
             lbl_re_pr = stat_per_label[label]["recall"] + \
-                stat_per_label[label]["prec"]
+                        stat_per_label[label]["prec"]
             lbl_re_pr = lbl_re_pr if lbl_re_pr > 0.0 else 1.0
 
             stat_per_label[label]["f1"] = (
-                2 * (stat_per_label[label]["recall"] * stat_per_label[label]["prec"])) / lbl_re_pr
+                                                  2 * (stat_per_label[label]["recall"] * stat_per_label[label][
+                                              "prec"])) / lbl_re_pr
 
         tp_fn = total_fn + total_tp
         tp_fn = tp_fn if tp_fn > 0.0 else 1.0
@@ -481,7 +496,8 @@ class RelCAT(PipeRunner):
 
                 labels = labels.to(self.device)
 
-                model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, Q=None,
+                model_output, pred_classification_logits = self.model(token_ids, token_type_ids=token_type_ids,
+                                                                      attention_mask=attention_mask, Q=None,
                                                                       e1_e2_start=e1_e2_start)
 
                 batch_loss = criterion(pred_classification_logits.view(
@@ -534,12 +550,13 @@ class RelCAT(PipeRunner):
             print(" %s = %0.3f" % (key, results[key]))
         print("----------------------- class stats -----------------------")
         for label_id, stat_dict in final_stats_per_label.items():
-            print("label: %s | f1: %0.3f | prec : %0.3f | acc: %0.3f | recall: %0.3f " % (self.config.general.idx2labels[label_id],
-                                                                                          stat_dict["f1"],
-                                                                                          stat_dict["prec"],
-                                                                                          stat_dict["acc"],
-                                                                                          stat_dict["recall"]
-                                                                                          ))
+            print("label: %s | f1: %0.3f | prec : %0.3f | acc: %0.3f | recall: %0.3f " % (
+                self.config.general.idx2labels[label_id],
+                stat_dict["f1"],
+                stat_dict["prec"],
+                stat_dict["acc"],
+                stat_dict["recall"]
+            ))
         print("-----------------------------------------------------------")
         print("===========================================================")
 
@@ -557,7 +574,8 @@ class RelCAT(PipeRunner):
                 predict_rel_dataset.create_base_relations_from_doc(doc, str(doc_id)), False)
 
             predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False, batch_size=self.config.train.batch_size,
-                                            num_workers=0, collate_fn=self.padding_seq, pin_memory=self.config.general.pin_memory)
+                                            num_workers=0, collate_fn=self.padding_seq,
+                                            pin_memory=self.config.general.pin_memory)
 
             total_rel_found = len(
                 predict_rel_dataset.dataset["output_relations"])
@@ -577,7 +595,8 @@ class RelCAT(PipeRunner):
                         token_ids.shape[0], token_ids.shape[1]).long()
 
                     model_output, pred_classification_logits = self.model(
-                        token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask, e1_e2_start=e1_e2_start)   # type: ignore
+                        token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
+                        e1_e2_start=e1_e2_start)  # type: ignore
 
                     for i, pred_rel_logits in enumerate(pred_classification_logits):
                         rel_idx += 1
@@ -586,14 +605,19 @@ class RelCAT(PipeRunner):
                             pred_rel_logits, dim=0).max(0)
                         predicted_label_id = confidence[1].item()
 
-                        doc._.relations.append({"relation": self.config.general.idx2labels[str(predicted_label_id)], "label_id": predicted_label_id,
-                                                "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][2],
-                                                "ent2_text": predict_rel_dataset.dataset["output_relations"][rel_idx][3],
+                        doc._.relations.append({"relation": self.config.general.idx2labels[str(predicted_label_id)],
+                                                "label_id": predicted_label_id,
+                                                "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][
+                                                    2],
+                                                "ent2_text": predict_rel_dataset.dataset["output_relations"][rel_idx][
+                                                    3],
                                                 "confidence": float("{:.3f}".format(confidence[0])),
                                                 "start_ent_pos": "",
                                                 "end_ent_pos": "",
-                                                "start_entity_id": predict_rel_dataset.dataset["output_relations"][rel_idx][8],
-                                                "end_entity_id":  predict_rel_dataset.dataset["output_relations"][rel_idx][9]})
+                                                "start_entity_id":
+                                                    predict_rel_dataset.dataset["output_relations"][rel_idx][8],
+                                                "end_entity_id":
+                                                    predict_rel_dataset.dataset["output_relations"][rel_idx][9]})
                     pbar.update(len(token_ids))
             pbar.close()
 
