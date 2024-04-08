@@ -349,8 +349,8 @@ class RelData(Dataset):
                                     right_context_start_end_pos = tokenizer_data[
                                         "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
-                                ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
-                                ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
+                                # ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
+                                # ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
 
                                 window_tokenizer_data = self.tokenizer(text[left_context_start_char_pos:right_context_start_end_pos])
                                 # update token loc to match new selection
