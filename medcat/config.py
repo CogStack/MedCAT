@@ -10,13 +10,11 @@ import re
 
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
+from medcat.utils.config_utils import attempt_fix_weighted_average_function
+from medcat.utils.config_utils import weighted_average
 
 
 logger = logging.getLogger(__name__)
-
-
-def weighted_average(step: int, factor: float) -> float:
-    return max(0.1, 1 - (step ** 2 * factor))
 
 
 def workers(workers_override: Optional[int] = None) -> int:
@@ -32,44 +30,9 @@ class FakeDict:
         except AttributeError as e:
             raise KeyError from e
 
-    def _attempt_fix_weighted_average_function(self, waf):
-        try:
-            waf(1)
-            return waf
-        except TypeError:
-            # this means we need to apply the fix
-            return self._fix_waf(waf)
-
-    def _fix_waf(self, waf):
-        if not str(waf.func).startswith("<function weighted_average at "):
-            logger.warning("It seems the value of "
-                           "`config.linking.weighted_average_function` "
-                           "in the config does not work properly. While we "
-                           "are aware of the issue and know how to fix the "
-                           "default value, doing so for arbitrary methods "
-                           "is not trivial. This is the case we've found. "
-                           "The method does not seem to work properly, but "
-                           "it has a non-default value so we are unable to "
-                           "perform a fix for it. This is more than likely "
-                           "to cause the an error when running the pipe. "
-                           "To fix this, change the value of "
-                           "`config.linking.weighted_average_function` "
-                           "manually before using the CAT instance")
-            return waf
-        logging.warning("Fixing config.linking.weighted_average_function "
-                        "since the value saved does not work properly. "
-                        "This is usually due to having loaded a model "
-                        "that was originally saved in older versions of "
-                        "python and thus something has gone wrong when "
-                        "loading the method. This fix should not affect "
-                        "usage, but if you wish to avoid the warning "
-                        "you may want to save the model pack again using "
-                        "a newer version of python (3.11 or later).")
-        return partial(weighted_average, *waf.args, **waf.keywords)
-
     def __setattr__(self, arg: str, val) -> None:
         if isinstance(self, Linking) and arg == "weighted_average_function":
-            val = self._attempt_fix_weighted_average_function(val)
+            val = attempt_fix_weighted_average_function(val)
         super().__setattr__(arg, val)
 
     def __setitem__(self, arg: str, val) -> None:
