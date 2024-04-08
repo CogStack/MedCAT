@@ -1,8 +1,6 @@
 import torch
 from torch import nn
-from transformers import BertPreTrainedModel
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
-from transformers import BertPreTrainedModel, BertModel, BertConfig
 from transformers.models.bert.configuration_bert import BertConfig
 from medcat.config_rel_cat import ConfigRelCAT
 
@@ -11,9 +9,9 @@ class BertModel_RelationExtraction(nn.Module):
     def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig,
                  ignore_mismatched_sizes: bool = False):
         super(BertModel_RelationExtraction, self).__init__()
-        self.config = model_config
         self.relcat_config = relcat_config
         self.model_config = model_config
+
         self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
         for param in self.bert_model.parameters():
             param.requires_grad = False

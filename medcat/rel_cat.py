@@ -13,12 +13,10 @@ from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 from spacy.tokens import Doc
-from typing import Iterable, Iterator, cast, List, Any
+from typing import Iterable, Iterator, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
-from sklearn.metrics import classification_report, precision_recall_fscore_support,f1_score, confusion_matrix, accuracy_score,ConfusionMatrixDisplay
-import numpy as np
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
 from medcat.utils.relation_extraction.utils import create_tokenizer_pretrain,  load_results, load_state, save_results, save_state
@@ -123,7 +121,7 @@ class RelCAT(PipeRunner):
         else:
             try:
                 model_config = BertConfig.from_pretrained(
-                    pretrained_model_name_or_path=config.general.model_name)  # type: ignore
+                    pretrained_model_name_or_path=config.general.model_name, num_hidden_layers=config.model.hidden_layers)  # type: ignore
             except Exception as e:
                 logging.error("%s", str(e))
                 print("Config for HF model not found: ",
@@ -141,8 +139,7 @@ class RelCAT(PipeRunner):
         ) and config.general.device != "cpu" else "cpu")
 
         try:
-            rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
-                                                                        model_size=config.model.hidden_layers,
+            rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.general["model_name"],
                                                                         relcat_config=config,
                                                                         model_config=model_config,
                                                                         ignore_mismatched_sizes=True)
@@ -151,7 +148,7 @@ class RelCAT(PipeRunner):
             logging.error("%s", str(e))
             print(
                 "Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
-            rel_cat.model = BertModel_RelationExtraction.from_pretrained(
+            rel_cat.model = BertModel_RelationExtraction(
                 pretrained_model_name_or_path="bert-base-uncased",
                 relcat_config=config,
                 model_config=model_config,
@@ -268,10 +265,10 @@ class RelCAT(PipeRunner):
         if self.optimizer is None:
             parameters = filter(lambda p: p.requires_grad, self.model.parameters())
             self.optimizer = torch.optim.Adam(
-                parameters,lr= self.config.train.lr)
+                parameters,lr=self.config.train.lr)
 
         if self.scheduler is None:
-            self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            self.scheduler=torch.optim.lr_scheduler.MultiStepLR(
                 self.optimizer, milestones=self.config.train.multistep_milestones,
                 gamma=self.config.train.multistep_lr_gamma)
 
@@ -458,9 +455,7 @@ class RelCAT(PipeRunner):
                         stat_per_label[label]["prec"]
             lbl_re_pr = lbl_re_pr if lbl_re_pr > 0.0 else 1.0
 
-            stat_per_label[label]["f1"] = (
-                                                  2 * (stat_per_label[label]["recall"] * stat_per_label[label][
-                                              "prec"])) / lbl_re_pr
+            stat_per_label[label]["f1"] = (2 * (stat_per_label[label]["recall"] * stat_per_label[label]["prec"])) / lbl_re_pr
 
         tp_fn = total_fn + total_tp
         tp_fn = tp_fn if tp_fn > 0.0 else 1.0
