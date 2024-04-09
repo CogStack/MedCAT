@@ -24,16 +24,16 @@ class Vocab(object):
         self.vec_index2word: Dict = {}
         self.unigram_table: np.ndarray = np.array([])
 
-    def inc_or_add(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None):
+    def inc_or_add(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None) -> None:
         """Add a word or incrase its count.
 
         Args:
             word(str):
                 Word to be added
-            cnt(int, optional):
+            cnt(int):
                 By how much should the count be increased, or to what
                 should it be set if a new word. (Default value = 1)
-            vec(Optional[np.ndarray], optional):
+            vec(Optional[np.ndarray]):
                 Word vector (Default value = None)
         """
         if word not in self.vocab:
@@ -70,13 +70,13 @@ class Vocab(object):
             if self.vocab[word]['vec'] is not None:
                 self.vec_index2word[ind] = word
 
-    def inc_wc(self, word: str, cnt: int = 1):
+    def inc_wc(self, word: str, cnt: int = 1) -> None:
         """Incraese word count by cnt.
 
         Args:
             word(str):
                 For which word to increase the count
-            cnt(int, optional):
+            cnt(int):
                 By how muhc to incrase the count (Default value = 1)
         """
         self.item(word)['cnt'] += cnt
@@ -100,7 +100,7 @@ class Vocab(object):
         """Reset the count for all word to cnt.
 
         Args:
-            cnt(int, optional):
+            cnt(int):
                 New count for all words in the vocab. (Default value = 1)
         """
         for word in self.vocab.keys():
@@ -123,11 +123,11 @@ class Vocab(object):
         Args:
             word(str):
                 The word to be added, it should be lemmatized and lowercased
-            cnt(int, optional):
+            cnt(int):
                 Count of this word in your dataset (Default value = 1)
-            vec(Optional[np.ndarray], optional):
+            vec(Optional[np.ndarray]):
                 The vector representation of the word (Default value = None)
-            replace(bool, optional):
+            replace(bool):
                 Will replace old vector representation (Default value = True)
         """
         if word not in self.vocab:
@@ -158,7 +158,7 @@ class Vocab(object):
         Args:
             path(str):
                 path to the file with words and vectors
-            replace(bool, optional):
+            replace(bool):
                 existing words in the vocabulary will be replaced (Default value = True)
         """
         with open(path) as f:
@@ -177,7 +177,7 @@ class Vocab(object):
         in details.
 
         Args:
-            table_size(int, optional):
+            table_size (int):
                 The size of the table (Defaults to 100 000 000)
         """
         freqs = []
@@ -203,10 +203,13 @@ class Vocab(object):
         """Get N negative samples.
 
         Args:
-            n(int, optional):
+            n (int):
                 How many words to return (Default value = 6)
-            ignore_punct_and_num(bool, optional):
+            ignore_punct_and_num (bool):
                 Whether to ignore punctuation and numbers. (Default value = False)
+
+        Raises:
+            Exception: If no unigram table is present.
 
         Returns:
             List[int]:
