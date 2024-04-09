@@ -10,13 +10,11 @@ import re
 
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
+from medcat.utils.config_utils import attempt_fix_weighted_average_function
+from medcat.utils.config_utils import weighted_average
 
 
 logger = logging.getLogger(__name__)
-
-
-def weighted_average(step: int, factor: float) -> float:
-    return max(0.1, 1 - (step ** 2 * factor))
 
 
 def workers(workers_override: Optional[int] = None) -> int:
@@ -32,6 +30,10 @@ class FakeDict:
         except AttributeError as e:
             raise KeyError from e
 
+    def __setattr__(self, arg: str, val) -> None:
+        if isinstance(self, Linking) and arg == "weighted_average_function":
+            val = attempt_fix_weighted_average_function(val)
+        super().__setattr__(arg, val)
 
     def __setitem__(self, arg: str, val) -> None:
         setattr(self, arg, val)
