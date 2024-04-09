@@ -141,7 +141,10 @@ class MixingConfig(FakeDict):
 
         Args:
             path(str): the path to the config file
-            extractor(ValueExtractor, optional):  (Default value = _DEFAULT_EXTRACTOR)
+            extractor(ValueExtractor):  (Default value = _DEFAULT_EXTRACTOR)
+
+        Raises:
+            ValueError: In case of unknown attribute.
         """
         with open(path, 'r') as f:
             for line in f:
@@ -231,7 +234,7 @@ class MixingConfig(FakeDict):
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, Field]: The dictionary of the field names and fields
+            Dict[str, ModelField]: The dictionary of the field names and fields
         """
         return cast(BaseModel, self).__fields__
 
@@ -592,3 +595,10 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=True)
         self.hash = hasher.hexdigest()
         return self.hash
+
+
+# NOTE: This is done so `pydoctest` can recognise the correct argument
+#       I would rather not have to do this but I did not find a different
+#       workaround
+LinkingFilters.merge_with.__annotations__["other"] = LinkingFilters
+LinkingFilters.copy_of.__annotations__["return"] = LinkingFilters
