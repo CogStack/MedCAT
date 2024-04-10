@@ -49,6 +49,7 @@ class RelCAT(PipeRunner):
         self.is_cuda_available = torch.cuda.is_available()
         self.device = torch.device(
             "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
+        
         self.model_config = BertConfig()
         self.model: BertModel_RelationExtraction
         self.task = task
@@ -71,18 +72,18 @@ class RelCAT(PipeRunner):
         self.config.save(os.path.join(save_path, "config.json"))
 
         assert self.model_config is not None
+        self.model_config.vocab_size = self.tokenizer.hf_tokenizers.vocab_size
         self.model_config.to_json_file(
             os.path.join(save_path, "model_config.json"))
         
         assert self.tokenizer is not None
-        self.tokenizer.save(os.path.join(
-            save_path, self.config.general.tokenizer_name))
+        self.tokenizer.save(os.path.join(save_path))
 
         assert self.model is not None
-        save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1,
-                   save_path, self.config.general.model_name,
-                   self.task, is_checkpoint=False
-                   )
+        self.model.bert_model.resize_token_embeddings(self.tokenizer.hf_tokenizers.vocab_size)
+        save_state(self.model, optimizer=self.optimizer, scheduler=self.scheduler, epoch=self.epoch, best_f1=self.best_f1,
+                    path=save_path, model_name=self.config.general.model_name,
+                    task=self.task, is_checkpoint=False, final_export=True)
 
     @classmethod
     def load(cls, load_path: str = "./") -> "RelCAT":
@@ -92,26 +93,35 @@ class RelCAT(PipeRunner):
             cdb = CDB.load(os.path.join(load_path, "cdb.dat"))
         else:
             print("The default CDB file name 'cdb.dat' doesn't exist in the specified path, you will need to load & set \
-                          a CDB manually via rel_cat.cdb = CDB.load('path') ")
+                a CDB manually via rel_cat.cdb = CDB.load('path') ")
 
         config_path = os.path.join(load_path, "config.json")
         config = ConfigRelCAT()
         if os.path.exists(config_path):
             config = cast(ConfigRelCAT, ConfigRelCAT.load(
                 os.path.join(load_path, "config.json")))
+            print("Loaded config.json")
 
         tokenizer = None
         tokenizer_path = os.path.join(load_path, config.general.tokenizer_name)
 
+        if "bert" in config.general.tokenizer_name:
+            tokenizer_path = load_path
+
         if os.path.exists(tokenizer_path):
             tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
-        elif config.general["model_name"]:
+            print("Tokenizer loaded from:" + tokenizer_path)
+        elif config.general.model_name:
+            print("Attempted to load Tokenizer from path:" + tokenizer_path + \
+                ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:" + config.general.model_name)
             tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general.model_name),
                                              max_seq_length=config.general.max_seq_length,
                                              add_special_tokens=config.general.tokenizer_special_tokens
                                              )
             create_tokenizer_pretrain(tokenizer, tokenizer_path)
         else:
+            print("Attempted to load Tokenizer from path:" + tokenizer_path + \
+                ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:bert-base-uncased")
             tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"),
                                              max_seq_length=config.general.max_seq_length,
                                              add_special_tokens=config.general.tokenizer_special_tokens
@@ -119,6 +129,8 @@ class RelCAT(PipeRunner):
 
         model_config = BertConfig()
         model_config_path = os.path.join(load_path, "model_config.json")
+
+        model_config.vocab_size = len(tokenizer.hf_tokenizers)
 
         if os.path.exists(model_config_path):
             print("Loaded config from : ", model_config_path)
@@ -138,17 +150,27 @@ class RelCAT(PipeRunner):
         model_config.vocab_size = tokenizer.hf_tokenizers.vocab_size
 
         rel_cat = cls(cdb=cdb, config=config,
-                      tokenizer=tokenizer, task=config.general.task)
+                    tokenizer=tokenizer,
+                    task=config.general.task)
+        
         rel_cat.model_config = model_config
 
         device = torch.device("cuda" if torch.cuda.is_available(
         ) and config.general.device != "cpu" else "cpu")
-
+        
         try:
-            rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
-                                                                        relcat_config=config,
-                                                                        model_config=model_config,
-                                                                        ignore_mismatched_sizes=True)
+            from transformers.models.bert.modeling_bert import BertModel
+            model_path = os.path.join(load_path, "model.dat")
+
+            if os.path.exists(os.path.join(load_path, config.general["model_name"])):
+                rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=config.general["model_name"],
+                                                                            relcat_config=config,
+                                                                            model_config=model_config,
+                                                                            ignore_mismatched_sizes=True)
+            else:
+                rel_cat.model = BertModel_RelationExtraction("", config, model_config, ignore_mismatched_sizes=True)
+                rel_cat.model.load_state_dict(torch.load(model_path, map_location=device))
+
             print("Loaded HF model : ", config.general["model_name"])
         except Exception as e:
             logging.error("%s", str(e))
@@ -161,9 +183,6 @@ class RelCAT(PipeRunner):
 
         rel_cat.model.bert_model.resize_token_embeddings(
             tokenizer.hf_tokenizers.vocab_size)
-
-        rel_cat.model = torch.nn.DataParallel(rel_cat.model)  # type: ignore
-        rel_cat.model = rel_cat.model.to(device)  # type: ignore
 
         rel_cat.optimizer = None
         rel_cat.scheduler = None
@@ -384,7 +403,7 @@ class RelCAT(PipeRunner):
                 save_results({"losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch,
                              "f1_per_epoch": f1_per_epoch, "epoch": epoch}, file_prefix="train", path=checkpoint_path)
                 save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1, checkpoint_path,
-                           model_name=self.config.general.model_name, task=self.task)
+                           model_name=self.config.general.model_name, task=self.task, is_checkpoint=True)
 
     def evaluate_(self, output_logits, labels, ignore_idx):
         # ignore index (padding) when calculating accuracy

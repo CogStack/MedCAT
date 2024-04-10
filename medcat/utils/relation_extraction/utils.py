@@ -8,6 +8,7 @@ from pandas.core.series import Series
 from medcat.config_rel_cat import ConfigRelCAT
 
 from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 
 
 def load_bin_file(file_name, path="./") -> Any:
@@ -21,21 +22,25 @@ def save_bin_file(file_name, data, path="./"):
         pickle.dump(data, f)
 
 
-def save_state(model, optimizer, scheduler, epoch, best_f1, path="./", model_name="BERT", task="train", is_checkpoint=True):
+def save_state(model: BertModel_RelationExtraction, optimizer=None, scheduler=None, epoch=None, best_f1=None, path="./", model_name="BERT", task="train", is_checkpoint=False, final_export=False):
 
     model_name = model_name.replace("/", "_")
     file_name = "%s_checkpoint_%s.dat" % (task, model_name)
 
     if not is_checkpoint:
         file_name = "%s_best_%s.dat" % (task, model_name)
+        if final_export:
+            file_name = "model.dat"
+            torch.save(model.state_dict(), os.path.join(path, file_name))
 
-    torch.save({
-        'epoch': epoch,
-        'state_dict': model.state_dict(),
-        'best_f1':  best_f1,
-        'optimizer': optimizer.state_dict(),
-        'scheduler': scheduler.state_dict()
-    }, os.path.join(path, file_name))
+    if is_checkpoint:
+        torch.save({
+            'epoch': epoch,
+            'state_dict': model.state_dict(),
+            'best_f1':  best_f1,
+            'optimizer': optimizer.state_dict(),
+            'scheduler': scheduler.state_dict()
+        }, os.path.join(path, file_name))
 
 
 def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()):
@@ -45,7 +50,7 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
     checkpoint_path = os.path.join(
         path, file_prefix + "_checkpoint_%s.dat" % model_name)
     best_path = os.path.join(
-        path, file_prefix + "_model_best_%s.dat" % model_name)
+        path, file_prefix + "_best_%s.dat" % model_name)
     start_epoch, best_f1, checkpoint = 0, 0, None
 
     if load_best is True and os.path.isfile(best_path):
@@ -119,6 +124,10 @@ def put_blanks(relation_data: List, blanking_threshold: float = 0.5):
 
 
 def create_tokenizer_pretrain(tokenizer, tokenizer_path):
+    """
+        This method simply adds special tokens that we enouncter 
+    """
+
     tokenizer.hf_tokenizers.add_tokens(
         ["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
     tokenizer.hf_tokenizers.add_tokens(

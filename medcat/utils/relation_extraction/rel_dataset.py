@@ -165,8 +165,7 @@ class RelData(Dataset):
                 if ent2_right_ent_context_token_pos_end >= doc_length - 1:
                     ent2_right_ent_context_token_pos_end = doc_length - 2
                 else:
-                    right_context_start_end_pos = tokenizer_data[
-                        "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
+                    right_context_start_end_pos = tokenizer_data["offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
                 ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
                 ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
@@ -274,7 +273,7 @@ class RelData(Dataset):
                     if self.config.general.lowercase:
                         text = text.lower()
 
-                    tokenizer_data = self.tokenizer(text)
+                    tokenizer_data = self.tokenizer(text, truncation=False)
 
                     doc_length_tokens = len(tokenizer_data["tokens"])
 
@@ -333,6 +332,7 @@ class RelData(Dataset):
 
                                 ent1_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_start_start_pos
                                                         in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
+                                
                                 ent2_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_end_start_pos
                                                         in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
 
@@ -353,9 +353,6 @@ class RelData(Dataset):
                                 else:
                                     right_context_start_end_pos = tokenizer_data[
                                         "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
-
-                                ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
-                                ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
 
                                 window_tokenizer_data = self.tokenizer(text[left_context_start_char_pos:right_context_start_end_pos])
                 

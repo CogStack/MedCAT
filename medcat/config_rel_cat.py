@@ -17,7 +17,7 @@ class General(MixingConfig, BaseModel):
     """Number of tokens to take from the right of the concept"""
     window_size: int = 300
     """Max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)"""
-    tokenizer_name: str = "BERT_tokenizer_relation_extraction"
+    tokenizer_name: str = "bert"
     model_name: str = "bert-base-uncased"
     log_level: int = logging.INFO
     max_seq_length: int = 512
