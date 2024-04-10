@@ -595,10 +595,3 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=True)
         self.hash = hasher.hexdigest()
         return self.hash
-
-
-# NOTE: This is done so `pydoctest` can recognise the correct argument
-#       I would rather not have to do this but I did not find a different
-#       workaround
-LinkingFilters.merge_with.__annotations__["other"] = LinkingFilters
-LinkingFilters.copy_of.__annotations__["return"] = LinkingFilters

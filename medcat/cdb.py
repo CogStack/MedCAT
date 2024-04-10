@@ -939,16 +939,3 @@ or download the compatible model."""
         self._hash = hasher.hexdigest()
         logger.info("Found new CDB hash: %s", self._hash)
         return self._hash
-
-
-# NOTE: This is done so `pydoctest` can recognise the correct argument
-#       I would rather not have to do this but I did not find a different
-#       workaround
-CDB.import_training.__annotations__["cdb"] = CDB
-# NOTE: This is done so `pydoctest` can parse the return type.
-#       Apparently it doesn't like semicolons in docstrings,
-#       so this will remove them from the relevant part in
-#       the Returns: part of the docstring
-__SPLITTER = "Returns:\n            Dict:"
-__SPLIT = CDB.most_similar.__doc__.split(__SPLITTER)
-CDB.most_similar.__doc__ = __SPLITTER.join((__SPLIT[0], __SPLIT[1].replace(":", "")))
