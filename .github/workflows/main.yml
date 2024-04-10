@@ -33,7 +33,7 @@ jobs:
           flake8 medcat
       - name: Docstring signatures
         run: |
-          pydoctest --include-paths "medcat/**/*.py"
+          darglint medcat/**/*.py
       - name: Test
         run: |
           timeout 17m python -m unittest discover
