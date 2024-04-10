@@ -873,7 +873,7 @@ class CAT(object):
 
         Raises:
             ValueError: If attempting to retain filters with while training over multiple projects.
-                
+
         Returns:
             Tuple: Consisting of the following parts
                 fp (dict):
@@ -1629,7 +1629,7 @@ class CAT(object):
                     out_ent['end'] = ent.end_char
                     for addl in addl_info:
                         tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
-                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
+                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) is set else tmp
                     out_ent['id'] = ent._.id
                     out_ent['meta_anns'] = {}
 
@@ -1682,9 +1682,9 @@ class CAT(object):
 
     @staticmethod
     def _get_doc_annotations(doc: Doc):
-        if type(doc['annotations']) == list:  # type: ignore
+        if type(doc['annotations']) is list:  # type: ignore
             return doc['annotations']  # type: ignore
-        if type(doc['annotations']) == dict:  # type: ignore
+        if type(doc['annotations']) is dict:  # type: ignore
             return doc['annotations'].values()  # type: ignore
         return None
 
