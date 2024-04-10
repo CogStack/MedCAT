@@ -102,7 +102,7 @@ class CDBMaker(object):
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)
 
         Returns:
-            medcat.cdb.CDB: CDB with the new concepts added.
+            CDB: CDB with the new concepts added.
         """
 
         useful_columns = ['cui', 'name', 'ontologies', 'name_status', 'type_ids', 'description']
