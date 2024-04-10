@@ -190,8 +190,6 @@ class Pipe(object):
                 Defaults to max(mp.cpu_count() - 1, 1).
             batch_size (int):
                 The number of texts to buffer. Defaults to 1000.
-            total (int):
-                The number of texts in total.
 
         Returns:
             Generator[Doc]:
@@ -255,7 +253,11 @@ class Pipe(object):
 
     @property
     def spacy_nlp(self) -> Language:
-        """The spaCy Language object."""
+        """The spaCy Language object.
+
+        Returns:
+            Language: The spacy model/language.
+        """
         return self._nlp
 
     @staticmethod

@@ -192,7 +192,7 @@ class ContextModel(object):
             cui (str): The CUI to train.
             entity (Span): The entity we're at.
             doc (Doc): The document within which we're working.
-            negative (bool). Whether or not the example is negative. Defaults to False.
+            negative (bool): Whether or not the example is negative. Defaults to False.
             names (List[str]/Dict):
                 Optionally used to update the `status` of a name-cui pair in the CDB.
         """
