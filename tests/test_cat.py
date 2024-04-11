@@ -120,9 +120,13 @@ class CATTests(unittest.TestCase):
         self.assertEqual({'entities': {}, 'tokens': []}, out[3])
 
     def test_train(self):
+        with tempfile.TemporaryDirectory() as temp_file:
+            self._test_train(temp_file)
+
+    def _test_train(self, temp_file: str):
         ckpt_steps = 2
         nepochs = 3
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_dir_path = temp_file
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps)
         self.undertest.cdb.print_stats()
         self.undertest.train(["The dog is not a house"] * 20, nepochs=nepochs, checkpoint=checkpoint)
@@ -133,10 +137,14 @@ class CATTests(unittest.TestCase):
         self.assertEqual(f"checkpoint-{ckpt_steps}-{nepochs * 20}", checkpoints[0])
 
     def test_resume_training(self):
+        with tempfile.TemporaryDirectory() as temp_file:
+            self._test_resume_training(temp_file)
+
+    def _test_resume_training(self, temp_file: str):
         nepochs_train = 1
         nepochs_retrain = 1
         ckpt_steps = 3
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_dir_path = temp_file
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps, max_to_keep=sys.maxsize)
         self.undertest.cdb.print_stats()
         self.undertest.train(["The dog is not a house"] * 20,
@@ -165,15 +173,23 @@ class CATTests(unittest.TestCase):
         self.assertTrue("checkpoint-%s-39" % ckpt_steps in checkpoints)
 
     def test_resume_training_on_absent_checkpoints(self):
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        with tempfile.TemporaryDirectory() as temp_dir_name:
+            self._test_resume_training_on_absent_checkpoints(temp_dir_name)
+
+    def _test_resume_training_on_absent_checkpoints(self, temp_dir_name):
+        ckpt_dir_path = temp_dir_name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path)
         with self.assertRaises(Exception) as e:
             self.undertest.train(["The dog is not a house"] * 40, checkpoint=checkpoint, is_resumed=True)
         self.assertEqual("Checkpoints not found. You need to train from scratch.", str(e.exception))
 
     def test_train_keep_n_checkpoints(self):
+        with tempfile.TemporaryDirectory() as temp_dir_name:
+            self._test_train_keep_n_checkpoints(temp_dir_name)
+
+    def _test_train_keep_n_checkpoints(self, temp_dir_name):
         ckpt_steps = 2
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_dir_path = temp_dir_name
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=ckpt_steps, max_to_keep=2)
         self.undertest.cdb.print_stats()
         self.undertest.train(["The dog is not a house"] * 20, checkpoint=checkpoint)
@@ -216,10 +232,14 @@ class CATTests(unittest.TestCase):
         self.assertFalse("text" in out[2])
 
     def test_train_supervised(self):
+        with tempfile.TemporaryDirectory() as temp_file:
+            self._test_train_superivsed(temp_file)
+
+    def _test_train_superivsed(self, temp_file: str):
         nepochs = 3
         num_of_documents = 27
         data_path = self.SUPERVISED_TRAINING_JSON
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_dir_path = temp_file
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
         fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
                                                                                      checkpoint=checkpoint,
@@ -238,11 +258,15 @@ class CATTests(unittest.TestCase):
             self.assertTrue(f"checkpoint-1-{step}" in checkpoints)
 
     def test_resume_supervised_training(self):
+        with tempfile.TemporaryDirectory() as temp_file:
+            self._test_resume_supervised_training(temp_file)
+
+    def _test_resume_supervised_training(self, temp_file: str):
         nepochs_train = 1
         nepochs_retrain = 2
         num_of_documents = 27
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
-        ckpt_dir_path = tempfile.TemporaryDirectory().name
+        ckpt_dir_path = temp_file
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
         self.undertest.train_supervised(data_path,
                                         checkpoint=checkpoint,
@@ -354,45 +378,57 @@ class CATTests(unittest.TestCase):
         self.assertFalse("text" in out[4])
 
     def test_create_model_pack(self):
-        save_dir_path = tempfile.TemporaryDirectory()
+        with tempfile.TemporaryDirectory() as save_dir_path:
+            self._test_create_model_pack(save_dir_path)
+
+    def _test_create_model_pack(self, save_dir_path):
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[_get_meta_cat(self.meta_cat_dir)])
-        full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        pack = [f for f in os.listdir(save_dir_path.name)]
+        full_model_pack_name = cat.create_model_pack(save_dir_path, model_pack_name="mp_name")
+        pack = [f for f in os.listdir(save_dir_path)]
         self.assertTrue(full_model_pack_name in pack)
         self.assertTrue(f'{full_model_pack_name}.zip' in pack)
-        contents = [f for f in os.listdir(os.path.join(save_dir_path.name, full_model_pack_name))]
+        contents = [f for f in os.listdir(os.path.join(save_dir_path, full_model_pack_name))]
         self.assertTrue("cdb.dat" in contents)
         self.assertTrue("vocab.dat" in contents)
         self.assertTrue("model_card.json" in contents)
         self.assertTrue("meta_Status" in contents)
-        with open(os.path.join(save_dir_path.name, full_model_pack_name, "model_card.json")) as file:
+        with open(os.path.join(save_dir_path, full_model_pack_name, "model_card.json")) as file:
             model_card = json.load(file)
         self.assertTrue("MedCAT Version" in model_card)
 
     def test_load_model_pack(self):
-        save_dir_path = tempfile.TemporaryDirectory()
+        with tempfile.TemporaryDirectory() as save_dir_path:
+            self._test_load_model_pack(save_dir_path)
+
+    def _test_load_model_pack(self, save_dir_path):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
-        full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        full_model_pack_name = cat.create_model_pack(save_dir_path, model_pack_name="mp_name")
+        cat = CAT.load_model_pack(os.path.join(save_dir_path, f"{full_model_pack_name}.zip"))
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(repr(cat._meta_cats), repr([meta_cat]))
 
     def test_load_model_pack_without_meta_cat(self):
-        save_dir_path = tempfile.TemporaryDirectory()
+        with tempfile.TemporaryDirectory() as save_dir_path:
+            self._test_load_model_pack_without_meta_cat(save_dir_path)
+
+    def _test_load_model_pack_without_meta_cat(self, save_dir_path):
         meta_cat = _get_meta_cat(self.meta_cat_dir)
         cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
-        full_model_pack_name = cat.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"), load_meta_models=False)
+        full_model_pack_name = cat.create_model_pack(save_dir_path, model_pack_name="mp_name")
+        cat = CAT.load_model_pack(os.path.join(save_dir_path, f"{full_model_pack_name}.zip"), load_meta_models=False)
         self.assertTrue(isinstance(cat, CAT))
         self.assertIsNotNone(cat.config.version.medcat_version)
         self.assertEqual(cat._meta_cats, [])
 
     def test_hashing(self):
-        save_dir_path = tempfile.TemporaryDirectory()
-        full_model_pack_name = self.undertest.create_model_pack(save_dir_path.name, model_pack_name="mp_name")
-        cat = CAT.load_model_pack(os.path.join(save_dir_path.name, f"{full_model_pack_name}.zip"))
+        with tempfile.TemporaryDirectory() as save_dir_path:
+            self._test_hashing(save_dir_path)
+
+    def _test_hashing(self, save_dir_path):
+        full_model_pack_name = self.undertest.create_model_pack(save_dir_path, model_pack_name="mp_name")
+        cat = CAT.load_model_pack(os.path.join(save_dir_path, f"{full_model_pack_name}.zip"))
         self.assertEqual(cat.get_hash(), cat.config.version.id)
 
     def test_print_stats(self):
@@ -607,6 +643,20 @@ def _get_meta_cat(meta_cat_dir):
     json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "mct_export_for_meta_cat_test.json")
     meta_cat.train(json_path, save_dir_path=meta_cat_dir)
     return meta_cat
+
+
+class TestLoadingOldWeights(unittest.TestCase):
+    cdb_path = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                            "..", "examples", "cdb_old_broken_weights_in_config.dat")
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(cls.cdb_path)
+        cls.wf = cls.cdb.config.linking.weighted_average_function
+
+    def test_can_call_weights(self):
+        res = self.wf(step=1)
+        self.assertIsInstance(res, float)
 
 
 if __name__ == "__main__":
