@@ -1,5 +1,5 @@
 import html
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Set
 
 from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
@@ -42,7 +42,15 @@ def get_important_config_parameters(config):
     return cnf
 
 
-def to_json_simple(docs, cdb: CDB) -> Dict:
+def cui2tuis(cdb: CDB, cui: str) -> Set[str]:
+    return cdb.cui2type_ids[cui]
+
+
+def tui2name(cdb: CDB, tui: str) -> str:
+    return cdb.addl_info['type_id2name'].get(tui, tui)
+
+
+def to_json_simple(docs, cdb: CDB) -> List[Dict]:
     """
     output:  [{'text': <text>, 'entities': [<start,end,type>, ]}]
 
@@ -51,16 +59,16 @@ def to_json_simple(docs, cdb: CDB) -> Dict:
         cdb (CDB): The concept database
 
     Returns:
-        Dict: The output dict.
+        List[Dict]: The output dict.
     """
     d = []
 
     for doc in docs:
-        d.append({'text': doc.text, 'entities': [(e.start_char, e.end_char, cdb.tui2name[cdb.cui2tui[e.label_]]) for e in doc._.ents]})
+        d.append({'text': doc.text, 'entities': [(e.start_char, e.end_char, [tui2name(cdb, tui) for tui in cui2tuis(cdb, e)]) for e in doc._.ents]})
     return d
 
 
-def to_json_sumithra(docs, cdb: CDB) -> Dict:
+def to_json_sumithra(docs, cdb: CDB) -> List[List]:
     """
     output:  [
               [ text, {'entities': [<start,end,type>, ]} ],
@@ -71,12 +79,12 @@ def to_json_sumithra(docs, cdb: CDB) -> Dict:
         cdb (CDB): The concept database
 
     Returns:
-        Dict: The output dict.
+        List[List]: The output list.
     """
     d = []
 
     for doc in docs:
-        d.append([doc.text, {'entities': [(e.start_char, e.end_char, cdb.tui2name[cdb.cui2tui[e.label_]]) for e in doc._.ents]}])
+        d.append([doc.text, {'entities': [(e.start_char, e.end_char, [tui2name(cdb, tui) for tui in cui2tuis(cdb, e)]) for e in doc._.ents]}])
 
     return d
 
@@ -378,7 +386,7 @@ def snomed_to_icd10(cdb: CDB, csv_path: str):
     df = pd.read_csv(csv_path)
 
     for _, row in df.iterrows():
-        icd = str(row['icd10'])
+        icd_str = str(row['icd10'])
         name = str(row['name'])
 
         if "S-" in str(row['cui']):
@@ -387,8 +395,8 @@ def snomed_to_icd10(cdb: CDB, csv_path: str):
             cui = "S-" + str(row['cui'])
 
 
-        if cui in cdb.cui2names and icd is not None and icd != 'nan' and len(icd) > 0:
-            icd = {'chapter': icd, 'name': name}
+        if cui in cdb.cui2names and icd_str is not None and icd_str != 'nan' and len(icd_str) > 0:
+            icd = {'chapter': icd_str, 'name': name}
 
             if 'icd10' in cdb.cui2info[cui]:
                 cdb.cui2info[cui]['icd10'].append(icd)
@@ -418,10 +426,10 @@ def snomed_to_desc(cdb: CDB, csv_path: str):
         # Check do we have this concept at all
         if cui in cdb.cui2names:
             # If yes add description
-            if cui not in cdb.cui2desc:
-                cdb.cui2desc[cui] = str(desc)
-            elif str(desc) not in str(cdb.cui2desc[cui]):
-                cdb.cui2desc[cui] = str(cdb.cui2desc[cui]) + "\n\n" + str(desc)
+            if cui not in cdb.cui2preferred_name:
+                cdb.cui2preferred_name[cui] = str(desc)
+            elif str(desc) not in str(cdb.cui2preferred_name[cui]):
+                cdb.cui2preferred_name[cui] = str(cdb.cui2preferred_name[cui]) + "\n\n" + str(desc)
 
 
 def filter_only_icd10(doc, cat):

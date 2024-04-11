@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Iterator
+from typing import Optional, Iterator, Union
 from pathlib import Path
 from gensim.models import Word2Vec
 from medcat.vocab import Vocab
@@ -146,14 +146,20 @@ class MakeVocab(object):
             vector_size (int): Vector size for Word2Vec. Defaults to 300.
             unigram_table_size (int): Unigram table size for vocab. Defaults to 100_000_000.
 
+        Raises:
+            ValueError: In case of unknown input.
+
         Returns:
             Word2Vec: A trained word2vec model.
         """
         if w2v is None:
-            if data_iter is None:
+            data: Union[Iterator, SimpleIter]
+            if data_iter is None and in_path:
                 data = SimpleIter(in_path)
-            else:
+            elif data_iter is not None:
                 data = data_iter
+            else:
+                raise ValueError(f"Unknown input: data iter: {repr(data_iter)} and path: {repr(in_path)}")
             w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, vector_size=vector_size, epochs=epochs)
 
         for word in w2v.wv.key_to_index.keys():

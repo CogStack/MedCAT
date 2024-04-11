@@ -20,17 +20,17 @@ def loosely_match_enum(e_type: Type[ENUM], name: str) -> ENUM:
     """
     _key_err = None
     try:
-        return cast(e_type, e_type[name])
+        return cast(ENUM, e_type[name])
     except KeyError as key_err:
         _key_err = key_err
     name = name.lower()
     try:
-        return cast(e_type, e_type[name])
+        return cast(ENUM, e_type[name])
     except KeyError:
         pass
     name = name.upper()
     try:
-        return cast(e_type, e_type[name])
+        return cast(ENUM, e_type[name])
     except KeyError:
         pass
     raise _key_err

@@ -62,14 +62,14 @@ def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
     return x, cpos, y
 
 
-def predict(model: nn.Module, data: List[List[Tuple[List[int], int, Optional[int]]]],
+def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
             config: ConfigMetaCAT) -> Tuple:
     """Predict on data used in the meta_cat.pipe
 
     Args:
         model (nn.Module):
             The model.
-        data (List[List[Tuple[List[int], int, Optional[int]]]]):
+        data (List[Tuple[List[int], int, Optional[int]]]):
             Data in the format: [[<input_ids>, <cpos>], ...]
         config (ConfigMetaCAT):
             Configuration for this meta_cat instance.

@@ -1,4 +1,4 @@
-from typing import Optional, List, Set, Tuple
+from typing import Optional, Set, Iterable, Iterator
 import re
 import spacy
 from medcat.pipeline.pipe_runner import PipeRunner
@@ -54,14 +54,14 @@ class BasicSpellChecker(object):
         else:
             return None
 
-    def candidates(self, word: str) -> List[str]:
+    def candidates(self, word: str) -> Iterable[str]:
         """Generate possible spelling corrections for word.
 
         Args:
             word (str): The word.
 
         Returns:
-            List[str]: The list of candidate words.
+            Iterable[str]: The list of candidate words.
         """
         if self.config.general.spell_check_deep:
             # This will check a two letter edit distance
@@ -70,11 +70,11 @@ class BasicSpellChecker(object):
             # Will check only one letter edit distance
             return self.known([word]) or self.known(self.edits1(word)) or [word]
 
-    def known(self, words: List[str]) -> Set[str]:
+    def known(self, words: Iterable[str]) -> Set[str]:
         """The subset of `words` that appear in the dictionary of WORDS.
 
         Args:
-            words (List[str]): The words.
+            words (Iterable[str]): The words.
 
         Returns:
             Set[str]: The set of candidates.
@@ -102,14 +102,14 @@ class BasicSpellChecker(object):
         inserts    = [L + c + R               for L, R in splits for c in letters]
         return set(deletes + transposes + replaces + inserts)
 
-    def edits2(self, word: str) -> Tuple[str]:
+    def edits2(self, word: str) -> Iterator[str]:
         """All edits that are two edits away from `word`.
 
         Args:
             word (str): The word to start from.
 
         Returns:
-            Tuple[str]: All 2-away edits.
+            Iterator[str]: All 2-away edits.
         """
         return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
 

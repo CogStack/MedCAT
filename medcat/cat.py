@@ -616,7 +616,7 @@ class CAT(object):
 
         cuis = [cui]
         if preprocessed_name:
-            names = {name: 'nothing'}
+            names = {name: {'nothing': 'nothing'}}
         else:
             names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
 
