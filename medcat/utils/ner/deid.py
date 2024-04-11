@@ -94,6 +94,9 @@ class DeIdModel(NerModel):
             n_process (Optional[int], optional): Number of processes. Defaults to None.
             batch_size (Optional[int], optional): The size of a batch. Defaults to None.
 
+        Raises:
+            ValueError: In case of unsupported input.
+
         Returns:
             List[str]: List of deidentified documents.
         """

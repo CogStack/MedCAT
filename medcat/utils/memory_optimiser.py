@@ -229,8 +229,8 @@ def _optimise_snames(cdb: CDB, cui2snames: str = 'cui2snames',
 
     Args:
         cdb (CDB): The CDB to optimise snames on.
-        one2many_name (str): The cui2snames dict name to delegate to. Defaults to 'cui2snames'.
-        snames_attr (str, optional): The `snames` attribute name. Defaults to 'snames'.
+        cui2snames (str): The cui2snames dict name to delegate to. Defaults to 'cui2snames'.
+        snames_attr (str): The `snames` attribute name. Defaults to 'snames'.
     """
     delegate = getattr(cdb, cui2snames)
     dvs = DelegatingValueSet(delegate)
@@ -282,9 +282,9 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
 
     Args:
         cdb (CDB): The CDB to modify.
-        optimise_cuis (bool, optional): Whether to optimise cui2<...> dicts. Defaults to True.
-        optimise_names (bool, optional): Whether to optimise name2<...> dicts. Defaults to False.
-        optimise_snames (bool, optional): Whether to optimise `snames` set. Defaults to True.
+        optimise_cuis (bool): Whether to optimise cui2<...> dicts. Defaults to True.
+        optimise_names (bool): Whether to optimise name2<...> dicts. Defaults to False.
+        optimise_snames (bool): Whether to optimise `snames` set. Defaults to True.
     """
     # cui2<...> -> cui2many
     if optimise_cuis:

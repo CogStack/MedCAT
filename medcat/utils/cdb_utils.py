@@ -7,23 +7,26 @@ from medcat.cdb import CDB
 logger = logging.getLogger(__name__) # separate logger from the package-level one
 
 
-def merge_cdb(cdb1: "CDB", 
-            cdb2: "CDB", 
-            overwrite_training: int = 0,
-            full_build: bool = False):
+def merge_cdb(cdb1: CDB, 
+              cdb2: CDB, 
+              overwrite_training: int = 0,
+              full_build: bool = False) -> CDB:
     """Merge two CDB's together to produce a new, single CDB. The contents of inputs CDBs will not be changed.
     `addl_info` can not be perfectly merged, and will prioritise cdb1. see `full_build`
 
-        Args:
-            cdb1 (medcat.cdb.CDB):
-                The first medcat cdb to merge. In cases where merging isn't suitable isn't ideal (such as
-                cui2preferred_name), this cdb values will be prioritised over cdb2.
-            cdb2 (medcat.cdb.CDB):
-                The second medcat cdb to merge.
-            overwrite_training (int):
-                Choose to prioritise a CDB's context vectors values over merging gracefully. 0 - no prio, 1 - CDB1, 2 - CDB2
-            full_build (bool):
-                Add additional information from "addl_info" dicts "cui2ontologies" and "cui2description"
+    Args:
+        cdb1 (CDB):
+            The first medcat cdb to merge. In cases where merging isn't suitable isn't ideal (such as
+            cui2preferred_name), this cdb values will be prioritised over cdb2.
+        cdb2 (CDB):
+            The second medcat cdb to merge.
+        overwrite_training (int):
+            Choose to prioritise a CDB's context vectors values over merging gracefully. 0 - no prio, 1 - CDB1, 2 - CDB2
+        full_build (bool):
+            Add additional information from "addl_info" dicts "cui2ontologies" and "cui2description"
+
+    Returns:
+        CDB: The merged CDB.
     """
     config = deepcopy(cdb1.config)
     cdb = CDB(config)

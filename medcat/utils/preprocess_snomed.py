@@ -319,12 +319,15 @@ class Snomed:
         else:
             return self._refset_df2dict(snomed2icd10df)
 
-    def map_snomed2opcs4(self):
+    def map_snomed2opcs4(self) -> dict:
         """
         This function maps SNOMED CT concepts to OPCS-4 codes using the refset mappings provided in the SNOMED CT release package.
 
         Then it calls the internal function _map_snomed2refset() to get the DataFrame containing the OPCS-4 mappings.
         The function then converts the DataFrame to a dictionary using the internal function _refset_df2dict()
+
+        Raises:
+            AttributeError: If OPCS-4 mappings aren't available.
 
         Returns:
             dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
@@ -391,9 +394,6 @@ class Snomed:
             pd.DataFrame: Dataframe containing SNOMED CT to refset mappings and metadata.
             OR
             tuple: Tuple of dataframes containing SNOMED CT to refset mappings and metadata (ICD-10, OPCS4), if uk_ext is True.
-
-        Raises:
-            FileNotFoundError: If the path to the SNOMED CT directory is incorrect.
         """
         paths, snomed_releases = self._check_path_and_release()
         dfs2merge = []

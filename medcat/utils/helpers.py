@@ -1,4 +1,6 @@
 import html
+from typing import Dict, Tuple, List
+
 from medcat.cdb import CDB
 from medcat.preprocessing.cleaners import clean_name
 from medcat.utils.other import TPL_ENT, TPL_ENTS
@@ -40,21 +42,36 @@ def get_important_config_parameters(config):
     return cnf
 
 
-def to_json_simple(docs, cdb):
+def to_json_simple(docs, cdb: CDB) -> Dict:
     """
     output:  [{'text': <text>, 'entities': [<start,end,type>, ]}]
+
+    Args:
+        docs: The list of documents.
+        cdb (CDB): The concept database
+
+    Returns:
+        Dict: The output dict.
     """
     d = []
 
     for doc in docs:
         d.append({'text': doc.text, 'entities': [(e.start_char, e.end_char, cdb.tui2name[cdb.cui2tui[e.label_]]) for e in doc._.ents]})
+    return d
 
 
-def to_json_sumithra(docs, cdb):
+def to_json_sumithra(docs, cdb: CDB) -> Dict:
     """
     output:  [
               [ text, {'entities': [<start,end,type>, ]} ],
               ...]
+
+    Args:
+        docs: The list of documents.
+        cdb (CDB): The concept database
+
+    Returns:
+        Dict: The output dict.
     """
     d = []
 
@@ -114,8 +131,17 @@ def json2html(doc):
     return out
 
 
-def prepare_name(cat, name, version='CLEAN'):
-    """Cleans up the name."""
+def prepare_name(cat, name, version='CLEAN') -> Tuple[str, List]:
+    """Cleans up the name.
+
+    Args:
+        cat: The model pack.
+        name: The name to prepare.
+        version: The version of prepare to use.
+
+    Returns:
+        Tuple[str, List]: The name and tokens
+    """
     name = clean_name(name)
 
     if version.lower() == 'clean':
@@ -186,7 +212,7 @@ def filter_cdb_by_icd10(cdb: CDB) -> CDB:
     Can be used for snomed orr UMLS CDBs.
 
     Args:
-        CDB: The input CDB
+        cdb (CDB): The input CDB
 
     Returns:
         CDB: The filtered CDB
@@ -256,7 +282,13 @@ def umls_to_icd10_ext(cdb, pickle_path):
                 cdb.cui2info[cui]['icd10'] = [icd10]
 
 
-def umls_to_icd10(cdb, csv_path):
+def umls_to_icd10(cdb: CDB, csv_path: str):
+    """Map UMLS CDB to ICD10 concepts.
+
+    Args:
+        cdb (CDB): The CDB
+        csv_path: The path to the file to load.
+    """
     import pandas as pd
     df = pd.read_csv(csv_path)
 
@@ -283,8 +315,13 @@ def umls_to_icd10(cdb, csv_path):
             logger.warn("Issue at %s", row["CUI"], exc_info=e)
 
 
-def umls_to_snomed(cdb, pickle_path):
-    """Map UMLS CDB to SNOMED concepts."""
+def umls_to_snomed(cdb: CDB, pickle_path):
+    """Map UMLS CDB to SNOMED concepts.
+
+    Args:
+        cdb (CDB): The CDB
+        pickle_path: The path to the file to load.
+    """
     import pickle
 
     data = pickle.load(open(pickle_path, 'rb'))
@@ -304,8 +341,13 @@ def umls_to_snomed(cdb, pickle_path):
                     cdb.cui2info[cui]['snomed'] = [snomed_cui]
 
 
-def snomed_to_umls(cdb, pickle_path):
-    """Map SNOMED CDB to UMLS concepts."""
+def snomed_to_umls(cdb: CDB, pickle_path: str):
+    """Map SNOMED CDB to UMLS concepts.
+
+    Args:
+        cdb (CDB): The concept database.
+        pickle_path (str): The file path.
+    """
     import pickle
 
     data = pickle.load(open(pickle_path, 'rb'))
@@ -325,8 +367,13 @@ def snomed_to_umls(cdb, pickle_path):
                     cdb.cui2info[cui]['umls'] = [umls_cui]
 
 
-def snomed_to_icd10(cdb, csv_path):
-    """Add map from cui to icd10 for concepts."""
+def snomed_to_icd10(cdb: CDB, csv_path: str):
+    """Add map from cui to icd10 for concepts.
+
+    Args:
+        cdb (CDB): The concept database.
+        csv_path (str): The file path.
+    """
     import pandas as pd
     df = pd.read_csv(csv_path)
 
@@ -349,8 +396,13 @@ def snomed_to_icd10(cdb, csv_path):
                 cdb.cui2info[cui]['icd10'] = [icd]
 
 
-def snomed_to_desc(cdb, csv_path):
-    """Add descriptions to the concepts."""
+def snomed_to_desc(cdb: CDB, csv_path: str):
+    """Add descriptions to the concepts.
+
+    Args:
+        cdb (CDB): The concept database.
+        csv_path (str): The file path.
+    """
     import pandas as pd
     df = pd.read_csv(csv_path)
 
