@@ -1263,7 +1263,7 @@ class CAT(object):
 
         # for progress bar
         if hasattr(data, '__len__'):  # Check if data has length
-            total_docs = len(data)
+            total_docs = len(data)  # type: ignore
             iterator = tqdm(data, desc="Processing", unit="batch", total=total_docs, disable=not enabled_progress_bar)
         else:
             total_docs = None
