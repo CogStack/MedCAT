@@ -1,10 +1,9 @@
 from ast import literal_eval
-from typing import Any, Iterable, List, Dict, Tuple
+from typing import Any, Iterable, List, Dict, Tuple, Union
 from torch.utils.data import Dataset
 from spacy.tokens import Doc
 import pandas
 import torch
-
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.meta_cat.data_utils import Span
@@ -39,8 +38,7 @@ class RelData(Dataset):
         # "label_id", "ent1_type", "ent2_type", "ent1_id", "ent2_id", "ent1_cui", "ent2_cui", "doc_id", "sents"],
         # last column is the actual source text
 
-        df = pandas.read_csv(csv_path, index_col=False,
-                             sep='\t', encoding='utf-8')
+        df = pandas.read_csv(csv_path, index_col=False, encoding='utf-8')
 
         tmp_col_rel_token_col = df.pop("relation_token_span_ids")
 
@@ -99,7 +97,7 @@ class RelData(Dataset):
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
-    def create_base_relations_from_doc(self, doc: Doc | str, doc_id: str, ent1_ent2_tokens_char_start_pos: List | Tuple = (-1, -1)) -> Dict:
+    def create_base_relations_from_doc(self, doc: Union[Doc, str], doc_id: str, ent1_ent2_tokens_char_start_pos: Union[List,Tuple] = (-1, -1)) -> Dict:
         """  
             doc : SpacyDoc
             window_size : int, Character distance between any two entities start positions.
@@ -128,7 +126,6 @@ class RelData(Dataset):
         doc_length = len(tokenizer_data["tokens"])
 
         if ent1_ent2_tokens_char_start_pos != (-1, -1):
-            
             ent1_token_start_pos, ent2_token_start_pos = ent1_ent2_tokens_char_start_pos[0],\
                                                 ent1_ent2_tokens_char_start_pos[1]
             # add + 1 to the pos cause of [CLS]
@@ -370,12 +367,10 @@ class RelData(Dataset):
                                         "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
                                 window_tokenizer_data = self.tokenizer(text[left_context_start_char_pos:right_context_start_end_pos])
-                
                                 # update token loc to match new selection
                                 ent2_token_start_pos = ent2_token_start_pos - ent1_token_start_pos
                                 ent1_token_start_pos = self.ent_context_left if ent1_token_start_pos - self.ent_context_left > 0 else ent1_token_start_pos
                                 ent2_token_start_pos += ent1_token_start_pos
-                                
                                 ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
                                 en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
                                 en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]

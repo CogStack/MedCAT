@@ -36,9 +36,10 @@ class Model(MixingConfig, BaseModel):
     """The model part of the RelCAT config"""
     input_size: int = 300
     hidden_size: int = 768
+    hidden_layers: int = 3
     """ hidden_size * 5, 5 being the number of tokens, default (s1,s2,e1,e2+CLS)"""
     model_size: int = 5120
-    dropout: float = 0.1
+    dropout: float = 0.2
     num_directions: int = 2
     """2 - bidirectional model, 1 - unidirectional"""
 
@@ -59,8 +60,8 @@ class Train(MixingConfig, BaseModel):
     """Number of classes that this model will output"""
     batch_size: int = 25
     nepochs: int = 1
-    lr: float = 1e-5
-    adam_epsilon: float = 1e-8
+    lr: float = 1e-4
+    adam_epsilon: float = 1e-4
     test_size: float = 0.2
     gradient_acc_steps: int = 1
     multistep_milestones: List[int] = [
