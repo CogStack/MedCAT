@@ -1258,10 +1258,18 @@ class CAT(object):
             annotated_ids = []
             part_counter = 0
 
+        # for progress bar
+        if hasattr(data, '__len__'):  # Check if data has length
+            total_docs = len(data)
+            iterator = tqdm(data, desc="Processing", unit="batch", total=total_docs)
+        else:
+            total_docs = None
+            iterator = tqdm(data, desc="Processing", unit="batch")
+
         docs = {}
         _start_time = time.time()
         _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
-        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+        for batch in self._batch_generator(iterator, batch_size_chars, skip_ids=set(annotated_ids)):
             logger.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
                           len(annotated_ids),
                           len(batch),
@@ -1288,6 +1296,8 @@ class CAT(object):
                     del docs
                     docs = {}
                     _batch_counter = 0
+                if total_docs is not None:
+                    iterator.set_postfix({"Processed": len(annotated_ids), "Total": total_docs})
             except Exception as e:
                 logger.warning("Failed an outer batch in the multiprocessing script")
                 logger.warning(e, exc_info=True, stack_info=True)

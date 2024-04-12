@@ -61,18 +61,32 @@ class CATTests(unittest.TestCase):
     def test_callable_with_single_none_text(self):
         self.assertIsNone(self.undertest(None))
 
+    
+    in_data_mp = [
+        (1, "The dog is sitting outside the house and second csv."),
+        (2, ""),
+        (3, None)
+    ]
+
     def test_multiprocessing(self):
-        in_data = [
-            (1, "The dog is sitting outside the house and second csv."),
-            (2, ""),
-            (3, None)
-        ]
+        in_data = self.in_data_mp
+        self._helper_mp(in_data)
+    
+    def _helper_mp(self, in_data):
         out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1)
 
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))
         self.assertEqual(0, len(out[2]['entities']))
         self.assertEqual(0, len(out[3]['entities']))
+
+    def test_multiprocessing_with_generator(self):
+        # NOTE: generators won't have full use of 
+        #       the same progress bar functionality
+        #       but we're still hoping they would work in general
+        in_generator = (part for part in self.in_data_mp)
+        self._helper_mp(in_generator)
+
 
     def test_multiprocessing_pipe(self):
         in_data = [
