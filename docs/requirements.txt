@@ -30,7 +30,7 @@ frozenlist==1.4.0
 fsspec==2023.6.0
 gensim==4.3.2
 huggingface-hub==0.17.3
-idna==3.4
+idna==3.7
 ipython==8.16.1
 ipywidgets==8.1.1
 jedi==0.19.1
