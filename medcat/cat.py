@@ -1471,6 +1471,11 @@ class CAT(object):
                     with lock:
                         out_list.extend(out)
                     # Stop a process if there is not enough memory left
+                    logger.warning("Stopping multiprocessing because there is no enough memory available. "
+                                   "Currently %4.2f MB of memory (out of %7.5f GB) memory (a fraction of %3.2f) "
+                                   "is available but a minimum of %3.2f proportion is required. "
+                                   "If you believe you have enough memory, you can change the `min_free_memory` "
+                                   "keyword argument to something lower.")
                     break
 
                 data = in_q.get()
