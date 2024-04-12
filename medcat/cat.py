@@ -1189,7 +1189,8 @@ class CAT(object):
                                         separate_nn_components: bool = True,
                                         out_split_size_chars: Optional[int] = None,
                                         save_dir_path: str = os.path.abspath(os.getcwd()),
-                                        min_free_memory=0.1) -> Dict:
+                                        min_free_memory=0.1,
+                                        enabled_progress_bar: bool = True) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -1221,6 +1222,8 @@ class CAT(object):
                 should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
                 very large datasets because spacy is not the best with memory management and multiprocessing.
                 Defaults to 0.1.
+            enabled_progress_bar (bool):
+                Whether to enabled the progress bar. Defaults to True.
 
         Returns:
             Dict:
@@ -1261,10 +1264,10 @@ class CAT(object):
         # for progress bar
         if hasattr(data, '__len__'):  # Check if data has length
             total_docs = len(data)
-            iterator = tqdm(data, desc="Processing", unit="batch", total=total_docs)
+            iterator = tqdm(data, desc="Processing", unit="batch", total=total_docs, disable=not enabled_progress_bar)
         else:
             total_docs = None
-            iterator = tqdm(data, desc="Processing", unit="batch")
+            iterator = tqdm(data, desc="Processing", unit="batch", disable=not enabled_progress_bar)
 
         docs = {}
         _start_time = time.time()
