@@ -35,7 +35,7 @@ class RelCAT(PipeRunner):
 
     log = logging.getLogger(__package__)
 
-    def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train"):
+    def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
         self.config = config
         self.tokenizer: TokenizerWrapperBERT = tokenizer
         self.cdb = cdb
@@ -65,6 +65,8 @@ class RelCAT(PipeRunner):
                                         label2_pad_value=-1)
 
         set_all_seeds(config.general.seed)
+        if init_model:
+            self.get_model()
 
     def save(self, save_path: str) -> None:
 
@@ -84,6 +86,12 @@ class RelCAT(PipeRunner):
         save_state(self.model, optimizer=self.optimizer, scheduler=self.scheduler, epoch=self.epoch, best_f1=self.best_f1,
                     path=save_path, model_name=self.config.general.model_name,
                     task=self.task, is_checkpoint=False, final_export=True)
+
+    def get_model(self):
+        self.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path="bert-base-uncased",
+                                                            relcat_config=self.config,
+                                                            model_config=self.model_config,
+                                                            ignore_mismatched_sizes=True)
 
     @classmethod
     def load(cls, load_path: str = "./") -> "RelCAT":
@@ -605,7 +613,7 @@ class RelCAT(PipeRunner):
                             pred_rel_logits, dim=0).max(0)
                         predicted_label_id = confidence[1].item()
 
-                        doc._.relations.append({"relation": self.config.general.idx2labels[str(predicted_label_id)], "label_id": predicted_label_id,
+                        doc._.relations.append({"relation": self.config.general.idx2labels[predicted_label_id], "label_id": predicted_label_id,
                                                 "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][2],
                                                 "ent2_text": predict_rel_dataset.dataset["output_relations"][rel_idx][3],
                                                 "confidence": float("{:.3f}".format(confidence[0])),

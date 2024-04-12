@@ -177,6 +177,7 @@ class Pipe(object):
         self._nlp.add_pipe(component_name, name=name, last=True)
 
         Doc.set_extension('ents', default=[], force=True)
+        Doc.set_extension('relations', default=[], force=True)
         Span.set_extension('confidence', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
         Span.set_extension('cui', default=-1, force=True)

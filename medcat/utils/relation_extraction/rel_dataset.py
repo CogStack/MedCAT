@@ -187,63 +187,78 @@ class RelData(Dataset):
                                            en1_start, en1_end, en2_start, en2_end])
 
         elif isinstance(doc, Doc):
-            for ent1_idx in range(0, len(doc.ents)):
-                ent1_token: Span = doc.ents[ent1_idx]   # type: ignore
 
-                if ent1_token not in chars_to_exclude:
+            _ents = doc.ents if len(doc.ents) > 0 else doc._.ents
+            for ent1_idx in range(0, len(_ents) - 1):
+                
+                ent1_token: Span = _ents[ent1_idx]   # type: ignore
+
+                if str(ent1_token) not in chars_to_exclude:
                     ent1_type_id = list(
                         self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
                     ent1_types = [self.cdb.addl_info['type_id2name'].get(
                         tui, '') for tui in ent1_type_id]
 
-                    ent2pos = ent1_idx
-                    ent1_start = ent1_token.start
+                    ent1pos = ent1_idx
+                    ent2pos = ent1_idx + 1
 
-                    ent1_left_ent_context_token_pos_end = ent1_idx - self.ent_context_left
+                    ent1_start = ent1_token.start
+                    ent1_end = ent1_token.end
+
+                    # get actual token index from the text
+                    _ent1_token_idx = [i for i in range(len(tokenizer_data["offset_mapping"])) if ent1_start in \
+                                        range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
+                                        or ent1_end in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
+                                        ][0]
+
+                    left_context_start_char_pos = 0
+                    ent1_left_ent_context_token_pos_end = _ent1_token_idx - self.ent_context_left
+
                     if ent1_left_ent_context_token_pos_end < 0:
                         ent1_left_ent_context_token_pos_end = 0
+                    else:
+                        left_context_start_char_pos = tokenizer_data["offset_mapping"][ent1_left_ent_context_token_pos_end][0]
 
-                    ent2_right_ent_context_token_pos_end = ent2pos + self.ent_context_right
-                    if ent2_right_ent_context_token_pos_end >= doc_length - 1:
-                        ent2_right_ent_context_token_pos_end = doc_length - 2
+                    for ent2_idx in range(ent2pos, len(_ents)):
+                        ent2_token: Span = _ents[ent2_idx]   # type: ignore
 
-                    left_context_start_char_pos = doc.ents[ent1_left_ent_context_token_pos_end].start
+                        if ent2_token in _ents:
+                             if str(ent2_token) not in chars_to_exclude and str(ent1_token) != str(ent2_token):
+                                ent2_type_id = list(self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
+                                ent2_types = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ent2_type_id]
 
-                    for ent2_idx in range(len(doc.ents[ent2pos:ent2_right_ent_context_token_pos_end])):
-                        ent2pos += 1
+                                ent2_start = ent2_token.start
+                                ent2_end = ent2_token.end
+                                if ent2_start - ent1_start <= self.window_size and ent2_start - ent1_start > 0:
+                                    _ent2_token_idx = [i for i in range(len(tokenizer_data["offset_mapping"])) if ent2_start in \
+                                                        range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
+                                                        or ent2_end in
+                                                        range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
+                                                        ][0]
+                                    
+                                    right_context_start_end_pos = len(doc_text) - 1
+                                    ent2_right_ent_context_token_pos_end = _ent2_token_idx + self.ent_context_right
 
-                        ent2_token: Span = doc.ents[ent2_idx]   # type: ignore
+                                    if ent2_right_ent_context_token_pos_end >= doc_length - 1:
+                                        ent2_right_ent_context_token_pos_end = doc_length - 2
+                                    else:
+                                        right_context_start_end_pos = tokenizer_data["offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
-                        if ent2_token not in chars_to_exclude and ent1_token != ent2_token:
+                                    window_tokenizer_data = self.tokenizer(doc_text[left_context_start_char_pos:right_context_start_end_pos])
 
-                            ent2_type_id = list(
-                                self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
-                            ent2_types = [self.cdb.addl_info['type_id2name'].get(
-                                tui, '') for tui in ent2_type_id]
 
-                            ent2_start = ent2_token.start
-                            if ent2_token != ent1_token and abs(ent2_start - ent1_start) <= self.window_size:
-                                ent2_right_ent_context_token_pos_end = ent2pos + self.ent_context_right
-                                if ent2_right_ent_context_token_pos_end >= doc_length:
-                                    ent2_right_ent_context_token_pos_end = doc_length
+                                    ent2_token_start_pos = _ent2_token_idx - _ent1_token_idx if _ent1_token_idx - self.ent_context_left > 0 else _ent2_token_idx
+                                    ent1_token_start_pos = self.ent_context_left if _ent1_token_idx - self.ent_context_left > 0 else _ent1_token_idx
+                                    ent2_token_start_pos += ent1_token_start_pos
 
-                                right_context_start_end_pos = doc.ents[ent2_right_ent_context_token_pos_end].end
+                                    ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
 
-                                window_tokenizer_data = self.tokenizer(doc_text[left_context_start_char_pos:right_context_start_end_pos])
-                            
-                                # update token loc to match new selection
-                                ent2_token_start_pos = ent2_token_start_pos - ent1_token_start_pos
-                                ent1_token_start_pos = self.ent_context_left if ent1_token_start_pos - self.ent_context_left > 0 else ent1_token_start_pos
-                                ent2_token_start_pos += ent1_token_start_pos
-                                
-                                ent1_ent2_new_start = (ent1_token_start_pos, ent2_token_start_pos)
-                                en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
-                                en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]
-                                
+                                    en1_start, en1_end = window_tokenizer_data["offset_mapping"][ent1_token_start_pos]
+                                    en2_start, en2_end = window_tokenizer_data["offset_mapping"][ent2_token_start_pos]
 
-                                relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1_token, ent2_token, "UNK", self.blank_label_id,
-                                                           ent1_types, ent2_types, ent1_token._.id, ent2_token._.id, ent1_token._.cui, ent2_token._.cui, doc_id, "",
-                                                           en1_start, en1_end, en2_start, en2_end])
+                                    relation_instances.append([window_tokenizer_data["input_ids"], ent1_ent2_new_start, ent1_token, ent2_token, "UNK", self.blank_label_id,
+                                                            ent1_types, ent2_types, ent1_token._.id, ent2_token._.id, ent1_token._.cui, ent2_token._.cui, doc_id, "",
+                                                            en1_start, en1_end, en2_start, en2_end])
 
         return {"output_relations": relation_instances, "nclasses": self.blank_label_id, "labels2idx": {}, "idx2label": {}}
 
