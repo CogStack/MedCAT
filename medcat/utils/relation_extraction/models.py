@@ -20,14 +20,16 @@ class BertModel_RelationExtraction(nn.Module):
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
 
+        self.bert_model.resize_token_embeddings(self.relcat_config.general.vocab_size)
+
         self.relu = nn.ReLU()
+
         # dense layers
         self.fc1 = nn.Linear(self.relcat_config.model.model_size, self.relcat_config.model.hidden_size)
         self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
         self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), relcat_config.train.nclasses)
 
         print("RelCAT Model config: ", self.model_config)
-        # self.init_weights()  # type: ignore
 
     def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
 
@@ -78,6 +80,7 @@ class BertModel_RelationExtraction(nn.Module):
 
             sequence_output_entities.append(to_append)
         sequence_output_entities = torch.stack(sequence_output_entities)
+
         return sequence_output_entities
 
     def output2logits(self, pooled_output, sequence_output, input_ids, e1_e2_start):
@@ -153,7 +156,6 @@ class BertModel_RelationExtraction(nn.Module):
             self.relcat_config.general.device)
 
         self.bert_model = self.bert_model.to(self.relcat_config.general.device)
-
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
                                        encoder_hidden_states=encoder_hidden_states,

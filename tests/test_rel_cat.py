@@ -28,7 +28,12 @@ class RelCATTests(unittest.TestCase):
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=config.general.model_name,
             config=config), add_special_tokens=True)
-        
+
+        SPEC_TAGS = ["[s1]", "[e1]", "[s2]", "[e2]"]
+
+        tokenizer.hf_tokenizers.add_tokens(SPEC_TAGS, special_tokens=True)
+        config.general.annotation_schema_tag_ids = tokenizer.hf_tokenizers.convert_tokens_to_ids(SPEC_TAGS)
+
         cls.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         os.makedirs(cls.tmp_dir, exist_ok=True)
 
@@ -41,26 +46,28 @@ class RelCATTests(unittest.TestCase):
         cls.medcat_rels_csv_path_train = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "medcat_rel_train.csv")
         cls.medcat_rels_csv_path_test = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "medcat_rel_test.csv")
 
-        cls.mct_file_test = json.loads(open(cls.medcat_export_with_rels_path, "r+").read())["projects"][0]["documents"][1]
+        cls.mct_file_test = {}
+        with open(cls.medcat_export_with_rels_path, "r+") as f:
+            cls.mct_file_test = json.loads(f.read())["projects"][0]["documents"][1]
 
         cls.config_rel_cat: ConfigRelCAT = config
-        cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config)
+        cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config, init_model=True)
 
         cls.model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=config.general.model_name)
+        cls.rel_cat.model.bert_model.resize_token_embeddings(tokenizer.hf_tokenizers.vocab_size)
 
         cls.finished = False
 
+
     def test_train_csv_no_tags(self) -> None:
-        self.rel_cat.config.model.model_size = 2304
-        self.rel_cat.model = BertModel_RelationExtraction.from_pretrained(pretrained_model_name_or_path=self.rel_cat.config.general.model_name,
-                                                                        relcat_config=self.rel_cat.config,
-                                                                        model_config=self.model_config,
-                                                                        ignore_mismatched_sizes=True) 
+        
+        self.rel_cat.config.model.model_size = 768
         self.rel_cat.config.train.nclasses = 2
         self.rel_cat.config.train.epochs = 2
         self.rel_cat.config.train.batch_size = 1
+        
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
-        self.rel_cat.save(self.save_model_path) 
+        self.rel_cat.save(self.save_model_path)
 
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path) 
@@ -87,7 +94,6 @@ class RelCATTests(unittest.TestCase):
             doc._.ents.append(entity)
 
         doc = self.rel_cat(doc)
-        
         self.finished = True
 
         assert len(doc._.relations) > 0
