@@ -272,7 +272,7 @@ class RelData(Dataset):
                                                            1: len(doc_text)]
                                         _ent2_token_idx = _ent2_token_idx + 2
 
-                                        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens()
+                                        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(self.config.general.annotation_schema_tag_ids)
                                         doc_text = _pre_e1 + \
                                             annotation_token_text[0] + \
                                             doc_text[ent1_start:ent1_end] + \
@@ -280,8 +280,7 @@ class RelData(Dataset):
                                             annotation_token_text[2] + doc_text[ent2_start:ent2_end] + \
                                             annotation_token_text[3] + _e2_end
 
-                                        ann_tag_token_len = len(
-                                            self.config.general.annotation_schema_tag_ids[0])
+                                        ann_tag_token_len = len(annotation_token_text[0])
 
                                         left_context_start_char_pos = left_context_start_char_pos if left_context_start_char_pos == 0 \
                                             else left_context_start_char_pos - ann_tag_token_len
