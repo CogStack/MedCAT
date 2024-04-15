@@ -1335,7 +1335,7 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components: List = [],
-                               min_free_memory: int = 0.1,
+                               min_free_memory: float = 0.1,
                                min_free_memory_size: Optional[int] = None) -> Dict:
         """Run multiprocessing on one batch.
 
