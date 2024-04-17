@@ -17,6 +17,7 @@ from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
+import humanfriendly
 
 from medcat import __version__
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -1189,7 +1190,8 @@ class CAT(object):
                                         separate_nn_components: bool = True,
                                         out_split_size_chars: Optional[int] = None,
                                         save_dir_path: str = os.path.abspath(os.getcwd()),
-                                        min_free_memory=0.1) -> Dict:
+                                        min_free_memory=0.1,
+                                        min_free_memory_size: Optional[str] = None) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -1220,7 +1222,13 @@ class CAT(object):
                 If set a process will not start unless there is at least this much RAM memory left,
                 should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
                 very large datasets because spacy is not the best with memory management and multiprocessing.
+                If both `min_free_memory` and `min_free_memory_size` are set, a ValueError is raised.
                 Defaults to 0.1.
+            min_free_memory_size (Optional[str]):
+                If set, the process will not start unless there's the specified amount of memory available.
+                For reference, we would recommend at least 5GB of memory for a full SNOMED model. You can use
+                human readable sizes (e.g 2GB, 2000MB and so on). If both `min_free_memory` and
+                `min_free_memory_size` are set, a ValueError is raised. Defaults to None.
 
         Returns:
             Dict:
@@ -1231,6 +1239,16 @@ class CAT(object):
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
                 raise Exception("Please do not use multiprocessing when running a transformer model for NER, run sequentially.")
+
+        if min_free_memory_size is not None and min_free_memory != 0.1:
+            raise ValueError("Unknown minimum memory size. "
+                             f"Provided `min_free_memory`={min_free_memory} "
+                             f"as well as `min_free_memory_size`={min_free_memory_size}. "
+                             "Please only provide one of the two.")
+        if min_free_memory_size:
+            min_free_memory_size_mr = humanfriendly.parse_size(min_free_memory_size)
+        else:
+            min_free_memory_size_mr = None
 
         # Set max document length
         self.pipe.spacy_nlp.max_length = self.config.preprocessing.max_document_length
@@ -1273,7 +1291,8 @@ class CAT(object):
                                                     batch_size_chars=internal_batch_size_chars,
                                                     addl_info=addl_info,
                                                     nn_components=nn_components,
-                                                    min_free_memory=min_free_memory)
+                                                    min_free_memory=min_free_memory,
+                                                    min_free_memory_size=min_free_memory_size_mr)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
                 _batch_counter += 1
@@ -1316,7 +1335,8 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components: List = [],
-                               min_free_memory: int = 0) -> Dict:
+                               min_free_memory: float = 0.1,
+                               min_free_memory_size: Optional[int] = None) -> Dict:
         """Run multiprocessing on one batch.
 
         Args:
@@ -1326,6 +1346,8 @@ class CAT(object):
                 Number of processors. Defaults to 8.
             batch_size_chars (int):
                 Size of a batch in number of characters. Fefaults to 1 000 000.
+            min_free_memory_size (Optional[int]):
+                The minimum human readable memory size required.
 
         Returns:
             Dict:
@@ -1359,6 +1381,7 @@ class CAT(object):
                                     'only_cui': only_cui,
                                     'addl_info': addl_info,
                                     'min_free_memory': min_free_memory,
+                                    'min_free_memory_size': min_free_memory_size,
                                     'lock': lock})
                 p.start()
                 procs.append(p)
@@ -1462,15 +1485,34 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: int, lock: Lock, pid: int = 0, only_cui: bool = False, addl_info: List = []) -> None:
+    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: float,
+                 lock: Lock, min_free_memory_size: Optional[int] = None,
+                 pid: int = 0, only_cui: bool = False, addl_info: List = []) -> None:
+        if min_free_memory_size is not None:
+            # passed as int not str
+            min_free_memory_mr = min_free_memory_size
+        else:
+            min_free_memory_mr = min_free_memory * psutil.virtual_memory().total
         out: List = []
 
         while True:
             if not in_q.empty():
-                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                if psutil.virtual_memory().available < min_free_memory_mr:
                     with lock:
                         out_list.extend(out)
                     # Stop a process if there is not enough memory left
+                    virmem = psutil.virtual_memory()
+                    logger.warning("Stopping multiprocessing because there is no enough memory available. "
+                                   "Currently %s of memory (out of %s) memory (a fraction of %3.2f) "
+                                   "is available but a minimum of %s is required "
+                                   "(from %3.2f fraction or %s specified size). "
+                                   "If you believe you have enough memory, you can change the `min_free_memory` "
+                                   "or `min_free_memory_size` with latter preferred (but not both!) "
+                                   "keyword argument to something lower. For reference, We would recommend a "
+                                   "minimum of 5GB of memory for a full SNOMED model.",
+                                   humanfriendly.format_size(virmem.available), humanfriendly.format_size(virmem.total),
+                                   virmem.available / virmem.total, humanfriendly.format_size(min_free_memory_mr),
+                                   min_free_memory, str(min_free_memory_size))
                     break
 
                 data = in_q.get()
