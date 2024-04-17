@@ -66,15 +66,17 @@ class CATTests(unittest.TestCase):
     def test_callable_with_single_none_text(self):
         self.assertIsNone(self.undertest(None))
 
-    def test_multiprocessing(self):
-        self.assert_mp_works()
+    
+    in_data_mp = [
+        (1, "The dog is sitting outside the house and second csv."),
+        (2, ""),
+        (3, None)
+    ]
 
-    def assert_mp_works(self, **kwargs):
-        in_data = [
-            (1, "The dog is sitting outside the house and second csv."),
-            (2, ""),
-            (3, None)
-        ]
+    def test_multiprocessing(self):
+        self.assert_mp_works(self.in_data_mp)
+
+    def assert_mp_works(self, in_data, **kwargs):
         out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1, **kwargs)
 
         self.assertEqual(3, len(out))
@@ -82,8 +84,15 @@ class CATTests(unittest.TestCase):
         self.assertEqual(0, len(out[2]['entities']))
         self.assertEqual(0, len(out[3]['entities']))
 
+    def test_multiprocessing_with_generator(self):
+        # NOTE: generators won't have full use of 
+        #       the same progress bar functionality
+        #       but we're still hoping they would work in general
+        in_generator = (part for part in self.in_data_mp)
+        self.assert_mp_works(in_generator)
+
     def test_multiprocessing_works_min_memory_size(self):
-        self.assert_mp_works(min_free_memory_size="1GB")
+        self.assert_mp_works(self.in_data_mp, min_free_memory_size="1GB")
 
     def test_mp_fails_incorrect_min_mem(self):
         in_data = [(nr, f"nr:{nr}") for nr in range(4)]

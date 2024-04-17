@@ -1191,7 +1191,8 @@ class CAT(object):
                                         out_split_size_chars: Optional[int] = None,
                                         save_dir_path: str = os.path.abspath(os.getcwd()),
                                         min_free_memory=0.1,
-                                        min_free_memory_size: Optional[str] = None) -> Dict:
+                                        min_free_memory_size: Optional[str] = None,
+                                        enabled_progress_bar: bool = True) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -1229,6 +1230,8 @@ class CAT(object):
                 For reference, we would recommend at least 5GB of memory for a full SNOMED model. You can use
                 human readable sizes (e.g 2GB, 2000MB and so on). If both `min_free_memory` and
                 `min_free_memory_size` are set, a ValueError is raised. Defaults to None.
+            enabled_progress_bar (bool):
+                Whether to enabled the progress bar. Defaults to True.
 
         Returns:
             Dict:
@@ -1276,10 +1279,18 @@ class CAT(object):
             annotated_ids = []
             part_counter = 0
 
+        # for progress bar
+        if hasattr(data, '__len__'):  # Check if data has length
+            total_docs = len(data)  # type: ignore
+            iterator = tqdm(data, desc="Processing", unit="batch", total=total_docs, disable=not enabled_progress_bar)
+        else:
+            total_docs = None
+            iterator = tqdm(data, desc="Processing", unit="batch", disable=not enabled_progress_bar)
+
         docs = {}
         _start_time = time.time()
         _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
-        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+        for batch in self._batch_generator(iterator, batch_size_chars, skip_ids=set(annotated_ids)):
             logger.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
                           len(annotated_ids),
                           len(batch),
@@ -1307,6 +1318,8 @@ class CAT(object):
                     del docs
                     docs = {}
                     _batch_counter = 0
+                if total_docs is not None:
+                    iterator.set_postfix({"Processed": len(annotated_ids), "Total": total_docs})
             except Exception as e:
                 logger.warning("Failed an outer batch in the multiprocessing script")
                 logger.warning(e, exc_info=True, stack_info=True)
