@@ -6,6 +6,7 @@ import tempfile
 import shutil
 import logging
 import contextlib
+import humanfriendly
 from transformers import AutoTokenizer
 from medcat.vocab import Vocab
 from medcat.cdb import CDB, logger as cdb_logger
@@ -45,10 +46,14 @@ class CATTests(unittest.TestCase):
         if os.path.exists(cls.meta_cat_dir):
             shutil.rmtree(cls.meta_cat_dir)
 
+    def setUp(self):
+        self._temp_file = tempfile.NamedTemporaryFile()
+
     def tearDown(self) -> None:
         self.cdb.config.annotation_output.include_text_in_output = False
         # need to make sure linking filters are not retained beyond a test scope
         self.undertest.config.linking.filters = self._linkng_filters.copy_of()
+        self._temp_file.close()
 
     def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
@@ -69,11 +74,10 @@ class CATTests(unittest.TestCase):
     ]
 
     def test_multiprocessing(self):
-        in_data = self.in_data_mp
-        self._helper_mp(in_data)
-    
-    def _helper_mp(self, in_data):
-        out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1)
+        self.assert_mp_works(self.in_data_mp)
+
+    def assert_mp_works(self, in_data, **kwargs):
+        out = self.undertest.multiprocessing_batch_char_size(in_data, nproc=1, **kwargs)
 
         self.assertEqual(3, len(out))
         self.assertEqual(1, len(out[1]['entities']))
@@ -85,8 +89,50 @@ class CATTests(unittest.TestCase):
         #       the same progress bar functionality
         #       but we're still hoping they would work in general
         in_generator = (part for part in self.in_data_mp)
-        self._helper_mp(in_generator)
+        self.assert_mp_works(in_generator)
 
+    def test_multiprocessing_works_min_memory_size(self):
+        self.assert_mp_works(self.in_data_mp, min_free_memory_size="1GB")
+
+    def test_mp_fails_incorrect_min_mem(self):
+        in_data = [(nr, f"nr:{nr}") for nr in range(4)]
+        with self.assertRaises(humanfriendly.InvalidSize):
+            self.undertest.multiprocessing_batch_char_size(in_data, nproc=2, batch_size_chars=10,
+                                                           min_free_memory_size="100nm")
+
+    def test_mp_fails_both_min_mem(self):
+        in_data = [(nr, f"nr:{nr}") for nr in range(4)]
+        with self.assertRaises(ValueError):
+            self.undertest.multiprocessing_batch_char_size(in_data, nproc=2, batch_size_chars=10,
+                                                           min_free_memory_size="10GB",
+                                                           min_free_memory=0.20)
+
+
+    @contextlib.contextmanager
+    def _assert_logs_in_temp_file(self, logger: logging.Logger):
+        # NOTE: The reason I need to do this is because multiprocessing is used
+        #       and because of that I can't use the assertLogs method
+        #       because the in different threads difference instances are used.
+        #       however, if I force to use a file, it should still save on disk
+        handler = logging.FileHandler(self._temp_file.name)
+        logger.addHandler(handler)
+        contents_before = self._temp_file.read()
+        yield
+        logger.removeHandler(handler)
+        contents_after = self._temp_file.read()
+        self.assertNotEqual(contents_before, contents_after)
+
+    def test_mp_logs_failure_all_min_mem(self):
+        in_data = [(nr, f"nr:{nr}") for nr in range(4)]
+        with self._assert_logs_in_temp_file(cat_logger):
+            self.undertest.multiprocessing_batch_char_size(in_data, nproc=2, batch_size_chars=10,
+                                                           min_free_memory_size="100PB")
+
+    def test_mp_logs_failure_min_mem_fraction(self):
+        in_data = [(nr, f"nr:{nr}") for nr in range(4)]
+        with self._assert_logs_in_temp_file(cat_logger):
+            self.undertest.multiprocessing_batch_char_size(in_data, nproc=2, batch_size_chars=10,
+                                                           min_free_memory=1.0)
 
     def test_multiprocessing_pipe(self):
         in_data = [
