@@ -24,12 +24,13 @@ def set_all_seeds(seed: int) -> None:
     random.seed(seed)
 
 
-def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: torch.device, pad_id: int) -> Tuple:
+def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
+                            start_ind: int, end_ind: int, device: torch.device, pad_id: int) -> Tuple:
     """Creates a batch given data and start/end that denote batch size, will also add
     padding and move to the right device.
 
     Args:
-        data (List[List[int], int, Optional[int]]):
+        data (List[Tuple[List[int], int, Optional[int]]]):
             Data in the format: [[<[input_ids]>, <cpos>, Optional[int]], ...], the third column is optional
             and represents the output label
         start_ind (int):
@@ -61,13 +62,16 @@ def create_batch_piped_data(data: List, start_ind: int, end_ind: int, device: to
     return x, cpos, y
 
 
-def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
+def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
+            config: ConfigMetaCAT) -> Tuple:
     """Predict on data used in the meta_cat.pipe
 
     Args:
-        data (List[List[List[int], int]]):
+        model (nn.Module):
+            The model.
+        data (List[Tuple[List[int], int, Optional[int]]]):
             Data in the format: [[<input_ids>, <cpos>], ...]
-        config (medcat.config_meta_cat.ConfigMetaCAT):
+        config (ConfigMetaCAT):
             Configuration for this meta_cat instance.
 
     Returns:
@@ -106,13 +110,16 @@ def predict(model: nn.Module, data: List, config: ConfigMetaCAT) -> Tuple:
     return predictions, confidences
 
 
-def split_list_train_test(data: List, test_size: int, shuffle: bool = True) -> Tuple:
+def split_list_train_test(data: List, test_size: float, shuffle: bool = True) -> Tuple:
     """Shuffle and randomply split data
 
     Args:
-        data
-        test_size
-        shuffle
+        data (List): The data.
+        test_size (float): The test size.
+        shuffle (bool): Whether to shuffle the data. Defaults to True.
+
+    Returns:
+        Tuple: The train data, and the test data.
     """
     if shuffle:
         random.shuffle(data)
@@ -128,11 +135,11 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
     """Prints some basic stats during training
 
     Args:
-        epoch
-        running_loss
-        all_logits
-        y
-        name
+        epoch (int): Number of epochs.
+        running_loss (List): The loss
+        all_logits (List): List of logits
+        y (Any): The y array.
+        name (str): The name of the report. Defaults to Train.
     """
     if all_logits:
         logger.info('Epoch: %d %s %s', epoch, "*"*50, name)
@@ -143,9 +150,16 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     """Trains a LSTM model (for now) with autocheckpoints
 
     Args:
-        data
-        config
-        save_dir_path
+        model (nn.Module): The model
+        data (List): The data.
+        config (ConfigMetaCAT): MetaCAT config.
+        save_dir_path (Optional[str]): The save dir path if required. Defaults to None.
+
+    Returns:
+        Dict: The classification report for the winner.
+
+    Raises:
+        Exception: If auto-save is enabled but no save dir path is provided.
     """
     # Get train/test from data
     train_data, test_data = split_list_train_test(data, test_size=config.train['test_size'], shuffle=config.train['shuffle_data'])
@@ -233,9 +247,13 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     """Evaluate a trained model on the provided data
 
     Args:
-        model
-        data
-        config
+        model (nn.Module): The model.
+        data (List): The data.
+        config (ConfigMetaCAT): The MetaCAT config.
+        tokenizer (TokenizerWrapperBase): The tokenizer.
+
+    Returns:
+        Dict: Results (precision, recall, f1, examples, confusion matrix)
     """
     device = torch.device(config.general['device']) # Create a torch device
     batch_size_eval = config.general['batch_size_eval']

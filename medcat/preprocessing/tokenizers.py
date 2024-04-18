@@ -64,16 +64,19 @@ class WordpieceTokenizer(object):
 
     def tokenize(self, text: str) -> List:
         """Tokenizes a piece of text into its word pieces.
+
         This uses a greedy longest-match-first algorithm to perform tokenization
         using the given vocabulary.
         For example:
           input = "unaffable"
           output = ["un", "##aff", "##able"]
+
         Args:
-          text: A single token or whitespace separated tokens. This should have.
-            already been passed through `BasicTokenizer`.
+            text (str): A single token or whitespace separated tokens. This should have.
+                already been passed through `BasicTokenizer`.
+
         Returns:
-          List: A list of wordpiece tokens.
+            List: A list of wordpiece tokens.
         """
 
         # Why is convert_to_unicode undefined?

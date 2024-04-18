@@ -8,11 +8,11 @@ def tag_skip_and_punct(nlp: Language, name: str, config: Config) -> "_Tagger":
     """Detects and tags spacy tokens that are punctuation and that should be skipped.
 
     Args:
-        nlp (spacy.language.<lng>):
+        nlp (Language):
             The base spacy NLP pipeline.
         name (str):
             The component instance name.
-        config (medcat.config.Config):
+        config (Config):
             Global config for medcat.
 
     Returns:

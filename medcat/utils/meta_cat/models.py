@@ -108,6 +108,22 @@ class BertForMetaAnnotation(BertPreTrainedModel):
         """labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
             Labels for computing the token classification loss. Indices should be in ``[0, ..., config.num_labels -
             1]``.
+
+        Args:
+            input_ids (Optional[torch.LongTensor]): The input IDs. Defaults to None.
+            attention_mask (Optional[torch.FloatTensor]): The attention mask. Defaults to None.
+            token_type_ids (Optional[torch.LongTensor]): Type IDs of the tokens. Defaults to None.
+            position_ids (Optional[torch.LongTensor]): Position IDs. Defaults to None.
+            head_mask (Optional[torch.FloatTensor]): Head mask. Defaults to None.
+            inputs_embeds (Optional[torch.FloatTensor]): Input embeddings. Defaults to None.
+            labels (Optional[torch.LongTensor]): Labels. Defaults to None.
+            center_positions (Optional[Any]): Cennter positions. Defaults to None.
+            output_attentions (Optional[bool]): Output attentions. Defaults to None.
+            output_hidden_states (Optional[bool]): Output hidden states. Defaults to None.
+            return_dict (Optional[bool]): Whether to return a dict. Defaults to None.
+
+        Returns:
+            TokenClassifierOutput: The token classifier output.
         """
         return_dict = return_dict if return_dict is not None else self.config.use_return_dict # type: ignore
 

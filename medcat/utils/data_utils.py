@@ -35,9 +35,18 @@ def count_annotations_project(project: Dict, cnt_per_cui=None) -> Tuple[int, Any
 
 
 def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann: bool = True) -> Dict:
-    """Args:
-        require_annotations:
+    """Load data.
+
+    Args:
+        data_path (str):
+            The path to the data to load.
+        require_annotations (bool):
             This will require anns but on project level, any doc in a project needs anns.
+        order_by_num_ann (bool):
+            Whether to order by number of annoations. Defaults to True.
+
+    Returns:
+        Dict: The loaded data.
     """
     data_candidates = json.load(open(data_path))
     if require_annotations:
@@ -105,7 +114,7 @@ def get_ann_from_doc(document: Dict, start: int, end: int) -> Optional[Dict]:
 def meta_ann_from_ann(ann: Dict, meta_name: Union[Dict, List]) -> Optional[Dict]:
     meta_anns = ann['meta_anns']
     # need for old versions of data
-    if type(meta_anns) == dict:
+    if type(meta_anns) is dict:
         return meta_anns.get(meta_name, None)
     else:
         for meta_ann in meta_anns:
@@ -404,20 +413,24 @@ def check_differences(data_path: str, cat: Any, cntx_size=30, min_acc=0.2, ignor
 def consolidate_double_annotations(data_path: str, out_path: str, require_double: bool = True, require_double_inner: bool = False, meta_anns_to_match: List = []) -> Dict:
     """Consolidated a dataset that was multi-annotated (same documents two times).
 
-    data_path:
-        Output from MedCATtrainer - projects containig the same documents must have the same name.
-    out_path:
-        The consolidated data will be saved here - usually only annotations where both annotators agree
-    require_double (boolean):
-        If True everything must be double annotated, meaning there have to be two projects of the same name for each name. Else, it will
-            also use projects that do not have double annotiations. If this is False, projects that do not have double anns will be
-            included as is, and projects that have will still be checked.
-    require_double_inner (boolean):
-        If False - this will allow some entities to be annotated by only one annotator and not the other, while still requiring
-            annotations to be the same if they exist.
-    meta_anns_to_match (boolean):
-        List of meta annotations that must match for two annotations to be the same. If empty only the mention
-            level will be checked.
+    Args:
+        data_path (str):
+            Output from MedCATtrainer - projects containig the same documents must have the same name.
+        out_path (str):
+            The consolidated data will be saved here - usually only annotations where both annotators agree
+        require_double (bool):
+            If True everything must be double annotated, meaning there have to be two projects of the same name for each name. Else, it will
+                also use projects that do not have double annotiations. If this is False, projects that do not have double anns will be
+                included as is, and projects that have will still be checked.
+        require_double_inner (bool):
+            If False - this will allow some entities to be annotated by only one annotator and not the other, while still requiring
+                annotations to be the same if they exist.
+        meta_anns_to_match (List):
+            List of meta annotations that must match for two annotations to be the same. If empty only the mention
+                level will be checked.
+
+    Returns:
+        Dict: The consolidated annoation.
     """
     d_stats_proj: Dict = {}
     data: Dict = load_data(data_path, require_annotations=True)
@@ -488,7 +501,15 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
 
 
 def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only: bool = False, ignore_if_already_done: bool = False) -> None:
-    """Please just ignore this function, I'm afraid to even look at it."""
+    """Please just ignore this function, I'm afraid to even look at it.
+
+    Args:
+        data_path (str): The data path.
+        cdb (CDB): The concept database.
+        cntx_size (int): The context size. Defaults to 70.
+        status_only (bool): Whether to only consider status. Defaults to False.
+        ignore_if_already_done (bool): Whether to ignore if already done. Defaults to False.
+    """
     data: Dict = json.load(open(data_path))
     name2cui: Dict = {}
     cui2status: Dict = {}
@@ -673,10 +694,12 @@ def validate_ner_data(data_path: str, cdb: CDB, cntx_size: int = 70, status_only
 
 class MetaAnnotationDS(torch.utils.data.Dataset):
     def __init__(self, data: Dict, category_map: Dict):
-        """Args:
-            data:
+        """Create  MetaAnnotationDS.
+
+        Args:
+            data (Dict):
                 Dictionary of data values.
-            category_map:
+            category_map (Dict):
                 Map from category naem to id.
         """
         self.data = data
@@ -773,7 +796,7 @@ def prepare_from_json_chars(data: Dict,
                             if 'meta_anns' in ann:
                                 meta_anns = ann['meta_anns']
 
-                                if type(meta_anns) == dict:
+                                if type(meta_anns) is dict:
                                     meta_anns = list(meta_anns.values())
 
                             # If the annotation is validated
@@ -792,7 +815,18 @@ def prepare_from_json_chars(data: Dict,
 
 
 def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
-    """This is a disaster."""
+    """Make train set.
+
+    This is a disaster.
+
+    Args:
+        data (Dict): The data.
+        cdb (CDB): The concept database.
+        test_size (float): The test size. Defaults to 0.2.
+
+    Returns:
+        Tuple: The train set, the test set, the test annotations, and the total annotations
+    """
     cnts: Dict = {}
     total_anns = 0
     # Count all CUIs
@@ -809,9 +843,9 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
         """
 
         for document in project['documents']:
-            if type(document['annotations']) == list:
+            if type(document['annotations']) is list:
                 doc_annotations = document['annotations']
-            elif type(document['annotations']) == dict:
+            elif type(document['annotations']) is dict:
                 doc_annotations = list(document['annotations'].values())
 
             for ann in doc_annotations:
@@ -863,9 +897,9 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
 
             # Coutn CUIs for this document
             _cnts: Dict = {}
-            if type(document['annotations']) == list:
+            if type(document['annotations']) is list:
                 doc_annotations = document['annotations']
-            elif type(document['annotations']) == dict:
+            elif type(document['annotations']) is dict:
                 doc_annotations = list(document['annotations'].values())
 
             for ann in doc_annotations:
@@ -890,9 +924,9 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
             # Add to test set
             if is_test and np.random.rand() < test_prob:
                 test_project['documents'].append(document)
-                if type(document['annotations']) == list:
+                if type(document['annotations']) is list:
                     doc_annotations = document['annotations']
-                elif type(document['annotations']) == dict:
+                elif type(document['annotations']) is dict:
                     doc_annotations = list(document['annotations'].values())
 
                 for ann in doc_annotations:
@@ -913,9 +947,9 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
 
 
 def get_false_positives(doc: Dict, spacy_doc: Doc) -> List[Span]:
-    if type(doc['annotations']) == list:
+    if type(doc['annotations']) is list:
         truth = set([(ent['start'], ent['cui']) for ent in doc['annotations']])
-    elif type(doc['annotations']) == dict:
+    elif type(doc['annotations']) is dict:
         truth = set([(ent['start'], ent['cui']) for ent in doc['annotations'].values()])
 
     fps = []

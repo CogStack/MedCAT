@@ -17,6 +17,7 @@ from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
 from spacy.language import Language
+import humanfriendly
 
 from medcat import __version__
 from medcat.preprocessing.tokenizers import spacy_split_all
@@ -145,7 +146,11 @@ class CAT(object):
 
     @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
     def get_spacy_nlp(self) -> Language:
-        """Returns the spacy pipeline with MedCAT"""
+        """Returns the spacy pipeline with MedCAT
+
+        Returns:
+            Language: The spacy Language being used.
+        """
         return self.pipe.spacy_nlp
 
     def get_hash(self, force_recalc: bool = False) -> str:
@@ -155,7 +160,7 @@ class CAT(object):
         the hash for which is otherwise only recalculated if it has changed.
 
         Args:
-            force_recalc (bool, optional): Whether to force recalculation. Defaults to False.
+            force_recalc (bool): Whether to force recalculation. Defaults to False.
 
         Returns:
             str: The resulting hash
@@ -232,9 +237,9 @@ class CAT(object):
         Args:
             save_dir_path (str):
                 An id will be appended to this name
-            model_pack_name (str, optional):
+            model_pack_name (str):
                 The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
-            force_rehash (bool, optional):
+            force_rehash (bool):
                 Force recalculation of hash. Defaults to `False`.
             cdb_format (str):
                 The format of the saved CDB in the model pack.
@@ -368,6 +373,9 @@ class CAT(object):
                 Whether to load MetaCAT models if present (Default value True).
             load_addl_ner (bool):
                 Whether to load additional NER models if present (Default value True).
+
+        Returns:
+            CAT: The resulting CAT object.
         """
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
@@ -438,6 +446,7 @@ class CAT(object):
                 to False. To run training it is much better to use the self.train() function
                 but for some special cases I'm leaving it here also.
                 Defaults to `False`.
+
         Returns:
             Optional[Doc]:
                 A single spacy document or multiple spacy documents with the extracted entities
@@ -453,10 +462,11 @@ class CAT(object):
             text = self._get_trimmed_text(str(text))
             return self.pipe(text)  # type: ignore
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Prints the model_card for this CAT instance.
+
         Returns:
-            the 'Model Card' for this CAT instance. This includes NER+L config and any MetaCATs
+            str: the 'Model Card' for this CAT instance. This includes NER+L config and any MetaCATs
         """
         return self.get_model_card(as_dict=False)
 
@@ -473,23 +483,25 @@ class CAT(object):
         Print metrics on a dataset (F1, P, R), it will also print the concepts that have the most FP,FN,TP.
 
         Args:
-            data (list of dict):
+            data (Dict):
                 The json object that we get from MedCATtrainer on export.
             epoch (int):
                 Used during training, so we know what epoch is it.
-            use_project_filters (boolean):
+            use_project_filters (bool):
                 Each project in MedCATtrainer can have filters, do we want to respect those filters
                 when calculating metrics.
-            use_overlaps (boolean):
+            use_overlaps (bool):
                 Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entites.
-            use_cui_doc_limit (boolean):
+            use_cui_doc_limit (bool):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
                 process the set of CUIs changed.
-            use_groups (boolean):
+            use_groups (bool):
                 If True concepts that have groups will be combined and stats will be reported on groups.
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
+            do_print (bool):
+                Whether to print stats out. Defaults to True.
 
         Returns:
             fps (dict):
@@ -508,8 +520,6 @@ class CAT(object):
                 Number of occurrence for each CUI.
             examples (dict):
                 Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
-            do_print (bool):
-                Whether to print stats out. Defaults to True.
         """
         return get_stats(self, data=data, epoch=epoch, use_project_filters=use_project_filters,
                          use_overlaps=use_overlaps, use_cui_doc_limit=use_cui_doc_limit,
@@ -617,6 +627,9 @@ class CAT(object):
                 The CUI from which the `name` will be removed.
             name (str):
                 The span of text to be removed from the linking dictionary.
+            preprocessed_name (bool):
+                Whether the name being used is preprocessed.
+
         Examples:
 
             >>> # To never again link C0020538 to HTN
@@ -625,7 +638,7 @@ class CAT(object):
 
         cuis = [cui]
         if preprocessed_name:
-            names = {name: 'nothing'}
+            names = {name: {'nothing': 'nothing'}}
         else:
             names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
 
@@ -643,9 +656,9 @@ class CAT(object):
                               name: str,
                               spacy_doc: Optional[Doc] = None,
                               spacy_entity: Optional[Union[List[Token], Span]] = None,
-                              ontologies: Set = set(),
+                              ontologies: Set[str] = set(),
                               name_status: str = 'A',
-                              type_ids: Set = set(),
+                              type_ids: Set[str] = set(),
                               description: str = '',
                               full_build: bool = True,
                               negative: bool = False,
@@ -664,14 +677,25 @@ class CAT(object):
                 Spacy representation of the document that was manually annotated.
             spacy_entity (Optional[Union[List[Token], Span]]):
                 Given the spacy document, this is the annotated span of text - list of annotated tokens that are marked with this CUI.
+            ontologies (Set[str]):
+                ontologies in which the concept exists (e.g. SNOMEDCT, HPO)
+            name_status (str):
+                One of `P`, `N`, `A`
+            type_ids (Set[str]):
+                Semantic type identifier (have a look at TUIs in UMLS or SNOMED-CT)
+            description (str):
+                Description of this concept.
+            full_build (bool):
+                If True the dictionary self.addl_info will also be populated, contains a lot of extra information
+                about concepts, but can be very memory consuming. This is not necessary
+                for normal functioning of MedCAT (Default Value `False`).
             negative (bool):
                 Is this a negative or positive example.
-            devalue_others:
+            devalue_others (bool):
                 If set, cuis to which this name is assigned and are not `cui` will receive negative training given
                 that negative=False.
-
-            \*\*other:
-                Refer to medcat.cat.cdb.CDB.add_concept
+            do_add_concept (bool):
+                Whether to add concept to CDB.
         """
         names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
         if not names and cui not in self.cdb.cui2preferred_name and name_status == 'P':
@@ -724,6 +748,9 @@ class CAT(object):
 
         Refer to `train_supervvised_from_json` and/or `train_supervised_raw`
         for further details.
+
+        # noqa: DAR101
+        # noqa: DAR201
         """
         return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
                                                print_stats, use_filters, terminate_last,
@@ -756,6 +783,9 @@ class CAT(object):
         Run supervised training on a dataset from MedCATtrainer in JSON format.
 
         Refer to `train_supervised_raw` for more details.
+
+        # noqa: DAR101
+        # noqa: DAR201
         """
         with open(data_path) as f:
             data = json.load(f)
@@ -776,7 +806,7 @@ class CAT(object):
                              terminate_last: bool = False,
                              use_overlaps: bool = False,
                              use_cui_doc_limit: bool = False,
-                             test_size: int = 0,
+                             test_size: float = 0,
                              devalue_others: bool = False,
                              use_groups: bool = False,
                              never_terminate: bool = False,
@@ -817,7 +847,7 @@ class CAT(object):
         Args:
             data (Dict[str, List[Dict[str, dict]]]):
                 The raw data, e.g from MedCATtrainer on export.
-            reset_cui_count (boolean):
+            reset_cui_count (bool):
                 Used for training with weight_decay (annealing). Each concept has a count that is there
                 from the beginning of the CDB, that count is used for annealing. Resetting the count will
                 significantly increase the training impact. This will reset the count only for concepts
@@ -826,14 +856,14 @@ class CAT(object):
                 Number of epochs for which to run the training.
             print_stats (int):
                 If > 0 it will print stats every print_stats epochs.
-            use_filters (boolean):
+            use_filters (bool):
                 Each project in medcattrainer can have filters, do we want to respect those filters
                 when calculating metrics.
-            terminate_last (boolean):
+            terminate_last (bool):
                 If true, concept termination will be done after all training.
-            use_overlaps (boolean):
+            use_overlaps (bool):
                 Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
-            use_cui_doc_limit (boolean):
+            use_cui_doc_limit (bool):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
                 process the set of CUIs changed.
@@ -842,11 +872,11 @@ class CAT(object):
                 Usually 0.1 is fine.
             devalue_others(bool):
                 Check add_name for more details.
-            use_groups (boolean):
+            use_groups (bool):
                 If True concepts that have groups will be combined and stats will be reported on groups.
-            never_terminate (boolean):
+            never_terminate (bool):
                 If True no termination will be applied
-            train_from_false_positives (boolean):
+            train_from_false_positives (bool):
                 If True it will use false positive examples detected by medcat and train from them as negative examples.
             extra_cui_filter(Optional[Set]):
                 This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
@@ -862,23 +892,28 @@ class CAT(object):
                 a ValueError is raised. The merging is done in the first epoch.
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
+
+        Raises:
+            ValueError: If attempting to retain filters with while training over multiple projects.
+
         Returns:
-            fp (dict):
-                False positives for each CUI.
-            fn (dict):
-                False negatives for each CUI.
-            tp (dict):
-                True positives for each CUI.
-            p (dict):
-                Precision for each CUI.
-            r (dict):
-                Recall for each CUI.
-            f1 (dict):
-                F1 for each CUI.
-            cui_counts (dict):
-                Number of occurrence for each CUI.
-            examples (dict):
-                FP/FN examples of sentences for each CUI.
+            Tuple: Consisting of the following parts
+                fp (dict):
+                    False positives for each CUI.
+                fn (dict):
+                    False negatives for each CUI.
+                tp (dict):
+                    True positives for each CUI.
+                p (dict):
+                    Precision for each CUI.
+                r (dict):
+                    Recall for each CUI.
+                f1 (dict):
+                    F1 for each CUI.
+                cui_counts (dict):
+                    Number of occurrence for each CUI.
+                examples (dict):
+                    FP/FN examples of sentences for each CUI.
         """
         checkpoint = self._init_ckpts(is_resumed, checkpoint)
 
@@ -1040,10 +1075,14 @@ class CAT(object):
 
         Args:
             texts (Union[Iterable[str], Iterable[Tuple]]): Text to be annotated
-            only_cui (bool, optional): Whether to only return CUIs. Defaults to False.
-            addl_info (List[str], optional): Additional info. Defaults to ['cui2icd10', 'cui2ontologies', 'cui2snomed'].
-            n_process (Optional[int], optional): Number of processes. Defaults to None.
-            batch_size (Optional[int], optional): The size of a batch. Defaults to None.
+            only_cui (bool): Whether to only return CUIs. Defaults to False.
+            addl_info (List[str]): Additional info. Defaults to ['cui2icd10', 'cui2ontologies', 'cui2snomed'].
+            n_process (Optional[int]): Number of processes. Defaults to None.
+            batch_size (Optional[int]): The size of a batch. Defaults to None.
+
+        Raises:
+            ValueError: If there's a known issue with multiprocessing.
+            RuntimeError: If there's an unknown issue with multprocessing.
 
         Returns:
             List[Dict]: List of entity documents.
@@ -1093,13 +1132,13 @@ class CAT(object):
 
         return out
 
-    def get_json(self, text: str, only_cui: bool = False, addl_info=['cui2icd10', 'cui2ontologies']) -> str:
+    def get_json(self, text: str, only_cui: bool = False, addl_info: List[str]=['cui2icd10', 'cui2ontologies']) -> str:
         """Get output in json format
 
         Args:
             text (str): Text to be annotated
-            only_cui (bool, optional): Whether to only get CUIs. Defaults to False.
-            addl_info (list, optional): Additional info. Defaults to ['cui2icd10', 'cui2ontologies'].
+            only_cui (bool): Whether to only get CUIs. Defaults to False.
+            addl_info (List[str]): Additional info. Defaults to ['cui2icd10', 'cui2ontologies'].
 
         Returns:
             str: Json with fields {'entities': <>, 'text': text}.
@@ -1141,7 +1180,10 @@ class CAT(object):
         return nn_components
 
     def _run_nn_components(self, docs: Dict, nn_components: List, id2text: Dict) -> None:
-        """This will add meta_anns in-place to the docs dict."""
+        """This will add meta_anns in-place to the docs dict.
+
+        # noqa: DAR101
+        """
         logger.debug("Running GPU components separately")
 
         # First convert the docs into the fake spacy doc format
@@ -1210,7 +1252,9 @@ class CAT(object):
                                         separate_nn_components: bool = True,
                                         out_split_size_chars: Optional[int] = None,
                                         save_dir_path: str = os.path.abspath(os.getcwd()),
-                                        min_free_memory=0.1) -> Dict:
+                                        min_free_memory=0.1,
+                                        min_free_memory_size: Optional[str] = None,
+                                        enabled_progress_bar: bool = True) -> Dict:
         r"""Run multiprocessing for inference, if out_save_path and out_split_size_chars is used this will also continue annotating
         documents if something is saved in that directory.
 
@@ -1226,6 +1270,10 @@ class CAT(object):
             batch_size_chars (int):
                 Size of a batch in number of characters, this should be around: NPROC * average_document_length * 200.
                 Defaults to 1000000.
+            only_cui (bool):
+                Whether to only return the CUIs rather than the full annotations. Dedfaults to False.
+            addl_info (List[str]):
+                The additional information. Defaults to [].
             separate_nn_components (bool):
                 If set the medcat pipe will be broken up into NN and not-NN components and
                 they will be run sequentially. This is useful as the NN components
@@ -1241,7 +1289,19 @@ class CAT(object):
                 If set a process will not start unless there is at least this much RAM memory left,
                 should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
                 very large datasets because spacy is not the best with memory management and multiprocessing.
+                If both `min_free_memory` and `min_free_memory_size` are set, a ValueError is raised.
                 Defaults to 0.1.
+            min_free_memory_size (Optional[str]):
+                If set, the process will not start unless there's the specified amount of memory available.
+                For reference, we would recommend at least 5GB of memory for a full SNOMED model. You can use
+                human readable sizes (e.g 2GB, 2000MB and so on). If both `min_free_memory` and
+                `min_free_memory_size` are set, a ValueError is raised. Defaults to None.
+            enabled_progress_bar (bool):
+                Whether to enabled the progress bar. Defaults to True.
+
+        Raises:
+            Exception: If multiprocessing cannot be done.
+            ValueError: If both free memory specifiers are provided.
 
         Returns:
             Dict:
@@ -1252,6 +1312,16 @@ class CAT(object):
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
                 raise Exception("Please do not use multiprocessing when running a transformer model for NER, run sequentially.")
+
+        if min_free_memory_size is not None and min_free_memory != 0.1:
+            raise ValueError("Unknown minimum memory size. "
+                             f"Provided `min_free_memory`={min_free_memory} "
+                             f"as well as `min_free_memory_size`={min_free_memory_size}. "
+                             "Please only provide one of the two.")
+        if min_free_memory_size:
+            min_free_memory_size_mr = humanfriendly.parse_size(min_free_memory_size)
+        else:
+            min_free_memory_size_mr = None
 
         # Set max document length
         self.pipe.spacy_nlp.max_length = self.config.preprocessing.max_document_length
@@ -1279,10 +1349,18 @@ class CAT(object):
             annotated_ids = []
             part_counter = 0
 
+        # for progress bar
+        if hasattr(data, '__len__'):  # Check if data has length
+            total_docs = len(data)  # type: ignore
+            iterator = tqdm(data, desc="Processing", unit="batch", total=total_docs, disable=not enabled_progress_bar)
+        else:
+            total_docs = None
+            iterator = tqdm(data, desc="Processing", unit="batch", disable=not enabled_progress_bar)
+
         docs = {}
         _start_time = time.time()
         _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
-        for batch in self._batch_generator(data, batch_size_chars, skip_ids=set(annotated_ids)):
+        for batch in self._batch_generator(iterator, batch_size_chars, skip_ids=set(annotated_ids)):
             logger.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
                           len(annotated_ids),
                           len(batch),
@@ -1294,7 +1372,8 @@ class CAT(object):
                                                     batch_size_chars=internal_batch_size_chars,
                                                     addl_info=addl_info,
                                                     nn_components=nn_components,
-                                                    min_free_memory=min_free_memory)
+                                                    min_free_memory=min_free_memory,
+                                                    min_free_memory_size=min_free_memory_size_mr)
                 docs.update(_docs)
                 annotated_ids.extend(_docs.keys())
                 _batch_counter += 1
@@ -1309,6 +1388,8 @@ class CAT(object):
                     del docs
                     docs = {}
                     _batch_counter = 0
+                if total_docs is not None:
+                    iterator.set_postfix({"Processed": len(annotated_ids), "Total": total_docs})
             except Exception as e:
                 logger.warning("Failed an outer batch in the multiprocessing script")
                 logger.warning(e, exc_info=True, stack_info=True)
@@ -1337,7 +1418,8 @@ class CAT(object):
                                only_cui: bool = False,
                                addl_info: List[str] = [],
                                nn_components: List = [],
-                               min_free_memory: int = 0) -> Dict:
+                               min_free_memory: float = 0.1,
+                               min_free_memory_size: Optional[int] = None) -> Dict:
         """Run multiprocessing on one batch.
 
         Args:
@@ -1347,6 +1429,19 @@ class CAT(object):
                 Number of processors. Defaults to 8.
             batch_size_chars (int):
                 Size of a batch in number of characters. Fefaults to 1 000 000.
+            only_cui (bool):
+                Whether to get only CUIs. Defaults to False.
+            addl_info (List[str]):
+                Additional info. Defaults to [].
+            nn_components (List):
+                NN components in case there's a separation. Defaults to [].
+            min_free_memory (float):
+                If set a process will not start unless there is at least this much RAM memory left,
+                should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
+                very large datasets because spacy is not the best with memory management and multiprocessing.
+                Defaults to 0.
+            min_free_memory_size (Optional[int]):
+                The minimum human readable memory size required.
 
         Returns:
             Dict:
@@ -1380,6 +1475,7 @@ class CAT(object):
                                     'only_cui': only_cui,
                                     'addl_info': addl_info,
                                     'min_free_memory': min_free_memory,
+                                    'min_free_memory_size': min_free_memory_size,
                                     'lock': lock})
                 p.start()
                 procs.append(p)
@@ -1433,16 +1529,15 @@ class CAT(object):
 
         Args:
             in_data (Union[List[Tuple], Iterable[Tuple]]): List with format: [(id, text), (id, text), ...]
-            nproc (Optional[int], optional): The number of processors. Defaults to None.
-            batch_size (Optional[int], optional): The number of texts to buffer. Defaults to None.
-            only_cui (bool, optional): Whether to get only CUIs. Defaults to False.
-            addl_info (List[str], optional): Additional info. Defaults to [].
-            return_dict (bool, optional): Flag for returning either a dict or a list of tuples. Defaults to True.
-            batch_factor (int, optional): Batch factor. Defaults to 2.
+            nproc (Optional[int]): The number of processors. Defaults to None.
+            batch_size (Optional[int]): The number of texts to buffer. Defaults to None.
+            only_cui (bool): Whether to get only CUIs. Defaults to False.
+            addl_info (List[str]): Additional info. Defaults to [].
+            return_dict (bool): Flag for returning either a dict or a list of tuples. Defaults to True.
+            batch_factor (int): Batch factor. Defaults to 2.
 
         Raises:
-            ValueError:
-                When number of processes is 0.
+            ValueError: When number of processes is 0.
 
         Returns:
             Union[List[Tuple], Dict]:
@@ -1483,15 +1578,34 @@ class CAT(object):
 
         return out
 
-    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: int, lock: Lock, pid: int = 0, only_cui: bool = False, addl_info: List = []) -> None:
+    def _mp_cons(self, in_q: Queue, out_list: List, min_free_memory: float,
+                 lock: Lock, min_free_memory_size: Optional[int] = None,
+                 pid: int = 0, only_cui: bool = False, addl_info: List = []) -> None:
+        if min_free_memory_size is not None:
+            # passed as int not str
+            min_free_memory_mr = min_free_memory_size
+        else:
+            min_free_memory_mr = min_free_memory * psutil.virtual_memory().total
         out: List = []
 
         while True:
             if not in_q.empty():
-                if psutil.virtual_memory().available / psutil.virtual_memory().total < min_free_memory:
+                if psutil.virtual_memory().available < min_free_memory_mr:
                     with lock:
                         out_list.extend(out)
                     # Stop a process if there is not enough memory left
+                    virmem = psutil.virtual_memory()
+                    logger.warning("Stopping multiprocessing because there is no enough memory available. "
+                                   "Currently %s of memory (out of %s) memory (a fraction of %3.2f) "
+                                   "is available but a minimum of %s is required "
+                                   "(from %3.2f fraction or %s specified size). "
+                                   "If you believe you have enough memory, you can change the `min_free_memory` "
+                                   "or `min_free_memory_size` with latter preferred (but not both!) "
+                                   "keyword argument to something lower. For reference, We would recommend a "
+                                   "minimum of 5GB of memory for a full SNOMED model.",
+                                   humanfriendly.format_size(virmem.available), humanfriendly.format_size(virmem.total),
+                                   virmem.available / virmem.total, humanfriendly.format_size(min_free_memory_mr),
+                                   min_free_memory, str(min_free_memory_size))
                     break
 
                 data = in_q.get()
@@ -1592,7 +1706,7 @@ class CAT(object):
                     out_ent['end'] = ent.end_char
                     for addl in addl_info:
                         tmp = self.cdb.addl_info.get(addl, {}).get(cui, [])
-                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) == set else tmp
+                        out_ent[addl.split("2")[-1]] = list(tmp) if type(tmp) is set else tmp
                     out_ent['id'] = ent._.id
                     out_ent['meta_anns'] = {}
 
@@ -1645,9 +1759,9 @@ class CAT(object):
 
     @staticmethod
     def _get_doc_annotations(doc: Doc):
-        if type(doc['annotations']) == list:  # type: ignore
+        if type(doc['annotations']) is list:  # type: ignore
             return doc['annotations']  # type: ignore
-        if type(doc['annotations']) == dict:  # type: ignore
+        if type(doc['annotations']) is dict:  # type: ignore
             return doc['annotations'].values()  # type: ignore
         return None
 

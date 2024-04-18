@@ -182,12 +182,18 @@ class MultiDescriptor(pydantic.BaseModel):
     @property
     def success(self) -> int:
         """The total number of successes.
+
+        Returns:
+            int: The total number of sucesses.
         """
         return sum(part.success for part in self.parts)
 
     @property
     def fail(self) -> int:
         """The total number of failures.
+
+        Returns:
+            int: The total number of failures.
         """
         return sum(part.fail for part in self.parts)
 

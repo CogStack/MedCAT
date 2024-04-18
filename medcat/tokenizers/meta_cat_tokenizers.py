@@ -70,13 +70,16 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         """Tokenize some text
 
         Args:
-            text (Union(str, List[str])):
+            text (Union[str, List[str]]):
                 Text/texts to be tokenized.
 
         Returns:
-            Union(dict, List[dict]):
+            Union(dict, List[Dict]):
                 Dictionary/ies containing `offset_mapping`, `input_ids` and `tokens` corresponding to the
                 input text/s.
+
+        Raises:
+            Exception: If the input is something other than text or a list of text.
         """
         self.hf_tokenizers = self.ensure_tokenizer()
 

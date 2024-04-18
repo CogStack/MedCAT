@@ -40,6 +40,7 @@ setuptools.setup(
         'blis>=0.7.5', # allow later versions, tested with 0.7.9
         'click>=8.0.4', # allow later versions, tested with 8.1.3
         'pydantic>=1.10.0,<2.0', # for spacy compatibility; avoid 2.0 due to breaking changes
+        "humanfriendly~=10.0",  # for human readable file / RAM sizes
         ],
     classifiers=[
         "Programming Language :: Python :: 3",
