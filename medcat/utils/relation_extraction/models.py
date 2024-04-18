@@ -1,3 +1,5 @@
+import logging
+from typing import Any, Optional
 import torch
 from torch import nn
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
@@ -6,15 +8,22 @@ from medcat.config_rel_cat import ConfigRelCAT
 
 
 class BertModel_RelationExtraction(nn.Module):
+    name = "bertmodel_relcat"
+
+    log = logging.getLogger(__name__)
+
     def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig,
                  ignore_mismatched_sizes: bool = True):
         super(BertModel_RelationExtraction, self).__init__()
-        self.relcat_config = relcat_config
-        self.model_config = model_config
 
-        self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+        self.relcat_config: ConfigRelCAT = relcat_config
+        self.model_config: BertConfig = model_config
+
+        self.bert_model: BertModel = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+
         for param in self.bert_model.parameters():
             param.requires_grad = False
+
         self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
 
         if self.relcat_config.general.task == "pretrain":
@@ -28,7 +37,7 @@ class BertModel_RelationExtraction(nn.Module):
         self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
         self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), self.relcat_config.train.nclasses)
 
-        print("RelCAT Model config: ", self.model_config)
+        self.log.info("RelCAT BertConfig: " + str(self.model_config))
 
     def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
 
@@ -45,7 +54,7 @@ class BertModel_RelationExtraction(nn.Module):
                 seen.append(idx_start[0][i])
 
         if len(duplicate_indices) > 0:
-            print("Duplicate entities found, removing them...")
+            self.log.info("Duplicate entities found, removing them...")
             for idx_remove in duplicate_indices:
                 idx_start_0 = torch.cat((idx_start[0][:idx_remove], idx_start[0][idx_remove + 1:]))
                 idx_start_1 = torch.cat((idx_start[1][:idx_remove], idx_start[1][idx_remove + 1:]))
@@ -61,7 +70,7 @@ class BertModel_RelationExtraction(nn.Module):
                 seen.append(idx_end[0][i])
 
         if len(duplicate_indices) > 0:
-            print("Duplicate entities found, removing them...")
+            self.log.info("Duplicate entities found, removing them...")
             for idx_remove in duplicate_indices:
                 idx_end_0 = torch.cat((idx_end[0][:idx_remove], idx_end[0][idx_remove + 1:]))
                 idx_end_1 = torch.cat((idx_end[1][:idx_remove], idx_end[1][idx_remove + 1:]))
@@ -131,13 +140,22 @@ class BertModel_RelationExtraction(nn.Module):
         classification_logits = self.fc3(x)
         return classification_logits.to(self.relcat_config.general.device)
 
-    def forward(self, input_ids=None, attention_mask=None, token_type_ids=None, position_ids=None,
-                head_mask=None, encoder_hidden_states=None, encoder_attention_mask=None,
-                Q=None, e1_e2_start=None, pooled_output=None):
+    def forward(self,
+                input_ids: Optional[torch.LongTensor] = None,
+                attention_mask: Optional[torch.FloatTensor] = None,
+                token_type_ids: Optional[torch.LongTensor] = None,
+                position_ids: Any = None,
+                head_mask: Any = None,
+                encoder_hidden_states: Any = None,
+                encoder_attention_mask: Any = None,
+                Q: Any = None,
+                e1_e2_start: Any = None,
+                pooled_output: Any = None):
+
         if input_ids is not None:
             input_shape = input_ids.size()
         else:
-            raise ValueError("You have to specify input_ids")
+            self.log.error("You have to specify input_ids")
 
         if attention_mask is None:
             attention_mask = torch.ones(

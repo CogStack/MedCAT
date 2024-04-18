@@ -1,20 +1,36 @@
+from typing import List, Tuple
 import torch
+from torch import Tensor, LongTensor
 from torch.nn.utils.rnn import pad_sequence
 
 
 class Pad_Sequence():
-    """
-    collate_fn for dataloader to collate sequences of different lengths into a fixed length batch
-    Returns padded x sequence, y sequence, x lengths and y lengths of batch
-    """
 
-    def __init__(self, seq_pad_value, label_pad_value=-1, label2_pad_value=-1,
+    def __init__(self, seq_pad_value: int, label_pad_value: int = -1, label2_pad_value: int = -1,
                  ):
-        self.seq_pad_value = seq_pad_value
-        self.label_pad_value = label_pad_value
-        self.label2_pad_value = label2_pad_value
+        """ Used in rel_cat.py in RelCAT to create DataLoaders for train/test datasets.
+            collate_fn for dataloader to collate sequences of different lengths into a fixed length batch
 
-    def __call__(self, batch):
+        Args:
+            padded x sequence, y sequence, x lengths and y lengths of batch
+            seq_pad_value (int): _description_
+            label_pad_value (int, optional): _description_. Defaults to -1.
+            label2_pad_value (int, optional): _description_. Defaults to -1.
+        """
+        self.seq_pad_value: int = seq_pad_value
+        self.label_pad_value: int = label_pad_value
+        self.label2_pad_value: int = label2_pad_value
+
+    def __call__(self, batch: List[torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor, LongTensor, LongTensor, LongTensor]:
+        """
+
+        Args:
+            batch (List[torch.Tensor]): gets the batch of Tensors from RelData(Dataset) and
+            pads the token sequence + labels as needed
+
+        Returns:
+            Tuple[Tensor, Tensor, Tensor, LongTensor, LongTensor, LongTensor]: padded data
+        """
         sorted_batch = sorted(batch, key=lambda x: x[0].shape[0], reverse=True)
         seqs = [x[0] for x in sorted_batch]
         seqs_padded = pad_sequence(

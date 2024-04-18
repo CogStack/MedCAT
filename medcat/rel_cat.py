@@ -53,6 +53,7 @@ class RelCAT(PipeRunner):
         self.tokenizer: TokenizerWrapperBERT = tokenizer
         self.cdb = cdb
 
+        logging.basicConfig(level=self.config.general.log_level)
         self.log.setLevel(self.config.general.log_level)
 
         self.learning_rate = config.train.lr
@@ -139,9 +140,9 @@ class RelCAT(PipeRunner):
         if os.path.exists(tokenizer_path):
             tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
 
-            print("Tokenizer loaded from:" + tokenizer_path)
+            cls.log.info("Tokenizer loaded from:" + tokenizer_path)
         elif config.general.model_name:
-            print("Attempted to load Tokenizer from path:" + tokenizer_path +
+            cls.log.info("Attempted to load Tokenizer from path:" + tokenizer_path +
                   ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:" + config.general.model_name)
             tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general.model_name),
                                              max_seq_length=config.general.max_seq_length,
@@ -149,7 +150,7 @@ class RelCAT(PipeRunner):
                                              )
             create_tokenizer_pretrain(tokenizer, tokenizer_path)
         else:
-            print("Attempted to load Tokenizer from path:" + tokenizer_path +
+            cls.log.info("Attempted to load Tokenizer from path:" + tokenizer_path +
                   ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:bert-base-uncased")
             tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"),
                                              max_seq_length=config.general.max_seq_length,
@@ -160,17 +161,16 @@ class RelCAT(PipeRunner):
         model_config_path = os.path.join(load_path, "model_config.json")
 
         if os.path.exists(model_config_path):
-            print("Loaded config from : ", model_config_path)
-            model_config = BertConfig.from_json_file(
-                model_config_path)  # type: ignore
+            cls.log.info("Loaded config from : " + model_config_path)
+            model_config = BertConfig.from_json_file(model_config_path)  # type: ignore
         else:
             try:
                 model_config = BertConfig.from_pretrained(
                     pretrained_model_name_or_path=config.general.model_name, num_hidden_layers=config.model.hidden_layers)  # type: ignore
             except Exception as e:
-                logging.error("%s", str(e))
-                print("Config for HF model not found: ",
-                      config.general.model_name, ". Using bert-base-uncased.")
+                cls.log.error("%s", str(e))
+                cls.log.info("Config for HF model not found: " +
+                      config.general.model_name + ". Using bert-base-uncased.")
                 model_config = BertConfig.from_pretrained(
                     pretrained_model_name_or_path="bert-base-uncased")  # type: ignore
 
@@ -199,10 +199,10 @@ class RelCAT(PipeRunner):
                 rel_cat.model.load_state_dict(
                     torch.load(model_path, map_location=device))
 
-            print("Loaded HF model : ", config.general["model_name"])
+            cls.log.info("Loaded HF model : " + config.general["model_name"])
         except Exception as e:
-            logging.error("%s", str(e))
-            print(
+            cls.log.error("%s", str(e))
+            cls.log.error(
                 "Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction(
                 pretrained_model_name_or_path="bert-base-uncased",
@@ -259,7 +259,7 @@ class RelCAT(PipeRunner):
     def train(self, export_data_path="", train_csv_path="", test_csv_path="", checkpoint_path="./"):
 
         if self.is_cuda_available:
-            print("Training on device:",
+            self.log.info("Training on device:",
                   torch.cuda.get_device_name(0), self.device)
 
         self.model = self.model.to(self.device)
@@ -413,11 +413,11 @@ class RelCAT(PipeRunner):
 
             end_time = datetime.now().time()
 
-            print(
+            self.log.info(
                 "======================== TRAIN SET TEST RESULTS ========================")
             _ = self.evaluate_results(train_dataloader, self.pad_id)
 
-            print(
+            self.log.info(
                 "======================== TEST SET TEST RESULTS ========================")
             results = self.evaluate_results(test_dataloader, self.pad_id)
 
@@ -583,21 +583,21 @@ class RelCAT(PipeRunner):
             "f1": total_f1
         }
 
-        print("==================== Evaluation Results ===================")
-        print(" no. of batches:", (i + 1))
+        self.log.info("==================== Evaluation Results ===================")
+        self.log.info(" no. of batches:" + str(i + 1))
         for key in sorted(results.keys()):
-            print(" %s = %0.3f" % (key, results[key]))
-        print("----------------------- class stats -----------------------")
+            self.log.info(" %s = %0.3f" % (key, results[key]))
+        self.log.info("----------------------- class stats -----------------------")
         for label_id, stat_dict in final_stats_per_label.items():
-            print("label: %s | f1: %0.3f | prec : %0.3f | acc: %0.3f | recall: %0.3f " % (
+            self.log.info("label: %s | f1: %0.3f | prec : %0.3f | acc: %0.3f | recall: %0.3f " % (
                 self.config.general.idx2labels[label_id],
                 stat_dict["f1"],
                 stat_dict["prec"],
                 stat_dict["acc"],
                 stat_dict["recall"]
             ))
-        print("-----------------------------------------------------------")
-        print("===========================================================")
+        self.log.info("-----------------------------------------------------------")
+        self.log.info("===========================================================")
 
         return results
 
@@ -616,12 +616,11 @@ class RelCAT(PipeRunner):
                                             num_workers=0, collate_fn=self.padding_seq,
                                             pin_memory=self.config.general.pin_memory)
 
-            total_rel_found = len(
-                predict_rel_dataset.dataset["output_relations"])
+            total_rel_found = len(predict_rel_dataset.dataset["output_relations"])
             rel_idx = -1
 
-            print("total relations for doc: ", total_rel_found)
-            print("processing...")
+            self.log.info("total relations for doc: " + str(total_rel_found))
+            self.log.info("processing...")
 
             pbar = tqdm(total=total_rel_found)
 

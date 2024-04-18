@@ -64,6 +64,8 @@ class CAT(object):
         meta_cats (list of medcat.meta_cat.MetaCAT, optional):
             A list of models that will be applied sequentially on each
             detected annotation.
+        rel_cats (list of medcat.rel_cat.RelCAT, optional)
+            List of models applied sequentially on all detected annotations.
 
     Attributes (limited):
         cdb (medcat.cdb.CDB):
