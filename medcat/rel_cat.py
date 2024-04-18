@@ -20,14 +20,33 @@ from torch.utils.data import DataLoader
 from medcat.utils.meta_cat.ml_utils import set_all_seeds, split_list_train_test
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
-from medcat.utils.relation_extraction.utils import create_tokenizer_pretrain,  load_results, load_state, save_results, save_state
+from medcat.utils.relation_extraction.utils import create_tokenizer_pretrain, load_results, load_state, save_results, save_state
 from medcat.utils.relation_extraction.rel_dataset import RelData
 
 
 class RelCAT(PipeRunner):
+    """The RelCAT class used for training 'Relation-Annotation' models, i.e., annotation of relations
+     between clinical concepts.
+
+    Args:
+        cdb (CDB): cdb, this is used when creating relation datasets.
+
+        tokenizer (TokenizerWrapperBERT):
+            The Huggingface tokenizer instance. This can be a pre-trained tokenzier instance from
+            a BERT-style model. For now, only BERT models are supported.
+
+        config (ConfigRelCAT):
+            the configuration for RelCAT. Param descriptions available in ConfigRelCAT docs.
+
+        task (str, optional): What task is this model supposed to handle. Defaults to "train"
+        init_model (bool, optional): loads default model. Defaults to False.
+
+    """
+
+
     name = "rel_cat"
 
-    log = logging.getLogger(__package__)
+    log = logging.getLogger(__name__)
 
     def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
         self.config = config
@@ -64,6 +83,12 @@ class RelCAT(PipeRunner):
             self.get_model()
 
     def save(self, save_path: str) -> None:
+        """ Saves model and its dependencies to specified save_path folder.
+            The CDB is obviously not saved, it is however necessary to save the tokenizer used.
+
+        Args:
+            save_path (str): folder path in which to save the model & deps.
+        """
 
         assert self.config is not None
         self.config.save(os.path.join(save_path, "config.json"))
@@ -95,7 +120,7 @@ class RelCAT(PipeRunner):
         if os.path.exists(os.path.join(load_path, "cdb.dat")):
             cdb = CDB.load(os.path.join(load_path, "cdb.dat"))
         else:
-            print("The default CDB file name 'cdb.dat' doesn't exist in the specified path, you will need to load & set \
+            cls.log.info("The default CDB file name 'cdb.dat' doesn't exist in the specified path, you will need to load & set \
                 a CDB manually via rel_cat.cdb = CDB.load('path') ")
 
         config_path = os.path.join(load_path, "config.json")
@@ -103,7 +128,7 @@ class RelCAT(PipeRunner):
         if os.path.exists(config_path):
             config = cast(ConfigRelCAT, ConfigRelCAT.load(
                 os.path.join(load_path, "config.json")))
-            print("Loaded config.json")
+            cls.log.info("Loaded config.json")
 
         tokenizer = None
         tokenizer_path = os.path.join(load_path, config.general.tokenizer_name)
@@ -185,8 +210,7 @@ class RelCAT(PipeRunner):
                 model_config=model_config,
                 ignore_mismatched_sizes=True)
 
-        rel_cat.model.bert_model.resize_token_embeddings(
-            tokenizer.hf_tokenizers.vocab_size)
+        rel_cat.model.bert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
 
         rel_cat.optimizer = None
         rel_cat.scheduler = None

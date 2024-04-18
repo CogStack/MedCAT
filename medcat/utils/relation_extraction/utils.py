@@ -22,7 +22,24 @@ def save_bin_file(file_name, data, path="./"):
         pickle.dump(data, f)
 
 
-def save_state(model: BertModel_RelationExtraction, optimizer=None, scheduler=None, epoch=None, best_f1=None, path="./", model_name="BERT", task="train", is_checkpoint=False, final_export=False):
+def save_state(model: BertModel_RelationExtraction, optimizer=None, scheduler=None, epoch=None, best_f1=None, path="./", model_name="BERT", task="train", is_checkpoint=False, final_export=False) -> None:
+    """ Used by RelCAT.save() and RelCAT.train()
+        Saves the RelCAT model state.
+        For checkpointing multiple files are created, best_f1, loss etc. score.
+        If you want to export the model after training set final_export=True and leave is_checkpoint=False.
+
+    Args:
+        model (BertModel_RelationExtraction): model
+        optimizer (_type_, optional): Defaults to None.
+        scheduler (_type_, optional): Defaults to None.
+        epoch (_type_, optional): Defaults to None.
+        best_f1 (_type_, optional): Defaults to None.
+        path (str, optional):Defaults to "./".
+        model_name (str, optional): . Defaults to "BERT". This is used to checkpointing only.
+        task (str, optional): Defaults to "train". This is used to checkpointing only.
+        is_checkpoint (bool, optional): Defaults to False.
+        final_export (bool, optional): Defaults to False, if True then is_checkpoint must be False also. Exports model.state_dict(), out into"model.dat".
+    """
 
     model_name = model_name.replace("/", "_")
     file_name = "%s_checkpoint_%s.dat" % (task, model_name)
@@ -43,7 +60,20 @@ def save_state(model: BertModel_RelationExtraction, optimizer=None, scheduler=No
         }, os.path.join(path, file_name))
 
 
-def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()):
+def load_state(model: BertModel_RelationExtraction, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device=torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
+    """ Used by RelCAT.load() and RelCAT.train()
+
+    Args:
+        model (_type_): model, it has to be initialized before calling this method via BertModel_RelationExtraction(...)
+        optimizer (_type_): optimizer
+        scheduler (_type_): scheduler
+        path (str, optional): Defaults to "./".
+        model_name (str, optional): Defaults to "BERT".
+        file_prefix (str, optional): Defaults to "train".
+        load_best (bool, optional): Defaults to False.
+        device (_type_, optional): Defaults to torch.device("cpu").
+        config (ConfigRelCAT, optional): Defaults to ConfigRelCAT().
+    """
 
     model_name = model_name.replace("/", "_")
     print("Attempting to load RelCAT model on device: ", device)
@@ -81,7 +111,7 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
     return start_epoch, best_f1
 
 
-def save_results(data, model_name="BERT", path="./", file_prefix="train"):
+def save_results(data, model_name="BERT", path:str = "./", file_prefix: str = "train"):
     save_bin_file(file_prefix + "_losses_accuracy_f1_per_epoch_%s.dat" %
                   model_name, data, path)
 

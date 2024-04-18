@@ -7,7 +7,7 @@ from medcat.config_rel_cat import ConfigRelCAT
 
 class BertModel_RelationExtraction(nn.Module):
     def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig,
-                 ignore_mismatched_sizes: bool = False):
+                 ignore_mismatched_sizes: bool = True):
         super(BertModel_RelationExtraction, self).__init__()
         self.relcat_config = relcat_config
         self.model_config = model_config
@@ -15,19 +15,18 @@ class BertModel_RelationExtraction(nn.Module):
         self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
         for param in self.bert_model.parameters():
             param.requires_grad = False
-        self.drop_out = nn.Dropout(model_config.hidden_dropout_prob)
-        if relcat_config.general.task == "pretrain":
+        self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
+
+        if self.relcat_config.general.task == "pretrain":
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
-
-        self.bert_model.resize_token_embeddings(self.relcat_config.general.vocab_size)
 
         self.relu = nn.ReLU()
 
         # dense layers
         self.fc1 = nn.Linear(self.relcat_config.model.model_size, self.relcat_config.model.hidden_size)
         self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
-        self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), relcat_config.train.nclasses)
+        self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), self.relcat_config.train.nclasses)
 
         print("RelCAT Model config: ", self.model_config)
 
@@ -156,6 +155,7 @@ class BertModel_RelationExtraction(nn.Module):
             self.relcat_config.general.device)
 
         self.bert_model = self.bert_model.to(self.relcat_config.general.device)
+
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
                                        encoder_hidden_states=encoder_hidden_states,
