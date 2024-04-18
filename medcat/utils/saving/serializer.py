@@ -117,7 +117,7 @@ class CDBSerializer:
 
         Args:
             cdb (CDB): The context database (CDB)
-            overwrite (bool, optional): Whether to allow overwriting existing files. Defaults to False.
+            overwrite (bool): Whether to allow overwriting existing files. Defaults to False.
 
         Raises:
             ValueError: If file(s) exist(s) and overwrite if `False`
@@ -157,6 +157,9 @@ class CDBSerializer:
         If the `json_path` was specified to the constructor,
         the JSON serialized files are used.
         Otherwise, everything is loaded from the `main_path` file.
+
+        Args:
+            cdb_cls: CDB class.
 
         Returns:
             CDB: The resulting CDB.

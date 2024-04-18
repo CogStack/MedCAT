@@ -34,6 +34,9 @@ class ContextModel(object):
             entity (Span): The entity to look for.
             doc (Doc): The document look in.
             size (int): The size of the entity.
+
+        Returns:
+            Tuple: The tokens on the left, centre, and right.
         """
         start_ind = entity[0].i
         end_ind = entity[-1].i
@@ -110,8 +113,11 @@ class ContextModel(object):
         """Calculate similarity once we have vectors and a cui.
 
         Args:
-            cui
-            vectors
+            cui (str): The CUI.
+            vectors (Dict): The vectors.
+
+        Returns:
+            float: The similarity.
         """
 
         cui_vectors = self.cdb.cui2context_vectors.get(cui, {})
@@ -183,6 +189,10 @@ class ContextModel(object):
         in a document (doc).
 
         Args:
+            cui (str): The CUI to train.
+            entity (Span): The entity we're at.
+            doc (Doc): The document within which we're working.
+            negative (bool): Whether or not the example is negative. Defaults to False.
             names (List[str]/Dict):
                 Optionally used to update the `status` of a name-cui pair in the CDB.
         """
@@ -195,7 +205,7 @@ class ContextModel(object):
 
             if not negative:
                 # Update the name count, if possible
-                if type(entity) == Span:
+                if type(entity) is Span:
                     self.cdb.name2count_train[entity._.detected_name] = self.cdb.name2count_train.get(entity._.detected_name, 0) + 1
 
                 if self.config.linking.get('calculate_dynamic_threshold', False):

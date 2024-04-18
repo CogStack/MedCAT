@@ -33,7 +33,9 @@ class NerModel:
 
         Args:
             json_path (Union[str, list, None]): The JSON file path to read the training data from.
-            train_nr (int, optional): The number of the NER object in cat._addl_train to train. Defaults to 0.
+            train_nr (int): The number of the NER object in cat._addl_train to train. Defaults to 0.
+            *args: Additional arguments for TransformersNER.train .
+            **kwargs: Additional keyword arguments for TransformersNER.train .
 
         Returns:
             Tuple[Any, Any, Any]: df, examples, dataset
@@ -48,6 +50,8 @@ class NerModel:
 
         Args:
             text (Optional[str]): The input text.
+            *args: Additional arguments for cat.__call__ .
+            **kwargs: Additional keyword arguments for cat.__call__ .
 
         Returns:
             Optional[Doc]: The annotated document.
@@ -64,6 +68,8 @@ class NerModel:
 
         Args:
             text (str): The input text.
+            *args: Additional arguments for cat.get_entities .
+            **kwargs: Additional keyword arguments for cat.get_entities .
 
         Returns:
             dict: The output entities.

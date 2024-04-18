@@ -143,7 +143,10 @@ class MixingConfig(FakeDict):
 
         Args:
             path(str): the path to the config file
-            extractor(ValueExtractor, optional):  (Default value = _DEFAULT_EXTRACTOR)
+            extractor(ValueExtractor):  (Default value = _DEFAULT_EXTRACTOR)
+
+        Raises:
+            ValueError: In case of unknown attribute.
         """
         with open(path, 'r') as f:
             for line in f:
@@ -233,7 +236,7 @@ class MixingConfig(FakeDict):
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, Field]: The dictionary of the field names and fields
+            Dict[str, ModelField]: The dictionary of the field names and fields
         """
         return cast(BaseModel, self).__fields__
 

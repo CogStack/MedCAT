@@ -15,14 +15,16 @@ def prepare_from_json(data: Dict,
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
     Args:
-        data (dict):
+        data (Dict):
             Loaded output of MedCATtrainer. If we have a `my_export.json` from MedCATtrainer, than data = json.load(<my_export>).
         cntx_left (int):
             Size of context to get from the left of the concept
         cntx_right (int):
             Size of context to get from the right of the concept
-        tokenizer (medcat.tokenizers.meta_cat_tokenizers):
+        tokenizer (TokenizerWrapperBase):
             Something to split text into tokens for the LSTM/BERT/whatever meta models.
+        cui_filter (Optional[set]):
+            CUI filter if set. Defaults to None.
         replace_center (Optional[str]):
             If not None the center word (concept) will be replaced with whatever this is.
         prerequisites (Dict):
@@ -90,7 +92,7 @@ def prepare_from_json(data: Dict,
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
                             meta_anns = []
                             if 'meta_anns' in ann:
-                                meta_anns = ann['meta_anns'].values() if type(ann['meta_anns']) == dict else ann['meta_anns']
+                                meta_anns = ann['meta_anns'].values() if type(ann['meta_anns']) is dict else ann['meta_anns']
 
                             # If the annotation is validated
                             for meta_ann in meta_anns:
@@ -140,34 +142,6 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     return data, category_value2id
 
 
-def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
-    """Creates a generator of fake spacy documents, used for running
-    meta_cat pipe separately from main cat pipeline.
-
-    Args:
-        data(Dict):
-            Output from cat formated as: {<id>: <output of get_entities, ...}.
-        id2text(Dict):
-            Map from document id to text of that document.
-
-    Returns:
-        Generator:
-            Generator of spacy like documents that can be feed into meta_cat.pipe.
-    """
-    for id_ in data.keys():
-        ents = data[id_]['entities'].values()
-
-        doc = Doc(text=id2text[id_], id_=id_)
-        doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
-
-        yield doc
-
-
-class Empty(object):
-    def __init__(self) -> None:
-        pass
-
-
 class Span(object):
     def __init__(self, start_char: str, end_char: str, id_: str) -> None:
         self._ = Empty()
@@ -186,3 +160,30 @@ class Doc(object):
         self._ents = self.ents
         self.text = text
         self.id = id_
+
+
+def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable[Doc]:
+    """Creates a generator of fake spacy documents, used for running
+    meta_cat pipe separately from main cat pipeline.
+
+    Args:
+        data(Dict):
+            Output from cat formated as: {<id>: <output of get_entities, ...}.
+        id2text(Dict):
+            Map from document id to text of that document.
+
+    Yields:
+        Doc: spacy like documents that can be feed into meta_cat.pipe.
+    """
+    for id_ in data.keys():
+        ents = data[id_]['entities'].values()
+
+        doc = Doc(text=id2text[id_], id_=id_)
+        doc.ents.extend([Span(ent['start'], ent['end'], ent['id']) for ent in ents])
+
+        yield doc
+
+
+class Empty(object):
+    def __init__(self) -> None:
+        pass

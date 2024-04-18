@@ -63,7 +63,7 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
         )
 
     def _split_generators(self, dl_manager): # noqa
-        """Returns SplitGenerators."""
+        """Returns SplitGenerators.""" # noqa
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
@@ -73,7 +73,7 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
             ),
         ]
 
-    def _generate_examples(self, filepaths):
+    def _generate_examples(self, filepaths): # noqa
         cnt = 0
         for filepath in filepaths:
             logging.info("generating examples from = %s", filepath)

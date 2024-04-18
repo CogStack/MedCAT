@@ -329,6 +329,9 @@ class TypedFilter(BaseModel):
         {<filter type>: [<filtered value2>, <filtered value 2>]}
         There can be multiple filter types defined.
 
+        Args:
+            input (Dict[str, Any]): The input dict.
+
         Returns:
             List[TypedFilter]: The list of constructed TypedFilter
         """

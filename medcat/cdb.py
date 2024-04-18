@@ -112,7 +112,11 @@ class CDB(object):
         the longest name assigned to the concept.
 
         Args:
-            cui
+            cui (str):
+                Concept ID or unique identifer in this database.
+
+        Returns:
+            str: The name of the concept.
         """
         name = cui # In case we do not find anything it will just return the CUI
 
@@ -128,7 +132,7 @@ class CDB(object):
                                             (self.cui2count_train.get(cui, 0) + 1)
         self.is_dirty = True
 
-    def remove_names(self, cui: str, names: Dict) -> None:
+    def remove_names(self, cui: str, names: Dict[str, Dict]) -> None:
         """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
@@ -166,8 +170,10 @@ class CDB(object):
 
     def remove_cui(self, cui: str) -> None:
         """This function takes a `CUI` as an argument and removes it from all the internal objects that reference it.
+
         Args:
-            cui
+            cui (str):
+                Concept ID or unique identifer in this database.
         """
         if cui in self.cui2names:
             del self.cui2names[cui]
@@ -201,7 +207,7 @@ class CDB(object):
         self.name2count_train = {name: len(cuis) for name, cuis in self.name2cuis.items()}
         self.is_dirty = True
 
-    def add_names(self, cui: str, names: Dict, name_status: str = 'A', full_build: bool = False) -> None:
+    def add_names(self, cui: str, names: Dict[str, Dict], name_status: str = 'A', full_build: bool = False) -> None:
         """Adds a name to an existing concept.
 
         Args:
@@ -212,8 +218,8 @@ class CDB(object):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
                 Names is an dict like: `{name: {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
             name_status (str):
-                One of `P`, `N`, `A`
-            full_build (bool)):
+                One of `P`, `N`, `A`.
+            full_build (bool):
                 If True the dictionary self.addl_info will also be populated, contains a lot of extra information
                 about concepts, but can be very memory consuming. This is not necessary
                 for normal functioning of MedCAT (Default value `False`).
@@ -228,8 +234,8 @@ class CDB(object):
     @deprecated("Use `cdb._add_concept` as this will be removed in a future release.")
     def add_concept(self,
                     cui: str,
-                    names: Dict,
-                    ontologies: set,
+                    names: Dict[str, Dict],
+                    ontologies: Set[str],
                     name_status: str,
                     type_ids: Set[str],
                     description: str,
@@ -265,8 +271,8 @@ class CDB(object):
 
     def _add_concept(self,
                     cui: str,
-                    names: Dict,
-                    ontologies: set,
+                    names: Dict[str, Dict],
+                    ontologies: Set[str],
                     name_status: str,
                     type_ids: Set[str],
                     description: str,
@@ -294,6 +300,9 @@ class CDB(object):
                 If True the dictionary self.addl_info will also be populated, contains a lot of extra information
                 about concepts, but can be very memory consuming. This is not necessary
                 for normal functioning of MedCAT (Default Value `False`).
+
+        Raises:
+            ValueError: If there is no name info yet `names` dict is not empty.
         """
         # Add CUI to the required dictionaries
         if cui not in self.cui2names:
@@ -406,7 +415,7 @@ class CDB(object):
         Args:
             name (str):
                 What key should be used in the `addl_info` dictionary.
-            data (Dict[<whatever>]):
+            data (Dict):
                 What will be added as the value for the key `name`
             reset_existing (bool):
                 Should old data be removed if it exists
@@ -425,18 +434,19 @@ class CDB(object):
                               cui_count: int = 0) -> None:
         """Add the vector representation of a context for this CUI.
 
-        cui (str):
-            The concept in question.
-        vectors (Dict[str, numpy.ndarray]):
-            Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
-            context_type - is usually one of: ['long', 'medium', 'short']
-        negative (bool):
-            Is this negative context of positive (Default Value `False`).
-        lr (int):
-            If set it will override the base value from the config file.
-        cui_count (int):
-            The learning rate will be calculated based on the count for the provided CUI + cui_count.
-            Defaults to 0.
+        Args:
+            cui (str):
+                The concept in question.
+            vectors (Dict[str, np.ndarray]):
+                Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
+                context_type - is usually one of: ['long', 'medium', 'short']
+            negative (bool):
+                Is this negative context of positive (Default Value `False`).
+            lr (Optional[float]):
+                If set it will override the base value from the config file.
+            cui_count (int):
+                The learning rate will be calculated based on the count for the provided CUI + cui_count.
+                Defaults to 0.
         """
         if cui not in self.cui2context_vectors:
             self.cui2context_vectors[cui] = {}
@@ -565,6 +575,9 @@ class CDB(object):
                 Path to the JSON serialized folder
             config_dict:
                 A dictionary that will be used to overwrite existing fields in the config of this CDB
+
+        Returns:
+            CDB: The resulting concept database.
         """
         ser = CDBSerializer(path, json_path)
         cdb = ser.deserialize(CDB)
@@ -582,7 +595,7 @@ class CDB(object):
         IMPORTANT it will not import name maps (cui2names, name2cuis or anything else) only vectors.
 
         Args:
-            cdb (medcat.cdb.CDB):
+            cdb (CDB):
                 Concept database from which to import training vectors
             overwrite (bool):
                 If True all training data in the existing CDB will be overwritten, else
@@ -641,7 +654,7 @@ class CDB(object):
         cui2names into cui2snames.
 
         Args:
-            force (bool, optional): Whether to force the (re-)population. Defaults to True.
+            force (bool): Whether to force the (re-)population. Defaults to True.
         """
         if not force and self.cui2snames:
             return
@@ -664,8 +677,11 @@ class CDB(object):
         However, the memory optimisation can be performed again afterwards.
 
         Args:
-            cuis_to_keep (List[str]):
+            cuis_to_keep (Union[List[str], Set[str]]):
                 CUIs that will be kept, the rest will be removed (not completely, look above).
+
+        Raises:
+            Exception: If no snames and subsetting is not possible.
         """
 
         if not self.cui2snames:
@@ -756,7 +772,7 @@ class CDB(object):
                      min_cnt: int = 0,
                      topn: int = 50,
                      force_build: bool = False) -> Dict:
-        """Given a concept it will calculate what other concepts in this CDB have the most similar
+        r"""Given a concept it will calculate what other concepts in this CDB have the most similar
         embedding.
 
         Args:
@@ -776,10 +792,9 @@ class CDB(object):
                 Do not use cached sim matrix (Default value False)
 
         Returns:
-            results (Dict):
-                A dictionary with topn results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'type_name': <type_name>,
+            Dict:
+                A dictionary with top results like: {<cui>: {'name': <name>, 'sim': <similarity>, 'type_name': <type_name>,
                                                               'type_id': <type_id>, 'cnt': <number of training examples the concept has seen>}, ...}
-
         """
 
         if 'similarity' in self.addl_info:
