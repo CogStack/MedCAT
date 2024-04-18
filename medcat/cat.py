@@ -1280,6 +1280,7 @@ class CAT(object):
 
         Raises:
             Exception: If multiprocessing cannot be done.
+            ValueError: If both free memory specifiers are provided.
 
         Returns:
             Dict:
@@ -1413,7 +1414,7 @@ class CAT(object):
                 Additional info. Defaults to [].
             nn_components (List):
                 NN components in case there's a separation. Defaults to [].
-            min_free_memory (int):
+            min_free_memory (float):
                 If set a process will not start unless there is at least this much RAM memory left,
                 should be a range between [0, 1] meaning how much of the memory has to be free. Helps when annotating
                 very large datasets because spacy is not the best with memory management and multiprocessing.
