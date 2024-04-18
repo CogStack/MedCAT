@@ -141,9 +141,9 @@ class BertModel_RelationExtraction(nn.Module):
         return classification_logits.to(self.relcat_config.general.device)
 
     def forward(self,
-                input_ids: Optional[torch.LongTensor] = None,
-                attention_mask: Optional[torch.FloatTensor] = None,
-                token_type_ids: Optional[torch.LongTensor] = None,
+                input_ids: Optional[torch.Tensor] = None,
+                attention_mask: Optional[torch.Tensor] = None,
+                token_type_ids: Optional[torch.Tensor] = None,
                 position_ids: Any = None,
                 head_mask: Any = None,
                 encoder_hidden_states: Any = None,
@@ -155,7 +155,7 @@ class BertModel_RelationExtraction(nn.Module):
         if input_ids is not None:
             input_shape = input_ids.size()
         else:
-            self.log.error("You have to specify input_ids")
+            raise ValueError("You have to specify input_ids")
 
         if attention_mask is None:
             attention_mask = torch.ones(
