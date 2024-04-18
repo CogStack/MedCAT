@@ -16,7 +16,6 @@ from transformers.models.bert.configuration_bert import BertConfig
 import spacy
 from spacy.tokens import Span, Doc
 
-
 class RelCATTests(unittest.TestCase):
 
     @classmethod
@@ -24,6 +23,9 @@ class RelCATTests(unittest.TestCase):
         config = ConfigRelCAT()
         config.general.device = "cpu"
         config.general.model_name = "bert-base-uncased"
+        config.train.batch_size = 1
+        config.model.hidden_size= 256
+        config.model.model_size = 2304
 
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=config.general.model_name,
@@ -33,6 +35,7 @@ class RelCATTests(unittest.TestCase):
 
         tokenizer.hf_tokenizers.add_tokens(SPEC_TAGS, special_tokens=True)
         config.general.annotation_schema_tag_ids = tokenizer.hf_tokenizers.convert_tokens_to_ids(SPEC_TAGS)
+
 
         cls.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         os.makedirs(cls.tmp_dir, exist_ok=True)
@@ -54,24 +57,23 @@ class RelCATTests(unittest.TestCase):
         cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config, init_model=True)
 
         cls.model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=config.general.model_name)
-        cls.rel_cat.model.bert_model.resize_token_embeddings(tokenizer.hf_tokenizers.vocab_size)
+
+        cls.rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 
         cls.finished = False
 
+        cls.tokenizer = tokenizer
+
 
     def test_train_csv_no_tags(self) -> None:
-        
-        self.rel_cat.config.model.model_size = 768
         self.rel_cat.config.train.nclasses = 2
         self.rel_cat.config.train.epochs = 2
-        self.rel_cat.config.train.batch_size = 1
-        
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
         self.rel_cat.save(self.save_model_path)
 
     def test_train_mctrainer(self) -> None:
-        self.rel_cat = RelCAT.load(self.save_model_path) 
-        self.rel_cat.config.train.batch_size = 1
+        self.rel_cat = RelCAT.load(self.save_model_path)
+        self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
         self.rel_cat.config.train.test_size = 0.4
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
 
@@ -92,6 +94,8 @@ class RelCATTests(unittest.TestCase):
             entity = Span(doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
             entity._.cui = ann["cui"]
             doc._.ents.append(entity)
+
+        self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         doc = self.rel_cat(doc)
         self.finished = True
