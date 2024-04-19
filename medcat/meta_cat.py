@@ -406,8 +406,11 @@ class MetaCAT(PipeRunner):
             logger.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
             config.general['device'] = 'cpu'
             device = torch.device('cpu')
-        meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
+        try:
+            meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
+        except:
+            logger.warning('Model state cannot be loaded from dict. Please ensure the model file is correct')
         return meta_cat
 
     def get_ents(self, doc: Doc) -> Iterable[Span]:

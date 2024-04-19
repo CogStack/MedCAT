@@ -66,7 +66,13 @@ class LSTM(nn.Module):
                        self.config.model['hidden_size']//self.config.model['num_directions'])
             x = x[-1, :, :, :].permute(1, 2, 0).reshape(-1, self.config.model['hidden_size'])
         else:
-            x = x[row_indices, center_positions, :]
+            x_all = []
+            for i, indices in enumerate(center_positions):
+                this_hidden = x[i, indices, :]
+                to_append, _ = torch.max(this_hidden, axis=0)
+                x_all.append(to_append)
+
+            x = torch.stack(x_all)
 
         # Push x through the fc network and add dropout
         x = self.d1(x)
