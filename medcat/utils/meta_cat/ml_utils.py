@@ -2,6 +2,7 @@ import os
 import random
 import math
 import torch
+import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import torch.optim as optim
@@ -10,7 +11,9 @@ from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
+from sklearn.metrics import classification_report, precision_recall_fscore_support,f1_score, confusion_matrix, accuracy_score,ConfusionMatrixDisplay
+from sklearn.model_selection import train_test_split
+from transformers import AdamW, get_linear_schedule_with_warmup
 
 import logging
 
@@ -57,9 +60,9 @@ def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
         y = torch.tensor([x[2] for x in data[start_ind:end_ind]], dtype=torch.long).to(device)
 
     x = torch.tensor(x, dtype=torch.long).to(device)
-    cpos = torch.tensor(cpos, dtype=torch.long).to(device)
-
-    return x, cpos, y
+    # cpos = torch.tensor(cpos, dtype=torch.long).to(device)
+    attention_masks = (x != 0).type(torch.int)
+    return x, cpos, attention_masks, y
 
 
 def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
@@ -94,8 +97,8 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
 
     with torch.no_grad():
         for i in range(num_batches):
-            x, cpos, _ = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
-            logits = model(x, cpos, ignore_cpos=ignore_cpos)
+            x, cpos,attention_masks, _ = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
+            logits = model(x, cpos,attention_mask=attention_masks, ignore_cpos=ignore_cpos)
             all_logits.append(logits.detach().cpu().numpy())
 
     predictions = []
@@ -110,8 +113,8 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
     return predictions, confidences
 
 
-def split_list_train_test(data: List, test_size: float, shuffle: bool = True) -> Tuple:
-    """Shuffle and randomply split data
+def split_list_train_test(data: List, test_size: int, shuffle: bool = True) -> Tuple:
+    """Shuffle and randomly split data
 
     Args:
         data (List): The data.
@@ -124,9 +127,15 @@ def split_list_train_test(data: List, test_size: float, shuffle: bool = True) ->
     if shuffle:
         random.shuffle(data)
 
-    test_ind = int(len(data) * test_size)
-    test_data = data[:test_ind]
-    train_data = data[test_ind:]
+    X_features = [x[:-1] for x in data]
+    y_labels = [x[-1] for x in data]
+
+    X_train, X_test, y_train, y_test = train_test_split(X_features, y_labels, test_size=test_size,
+                                                        random_state=42)
+
+    train_data = [x + [y] for x,y in zip(X_train, y_train)]
+    test_data = [x + [y] for x, y in zip(X_test, y_test)]
+
 
     return train_data, test_data
 
@@ -145,6 +154,17 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         logger.info('Epoch: %d %s %s', epoch, "*"*50, name)
         logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=None, gamma=2):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, inputs, targets):
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+        pt = torch.exp(-ce_loss)
+        loss = (self.alpha[targets] * (1 - pt) ** self.gamma * ce_loss).mean()
+        return loss
 
 def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
     """Trains a LSTM model (for now) with autocheckpoints
@@ -168,12 +188,43 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     class_weights = config.train['class_weights']
     if class_weights is not None:
         class_weights = torch.FloatTensor(class_weights).to(device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+        if config.train['loss_funct'] == 'cross_entropy':
+            criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+        elif config.train['loss_funct'] == 'focal_loss':
+            criterion = FocalLoss(alpha=class_weights, gamma=config.train['gamma'])
+
     else:
-        criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+        if config.train['loss_funct'] == 'cross_entropy':
+            criterion = nn.CrossEntropyLoss()  # Set the criterion to Cross Entropy Loss
+        elif config.train['loss_funct'] == 'focal_loss':
+            criterion = FocalLoss(gamma=config.train['gamma'])
+
     parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.Adam(parameters, lr=config.train['lr'])
-    model.to(device) # Move the model to device
+
+    def initialize_model(model, data, batch_size,lr,epochs=4):
+        """Initialize the Bert Classifier, the optimizer and the learning rate scheduler.
+        """
+
+        # Instantiate Bert Classifier
+        bert_classifier = model
+
+        # Create the optimizer
+        optimizer = AdamW(bert_classifier.parameters(),
+                          lr=lr,  # Default learning rate
+                          eps=1e-8, # Default epsilon value
+                          weight_decay = 1e-5
+                          )
+
+        # Total number of training steps
+        total_steps = int((len(data)/batch_size) * epochs)
+        logger.info('Total steps for optimizer: {}'.format(total_steps))
+
+        # Set up the learning rate scheduler
+        scheduler = get_linear_schedule_with_warmup(optimizer,
+                                                    num_warmup_steps=0,  # Default value
+                                                    num_training_steps=total_steps)
+        return bert_classifier, optimizer, scheduler
+
 
     batch_size = config.train['batch_size']
     batch_size_eval = config.general['batch_size_eval']
@@ -182,6 +233,12 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     ignore_cpos = config.model['ignore_cpos']
     num_batches = math.ceil(len(train_data) / batch_size)
     num_batches_test = math.ceil(len(test_data) / batch_size_eval)
+    optimizer = optim.Adam(parameters, lr=config.train['lr'],weight_decay = 1e-5)
+    if config.model.model_architecture_config is not None:
+        if config.model.model_architecture_config['lr_scheduler'] is True:
+            model, optimizer, scheduler = initialize_model(model,train_data,batch_size,config.train['lr'],epochs=nepochs)
+
+    model.to(device)  # Move the model to device
 
     # Can be pre-calculated for the whole dataset
     y_test = [x[2] for x in test_data]
@@ -193,8 +250,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         all_logits = []
         model.train()
         for i in range(num_batches):
-            x, cpos, y = create_batch_piped_data(train_data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
-            logits = model(x, center_positions=cpos, ignore_cpos=ignore_cpos)
+            x, cpos,attention_masks, y = create_batch_piped_data(train_data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
+            logits = model(x, attention_mask = attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
             loss = criterion(logits, y)
             loss.backward()
             # Track loss and logits
@@ -202,8 +259,11 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
             all_logits.append(logits.detach().cpu().numpy())
 
             parameters = filter(lambda p: p.requires_grad, model.parameters())
-            nn.utils.clip_grad_norm_(parameters, 0.25)
+            nn.utils.clip_grad_norm_(parameters, 0.15)
             optimizer.step()
+            if config.model.model_architecture_config is not None:
+                if config.model.model_architecture_config['lr_scheduler'] is True:
+                    scheduler.step()
 
         all_logits_test = []
         running_loss_test = []
@@ -211,8 +271,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
         with torch.no_grad():
             for i in range(num_batches_test):
-                x, cpos, y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
-                logits = model(x, cpos, ignore_cpos=ignore_cpos)
+                x, cpos,attention_masks,y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
+                logits = model(x, attention_mask = attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
 
                 # Track loss and logits
                 running_loss_test.append(loss.item())
@@ -226,7 +286,12 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                 winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
 
             report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
+            cm = confusion_matrix(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),normalize='true')
+            report_train = classification_report(y_train, np.argmax(np.concatenate(all_logits, axis=0), axis=1), output_dict=True)
+
+            winner_report['confusion_matrix'] = cm
             winner_report['report'] = report
+            winner_report['report_train'] = report_train
             winner_report['epoch'] = epoch
 
             # Save if needed
@@ -276,7 +341,7 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
 
     with torch.no_grad():
         for i in range(num_batches):
-            x, cpos, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
+            x, cpos,attention_masks, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
             logits = model(x, cpos, ignore_cpos=ignore_cpos)
             loss = criterion(logits, y)
 

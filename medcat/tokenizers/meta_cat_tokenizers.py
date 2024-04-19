@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, overload
 from tokenizers import Tokenizer, ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
+from transformers import AutoTokenizer
 
 
 class TokenizerWrapperBase(ABC):
@@ -186,10 +187,13 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         self.hf_tokenizers.save_pretrained(path)
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs) -> "TokenizerWrapperBERT":
+    def load(cls, dir_path: str, model_variant:str, **kwargs) -> "TokenizerWrapperBERT":
         tokenizer = cls()
         path = os.path.join(dir_path, cls.name)
-        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
+        try:
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
+        except:
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(model_variant)
 
         return tokenizer
 

@@ -28,7 +28,7 @@ class General(MixingConfig, BaseModel):
     """Number of annotations to be meta-annotated at once in eval"""
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
-    tokenizer_name: str = 'bbpe'
+    tokenizer_name: str = 'bert-tokenizer'
     """Tokenizer name used with of MetaCAT"""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
@@ -48,11 +48,17 @@ class General(MixingConfig, BaseModel):
 
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
-    model_name: str = 'lstm'
+    model_name: str = 'bert'
+    model_variant: str = 'bert-base-uncased'
+    model_freeze_layers: bool = True
     num_layers: int = 2
     input_size: int = 300
     hidden_size: int = 300
-    dropout: float = 0.5
+    dropout: float = 0.3
+    load_model_dict_ = True
+    train_on_full_data = False
+    category_undersample : str = None
+    model_architecture_config : Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
     """2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2
@@ -88,6 +94,10 @@ class Train(MixingConfig, BaseModel):
     """When was the last training run"""
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
+    loss_funct: str = 'cross_entropy'
+    """Loss function for the model"""
+    gamma: int = 2
+    """Focal Loss - how much the loss focuses on hard-to-classify examples."""
 
     class Config:
         extra = Extra.allow

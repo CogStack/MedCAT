@@ -16,6 +16,7 @@ from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
 from medcat.utils.decorators import deprecated
+from peft import get_peft_model, LoraConfig, TaskType
 
 # It should be safe to do this always, as all other multiprocessing
 # will be finished before data comes to meta_cat
@@ -77,7 +78,7 @@ class MetaCAT(PipeRunner):
                 The embedding densor
 
         Raises:
-            ValueError: If the meta model is not LSTM
+            ValueError: If the meta model is not LSTM or BERT
 
         Returns:
             nn.Module:
@@ -87,6 +88,21 @@ class MetaCAT(PipeRunner):
         if config.model['model_name'] == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
             model = LSTM(embeddings, config)
+            logger.info("LSTM model used for classification")
+        elif config.model['model_name'] == 'bert':
+            from medcat.utils.meta_cat.models import BertForMetaAnnotation
+            model = BertForMetaAnnotation(config)
+
+            if not config.model.model_freeze_layers:
+
+                peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
+                                         target_modules=["query", "value"], lora_dropout=0.2)
+
+                model = get_peft_model(model, peft_config)
+                # model.print_trainable_parameters()
+
+            logger.info("BERT model used for classification")
+
         else:
             raise ValueError("Unknown model name %s" % config.model['model_name'])
 
@@ -107,7 +123,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     @deprecated(message="Use `train_from_json` or `train_raw` instead")
-    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
+    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_=None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -121,9 +137,9 @@ class MetaCAT(PipeRunner):
         Returns:
             Dict: The resulting report.
         """
-        return self.train_from_json(json_path, save_dir_path)
+        return self.train_from_json(json_path, save_dir_path,data_=data_)
 
-    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None) -> Dict:
+    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_=None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -157,9 +173,9 @@ class MetaCAT(PipeRunner):
         for path in json_path:
             with open(path, 'r') as f:
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
-        return self.train_raw(data_loaded, save_dir_path)
+        return self.train_raw(data_loaded,save_dir_path,data_=data_)
 
-    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None) -> Dict:
+    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None,data_=None) -> Dict:
         """Train or continue training a model given raw data. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -212,7 +228,7 @@ class MetaCAT(PipeRunner):
                                  replace_center=g_config['replace_center'], prerequisites=t_config['prerequisites'],
                                  lowercase=g_config['lowercase'])
 
-        # Check is the name there
+        # Check is the name present
         category_name = g_config['category_name']
         if category_name not in data:
             raise Exception(
@@ -220,16 +236,25 @@ class MetaCAT(PipeRunner):
                     category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
+        if data_:
+            data_sampled = []
+            for sample in data_:
+                if isinstance(sample[0][0],str):
+                    doc_text = self.tokenizer(sample[0])
+                    data_sampled.append([doc_text[0]['input_ids'],sample[1],sample[2]])
+                else:
+                    data_sampled.append([sample[0], sample[1], sample[2]])
+            data = data + data_sampled
 
         category_value2id = g_config['category_value2id']
         if not category_value2id:
             # Encode the category values
-            data, category_value2id = encode_category_values(data)
+            data, full_data, category_value2id = encode_category_values(data,category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         else:
             # We already have everything, just get the data
-            data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
-
+            data, full_data, category_value2id = encode_category_values(data, existing_category_value2id=category_value2id,category_undersample=self.config.model.category_undersample)
+            g_config['category_value2id'] = category_value2id
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
             logger.warning(
@@ -237,7 +262,18 @@ class MetaCAT(PipeRunner):
                     self.config.model['nclasses'], len(category_value2id)))
             logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
-            self.model = self.get_model(embeddings=self.embeddings)
+
+        self.model = self.get_model(embeddings=self.embeddings)
+
+        if self.config.model.load_model_dict_:
+            model_save_path = os.path.join(save_dir_path, 'model.dat')
+            state_dict_ = torch.load(model_save_path)
+            self.model.load_state_dict(state_dict_)
+            logger.info("Model state loaded from checkpoint")
+            data = full_data
+
+        if self.config.model.train_on_full_data:
+            data = full_data
 
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
@@ -319,7 +355,7 @@ class MetaCAT(PipeRunner):
         self.tokenizer.save(save_dir_path)
 
         # Save config
-        self.config.save(os.path.join(save_dir_path, 'config.json'))
+        # self.config.save(os.path.join(save_dir_path, 'config.json'))
 
         # Save the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
@@ -358,7 +394,7 @@ class MetaCAT(PipeRunner):
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-            tokenizer = TokenizerWrapperBERT.load(save_dir_path)
+            tokenizer = TokenizerWrapperBERT.load(save_dir_path,config.model['model_variant'])
 
         # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
