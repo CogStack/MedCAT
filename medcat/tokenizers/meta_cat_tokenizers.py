@@ -27,7 +27,7 @@ class TokenizerWrapperBase(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, dir_path: str, **kwargs) -> Tokenizer: ...
+    def load(cls, dir_path: str, model_variant: Optional[str] = '', **kwargs) -> Tokenizer: ...
 
     @abstractmethod
     def get_size(self) -> int: ...
@@ -113,7 +113,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         self.hf_tokenizers.save_model(dir_path, prefix=self.name)
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs) -> "TokenizerWrapperBPE":
+    def load(cls, dir_path: str, model_variant: Optional[str] = '', **kwargs) -> "TokenizerWrapperBPE":
         tokenizer = cls()
         vocab_file = os.path.join(dir_path, f'{tokenizer.name}-vocab.json')
         merges_file = os.path.join(dir_path, f'{tokenizer.name}-merges.txt')
@@ -187,7 +187,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         self.hf_tokenizers.save_pretrained(path)
 
     @classmethod
-    def load(cls, dir_path: str, model_variant:str, **kwargs) -> "TokenizerWrapperBERT":
+    def load(cls, dir_path: str, model_variant: Optional[str] = '', **kwargs) -> "TokenizerWrapperBERT":
         tokenizer = cls()
         path = os.path.join(dir_path, cls.name)
         try:
