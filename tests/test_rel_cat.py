@@ -56,14 +56,11 @@ class RelCATTests(unittest.TestCase):
         cls.config_rel_cat: ConfigRelCAT = config
         cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config, init_model=True)
 
-        cls.model_config = BertConfig.from_pretrained(pretrained_model_name_or_path=config.general.model_name)
-
         cls.rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 
         cls.finished = False
 
         cls.tokenizer = tokenizer
-
 
     def test_train_csv_no_tags(self) -> None:
         self.rel_cat.config.train.nclasses = 2
@@ -73,8 +70,9 @@ class RelCATTests(unittest.TestCase):
 
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path)
-        self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
         self.rel_cat.config.train.test_size = 0.4
+        self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
+
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
 
     def test_train_predict(self) -> None:

@@ -19,7 +19,10 @@ class BertModel_RelationExtraction(nn.Module):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: BertConfig = model_config
 
-        self.bert_model: BertModel = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+        self.bert_model:BertModel = BertModel(config=model_config)
+
+        if pretrained_model_name_or_path != "":
+            self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
 
         for param in self.bert_model.parameters():
             param.requires_grad = False

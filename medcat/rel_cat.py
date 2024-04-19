@@ -56,10 +56,6 @@ class RelCAT(PipeRunner):
         logging.basicConfig(level=self.config.general.log_level)
         self.log.setLevel(self.config.general.log_level)
 
-        self.learning_rate = config.train.lr
-        self.batch_size = config.train.batch_size
-        self.nclasses = config.train.nclasses
-
         self.is_cuda_available = torch.cuda.is_available()
         self.device = torch.device(
             "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
@@ -188,22 +184,24 @@ class RelCAT(PipeRunner):
         try:
             model_path = os.path.join(load_path, "model.dat")
 
-            if os.path.exists(os.path.join(load_path, config.general["model_name"])):
-                rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.general["model_name"],
+            if os.path.exists(os.path.join(load_path, config.general.model_name)):
+                rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.general.model_name,
                                                              relcat_config=config,
                                                              model_config=model_config,
                                                              ignore_mismatched_sizes=True)
             else:
                 rel_cat.model = BertModel_RelationExtraction(
-                    "", config, model_config, ignore_mismatched_sizes=True)
+                    pretrained_model_name_or_path="",
+                    relcat_config=config, 
+                    model_config=model_config,
+                    ignore_mismatched_sizes=True)
                 rel_cat.model.load_state_dict(
                     torch.load(model_path, map_location=device))
 
-            cls.log.info("Loaded HF model : " + config.general["model_name"])
+            cls.log.info("Loaded HF model : " + config.general.model_name)
         except Exception as e:
             cls.log.error("%s", str(e))
-            cls.log.error(
-                "Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
+            cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             rel_cat.model = BertModel_RelationExtraction(
                 pretrained_model_name_or_path="bert-base-uncased",
                 relcat_config=config,
@@ -292,12 +290,12 @@ class RelCAT(PipeRunner):
             raise ValueError("NO DATA HAS BEEN PROVIDED (JSON/CSV/spacy_DOCS)")
 
         train_dataset_size = len(train_rel_data)
-        batch_size = train_dataset_size if train_dataset_size < self.batch_size else self.batch_size
+        batch_size = train_dataset_size if train_dataset_size < self.config.train.batch_size else self.config.train.batch_size
         train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
                                       num_workers=0, collate_fn=self.padding_seq,
                                       pin_memory=self.config.general.pin_memory)
         test_dataset_size = len(test_rel_data)
-        test_batch_size = test_dataset_size if test_dataset_size < self.batch_size else self.batch_size
+        test_batch_size = test_dataset_size if test_dataset_size < self.config.train.batch_size else self.config.train.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,
                                      num_workers=0, collate_fn=self.padding_seq,
                                      pin_memory=self.config.general.pin_memory)
@@ -324,7 +322,8 @@ class RelCAT(PipeRunner):
             path=checkpoint_path)
 
         if train_rel_data.dataset["nclasses"] > self.config.train.nclasses:
-            self.nclasses = self.config.train.nclasses = train_rel_data.dataset["nclasses"]
+            self.config.train.nclasses = train_rel_data.dataset["nclasses"]
+            self.model.relcat_config.train.nclasses = self.config.train.nclasses
 
         self.config.general.labels2idx.update(
             train_rel_data.dataset["labels2idx"])
@@ -357,8 +356,10 @@ class RelCAT(PipeRunner):
 
                 attention_mask = (
                     token_ids != self.pad_id).float().to(self.device)
+
                 token_type_ids = torch.zeros(
                     (token_ids.shape[0], token_ids.shape[1])).long().to(self.device)
+
                 labels = labels.to(self.device)
 
                 model_output, classification_logits = self.model(
@@ -369,7 +370,8 @@ class RelCAT(PipeRunner):
                 )
 
                 batch_loss = criterion(
-                    classification_logits.view(-1, self.nclasses).to(self.device), labels.squeeze(1))
+                    classification_logits.view(-1, self.config.train.nclasses).to(self.device), labels.squeeze(1))
+
                 batch_loss.backward()
                 batch_loss = batch_loss / gradient_acc_steps
 

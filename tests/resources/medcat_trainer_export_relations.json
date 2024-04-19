@@ -4523,7 +4523,7 @@
                             "end_entity_end_idx": 4463,
                             "user": "admin",
                             "relation": "non_relation",
-                            "validated": false
+                            "validated": true
                         }
                     ]
                 }
