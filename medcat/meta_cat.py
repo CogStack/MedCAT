@@ -85,12 +85,13 @@ class MetaCAT(PipeRunner):
                 The module
         """
         config = self.config
+        from medcat.utils.meta_cat.models import LSTM
+        from medcat.utils.meta_cat.models import BertForMetaAnnotation
         if config.model['model_name'] == 'lstm':
-            from medcat.utils.meta_cat.models import LSTM
-            model = LSTM(embeddings, config)
+            model: Union[LSTM, BertForMetaAnnotation] = LSTM(embeddings, config)
             logger.info("LSTM model used for classification")
+
         elif config.model['model_name'] == 'bert':
-            from medcat.utils.meta_cat.models import BertForMetaAnnotation
             model = BertForMetaAnnotation(config)
 
             if not config.model.model_freeze_layers:
@@ -133,6 +134,8 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
+            data_ :
+                In case of oversampling being performed, the data will be passed in the parameter
 
         Returns:
             Dict: The resulting report.
@@ -149,6 +152,8 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
+            data_ :
+                In case of oversampling being performed, the data will be passed in the parameter
 
         Returns:
             Dict: The resulting report.
@@ -203,6 +208,10 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
+            data_ :
+                In case of oversampling being performed, the data will be passed in the parameter
+                The format of which is expected: [[['text','of','the','document'], [index of medical entity], "label" ],
+                ['text','of','the','document'], [index of medical entity], "label" ]]
 
         Returns:
             Dict: The resulting report.

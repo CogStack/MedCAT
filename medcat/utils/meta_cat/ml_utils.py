@@ -6,9 +6,11 @@ import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import torch.optim as optim
-from typing import List, Optional, Tuple, Any, Dict
+from typing import List, Optional, Tuple, Any, Dict, Union
 from torch import nn
 from scipy.special import softmax
+from torch.nn import CrossEntropyLoss
+
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
@@ -188,10 +190,12 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     device = torch.device(config.general['device']) # Create a torch device
 
     class_weights = config.train['class_weights']
+
+
     if class_weights is not None:
         class_weights = torch.FloatTensor(class_weights).to(device)
         if config.train['loss_funct'] == 'cross_entropy':
-            criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+            criterion: Union[FocalLoss, nn.CrossEntropyLoss] = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
         elif config.train['loss_funct'] == 'focal_loss':
             criterion = FocalLoss(alpha=class_weights, gamma=config.train['gamma'])
 

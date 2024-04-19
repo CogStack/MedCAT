@@ -69,7 +69,7 @@ class LSTM(nn.Module):
             x_all = []
             for i, indices in enumerate(center_positions):
                 this_hidden = x[i, indices, :]
-                to_append, _ = torch.max(this_hidden, axis=0)
+                to_append, _ = torch.max(this_hidden, dim=0)
                 x_all.append(to_append)
 
             x = torch.stack(x_all)
@@ -130,7 +130,7 @@ class BertForMetaAnnotation(nn.Module):
         head_mask: Optional[torch.FloatTensor] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
-        center_positions: Iterable[Any] = None,
+        center_positions: Iterable[Any] = [],
         ignore_cpos: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -166,8 +166,8 @@ class BertForMetaAnnotation(nn.Module):
 
         x_all = []
         for i,indices in enumerate(center_positions):
-            this_hidden = outputs.last_hidden_state[i, indices, :]
-            to_append, _ = torch.max(this_hidden, axis=0)
+            this_hidden: torch.Tensor = outputs.last_hidden_state[i, indices, :]
+            to_append, _ = torch.max(this_hidden,dim=0)
             x_all.append(to_append)
 
         x = torch.stack(x_all)

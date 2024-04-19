@@ -162,7 +162,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
     # If a label has no data, changing the mapping
     if 0 in label_data.values():
-        category_value2id_ = {}
+        category_value2id_ : Dict = {}
         keys_ls = [key for key, value in category_value2id.items() if value != 0]
         for k in keys_ls:
             category_value2id_[k] = len(category_value2id_)
