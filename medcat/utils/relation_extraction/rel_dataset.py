@@ -578,6 +578,13 @@ class RelData(Dataset):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
 
         self.log.info("MCT export dataset | nclasses: " + str(nclasses) + " | idx2label: " + str(idx2label))
+        self.log.info("Samples per class: ")
+        for label_num in list(idx2label.keys()):
+            sample_count = 0
+            for output_relation in output_relations:
+                if label_num  == output_relation[5]:
+                    sample_count += 1
+            self.log.info(" label: " + idx2label[label_num] + "| samples: " + str(sample_count))
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
