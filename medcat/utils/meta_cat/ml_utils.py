@@ -11,7 +11,7 @@ from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
-from sklearn.metrics import classification_report, precision_recall_fscore_support,f1_score, confusion_matrix, accuracy_score,ConfusionMatrixDisplay
+from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
 from sklearn.model_selection import train_test_split
 from transformers import AdamW, get_linear_schedule_with_warmup
 
@@ -154,6 +154,7 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         logger.info('Epoch: %d %s %s', epoch, "*"*50, name)
         logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
+
 class FocalLoss(nn.Module):
     def __init__(self, alpha=None, gamma=2):
         super(FocalLoss, self).__init__()
@@ -165,6 +166,7 @@ class FocalLoss(nn.Module):
         pt = torch.exp(-ce_loss)
         loss = (self.alpha[targets] * (1 - pt) ** self.gamma * ce_loss).mean()
         return loss
+
 
 def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
     """Trains a LSTM model (for now) with autocheckpoints
@@ -210,9 +212,9 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
         # Create the optimizer
         optimizer = AdamW(bert_classifier.parameters(),
-                          lr=lr,  # Default learning rate
+                          lr=lr, # Default learning rate
                           eps=1e-8, # Default epsilon value
-                          weight_decay = 1e-5
+                          weight_decay=1e-5
                           )
 
         # Total number of training steps
@@ -233,7 +235,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     ignore_cpos = config.model['ignore_cpos']
     num_batches = math.ceil(len(train_data) / batch_size)
     num_batches_test = math.ceil(len(test_data) / batch_size_eval)
-    optimizer = optim.Adam(parameters, lr=config.train['lr'],weight_decay = 1e-5)
+    optimizer = optim.Adam(parameters, lr=config.train['lr'],weight_decay=1e-5)
     if config.model.model_architecture_config is not None:
         if config.model.model_architecture_config['lr_scheduler'] is True:
             model, optimizer, scheduler = initialize_model(model,train_data,batch_size,config.train['lr'],epochs=nepochs)
@@ -251,7 +253,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         model.train()
         for i in range(num_batches):
             x, cpos,attention_masks, y = create_batch_piped_data(train_data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
-            logits = model(x, attention_mask = attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
+            logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
             loss = criterion(logits, y)
             loss.backward()
             # Track loss and logits
@@ -272,7 +274,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         with torch.no_grad():
             for i in range(num_batches_test):
                 x, cpos,attention_masks,y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
-                logits = model(x, attention_mask = attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
+                logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
 
                 # Track loss and logits
                 running_loss_test.append(loss.item())

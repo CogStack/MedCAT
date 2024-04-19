@@ -57,8 +57,8 @@ class Model(MixingConfig, BaseModel):
     dropout: float = 0.3
     load_model_dict_ = True
     train_on_full_data = False
-    category_undersample : str = None
-    model_architecture_config : Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
+    category_undersample: str = ''
+    model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
     """2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2

@@ -1,8 +1,8 @@
 import torch
 from collections import OrderedDict
-from typing import Optional, Any, List
+from typing import Optional, Any, List, Iterable
 from torch import nn, Tensor
-from transformers import BertPreTrainedModel, BertModel, BertConfig
+from transformers import BertModel, BertConfig
 from medcat.meta_cat import ConfigMetaCAT
 
 
@@ -57,7 +57,7 @@ class LSTM(nn.Module):
         x, _ = torch.nn.utils.rnn.pad_packed_sequence(x, batch_first=True)
 
         # Get what we need
-        row_indices = torch.arange(0, x.size(0)).long()
+        # row_indices = torch.arange(0, x.size(0)).long()
 
         # If this is  True we will always take the last state and not CPOS
         if ignore_cpos:
@@ -130,7 +130,7 @@ class BertForMetaAnnotation(nn.Module):
         head_mask: Optional[torch.FloatTensor] = None,
         inputs_embeds: Optional[torch.FloatTensor] = None,
         labels: Optional[torch.LongTensor] = None,
-        center_positions: Optional[Any] = None,
+        center_positions: Iterable[Any] = None,
         ignore_cpos: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -206,4 +206,3 @@ class BertForMetaAnnotation(nn.Module):
         # output layer
         x = self.fc4(x)
         return x
-

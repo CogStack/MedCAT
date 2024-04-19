@@ -1,9 +1,9 @@
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, overload
 from tokenizers import Tokenizer, ByteLevelBPETokenizer
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
-from transformers import AutoTokenizer
 
 
 class TokenizerWrapperBase(ABC):
@@ -192,7 +192,8 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         path = os.path.join(dir_path, cls.name)
         try:
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
-        except:
+        except Exception as e:
+            logging.warning("Could not load tokenizer from path due to error: {}. Loading from library for model variant: {}".format(e,model_variant))
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(model_variant)
 
         return tokenizer

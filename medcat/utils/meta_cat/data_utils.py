@@ -57,8 +57,7 @@ def prepare_from_json(data: Dict,
                     if 'meta_anns' in ann and prerequisites:
                         # It is possible to require certain meta_anns to exist and have a specific value
                         for meta_ann in prerequisites:
-                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisites[
-                                meta_ann]:
+                            if meta_ann not in ann['meta_anns'] or ann['meta_anns'][meta_ann]['value'] != prerequisites[meta_ann]:
                                 # Skip this annotation as the prerequisite is not met
                                 skip = True
                                 break
@@ -168,7 +167,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         for k in keys_ls:
             category_value2id_[k] = len(category_value2id_)
 
-        logger.warning(f"Labels found with 0 data; updates made\nFinal label encoding mapping:", category_value2id_)
+        logger.warning("Labels found with 0 data; updates made\nFinal label encoding mapping:", category_value2id_)
         category_value2id = category_value2id_
 
     for c in category_values:
@@ -186,7 +185,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             label_data_[data[i][2]] = label_data_[data[i][2]] + 1
 
     # Undersampling data
-    if category_undersample is None:
+    if category_undersample is None or category_undersample == '':
         min_label = min(label_data_.values())
 
     else:

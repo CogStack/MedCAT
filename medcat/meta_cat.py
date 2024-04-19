@@ -266,11 +266,12 @@ class MetaCAT(PipeRunner):
         self.model = self.get_model(embeddings=self.embeddings)
 
         if self.config.model.load_model_dict_:
-            model_save_path = os.path.join(save_dir_path, 'model.dat')
-            state_dict_ = torch.load(model_save_path)
-            self.model.load_state_dict(state_dict_)
-            logger.info("Model state loaded from checkpoint")
-            data = full_data
+            if save_dir_path is not None:
+                model_save_path = os.path.join(save_dir_path, 'model.dat')
+                state_dict_ = torch.load(model_save_path)
+                self.model.load_state_dict(state_dict_)
+                logger.info("Model state loaded from checkpoint")
+                data = full_data
 
         if self.config.model.train_on_full_data:
             data = full_data
@@ -409,8 +410,8 @@ class MetaCAT(PipeRunner):
 
         try:
             meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
-        except:
-            logger.warning('Model state cannot be loaded from dict. Please ensure the model file is correct')
+        except Exception as e:
+            logger.warning(f'Model state cannot be loaded from dict. Error: {e}')
         return meta_cat
 
     def get_ents(self, doc: Doc) -> Iterable[Span]:
