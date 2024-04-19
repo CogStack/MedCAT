@@ -374,6 +374,7 @@ class RelData(Dataset):
             Args:
                 data (Dict):
                     MedCAT Export data.
+
             Returns:
                 Dict : {  
                     "output_relations": relation_instances, <-- see create_base_relations_from_doc/csv
@@ -404,17 +405,37 @@ class RelData(Dataset):
 
                     doc_length_tokens = len(tokenizer_data["tokens"])
 
+                    relation_instances = []
+                    ann_ids_from_reliations = []
+
                     ann_ids_ents: Dict[Any, Any] = {}
-                    for ann in annotations:
-                        ann_id = ann['id']
+
+                    for ent1_idx, ent1_ann in enumerate(annotations):
+                        ann_id = ent1_ann['id']
                         ann_ids_ents[ann_id] = {}
-                        ann_ids_ents[ann_id]['cui'] = ann['cui']
-                        ann_ids_ents[ann_id]['type_ids'] = list(self.cdb.cui2type_ids.get(ann['cui'], ''))
+                        ann_ids_ents[ann_id]['cui'] = ent1_ann['cui']
+                        ann_ids_ents[ann_id]['type_ids'] = list(self.cdb.cui2type_ids.get(ent1_ann['cui'], ''))
                         ann_ids_ents[ann_id]['types'] = [self.cdb.addl_info['type_id2name'].get(
                             tui, '') for tui in ann_ids_ents[ann_id]['type_ids']]
 
-                    relation_instances = []
-                    ann_ids_from_reliations = []
+                        if self.config.general.mct_export_create_addl_rels:
+                            for _, ent2_ann in enumerate(annotations[ent1_idx + 1:]):
+                                if abs(ent1_ann["start"] - ent2_ann["start"]) <= self.config.general.window_size: 
+                                    if ent1_ann["validated"] and ent2_ann["validated"]:
+                                        relations.append({
+                                            "start_entity": ent1_ann["id"],
+                                            "start_entity_cui": ent1_ann["cui"],
+                                            "start_entity_value": ent1_ann["value"],
+                                            "start_entity_start_idx": ent1_ann["start"],
+                                            "start_entity_end_idx": ent1_ann["end"],
+                                            "end_entity": ent2_ann["id"],
+                                            "end_entity_cui": ent2_ann["cui"],
+                                            "end_entity_value": ent2_ann["value"],
+                                            "end_entity_start_idx": ent2_ann["start"],
+                                            "end_entity_end_idx": ent2_ann["end"],
+                                            "relation": "Other",
+                                            "validated": True
+                                        })
 
                     for relation in relations:
                         ann_start_start_pos = relation['start_entity_start_idx']
@@ -429,6 +450,11 @@ class RelData(Dataset):
                         start_entity_id = relation['start_entity']
                         end_entity_id = relation['end_entity']
 
+                        start_entity_types = ann_ids_ents[start_entity_id]['types']
+                        end_entity_types = ann_ids_ents[end_entity_id]['types']
+                        start_entity_cui = ann_ids_ents[start_entity_id]['cui']
+                        end_entity_cui = ann_ids_ents[end_entity_id]['cui']
+
                         # if somehow the annotations belong to the same relation but make sense in reverse
                         if ann_start_start_pos > ann_end_start_pos:
                             ann_end_start_pos = relation['start_entity_start_idx']
@@ -440,13 +466,15 @@ class RelData(Dataset):
                             end_entity_value = relation['start_entity_value']
                             start_entity_value = relation['end_entity_value']
 
+                            end_entity_cui = ann_ids_ents[start_entity_id]['cui']
+                            start_entity_cui = ann_ids_ents[end_entity_id]['cui']
+
+                            end_entity_types = ann_ids_ents[start_entity_id]['types']
+                            start_entity_types = ann_ids_ents[end_entity_id]['types']
+
+                            # switch ids last
                             start_entity_id = relation['end_entity']
                             end_entity_id = relation['start_entity']
-
-                        start_entity_types = ann_ids_ents[start_entity_id]['types']
-                        end_entity_types = ann_ids_ents[end_entity_id]['types']
-                        start_entity_cui = ann_ids_ents[start_entity_id]['cui']
-                        end_entity_cui = ann_ids_ents[end_entity_id]['cui']
 
                         for ent1type, ent2type in enumerate(relation_type_filter_pairs):
                             if ent1type not in start_entity_types and ent2type not in end_entity_types:
@@ -456,6 +484,7 @@ class RelData(Dataset):
                             [start_entity_id, end_entity_id])
 
                         relation_label = relation['relation']
+
 
                         if start_entity_id != end_entity_id and relation.get('validated', True):
 
@@ -485,13 +514,14 @@ class RelData(Dataset):
                                     right_context_start_end_pos = tokenizer_data[
                                         "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
+                                tmp_text = text
                                 # check if a tag is present, and if not so then insert the custom annotation tags in
                                 if self.config.general.annotation_schema_tag_ids[0] not in tokenizer_data["input_ids"]:
                                     _pre_e1 = text[0: (ann_start_start_pos)]
                                     _e1_s2 = text[(ann_start_end_pos): (ann_end_start_pos)]
                                     _e2_end = text[(ann_end_end_pos): len(text)]
-#
-                                    text = _pre_e1  + " " + \
+
+                                    tmp_text = _pre_e1  + " " + \
                                         annotation_token_text[0] + " " + \
                                         text[ann_start_start_pos:ann_start_end_pos] + " " + \
                                         annotation_token_text[1]  + " " + \
@@ -499,8 +529,17 @@ class RelData(Dataset):
                                         annotation_token_text[2] + " " + text[ann_end_start_pos:ann_end_end_pos] + \
                                         " " + annotation_token_text[3] + " " + _e2_end
 
-                                window_tokenizer_data = self.tokenizer(
-                                    text[left_context_start_char_pos:right_context_start_end_pos])
+                                    ann_tag_token_len = len(annotation_token_text[0])
+
+                                    _left_context_start_char_pos = left_context_start_char_pos - ann_tag_token_len - 2
+                                    left_context_start_char_pos = 0 if _left_context_start_char_pos <= 0 \
+                                        else _left_context_start_char_pos
+
+                                    _right_context_start_end_pos = right_context_start_end_pos + (ann_tag_token_len * 4) + 8 # 8 for spces
+                                    right_context_start_end_pos = len(tmp_text) if right_context_start_end_pos >= len(tmp_text) or _right_context_start_end_pos >= len(tmp_text) \
+                                        else _right_context_start_end_pos
+
+                                window_tokenizer_data = self.tokenizer(tmp_text[left_context_start_char_pos:right_context_start_end_pos])
 
                                 if self.config.general.annotation_schema_tag_ids:
                                     ent1_token_start_pos = \
@@ -537,6 +576,8 @@ class RelData(Dataset):
         # replace label_id with actual detected label number
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
+
+        self.log.info("MCT export dataset | nclasses: " + str(nclasses) + " | idx2label: " + str(idx2label))
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
