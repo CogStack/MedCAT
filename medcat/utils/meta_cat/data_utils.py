@@ -130,7 +130,7 @@ def prepare_from_json(data: Dict,
 
 
 def prepare_for_oversampled_data(data: Dict,
-                                 tokenizer: TokenizerWrapperBase) -> Dict:
+                                 tokenizer: TokenizerWrapperBase) -> List:
     """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
        working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
        about rewriting this function - but would be strange to have more than 1M manually annotated documents.

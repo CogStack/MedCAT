@@ -9,8 +9,6 @@ import torch.optim as optim
 from typing import List, Optional, Tuple, Any, Dict, Union
 from torch import nn
 from scipy.special import softmax
-from torch.nn import CrossEntropyLoss
-
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
@@ -52,6 +50,10 @@ def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
             Same as data, but subsetted and as a tensor
         cpos ():
             Center positions for the data
+        attention_mask:
+            Indicating padding mask for the data
+        y:
+            class label of the data
     """
     max_seq_len = max([len(x[0]) for x in data])
     x = [x[0][0:max_seq_len] + [pad_id]*max(0, max_seq_len - len(x[0])) for x in data[start_ind:end_ind]]
@@ -115,7 +117,7 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
     return predictions, confidences
 
 
-def split_list_train_test(data: List, test_size: int, shuffle: bool = True) -> Tuple:
+def split_list_train_test(data: List, test_size: float, shuffle: bool = True) -> Tuple:
     """Shuffle and randomly split data
 
     Args:
@@ -171,7 +173,7 @@ class FocalLoss(nn.Module):
 
 
 def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
-    """Trains a LSTM model (for now) with autocheckpoints
+    """Trains a LSTM model and BERT with autocheckpoints
 
     Args:
         model (nn.Module): The model
@@ -208,10 +210,10 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     parameters = filter(lambda p: p.requires_grad, model.parameters())
 
     def initialize_model(model, data, batch_size,lr,epochs=4):
-        """Initialize the Bert Classifier, the optimizer and the learning rate scheduler.
+        """Initialize the Classifier, the optimizer and the learning rate scheduler.
         """
 
-        # Instantiate Bert Classifier
+        # Instantiate Classifier
         bert_classifier = model
 
         # Create the optimizer
@@ -256,6 +258,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         all_logits = []
         model.train()
         for i in range(num_batches):
+            model.zero_grad()
             x, cpos,attention_masks, y = create_batch_piped_data(train_data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
             logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos, model_arch_config=config.model.model_architecture_config)
             loss = criterion(logits, y)

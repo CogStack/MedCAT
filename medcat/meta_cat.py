@@ -332,7 +332,7 @@ class MetaCAT(PipeRunner):
 
         # We already have everything, just get the data
         category_value2id = g_config['category_value2id']
-        data, _ , _= encode_category_values(data, existing_category_value2id=category_value2id)
+        data,_,_= encode_category_values(data, existing_category_value2id=category_value2id)
 
         # Run evaluation
         assert self.tokenizer is not None
