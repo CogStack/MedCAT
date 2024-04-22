@@ -11,7 +11,7 @@ from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.utils.hasher import Hasher
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.utils.meta_cat.ml_utils import predict, train_model, set_all_seeds, eval_model
-from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values
+from medcat.utils.meta_cat.data_utils import prepare_from_json, encode_category_values, prepare_for_oversampled_data
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from medcat.utils.meta_cat.data_utils import Doc as FakeDoc
@@ -124,7 +124,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     @deprecated(message="Use `train_from_json` or `train_raw` instead")
-    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_=None) -> Dict:
+    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_oversampled=None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -140,9 +140,9 @@ class MetaCAT(PipeRunner):
         Returns:
             Dict: The resulting report.
         """
-        return self.train_from_json(json_path, save_dir_path,data_=data_)
+        return self.train_from_json(json_path, save_dir_path,data_oversampled=data_oversampled)
 
-    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_=None) -> Dict:
+    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_oversampled=None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -178,9 +178,9 @@ class MetaCAT(PipeRunner):
         for path in json_path:
             with open(path, 'r') as f:
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
-        return self.train_raw(data_loaded,save_dir_path,data_=data_)
+        return self.train_raw(data_loaded,save_dir_path,data_oversampled=data_oversampled)
 
-    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None,data_=None) -> Dict:
+    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None,data_oversampled=None) -> Dict:
         """Train or continue training a model given raw data. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -245,14 +245,8 @@ class MetaCAT(PipeRunner):
                     category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
-        if data_:
-            data_sampled = []
-            for sample in data_:
-                if isinstance(sample[0][0],str):
-                    doc_text = self.tokenizer(sample[0])
-                    data_sampled.append([doc_text[0]['input_ids'],sample[1],sample[2]])
-                else:
-                    data_sampled.append([sample[0], sample[1], sample[2]])
+        if data_oversampled:
+            data_sampled = prepare_for_oversampled_data(data_oversampled, self.tokenizer)
             data = data + data_sampled
 
         category_value2id = g_config['category_value2id']
@@ -284,7 +278,6 @@ class MetaCAT(PipeRunner):
 
         if self.config.model.train_on_full_data:
             data = full_data
-
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
         # If autosave, then load the best model here
@@ -339,7 +332,7 @@ class MetaCAT(PipeRunner):
 
         # We already have everything, just get the data
         category_value2id = g_config['category_value2id']
-        data, _ = encode_category_values(data, existing_category_value2id=category_value2id)
+        data, _ , _= encode_category_values(data, existing_category_value2id=category_value2id)
 
         # Run evaluation
         assert self.tokenizer is not None
@@ -363,9 +356,9 @@ class MetaCAT(PipeRunner):
         # Save tokenizer
         assert self.tokenizer is not None
         self.tokenizer.save(save_dir_path)
-
         # Save config
-        # self.config.save(os.path.join(save_dir_path, 'config.json'))
+
+        self.config.save(os.path.join(save_dir_path, 'config.json'))
 
         # Save the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
@@ -393,7 +386,7 @@ class MetaCAT(PipeRunner):
         # Load config
         config = cast(ConfigMetaCAT, ConfigMetaCAT.load(os.path.join(save_dir_path, 'config.json')))
 
-        # Overwrite loaded paramters with something new
+        # Overwrite loaded parameters with something new
         if config_dict is not None:
             config.merge_config(config_dict)
 

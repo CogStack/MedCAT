@@ -129,6 +129,40 @@ def prepare_from_json(data: Dict,
     return out_data
 
 
+def prepare_for_oversampled_data(data: Dict,
+                                 tokenizer: TokenizerWrapperBase) -> Dict:
+    """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
+       working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
+       about rewriting this function - but would be strange to have more than 1M manually annotated documents.
+
+       Args:
+           data (dict):
+               Oversampled data expected in the following format:
+               [[['text','of','the','document'], [index of medical entity], "label" ],
+                ['text','of','the','document'], [index of medical entity], "label" ]]
+
+           tokenizer (medcat.tokenizers.meta_cat_tokenizers):
+            Something to split text into tokens for the LSTM/BERT/whatever meta models.
+
+       Returns:
+            data_sampled (dict):
+                The processed data in the format that can be merged with the output from prepare_from_json.
+                [[<[tokens]>, [index of medical entity], "label" ],
+                <[tokens]>, [index of medical entity], "label" ]]
+                """
+
+    data_sampled = []
+    for sample in data:
+        # Checking if the input is already tokenized
+        if isinstance(sample[0][0], str):
+            doc_text = tokenizer(sample[0])
+            data_sampled.append([doc_text[0]['input_ids'], sample[1], sample[2]])
+        else:
+            data_sampled.append([sample[0], sample[1], sample[2]])
+
+    return data_sampled
+
+
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None,
                            category_undersample=None) -> Tuple:
     """Converts the category values in the data outputed by `prepare_from_json`
@@ -162,7 +196,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
     # If a label has no data, changing the mapping
     if 0 in label_data.values():
-        category_value2id_ : Dict = {}
+        category_value2id_: Dict = {}
         keys_ls = [key for key, value in category_value2id.items() if value != 0]
         for k in keys_ls:
             category_value2id_[k] = len(category_value2id_)
@@ -183,7 +217,6 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     for i in range(len(data)):
         if data[i][2] in category_value2id.values():
             label_data_[data[i][2]] = label_data_[data[i][2]] + 1
-
     # Undersampling data
     if category_undersample is None or category_undersample == '':
         min_label = min(label_data_.values())
