@@ -140,9 +140,8 @@ def prepare_for_oversampled_data(data: Dict,
                Oversampled data expected in the following format:
                [[['text','of','the','document'], [index of medical entity], "label" ],
                 ['text','of','the','document'], [index of medical entity], "label" ]]
-
            tokenizer (medcat.tokenizers.meta_cat_tokenizers):
-            Something to split text into tokens for the LSTM/BERT/whatever meta models.
+                Something to split text into tokens for the LSTM/BERT/whatever meta models.
 
        Returns:
             data_sampled (dict):
@@ -173,6 +172,8 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             Output of `prepare_from_json`.
         existing_category_value2id(Optional[Dict]):
             Map from category_value to id (old/existing).
+        category_undersample:
+            Name of class that should be used to undersample the data (for 2 phase learning)
 
     Returns:
         dict:
@@ -253,7 +254,6 @@ def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
             Output from cat formated as: {<id>: <output of get_entities, ...}.
         id2text(Dict):
             Map from document id to text of that document.
-
     Returns:
         Generator:
             Generator of spacy like documents that can be feed into meta_cat.pipe.

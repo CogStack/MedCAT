@@ -211,13 +211,23 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
     def initialize_model(model, data, batch_size,lr,epochs=4):
         """Initialize the Classifier, the optimizer and the learning rate scheduler.
-        """
+            Args:
+                model (nn.Module): The model to be trained
+                data (List): The data
+                batch_size: Batch size
+                lr: Learning rate for training
+                epochs: Number of training iterations
+            Returns:
+                classifier: model
+                optimizer: optimizer
+                scheduler: scheduler
+            """
 
         # Instantiate Classifier
-        bert_classifier = model
+        classifier = model
 
         # Create the optimizer
-        optimizer = AdamW(bert_classifier.parameters(),
+        optimizer = AdamW(classifier.parameters(),
                           lr=lr, # Default learning rate
                           eps=1e-8, # Default epsilon value
                           weight_decay=1e-5
@@ -231,7 +241,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         scheduler = get_linear_schedule_with_warmup(optimizer,
                                                     num_warmup_steps=0,  # Default value
                                                     num_training_steps=total_steps)
-        return bert_classifier, optimizer, scheduler
+        return classifier, optimizer, scheduler
 
 
     batch_size = config.train['batch_size']

@@ -134,7 +134,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
-            data_ :
+            data_oversampled :
                 In case of oversampling being performed, the data will be passed in the parameter
 
         Returns:
@@ -152,7 +152,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
-            data_ :
+            data_oversampled :
                 In case of oversampling being performed, the data will be passed in the parameter
 
         Returns:
@@ -208,7 +208,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
-            data_ :
+            data_oversampled :
                 In case of oversampling being performed, the data will be passed in the parameter
                 The format of which is expected: [[['text','of','the','document'], [index of medical entity], "label" ],
                 ['text','of','the','document'], [index of medical entity], "label" ]]
