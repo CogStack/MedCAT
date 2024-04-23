@@ -18,13 +18,13 @@ def prepare_from_json(data: Dict,
     about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
     Args:
-        data (dict):
+        data (Dict):
             Loaded output of MedCATtrainer. If we have a `my_export.json` from MedCATtrainer, than data = json.load(<my_export>).
         cntx_left (int):
             Size of context to get from the left of the concept
         cntx_right (int):
             Size of context to get from the right of the concept
-        tokenizer (medcat.tokenizers.meta_cat_tokenizers):
+        tokenizer (TokenizerWrapperBase):
             Something to split text into tokens for the LSTM/BERT/whatever meta models.
         replace_center (Optional[str]):
             If not None the center word (concept) will be replaced with whatever this is.
@@ -34,6 +34,8 @@ def prepare_from_json(data: Dict,
                 {'Experiencer': 'Patient'} - Take care that the CASE has to match whatever is in the data. Defaults to `{}`.
         lowercase (bool):
             Should the text be lowercased before tokenization. Defaults to True.
+        cui_filter:
+            cui_filter
 
     Returns:
         out_data (dict):
@@ -136,11 +138,11 @@ def prepare_for_oversampled_data(data: Dict,
        about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
        Args:
-           data (dict):
+           data (Dict):
                Oversampled data expected in the following format:
                [[['text','of','the','document'], [index of medical entity], "label" ],
                 ['text','of','the','document'], [index of medical entity], "label" ]]
-           tokenizer (medcat.tokenizers.meta_cat_tokenizers):
+           tokenizer (TokenizerWrapperBase):
                 Something to split text into tokens for the LSTM/BERT/whatever meta models.
 
        Returns:
@@ -254,9 +256,9 @@ def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
             Output from cat formated as: {<id>: <output of get_entities, ...}.
         id2text(Dict):
             Map from document id to text of that document.
-    Returns:
-        Generator:
-            Generator of spacy like documents that can be feed into meta_cat.pipe.
+
+    Yields:
+        Generator: Generator of spacy like documents that can be feed into meta_cat.pipe.
     """
     for id_ in data.keys():
         ents = data[id_]['entities'].values()
