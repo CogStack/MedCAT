@@ -114,8 +114,7 @@ def prepare_from_json(data: Dict,
                             # Backward compatibility if meta_anns is a list vs dict in the new approach
                             meta_anns = []
                             if 'meta_anns' in ann:
-                                meta_anns = ann['meta_anns'].values() if type(ann['meta_anns']) == dict else ann[
-                                    'meta_anns']
+                                meta_anns = ann['meta_anns'].values() if isinstance(ann['meta_anns'],dict) else ann['meta_anns']
 
                             # If the annotation is validated
                             for meta_ann in meta_anns:
