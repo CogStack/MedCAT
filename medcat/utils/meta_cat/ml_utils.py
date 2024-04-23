@@ -223,6 +223,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                     Learning rate for training
                 epochs:
                     Number of training iterations
+
             Returns:
                 classifier:
                     model
