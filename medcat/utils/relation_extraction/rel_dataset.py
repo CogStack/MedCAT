@@ -4,6 +4,7 @@ from torch.utils.data import Dataset
 from spacy.tokens import Doc
 import logging
 import pandas
+import random
 import torch
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
@@ -127,6 +128,8 @@ class RelData(Dataset):
                         relation_token_span_ids.append([])
                         out_ent1_ent2_starts.append([])
 
+                df["label"] = [i.strip() for i in df["label"]]
+
                 df["relation_token_span_ids"] = relation_token_span_ids
                 df["ent1_ent2_start"] = out_ent1_ent2_starts
 
@@ -139,8 +142,17 @@ class RelData(Dataset):
 
         output_relations = df.values.tolist()
 
-        self.log.info("No. of relations detected:" + str(len(output_relations)) +
-            "| from : " + csv_path + " | classes: " + str(idx2label))
+        self.log.info("CSV dataset | No. of relations detected:" + str(len(output_relations)) +
+                      "| from : " + csv_path + " | nclasses: " + str(nclasses) + " | idx2label: " + str(idx2label))
+
+        self.log.info("Samples per class: ")
+        for label_num in list(idx2label.keys()):
+            sample_count = 0
+            for output_relation in output_relations:
+                if label_num == output_relation[5]:
+                    sample_count += 1
+            self.log.info(
+                " label: " + idx2label[label_num] + " | samples: " + str(sample_count))
 
         # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
@@ -155,7 +167,7 @@ class RelData(Dataset):
             doc (Union[Doc, str]): SpacyDoc or string of text, each will get handled slightly differently
             doc_id (str): document id
             ent1_ent2_tokens_start_pos (Union[List, Tuple], optional): start of [s1][s2] tokens, if left default
-            we assume we are dealing with a SpacyDoc. Defaults to (-1, -1).
+                    we assume we are dealing with a SpacyDoc. Defaults to (-1, -1).
 
         Returns:
                 Dict : {  
@@ -193,7 +205,8 @@ class RelData(Dataset):
 
             if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size:
 
-                ent1_left_ent_context_token_pos_end = ent1_token_start_pos - self.config.general.cntx_left
+                ent1_left_ent_context_token_pos_end = ent1_token_start_pos - \
+                    self.config.general.cntx_left
 
                 left_context_start_char_pos = 0
                 right_context_start_end_pos = len(doc_text) - 1
@@ -204,7 +217,8 @@ class RelData(Dataset):
                     left_context_start_char_pos = tokenizer_data[
                         "offset_mapping"][ent1_left_ent_context_token_pos_end][0]
 
-                ent2_right_ent_context_token_pos_end = ent2_token_start_pos + self.config.general.cntx_right
+                ent2_right_ent_context_token_pos_end = ent2_token_start_pos + \
+                    self.config.general.cntx_right
 
                 # get end of 2nd ent token (if using tags)
                 if self.config.general.annotation_schema_tag_ids:
@@ -259,8 +273,10 @@ class RelData(Dataset):
                 ent1_token: Span = _ents[ent1_idx]   # type: ignore
 
                 if str(ent1_token) not in chars_to_exclude:
-                    ent1_type_id = list(self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
-                    ent1_types = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ent1_type_id]
+                    ent1_type_id = list(
+                        self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
+                    ent1_types = [self.cdb.addl_info['type_id2name'].get(
+                        tui, '') for tui in ent1_type_id]
 
                     ent2pos = ent1_idx + 1
 
@@ -269,7 +285,8 @@ class RelData(Dataset):
 
                     # get actual token index from the text
                     _ent1_token_idx = [i for i in range(len(tokenizer_data["offset_mapping"])) if ent1_start in
-                                       range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
+                                       range(
+                                           tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
                                        or ent1_end in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)
                                        ][0]
 
@@ -287,8 +304,10 @@ class RelData(Dataset):
 
                         if ent2_token in _ents:
                             if str(ent2_token) not in chars_to_exclude and str(ent1_token) != str(ent2_token):
-                                ent2_type_id = list(self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
-                                ent2_types = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ent2_type_id]
+                                ent2_type_id = list(
+                                    self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
+                                ent2_types = [self.cdb.addl_info['type_id2name'].get(
+                                    tui, '') for tui in ent2_type_id]
 
                                 ent2_start = ent2_token.start
                                 ent2_end = ent2_token.end
@@ -303,7 +322,8 @@ class RelData(Dataset):
 
                                     right_context_start_end_pos = len(
                                         doc_text) - 1
-                                    ent2_right_ent_context_token_pos_end = _ent2_token_idx + self.config.general.cntx_right
+                                    ent2_right_ent_context_token_pos_end = _ent2_token_idx + \
+                                        self.config.general.cntx_right
 
                                     if ent2_right_ent_context_token_pos_end >= doc_length - 1:
                                         ent2_right_ent_context_token_pos_end = doc_length - 2
@@ -316,20 +336,25 @@ class RelData(Dataset):
                                     # check if a tag is present, and if not so then insert the custom annotation tags in
                                     if self.config.general.annotation_schema_tag_ids[0] not in tokenizer_data["input_ids"]:
                                         _pre_e1 = tmp_doc_text[0: (ent1_start)]
-                                        _e1_s2 = tmp_doc_text[(ent1_end): (ent2_start)]
-                                        _e2_end = tmp_doc_text[(ent2_end): len(doc_text)]
+                                        _e1_s2 = tmp_doc_text[(
+                                            ent1_end): (ent2_start)]
+                                        _e2_end = tmp_doc_text[(
+                                            ent2_end): len(doc_text)]
                                         _ent2_token_idx = (_ent2_token_idx + 2)
 
-                                        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(self.config.general.annotation_schema_tag_ids)
+                                        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
+                                            self.config.general.annotation_schema_tag_ids)
 
                                         tmp_doc_text = _pre_e1 + " " + \
                                             annotation_token_text[0] + " " + \
                                             str(ent1_token) + " " + \
                                             annotation_token_text[1] + " " + _e1_s2 + " " + \
                                             annotation_token_text[2] + " " + str(ent2_token) + " " + \
-                                            annotation_token_text[3] + " " + _e2_end
+                                            annotation_token_text[3] + \
+                                            " " + _e2_end
 
-                                        ann_tag_token_len = len(annotation_token_text[0])
+                                        ann_tag_token_len = len(
+                                            annotation_token_text[0])
 
                                         _left_context_start_char_pos = left_context_start_char_pos - ann_tag_token_len
                                         left_context_start_char_pos = 0 if _left_context_start_char_pos <= 0 \
@@ -389,7 +414,8 @@ class RelData(Dataset):
 
         relation_type_filter_pairs = self.config.general.relation_type_filter_pairs
 
-        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(self.config.general.annotation_schema_tag_ids)
+        annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
+            self.config.general.annotation_schema_tag_ids)
 
         for project in data['projects']:
             for doc_id, document in enumerate(project['documents']):
@@ -410,19 +436,23 @@ class RelData(Dataset):
 
                     ann_ids_ents: Dict[Any, Any] = {}
 
+                    _other_rel_subset = []
+
                     for ent1_idx, ent1_ann in enumerate(annotations):
                         ann_id = ent1_ann['id']
                         ann_ids_ents[ann_id] = {}
                         ann_ids_ents[ann_id]['cui'] = ent1_ann['cui']
-                        ann_ids_ents[ann_id]['type_ids'] = list(self.cdb.cui2type_ids.get(ent1_ann['cui'], ''))
+                        ann_ids_ents[ann_id]['type_ids'] = list(
+                            self.cdb.cui2type_ids.get(ent1_ann['cui'], ''))
                         ann_ids_ents[ann_id]['types'] = [self.cdb.addl_info['type_id2name'].get(
                             tui, '') for tui in ann_ids_ents[ann_id]['type_ids']]
 
                         if self.config.general.mct_export_create_addl_rels:
+
                             for _, ent2_ann in enumerate(annotations[ent1_idx + 1:]):
-                                if abs(ent1_ann["start"] - ent2_ann["start"]) <= self.config.general.window_size: 
+                                if abs(ent1_ann["start"] - ent2_ann["start"]) <= self.config.general.window_size:
                                     if ent1_ann["validated"] and ent2_ann["validated"]:
-                                        relations.append({
+                                        _other_rel_subset.append({
                                             "start_entity": ent1_ann["id"],
                                             "start_entity_cui": ent1_ann["cui"],
                                             "start_entity_value": ent1_ann["value"],
@@ -436,6 +466,15 @@ class RelData(Dataset):
                                             "relation": "Other",
                                             "validated": True
                                         })
+
+                    non_rel_sample_size_limit = int(int(
+                        self.config.general.mct_export_max_non_rel_sample_size) / len(data['projects']))
+
+                    if non_rel_sample_size_limit > 0 and len(_other_rel_subset) > 0:
+                        random.shuffle(_other_rel_subset)
+                        _other_rel_subset = _other_rel_subset[0:non_rel_sample_size_limit]
+
+                    relations.extend(_other_rel_subset)
 
                     for relation in relations:
                         ann_start_start_pos = relation['start_entity_start_idx']
@@ -483,11 +522,9 @@ class RelData(Dataset):
                         ann_ids_from_reliations.extend(
                             [start_entity_id, end_entity_id])
 
-                        relation_label = relation['relation']
-
+                        relation_label = relation['relation'].strip()
 
                         if start_entity_id != end_entity_id and relation.get('validated', True):
-
                             if abs(ann_start_start_pos - ann_end_start_pos) <= self.config.general.window_size:
 
                                 ent1_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_start_start_pos
@@ -496,7 +533,8 @@ class RelData(Dataset):
                                 ent2_token_start_pos = [i for i in range(0, doc_length_tokens) if ann_end_start_pos
                                                         in range(tokenizer_data["offset_mapping"][i][0], tokenizer_data["offset_mapping"][i][1] + 1)][0]
 
-                                ent1_left_ent_context_token_pos_end = ent1_token_start_pos - self.config.general.cntx_left
+                                ent1_left_ent_context_token_pos_end = ent1_token_start_pos - \
+                                    self.config.general.cntx_left
 
                                 left_context_start_char_pos = 0
                                 right_context_start_end_pos = len(text) - 1
@@ -507,7 +545,8 @@ class RelData(Dataset):
                                     left_context_start_char_pos = tokenizer_data[
                                         "offset_mapping"][ent1_left_ent_context_token_pos_end][0]
 
-                                ent2_right_ent_context_token_pos_end = ent2_token_start_pos + self.config.general.cntx_right
+                                ent2_right_ent_context_token_pos_end = ent2_token_start_pos + \
+                                    self.config.general.cntx_right
                                 if ent2_right_ent_context_token_pos_end >= doc_length_tokens - 1:
                                     ent2_right_ent_context_token_pos_end = doc_length_tokens - 2
                                 else:
@@ -518,36 +557,44 @@ class RelData(Dataset):
                                 # check if a tag is present, and if not so then insert the custom annotation tags in
                                 if self.config.general.annotation_schema_tag_ids[0] not in tokenizer_data["input_ids"]:
                                     _pre_e1 = text[0: (ann_start_start_pos)]
-                                    _e1_s2 = text[(ann_start_end_pos): (ann_end_start_pos)]
-                                    _e2_end = text[(ann_end_end_pos): len(text)]
+                                    _e1_s2 = text[(ann_start_end_pos): (
+                                        ann_end_start_pos)]
+                                    _e2_end = text[(
+                                        ann_end_end_pos): len(text)]
 
-                                    tmp_text = _pre_e1  + " " + \
+                                    tmp_text = _pre_e1 + " " + \
                                         annotation_token_text[0] + " " + \
                                         text[ann_start_start_pos:ann_start_end_pos] + " " + \
-                                        annotation_token_text[1]  + " " + \
-                                         _e1_s2 + " " + \
+                                        annotation_token_text[1] + " " + \
+                                        _e1_s2 + " " + \
                                         annotation_token_text[2] + " " + text[ann_end_start_pos:ann_end_end_pos] + \
-                                        " " + annotation_token_text[3] + " " + _e2_end
+                                        " " + \
+                                        annotation_token_text[3] + \
+                                        " " + _e2_end
 
-                                    ann_tag_token_len = len(annotation_token_text[0])
+                                    ann_tag_token_len = len(
+                                        annotation_token_text[0])
 
                                     _left_context_start_char_pos = left_context_start_char_pos - ann_tag_token_len - 2
                                     left_context_start_char_pos = 0 if _left_context_start_char_pos <= 0 \
                                         else _left_context_start_char_pos
 
-                                    _right_context_start_end_pos = right_context_start_end_pos + (ann_tag_token_len * 4) + 8 # 8 for spces
+                                    _right_context_start_end_pos = right_context_start_end_pos + \
+                                        (ann_tag_token_len * 4) + \
+                                        8  # 8 for spces
                                     right_context_start_end_pos = len(tmp_text) if right_context_start_end_pos >= len(tmp_text) or _right_context_start_end_pos >= len(tmp_text) \
                                         else _right_context_start_end_pos
 
-                                window_tokenizer_data = self.tokenizer(tmp_text[left_context_start_char_pos:right_context_start_end_pos])
+                                window_tokenizer_data = self.tokenizer(
+                                    tmp_text[left_context_start_char_pos:right_context_start_end_pos])
 
                                 if self.config.general.annotation_schema_tag_ids:
                                     ent1_token_start_pos = \
-                                                window_tokenizer_data["input_ids"].index(
-                                                    self.config.general.annotation_schema_tag_ids[0])
+                                        window_tokenizer_data["input_ids"].index(
+                                            self.config.general.annotation_schema_tag_ids[0])
                                     ent2_token_start_pos = \
-                                                window_tokenizer_data["input_ids"].index(
-                                                    self.config.general.annotation_schema_tag_ids[2])
+                                        window_tokenizer_data["input_ids"].index(
+                                            self.config.general.annotation_schema_tag_ids[2])
                                 else:
                                     # update token loc to match new selection
                                     ent2_token_start_pos = ent2_token_start_pos - ent1_token_start_pos
@@ -577,19 +624,21 @@ class RelData(Dataset):
         for idx in range(len(output_relations)):
             output_relations[idx][5] = labels2idx[output_relations[idx][4]]
 
-        self.log.info("MCT export dataset | nclasses: " + str(nclasses) + " | idx2label: " + str(idx2label))
+        self.log.info("MCT export dataset | nclasses: " +
+                      str(nclasses) + " | idx2label: " + str(idx2label))
         self.log.info("Samples per class: ")
         for label_num in list(idx2label.keys()):
             sample_count = 0
             for output_relation in output_relations:
-                if label_num  == output_relation[5]:
+                if int(label_num) == int(output_relation[5]):
                     sample_count += 1
-            self.log.info(" label: " + idx2label[label_num] + "| samples: " + str(sample_count))
+            self.log.info(
+                " label: " + idx2label[label_num] + " | samples: " + str(sample_count))
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
     @classmethod
-    def get_labels(cls, relation_labels: List[str], config: ConfigRelCAT) -> Tuple[int, Dict, Dict]:
+    def get_labels(cls, relation_labels: List[str], config: ConfigRelCAT) -> Tuple[int, Dict[str, Any], Dict[int, Any]]:
         """ This is used to update labels in config with unencountered classes/labels ( if any are encountered during training).
 
         Args:
@@ -599,38 +648,25 @@ class RelData(Dataset):
         Returns:
             Any: _description_
         """
-        labels2idx: Dict[str, int] = {}
-        idx2label: Dict[int, str] = {}
-        class_ids = 0
+        curr_class_id = 0
 
-        config_labels2idx = config.general.labels2idx
+        config_labels2idx: Dict = config.general.labels2idx
+        config_idx2labels: Dict = config.general.idx2labels
 
-        if len(list(config_labels2idx.values())) > 0:
-            class_ids = max(list(config_labels2idx.values())) + 1
+        relation_labels = [relation_label.strip()
+                           for relation_label in relation_labels]
 
-        for relation_label in relation_labels:
-            if relation_label not in labels2idx.keys() and relation_label not in config_labels2idx.keys():
-                labels2idx[relation_label] = class_ids
-                config_labels2idx[relation_label] = class_ids
-                class_ids += 1
-
+        for relation_label in set(relation_labels):
             if relation_label not in config_labels2idx.keys():
-                labels2idx[relation_label] = class_ids
-                config_labels2idx[relation_label] = labels2idx[relation_label]
-                class_ids += 1
+                while curr_class_id in [int(label_idx) for label_idx in config_idx2labels.keys()]:
+                    curr_class_id += 1
+                config_labels2idx[relation_label] = curr_class_id
+                config_idx2labels[curr_class_id] = relation_label
 
-            if relation_label in config_labels2idx.keys() and relation_label not in labels2idx.keys():
-                labels2idx[relation_label] = config_labels2idx[relation_label]
-
-            idx2label[labels2idx[relation_label]] = relation_label
-
-        config.general.labels2idx = config_labels2idx
-
-        return len(labels2idx.keys()), labels2idx, idx2label,
+        return len(config_labels2idx.keys()), config_labels2idx, config_idx2labels,
 
     def __len__(self) -> int:
         """
-
         Returns:
             int: num of rels records
         """
@@ -638,12 +674,14 @@ class RelData(Dataset):
 
     def __getitem__(self, idx: int) -> Tuple[torch.LongTensor, torch.LongTensor, torch.LongTensor]:
         """
-            Args:
-                idx (int):
-                 index of item in the dataset dict
-            Return:
-                long tensors of the following the columns : input_ids, ent1&ent2 token start pos idx, label_ids
+
+        Args:
+            idx (int): index of item in the dataset dict
+
+        Returns:
+            Tuple[torch.LongTensor, torch.LongTensor, torch.LongTensor]: long tensors of the following the columns : input_ids, ent1&ent2 token start pos idx, label_ids
         """
+
         return torch.LongTensor(self.dataset['output_relations'][idx][0]),\
             torch.LongTensor(self.dataset['output_relations'][idx][1]),\
             torch.LongTensor([self.dataset['output_relations'][idx][5]])

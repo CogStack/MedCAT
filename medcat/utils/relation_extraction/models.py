@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Optional
+from typing import Any, List, Optional, Tuple
 import torch
 from torch import nn
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
@@ -8,12 +8,23 @@ from medcat.config_rel_cat import ConfigRelCAT
 
 
 class BertModel_RelationExtraction(nn.Module):
+    """ BertModel class for RelCAT
+    """
+
     name = "bertmodel_relcat"
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig,
-                 ignore_mismatched_sizes: bool = True):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig):
+        """ Class to hold the BERT model + model_config
+
+        Args:
+            pretrained_model_name_or_path (str): path to load the model from,
+                    this can be a HF model i.e: "bert-base-uncased", if left empty, it is normally assumed that a model is loaded from 'model.dat'
+                    using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.            
+            relcat_config (ConfigRelCAT): relcat config.
+            model_config (BertConfig): HF bert config for model.
+        """
         super(BertModel_RelationExtraction, self).__init__()
 
         self.relcat_config: ConfigRelCAT = relcat_config
@@ -42,12 +53,23 @@ class BertModel_RelationExtraction(nn.Module):
 
         self.log.info("RelCAT BertConfig: " + str(self.model_config))
 
-    def get_annotation_schema_tag(self, sequence_output, input_ids, special_tag):
+    def get_annotation_schema_tag(self, sequence_output: torch.Tensor, input_ids: torch.Tensor, special_tag: List) -> torch.Tensor:
+        """ Gets to token sequences from the sequence_ouput for the specific token 
+            tag ids in self.relcat_config.general.annotation_schema_tag_ids.
 
-        idx_start = torch.where(input_ids == special_tag[0])
-        idx_end = torch.where(input_ids == special_tag[1])
+        Args:
+            sequence_output (torch.Tensor): hidden states/embeddings for each token in the input text
+            input_ids (torch.Tensor): input token ids
+            special_tag (List): special annotation token id pairs
 
-        seen = []  # Dictionary to store seen elements and their indices
+        Returns:
+            torch.Tensor: new seq_tags
+        """
+
+        idx_start = torch.where(input_ids == special_tag[0]) # returns: row ids, idx of token[0]/star token in row
+        idx_end = torch.where(input_ids == special_tag[1]) # returns: row ids, idx of token[1]/end token in row
+
+        seen = [] # List to store seen elements and their indices
         duplicate_indices = []
 
         for i in range(len(idx_start[0])):
@@ -61,7 +83,7 @@ class BertModel_RelationExtraction(nn.Module):
             for idx_remove in duplicate_indices:
                 idx_start_0 = torch.cat((idx_start[0][:idx_remove], idx_start[0][idx_remove + 1:]))
                 idx_start_1 = torch.cat((idx_start[1][:idx_remove], idx_start[1][idx_remove + 1:]))
-                idx_start = (idx_start_0, idx_start_1)
+                idx_start = (idx_start_0, idx_start_1) # type: ignore
 
         seen = []
         duplicate_indices = []
@@ -77,7 +99,7 @@ class BertModel_RelationExtraction(nn.Module):
             for idx_remove in duplicate_indices:
                 idx_end_0 = torch.cat((idx_end[0][:idx_remove], idx_end[0][idx_remove + 1:]))
                 idx_end_1 = torch.cat((idx_end[1][:idx_remove], idx_end[1][idx_remove + 1:]))
-                idx_end = (idx_end_0, idx_end_1)
+                idx_end = (idx_end_0, idx_end_1) # type: ignore
 
         assert len(idx_start[0]) == input_ids.shape[0]
         assert len(idx_start[0]) == len(idx_end[0])
@@ -87,29 +109,34 @@ class BertModel_RelationExtraction(nn.Module):
             to_append = sequence_output[i, idx_start[1][i] + 1:idx_end[1][i], ]
 
             # to_append = torch.sum(to_append, dim=0)
-            to_append, _ = torch.max(to_append, axis=0)
+            to_append, _ = torch.max(to_append, axis=0) # type: ignore
 
             sequence_output_entities.append(to_append)
         sequence_output_entities = torch.stack(sequence_output_entities)
 
         return sequence_output_entities
 
-    def output2logits(self, pooled_output, sequence_output, input_ids, e1_e2_start):
+    def output2logits(self, pooled_output: torch.Tensor, sequence_output: torch.Tensor, input_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> torch.Tensor:
         """
 
         Args:
-            data_iterator (Iterable):
-                Simple iterator over sentences/documents, e.g. a open file
-                or an array or anything that we can use in a for loop
-                If True resume the previous training; If False, start a fresh new training.
+            pooled_output (torch.Tensor): embedding of the CLS token
+            sequence_output (torch.Tensor): hidden states/embeddings for each token in the input text
+            input_ids (torch.Tensor): input token ids.
+            e1_e2_start (torch.Tensor): annotation tags token position
+
+        Returns:
+            torch.Tensor: classification probabilities for each token.
         """
 
         new_pooled_output = pooled_output
 
         if self.relcat_config.general.annotation_schema_tag_ids:
             annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
-                                          range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
+                                        range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
             seq_tags = []
+
+            # for each pair of tags (e1,s1) and (e2,s2)
             for each_tags in annotation_schema_tag_ids_:
                 seq_tags.append(self.get_annotation_schema_tag(
                     sequence_output, input_ids, each_tags))
@@ -153,7 +180,7 @@ class BertModel_RelationExtraction(nn.Module):
                 encoder_attention_mask: Any = None,
                 Q: Any = None,
                 e1_e2_start: Any = None,
-                pooled_output: Any = None):
+                pooled_output: Any = None) -> Tuple[torch.Tensor, torch.Tensor]:
 
         if input_ids is not None:
             input_shape = input_ids.size()

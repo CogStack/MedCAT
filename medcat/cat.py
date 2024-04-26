@@ -373,6 +373,8 @@ class CAT(object):
                 Whether to load MetaCAT models if present (Default value True).
             load_addl_ner (bool):
                 Whether to load additional NER models if present (Default value True).
+            load_rel_models (bool):
+                Whether to load RelCAT models if present (Default value True).
 
         Returns:
             CAT: The resulting CAT object.

@@ -24,6 +24,7 @@ class RelCATTests(unittest.TestCase):
         config.general.device = "cpu"
         config.general.model_name = "bert-base-uncased"
         config.train.batch_size = 1
+        config.train.nclasses = 3
         config.model.hidden_size= 256
         config.model.model_size = 2304
 
@@ -35,7 +36,6 @@ class RelCATTests(unittest.TestCase):
 
         tokenizer.hf_tokenizers.add_tokens(SPEC_TAGS, special_tokens=True)
         config.general.annotation_schema_tag_ids = tokenizer.hf_tokenizers.convert_tokens_to_ids(SPEC_TAGS)
-
 
         cls.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         os.makedirs(cls.tmp_dir, exist_ok=True)
@@ -59,18 +59,20 @@ class RelCATTests(unittest.TestCase):
         cls.rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 
         cls.finished = False
-
         cls.tokenizer = tokenizer
 
     def test_train_csv_no_tags(self) -> None:
-        self.rel_cat.config.train.nclasses = 2
         self.rel_cat.config.train.epochs = 2
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
         self.rel_cat.save(self.save_model_path)
 
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path)
-        self.rel_cat.config.train.test_size = 0.4
+        self.rel_cat.config.general.mct_export_create_addl_rels = True
+        self.rel_cat.config.general.mct_export_max_non_rel_sample_size = 10
+        self.rel_cat.config.train.test_size = 0.1
+        self.rel_cat.config.train.nclasses = 3
+        self.rel_cat.model.relcat_config.train.nclasses = 3
         self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)

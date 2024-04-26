@@ -6,46 +6,48 @@ from torch.nn.utils.rnn import pad_sequence
 
 class Pad_Sequence():
 
-    def __init__(self, seq_pad_value: int, label_pad_value: int = -1, label2_pad_value: int = -1,
-                 ):
+    def __init__(self, seq_pad_value: int, label_pad_value: int = -1):
         """ Used in rel_cat.py in RelCAT to create DataLoaders for train/test datasets.
-            collate_fn for dataloader to collate sequences of different lengths into a fixed length batch
+            collate_fn for dataloader to collate sequences of different input_ids, ent1/ent2, and label
+            lengths into a fixed length batch.
+            This is applied per batch and not on the whole DataLoader data,
+            padded x sequence, y sequence, x lengths and y lengths of batch.
 
         Args:
-            padded x sequence, y sequence, x lengths and y lengths of batch
-            seq_pad_value (int): _description_
-            label_pad_value (int, optional): _description_. Defaults to -1.
-            label2_pad_value (int, optional): _description_. Defaults to -1.
+            seq_pad_value (int): pad value for input_ids.
+            label_pad_value (int): pad value for labels. Defaults to -1.
         """
         self.seq_pad_value: int = seq_pad_value
         self.label_pad_value: int = label_pad_value
-        self.label2_pad_value: int = label2_pad_value
 
-    def __call__(self, batch: List[torch.Tensor]) -> Tuple[Tensor, Tensor, Tensor, LongTensor, LongTensor, LongTensor]:
-        """
+    def __call__(self, batch: List[torch.Tensor]) -> Tuple[Tensor, List, Tensor, LongTensor, LongTensor]:
+        """ Pads a batch of input_ids.
 
         Args:
-            batch (List[torch.Tensor]): gets the batch of Tensors from RelData(Dataset) and
-            pads the token sequence + labels as needed
+            batch (List[torch.Tensor]): gets the batch of Tensors from 
+                RelData.dataset (check __getitem__() method for data returned)
+                and pads the token sequence + labels as needed
+                See https://pytorch.org/docs/stable/_modules/torch/nn/utils/rnn.html#pad_sequence 
+                for extra info.
 
         Returns:
-            Tuple[Tensor, Tensor, Tensor, LongTensor, LongTensor, LongTensor]: padded data
+            Tuple[Tensor, Tensor, Tensor, LongTensor, LongTensor]: padded data
+                padded input ids, ent1&ent2 start token pos, padded labels, padded input_id_lengths, padded labels length
         """
         sorted_batch = sorted(batch, key=lambda x: x[0].shape[0], reverse=True)
+
+        # input ids
         seqs = [x[0] for x in sorted_batch]
         seqs_padded = pad_sequence(
             seqs, batch_first=True, padding_value=self.seq_pad_value)
         x_lengths = torch.LongTensor([len(x) for x in seqs])
 
-        labels = list(map(lambda x: x[1], sorted_batch))
+        # label_ids
+        labels = list(map(lambda x: x[2], sorted_batch))
         labels_padded = pad_sequence(
             labels, batch_first=True, padding_value=self.label_pad_value)
         y_lengths = torch.LongTensor([len(x) for x in labels])
 
-        labels2 = list(map(lambda x: x[2], sorted_batch))
-        labels2_padded = pad_sequence(
-            labels2, batch_first=True, padding_value=self.label2_pad_value)
-        y2_lengths = torch.LongTensor([len(x) for x in labels2])
+        ent1_ent2_start_pos = list(map(lambda x: x[1], sorted_batch))
 
-        return seqs_padded, labels_padded, labels2_padded, \
-            x_lengths, y_lengths, y2_lengths
+        return seqs_padded, ent1_ent2_start_pos, labels_padded, x_lengths, y_lengths

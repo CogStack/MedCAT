@@ -18,9 +18,10 @@ class General(MixingConfig, BaseModel):
     window_size: int = 300
     """Max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)"""
 
+    mct_export_max_non_rel_sample_size:int = 200
+    """Limit the number of 'Other' samples selected for training/test. This is applied per encountered medcat project, sample_size/num_projects. """
     mct_export_create_addl_rels: bool = False
-    """When processing relations from a MedCAT export, relations labeled as 'Other' are created from all the annotations pairs available 
-    """
+    """When processing relations from a MedCAT export, relations labeled as 'Other' are created from all the annotations pairs available"""
 
     tokenizer_name: str = "bert"
     model_name: str = "bert-base-uncased"
