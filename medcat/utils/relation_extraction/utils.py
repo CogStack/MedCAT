@@ -1,6 +1,6 @@
 import os
 import pickle
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 import numpy as np
 import torch
 import logging
@@ -67,7 +67,7 @@ def save_bin_file(file_name, data, path="./"):
         pickle.dump(data, f)
 
 
-def save_state(model: BertModel_RelationExtraction, optimizer: torch.optim.Adam = None, scheduler: torch.optim.lr_scheduler.MultiplicativeLR = None, epoch:int = None, best_f1:float = None, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
+def save_state(model: BertModel_RelationExtraction, optimizer: torch.optim.Adam, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
     """ Used by RelCAT.save() and RelCAT.train()
         Saves the RelCAT model state.
         For checkpointing multiple files are created, best_f1, loss etc. score.
@@ -76,7 +76,7 @@ def save_state(model: BertModel_RelationExtraction, optimizer: torch.optim.Adam 
     Args:
         model (BertModel_RelationExtraction): model
         optimizer (torch.optim.Adam, optional): Defaults to None.
-        scheduler (torch.optim.lr_scheduler.MultiplicativeLR, optional): Defaults to None.
+        scheduler (torch.optim.lr_scheduler.MultiStepLR, optional): Defaults to None.
         epoch (int): Defaults to None.
         best_f1 (float): Defaults to None.
         path (str):Defaults to "./".
@@ -176,12 +176,12 @@ def load_results(path, model_name: str = "BERT", file_prefix: str = "train") -> 
     return data_dict["losses_per_epoch"], data_dict["accuracy_per_epoch"], data_dict["f1_per_epoch"]
 
 
-def put_blanks(relation_data: List, blanking_threshold: Optional[float] = 0.5) -> List:
+def put_blanks(relation_data: List, blanking_threshold: float = 0.5) -> List:
     """
     Args:
         relation_data (List): tuple containing token (sentence_token_span , ent1 , ent2)
                                 Puts blanks randomly in the relation. Used for pre-training.
-        blanking_threshold (float, optional): % threshold to blank token ids. Defaults to 0.5.
+        blanking_threshold (float): % threshold to blank token ids. Defaults to 0.5.
 
     Returns:
         List: data
