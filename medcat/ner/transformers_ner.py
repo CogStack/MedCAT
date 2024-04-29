@@ -362,7 +362,6 @@ class TransformersNER(object):
         # Just in case
         if stream is None or not stream:
             # return an empty generator
-            yield from ()
             return
 
         batch_size_chars = self.config.general['pipe_batch_size_in_chars']

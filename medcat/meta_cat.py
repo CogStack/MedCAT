@@ -500,7 +500,6 @@ class MetaCAT(PipeRunner):
         # Just in case
         if stream is None or not stream:
             # return an empty generator
-            yield from ()
             return
 
         config = self.config
