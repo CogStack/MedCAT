@@ -500,7 +500,8 @@ class MetaCAT(PipeRunner):
         # Just in case
         if stream is None or not stream:
             # return an empty generator
-            return iter(())
+            yield from ()
+            return
 
         config = self.config
         id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
