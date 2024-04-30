@@ -17,7 +17,7 @@ class MetaCATTests(unittest.TestCase):
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
         config = ConfigMetaCAT()
         config.general['category_name'] = 'Status'
-        config.train['nepochs'] = 1
+        config.train['nepochs'] = 2
         config.model['input_size'] = 100
 
         cls.meta_cat: MetaCAT = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)

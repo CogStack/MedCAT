@@ -13,7 +13,9 @@ from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from transformers import AdamW, get_linear_schedule_with_warmup
+
 
 import logging
 
@@ -102,7 +104,8 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
         for i in range(num_batches):
             x, cpos, attention_masks, _ = create_batch_piped_data(data, i * batch_size, (i + 1) * batch_size,
                                                                   device=device, pad_id=pad_id)
-            logits = model(x, cpos, attention_mask=attention_masks, ignore_cpos=ignore_cpos)
+
+            logits = model(x, center_positions=cpos, attention_mask=attention_masks, ignore_cpos=ignore_cpos)
             all_logits.append(logits.detach().cpu().numpy())
 
     predictions = []
@@ -154,6 +157,7 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         name (str): The name of the report. Defaults to Train.
     """
     if all_logits:
+        # print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
         logger.info('Epoch: %d %s %s', epoch, "*" * 50, name)
         logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
@@ -193,19 +197,33 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
     class_weights = config.train['class_weights']
 
-    if class_weights is not None:
+    if class_weights is None:
+        if config.train['compute_class_weights'] is True:
+            y_ = [x[2] for x in train_data]
+            class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(y_), y=y_)
+            config.train['class_weights'] = class_weights
+            logger.info(f"Class weights computed: {class_weights}")
+
+            class_weights = torch.FloatTensor(class_weights).to(device)
+            if config.train['loss_funct'] == 'cross_entropy':
+                criterion: Union[FocalLoss, nn.CrossEntropyLoss] = nn.CrossEntropyLoss(
+                    weight=class_weights)
+            elif config.train['loss_funct'] == 'focal_loss':
+                criterion = FocalLoss(alpha=class_weights, gamma=config.train['gamma'])
+
+        else:
+            logger.warning("Class weights not provided and compute_class_weights parameter is set to False. No class weights used for training.")
+            if config.train['loss_funct'] == 'cross_entropy':
+                criterion = nn.CrossEntropyLoss()
+            elif config.train['loss_funct'] == 'focal_loss':
+                criterion = FocalLoss(gamma=config.train['gamma'])
+    else:
         class_weights = torch.FloatTensor(class_weights).to(device)
         if config.train['loss_funct'] == 'cross_entropy':
-            criterion: Union[FocalLoss, nn.CrossEntropyLoss] = nn.CrossEntropyLoss(
-                weight=class_weights)  # Set the criterion to Cross Entropy Loss
+            criterion = nn.CrossEntropyLoss(
+                weight=class_weights)
         elif config.train['loss_funct'] == 'focal_loss':
             criterion = FocalLoss(alpha=class_weights, gamma=config.train['gamma'])
-
-    else:
-        if config.train['loss_funct'] == 'cross_entropy':
-            criterion = nn.CrossEntropyLoss()  # Set the criterion to Cross Entropy Loss
-        elif config.train['loss_funct'] == 'focal_loss':
-            criterion = FocalLoss(gamma=config.train['gamma'])
 
     parameters = filter(lambda p: p.requires_grad, model.parameters())
 
@@ -276,10 +294,10 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         model.train()
         for i in range(num_batches):
             model.zero_grad()
+
             x, cpos, attention_masks, y = create_batch_piped_data(train_data, i * batch_size, (i + 1) * batch_size,
                                                                   device=device, pad_id=pad_id)
-            logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos,
-                           model_arch_config=config.model.model_architecture_config)
+            logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos)
             loss = criterion(logits, y)
             loss.backward()
             # Track loss and logits
@@ -302,8 +320,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                 x, cpos, attention_masks, y = create_batch_piped_data(test_data, i * batch_size_eval,
                                                                       (i + 1) * batch_size_eval, device=device,
                                                                       pad_id=pad_id)
-                logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos,
-                               model_arch_config=config.model.model_architecture_config)
+                logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos)
 
                 # Track loss and logits
                 running_loss_test.append(loss.item())
@@ -380,7 +397,9 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         for i in range(num_batches):
             x, cpos, attention_masks, y = create_batch_piped_data(data, i * batch_size_eval, (i + 1) * batch_size_eval,
                                                                   device=device, pad_id=pad_id)
-            logits = model(x, cpos, ignore_cpos=ignore_cpos)
+
+            logits = model(x, center_positions=cpos, attention_mask=attention_masks, ignore_cpos=ignore_cpos)
+
             loss = criterion(logits, y)
 
             # Track loss and logits
@@ -406,6 +425,9 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         y = id2category_value[y_eval[i]]
         p = id2category_value[p]
         c = data[i][1]
+        if isinstance(c,list):
+            c = c[-1]
+
         tkns = data[i][0]
         assert tokenizer.hf_tokenizers is not None
         text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<" + tokenizer.hf_tokenizers.decode(

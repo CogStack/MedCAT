@@ -2,8 +2,10 @@ import torch
 from collections import OrderedDict
 from typing import Optional, Any, List, Iterable
 from torch import nn, Tensor
-from transformers import BertModel, BertConfig
+from transformers import BertModel, AutoConfig
 from medcat.meta_cat import ConfigMetaCAT
+import logging
+logger = logging.getLogger(__name__)
 
 
 class LSTM(nn.Module):
@@ -36,7 +38,7 @@ class LSTM(nn.Module):
                 input_ids: torch.LongTensor,
                 center_positions: Tensor,
                 attention_mask: Optional[torch.FloatTensor] = None,
-                ignore_cpos: bool = False, model_arch_config=None) -> Tensor:
+                ignore_cpos: bool = False) -> Tensor:
         x = input_ids
         # Get the mask from x
         if attention_mask is None:
@@ -87,8 +89,9 @@ class BertForMetaAnnotation(nn.Module):
 
     def __init__(self, config):
         super(BertForMetaAnnotation, self).__init__()
-
-        _bertconfig = BertConfig(num_hidden_layers=config.model['num_layers'])
+        _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,num_hidden_layers=config.model['num_layers'])
+        if config.model['input_size'] != _bertconfig.hidden_size:
+            logger.warning(f"\nInput size for {config.model.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.model['input_size']} Input size changed to {_bertconfig.hidden_size}")
 
         bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
         self.config = config
@@ -104,7 +107,7 @@ class BertForMetaAnnotation(nn.Module):
         # relu activation function
         self.relu = nn.ReLU()
         # dense layer 1
-        self.fc1 = nn.Linear(config.model['input_size'], config.model.hidden_size)
+        self.fc1 = nn.Linear(_bertconfig.hidden_size*2, config.model.hidden_size)
         # dense layer 2
         self.fc2 = nn.Linear(config.model.hidden_size, hidden_size_2)
         # dense layer 3
@@ -134,8 +137,7 @@ class BertForMetaAnnotation(nn.Module):
             ignore_cpos: Optional[bool] = None,
             output_attentions: Optional[bool] = None,
             output_hidden_states: Optional[bool] = None,
-            return_dict: Optional[bool] = None,
-            model_arch_config=None
+            return_dict: Optional[bool] = None
     ):
         """labels (:obj:`torch.LongTensor` of shape :obj:`(batch_size, sequence_length)`, `optional`):
             Labels for computing the token classification loss. Indices should be in ``[0, ..., config.num_labels -
@@ -154,7 +156,6 @@ class BertForMetaAnnotation(nn.Module):
             ignore_cpos: If center positions are to be ignored.
             output_hidden_states (Optional[bool]): Output hidden states. Defaults to None.
             return_dict (Optional[bool]): Whether to return a dict. Defaults to None.
-            model_arch_config: Dict containing the configuration for the model. (details about FC layers)
 
         Returns:
             TokenClassifierOutput: The token classifier output.
@@ -182,14 +183,14 @@ class BertForMetaAnnotation(nn.Module):
         x = self.fc1(x)
         x = self.relu(x)
 
-        if model_arch_config is not None:
-            if model_arch_config['fc2'] is True:
+        if self.config.model.model_architecture_config is not None:
+            if self.config.model.model_architecture_config['fc2'] is True:
                 # fc2
                 x = self.fc2(x)
                 x = self.relu(x)
                 x = self.dropout(x)
 
-            if model_arch_config['fc3'] is True:
+            if self.config.model.model_architecture_config['fc3'] is True:
                 # fc3
                 x = self.fc3(x)
                 x = self.relu(x)

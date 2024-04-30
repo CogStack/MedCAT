@@ -1,5 +1,4 @@
 from typing import Dict, Any
-
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
@@ -49,14 +48,16 @@ class General(MixingConfig, BaseModel):
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'bert'
+    """NOTE: When changing model, make sure to change the tokenizer as well"""
     model_variant: str = 'bert-base-uncased'
     model_freeze_layers: bool = True
     num_layers: int = 2
-    input_size: int = 300
+    input_size: int = 100
     hidden_size: int = 300
-    dropout: float = 0.3
-    load_model_dict_ = True
-    train_on_full_data = False
+    dropout: float = 0.5
+    phase_number: int = 0
+    """Indicates whether or not two phase learning is being performed.
+    1: Phase 1; 2: Phase 2; 0: None"""
     category_undersample: str = ''
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
@@ -67,7 +68,7 @@ class Model(MixingConfig, BaseModel):
     emb_grad: bool = True
     """If True the embeddings will also be trained"""
     ignore_cpos: bool = False
-    """If set to True center positions will be ignored when calculating represenation"""
+    """If set to True center positions will be ignored when calculating representation"""
 
     class Config:
         extra = Extra.allow
@@ -76,13 +77,15 @@ class Model(MixingConfig, BaseModel):
 
 class Train(MixingConfig, BaseModel):
     """The train part of the metaCAT config"""
-    batch_size: int = 100
-    nepochs: int = 50
+    batch_size: int = 32
+    nepochs: int = 5
     lr: float = 0.001
     test_size: float = 0.1
     shuffle_data: bool = True
     """Used only during training, if set the dataset will be shuffled before train/test split"""
     class_weights: Optional[Any] = None
+    compute_class_weights: bool = False
+    """If true and if class weights are not provided, the class weights will be calculated based on the data"""
     score_average: str = 'weighted'
     """What to use for averaging F1/P/R across labels"""
     prerequisites: dict = {}

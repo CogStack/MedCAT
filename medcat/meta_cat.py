@@ -22,8 +22,7 @@ from peft import get_peft_model, LoraConfig, TaskType
 # will be finished before data comes to meta_cat
 os.environ["TOKENIZERS_PARALLELISM"] = "true"
 
-
-logger = logging.getLogger(__name__) # separate logger from the package-level one
+logger = logging.getLogger(__name__)  # separate logger from the package-level one
 
 
 class MetaCAT(PipeRunner):
@@ -95,7 +94,6 @@ class MetaCAT(PipeRunner):
             model = BertForMetaAnnotation(config)
 
             if not config.model.model_freeze_layers:
-
                 peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
                                          target_modules=["query", "value"], lora_dropout=0.2)
 
@@ -124,7 +122,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     @deprecated(message="Use `train_from_json` or `train_raw` instead")
-    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_oversampled=None) -> Dict:
+    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None, data_oversampled=None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -140,9 +138,10 @@ class MetaCAT(PipeRunner):
         Returns:
             Dict: The resulting report.
         """
-        return self.train_from_json(json_path, save_dir_path,data_oversampled=data_oversampled)
+        return self.train_from_json(json_path, save_dir_path, data_oversampled=data_oversampled)
 
-    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,data_oversampled=None) -> Dict:
+    def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,
+                        data_oversampled=None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -178,9 +177,9 @@ class MetaCAT(PipeRunner):
         for path in json_path:
             with open(path, 'r') as f:
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
-        return self.train_raw(data_loaded,save_dir_path,data_oversampled=data_oversampled)
+        return self.train_raw(data_loaded, save_dir_path, data_oversampled=data_oversampled)
 
-    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None,data_oversampled=None) -> Dict:
+    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None, data_oversampled=None) -> Dict:
         """Train or continue training a model given raw data. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -219,6 +218,8 @@ class MetaCAT(PipeRunner):
         Raises:
             Exception: If no save path is specified, or category name not in data.
             AssertionError: If no tokeniser is set
+            FileNotFoundError: If phase_number is set to 2 and model.dat file is not found
+            KeyError: If phase_number is set to 2 and model.dat file contains mismatched architecture
         """
         g_config = self.config.general
         t_config = self.config.train
@@ -252,11 +253,14 @@ class MetaCAT(PipeRunner):
         category_value2id = g_config['category_value2id']
         if not category_value2id:
             # Encode the category values
-            data, full_data, category_value2id = encode_category_values(data,category_undersample=self.config.model.category_undersample)
+            data_undersampled, full_data, category_value2id = encode_category_values(data,
+                                                                                     category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         else:
             # We already have everything, just get the data
-            data, full_data, category_value2id = encode_category_values(data, existing_category_value2id=category_value2id,category_undersample=self.config.model.category_undersample)
+            data_undersampled, full_data, category_value2id = encode_category_values(data,
+                                                                                     existing_category_value2id=category_value2id,
+                                                                                     category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
@@ -266,18 +270,26 @@ class MetaCAT(PipeRunner):
             logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
 
-        self.model = self.get_model(embeddings=self.embeddings)
+        if self.config.model.phase_number == 2 and save_dir_path is not None:
+            model_save_path = os.path.join(save_dir_path, 'model.dat')
+            device = torch.device(g_config['device'])
+            try:
+                self.model.load_state_dict(torch.load(model_save_path, map_location=device))
+                logger.info("Model state loaded from dict for 2 phase learning")
 
-        if self.config.model.load_model_dict_:
-            if save_dir_path is not None:
-                model_save_path = os.path.join(save_dir_path, 'model.dat')
-                state_dict_ = torch.load(model_save_path)
-                self.model.load_state_dict(state_dict_)
-                logger.info("Model state loaded from checkpoint")
-                data = full_data
+            except FileNotFoundError:
+                raise FileNotFoundError(f"\nError: Model file not found at path: {model_save_path}\nPlease run phase 1 training and then run phase 2.")
 
-        if self.config.model.train_on_full_data:
-            data = full_data
+            except KeyError:
+                raise KeyError("\nError: Missing key in loaded state dictionary. \nThis might be due to a mismatch between the model architecture and the saved state.")
+
+            except Exception as e:
+                raise Exception(f"\nError: Model state cannot be loaded from dict. {e}")
+
+        data = full_data
+        if self.config.model.phase_number == 1:
+            data = data_undersampled
+
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
         # If autosave, then load the best model here
@@ -332,7 +344,7 @@ class MetaCAT(PipeRunner):
 
         # We already have everything, just get the data
         category_value2id = g_config['category_value2id']
-        data,_,_= encode_category_values(data, existing_category_value2id=category_value2id)
+        data, _, _ = encode_category_values(data, existing_category_value2id=category_value2id)
 
         # Run evaluation
         assert self.tokenizer is not None
@@ -397,7 +409,7 @@ class MetaCAT(PipeRunner):
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-            tokenizer = TokenizerWrapperBERT.load(save_dir_path,config.model['model_variant'])
+            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model['model_variant'])
 
         # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
@@ -409,11 +421,8 @@ class MetaCAT(PipeRunner):
             logger.warning('Loading a MetaCAT model without GPU availability, stored config used GPU')
             config.general['device'] = 'cpu'
             device = torch.device('cpu')
+        meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
 
-        try:
-            meta_cat.model.load_state_dict(torch.load(model_save_path, map_location=device))
-        except Exception as e:
-            logger.warning(f'Model state cannot be loaded from dict. Error: {e}')
         return meta_cat
 
     def get_ents(self, doc: Doc) -> Iterable[Span]:
@@ -422,7 +431,8 @@ class MetaCAT(PipeRunner):
             try:
                 return doc.spans[spangroup_name]
             except KeyError:
-                raise Exception(f"Configuration error MetaCAT was configured to set meta_anns on {spangroup_name} but this spangroup was not set on the doc.")
+                raise Exception(
+                    f"Configuration error MetaCAT was configured to set meta_anns on {spangroup_name} but this spangroup was not set on the doc.")
 
         # Should we annotate overlapping entities
         if self.config.general['annotate_overlapping']:
@@ -463,18 +473,37 @@ class MetaCAT(PipeRunner):
             start = ent.start_char
             end = ent.end_char
 
+            flag = 0
+            ctoken_idx = []
+            for ind, pair in enumerate(offset_mapping[last_ind:]):
+                if start <= pair[0] or start <= pair[1]:
+                    if end <= pair[1]:
+                        ctoken_idx.append(ind)
+                        break
+                    else:
+                        flag = 1
+                if flag == 1:
+                    if end <= pair[1] or end <= pair[0]:
+                        break
+                    else:
+                        ctoken_idx.append(ind)
+
             ind = 0
             # Start where the last ent was found, cannot be before it as we've sorted
             for ind, pair in enumerate(offset_mapping[last_ind:]):
                 if start >= pair[0] and start < pair[1]:
                     break
-            ind = last_ind + ind # If we did not start from 0 in the for loop
+
+            ind = last_ind + ind  # If we did not start from 0 in the for loop
             last_ind = ind
 
-            _start = max(0, ind - cntx_left)
+            # _start = max(0, ind - cntx_left)
+            _start = max(0, ctoken_idx[0] - cntx_left)
             _end = min(len(input_ids), ind + 1 + cntx_right)
+
             tkns = input_ids[_start:_end]
             cpos = cntx_left + min(0, ind - cntx_left)
+            cpos_new = [x - _start for x in ctoken_idx]
 
             if replace_center is not None:
                 if lowercase:
@@ -490,7 +519,7 @@ class MetaCAT(PipeRunner):
                 assert self.tokenizer is not None
                 tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
 
-            samples.append([tkns, cpos])
+            samples.append([tkns, cpos_new])
             ent_id2ind[ent._.id] = len(samples) - 1
 
         return ent_id2ind, samples
@@ -585,7 +614,6 @@ class MetaCAT(PipeRunner):
                     for i, doc in enumerate(docs):
                         data.extend(doc._.share_tokens[0])
                         doc_ind2positions[i] = doc._.share_tokens[1]
-
                 all_predictions, all_confidences = predict(self.model, data, config)
                 for i, doc in enumerate(docs):
                     start_ind, end_ind, ent_id2ind = doc_ind2positions[i]
