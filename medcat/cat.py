@@ -33,6 +33,7 @@ from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.preprocessing.cleaners import prepare_name
 from medcat.meta_cat import MetaCAT
+from medcat.rel_cat import RelCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
@@ -64,6 +65,8 @@ class CAT(object):
         meta_cats (list of medcat.meta_cat.MetaCAT, optional):
             A list of models that will be applied sequentially on each
             detected annotation.
+        rel_cats (list of medcat.rel_cat.RelCAT, optional)
+            List of models applied sequentially on all detected annotations.
 
     Attributes (limited):
         cdb (medcat.cdb.CDB):
@@ -89,6 +92,7 @@ class CAT(object):
                  vocab: Union[Vocab, None] = None,
                  config: Optional[Config] = None,
                  meta_cats: List[MetaCAT] = [],
+                 rel_cats: List[RelCAT] = [],
                  addl_ner: Union[TransformersNER, List[TransformersNER]] = []) -> None:
         self.cdb = cdb
         self.vocab = vocab
@@ -100,6 +104,7 @@ class CAT(object):
             self.config = config
             self.cdb.config = config
         self._meta_cats = meta_cats
+        self._rel_cats = rel_cats
         self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
 
@@ -132,6 +137,9 @@ class CAT(object):
         # Add meta_annotation classes if they exist
         for meta_cat in self._meta_cats:
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general.category_name)
+
+        for rel_cat in self._rel_cats:
+            self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))
 
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
@@ -297,6 +305,10 @@ class CAT(object):
                 name = comp[0]
                 meta_path = os.path.join(save_dir_path, "meta_" + name)
                 comp[1].save(meta_path)
+            if isinstance(comp[1], RelCAT):
+                name = comp[0]
+                rel_path = os.path.join(save_dir_path, "rel_" + name)
+                comp[1].save(rel_path)
 
         # Add a model card also, why not
         model_card_path = os.path.join(save_dir_path, "model_card.json")
@@ -341,7 +353,8 @@ class CAT(object):
                         meta_cat_config_dict: Optional[Dict] = None,
                         ner_config_dict: Optional[Dict] = None,
                         load_meta_models: bool = True,
-                        load_addl_ner: bool = True) -> "CAT":
+                        load_addl_ner: bool = True,
+                        load_rel_models: bool = True) -> "CAT":
         """Load everything within the 'model pack', i.e. the CDB, config, vocab and any MetaCAT models
         (if present)
 
@@ -360,6 +373,8 @@ class CAT(object):
                 Whether to load MetaCAT models if present (Default value True).
             load_addl_ner (bool):
                 Whether to load additional NER models if present (Default value True).
+            load_rel_models (bool):
+                Whether to load RelCAT models if present (Default value True).
 
         Returns:
             CAT: The resulting CAT object.
@@ -367,6 +382,7 @@ class CAT(object):
         from medcat.cdb import CDB
         from medcat.vocab import Vocab
         from medcat.meta_cat import MetaCAT
+        from medcat.rel_cat import RelCAT
 
         model_pack_path = cls.attempt_unpack(zip_path)
 
@@ -409,8 +425,15 @@ class CAT(object):
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
                                           config_dict=meta_cat_config_dict))
 
-        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
+        # Find Rel models in model_pack
+        rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')] if load_rel_models else []
+        rel_cats = []
+        for rel_path in rel_paths:
+            rel_cats.append(RelCAT.load(load_path=rel_path))
+
+        cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner, rel_cats=rel_cats)
         logger.info(cat.get_model_card())  # Print the model card
+
         return cat
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
@@ -1092,8 +1115,8 @@ class CAT(object):
                         elif out[i].get('text', '') != text:
                             out.insert(i, self._doc_to_out(None, only_cui, addl_info))  # type: ignore
 
-                cnf_annotation_output = self.config.annotation_output
-                if not cnf_annotation_output.include_text_in_output:
+                cnf_annotation_output = getattr(self.config, 'annotation_output', {})
+                if not (cnf_annotation_output.get('include_text_in_output', False)):
                     for o in out:
                         if o is not None:
                             o.pop('text', None)
