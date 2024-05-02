@@ -31,6 +31,7 @@ class FakeDict:
             raise KeyError from e
 
     def __setattr__(self, arg: str, val) -> None:
+        # TODO: remove this in the future when we stop stupporting this in config
         if isinstance(self, Linking) and arg == "weighted_average_function":
             val = attempt_fix_weighted_average_function(val)
         super().__setattr__(arg, val)
@@ -511,9 +512,6 @@ class Linking(MixingConfig, BaseModel):
     similarity calculation and will have a similarity of -1."""
     always_calculate_similarity: bool = False
     """Do we want to calculate context similarity even for concepts that are not ambigous."""
-    weighted_average_function: Callable[..., Any] = _DEFAULT_PARTIAL
-    """Weights for a weighted average
-    'weighted_average_function': partial(weighted_average, factor=0.02),"""
     calculate_dynamic_threshold: bool = False
     """Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
     and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only

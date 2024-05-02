@@ -15,7 +15,10 @@ from medcat.utils.ml_utils import get_lr_linking
 from medcat.utils.decorators import deprecated
 from medcat.config import Config, workers
 from medcat.utils.saving.serializer import CDBSerializer
+from medcat.utils.config_utils import get_and_del_weighted_average_from_config
+from medcat.utils.config_utils import default_weighted_average
 from medcat.utils.config_utils import ensure_backward_compatibility
+from medcat.utils.config_utils import fix_waf_lambda
 
 
 logger = logging.getLogger(__name__)
@@ -98,6 +101,7 @@ class CDB(object):
         self.vocab: Dict = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
         self.is_dirty = False
+        self._init_waf_from_config()
         self._hash: Optional[str] = None
         # the config hash is kept track of here so that
         # the CDB hash can be re-calculated when the config changes
@@ -106,6 +110,18 @@ class CDB(object):
         # since the config is now saved separately
         self._config_hash: Optional[str] = None
         self._memory_optimised_parts: Set[str] = set()
+
+    def _init_waf_from_config(self):
+        waf = get_and_del_weighted_average_from_config(self.config)
+        if waf is not None:
+            logger.info("Using (potentially) custom value of weighed "
+                        "average function")
+            self.weighted_average_function = waf
+        elif hasattr(self, 'weighted_average_function'):
+            # keep existing
+            pass
+        else:
+            self.weighted_average_function = default_weighted_average
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -558,6 +574,8 @@ class CDB(object):
             # this should be the behaviour for all newer models
             self.config = cast(Config, Config.load(config_path))
             logger.debug("Loaded config from CDB from %s", config_path)
+            # new config, potentially new weighted_average_function to read
+            self._init_waf_from_config()
         # mark config read from file
         self._config_from_file = True
 
@@ -582,6 +600,7 @@ class CDB(object):
         ser = CDBSerializer(path, json_path)
         cdb = ser.deserialize(CDB)
         cls._check_medcat_version(cdb.config.asdict())
+        fix_waf_lambda(cdb)
         ensure_backward_compatibility(cdb.config, workers)
 
         # Overwrite the config with new data
