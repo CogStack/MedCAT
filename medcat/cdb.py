@@ -6,7 +6,6 @@ import logging
 import aiofiles
 import numpy as np
 from typing import Dict, Set, Optional, List, Union, cast
-from functools import partial
 import os
 
 from medcat import __version__
@@ -14,8 +13,9 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.utils.decorators import deprecated
-from medcat.config import Config, weighted_average, workers
+from medcat.config import Config, workers
 from medcat.utils.saving.serializer import CDBSerializer
+from medcat.utils.config_utils import ensure_backward_compatibility
 
 
 logger = logging.getLogger(__name__)
@@ -582,7 +582,7 @@ class CDB(object):
         ser = CDBSerializer(path, json_path)
         cdb = ser.deserialize(CDB)
         cls._check_medcat_version(cdb.config.asdict())
-        cls._ensure_backward_compatibility(cdb.config)
+        ensure_backward_compatibility(cdb.config, workers)
 
         # Overwrite the config with new data
         if config_dict is not None:
@@ -854,19 +854,6 @@ class CDB(object):
                          'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res
-
-    @staticmethod
-    def _ensure_backward_compatibility(config: Config) -> None:
-        # Hacky way of supporting old CDBs
-        weighted_average_function = config.linking.weighted_average_function
-        if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
-            # the following type ignoring is for mypy because it is unable to detect the signature
-            config.linking.weighted_average_function = partial(weighted_average, factor=0.0004) # type: ignore
-        if config.general.workers is None:
-            config.general.workers = workers()
-        disabled_comps = config.general.spacy_disabled_components
-        if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
-            config.general.spacy_disabled_components.append('lemmatizer')
 
     @classmethod
     def _check_medcat_version(cls, config_data: Dict) -> None:

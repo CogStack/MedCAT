@@ -1,9 +1,25 @@
 from functools import partial
 from typing import Callable
 import logging
+from pydantic import BaseModel
 
 
 logger = logging.getLogger(__name__)
+
+
+# NOTE: This method is a hacky workaround. The type ignores are because I cannot
+#       import config here since it would produce a circular import
+def ensure_backward_compatibility(config: BaseModel, workers: Callable[[], int]) -> None:
+    # Hacky way of supporting old CDBs
+    weighted_average_function = config.linking.weighted_average_function  # type: ignore
+    if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
+        # the following type ignoring is for mypy because it is unable to detect the signature
+        config.linking.weighted_average_function = partial(weighted_average, factor=0.0004) # type: ignore
+    if config.general.workers is None:  # type: ignore
+        config.general.workers = workers()  # type: ignore
+    disabled_comps = config.general.spacy_disabled_components  # type: ignore
+    if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
+        config.general.spacy_disabled_components.append('lemmatizer')  # type: ignore
 
 
 def weighted_average(step: int, factor: float) -> float:
