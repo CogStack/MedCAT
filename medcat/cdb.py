@@ -18,7 +18,7 @@ from medcat.utils.saving.serializer import CDBSerializer
 from medcat.utils.config_utils import get_and_del_weighted_average_from_config
 from medcat.utils.config_utils import default_weighted_average
 from medcat.utils.config_utils import ensure_backward_compatibility
-from medcat.utils.config_utils import fix_waf_lambda
+from medcat.utils.config_utils import fix_waf_lambda, attempt_fix_weighted_average_function
 
 
 logger = logging.getLogger(__name__)
@@ -116,7 +116,7 @@ class CDB(object):
         if waf is not None:
             logger.info("Using (potentially) custom value of weighed "
                         "average function")
-            self.weighted_average_function = waf
+            self.weighted_average_function = attempt_fix_weighted_average_function(waf)
         elif hasattr(self, 'weighted_average_function'):
             # keep existing
             pass
