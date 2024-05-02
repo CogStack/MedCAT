@@ -1,17 +1,19 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
 from pydantic.fields import ModelField
-from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union
+from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
+import json
 from functools import partial
 import re
 
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.config_utils import attempt_fix_weighted_average_function
-from medcat.utils.config_utils import weighted_average
+from medcat.utils.config_utils import weighted_average, is_old_type_config_dict
+from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook
 
 
 logger = logging.getLogger(__name__)
@@ -104,8 +106,8 @@ class MixingConfig(FakeDict):
             save_path(str): Where to save the created json file
         """
         # We want to save the dict here, not the whole class
-        json_string = jsonpickle.encode(
-            {field: getattr(self, field) for field in self.fields()})
+        json_string = json.dumps(self.asdict(), cls=cast(Type[json.JSONEncoder],
+                                                         CustomDelegatingEncoder.def_inst))
 
         with open(save_path, 'w') as f:
             f.write(json_string)
@@ -205,7 +207,11 @@ class MixingConfig(FakeDict):
 
         # Read the jsonpickle string
         with open(save_path) as f:
-            config_dict = jsonpickle.decode(f.read())
+            config_dict = json.load(f, object_hook=default_hook)
+            if is_old_type_config_dict(config_dict):
+                logger.warning("Loading an old type of config (jsonpickle) from '%s'",
+                               save_path)
+                config_dict = jsonpickle.decode(f.read())
 
         config.merge_config(config_dict)
 
