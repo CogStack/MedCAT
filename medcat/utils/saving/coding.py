@@ -159,6 +159,8 @@ class CustomDelegatingDecoder(json.JSONDecoder):
     def def_inst(cls) -> 'CustomDelegatingDecoder':
         if cls._def_inst is None:
             cls._def_inst = cls([_cls() for _cls in DEFAULT_DECODERS])
+        elif len(cls._def_inst._delegates) < len(DEFAULT_DECODERS):
+            cls._def_inst = cls([_cls() for _cls in DEFAULT_DECODERS])
         return cls._def_inst
 
 
