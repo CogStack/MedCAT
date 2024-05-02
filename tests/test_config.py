@@ -208,6 +208,13 @@ class ConfigTests(unittest.TestCase):
         h2 = config.get_hash()
         self.assertEqual(h1, h2)
 
+    def test_can_save_load(self):
+        config = Config()
+        with tempfile.NamedTemporaryFile() as file:
+            config.save(file.name)
+            config2 = Config.load(file.name)
+        self.assertEqual(config, config2)
+
 
 class ConfigLinkingFiltersTests(unittest.TestCase):
 
