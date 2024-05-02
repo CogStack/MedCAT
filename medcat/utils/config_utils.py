@@ -14,6 +14,12 @@ class WAFCarrier(Protocol):
 logger = logging.getLogger(__name__)
 
 
+def is_old_type_config_dict(d: dict) -> bool:
+    if set(('py/object', 'py/state')) <= set(d.keys()):
+        return True
+    return False
+
+
 def fix_waf_lambda(carrier: WAFCarrier) -> None:
     weighted_average_function = carrier.weighted_average_function  # type: ignore
     if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
