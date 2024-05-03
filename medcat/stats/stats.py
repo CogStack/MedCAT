@@ -282,23 +282,25 @@ def get_stats(cat,
     Args:
         cat: (CAT):
             The model pack.
-        data (list of dict):
+        data (Dict):
             The json object that we get from MedCATtrainer on export.
         epoch (int):
             Used during training, so we know what epoch is it.
-        use_project_filters (boolean):
+        use_project_filters (bool):
             Each project in MedCATtrainer can have filters, do we want to respect those filters
             when calculating metrics.
-        use_overlaps (boolean):
+        use_overlaps (bool):
             Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entites.
-        use_cui_doc_limit (boolean):
+        use_cui_doc_limit (bool):
             If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
             if the document was annotated for that CUI. Useful in very specific situations when during the annotation
             process the set of CUIs changed.
-        use_groups (boolean):
+        use_groups (bool):
             If True concepts that have groups will be combined and stats will be reported on groups.
         extra_cui_filter(Optional[Set]):
             This filter will be intersected with all other filters, or if all others are not set then only this one will be used.
+        do_print (bool):
+            Whether to print stats out. Defaults to True.
 
     Returns:
         fps (dict):
@@ -317,8 +319,6 @@ def get_stats(cat,
             Number of occurrence for each CUI.
         examples (dict):
             Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
-        do_print (bool):
-            Whether to print stats out. Defaults to True.
     """
     orig_filters = cat.config.linking.filters.copy_of()
     local_filters = cat.config.linking.filters

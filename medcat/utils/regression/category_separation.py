@@ -110,7 +110,14 @@ class Category(ABC):
 
     @abstractmethod
     def fits(self, case: RegressionCase) -> bool:
-        """Check if a particular regression case fits in this category"""
+        """Check if a particular regression case fits in this category.
+
+        Args:
+            case (RegressionCase): The regression case.
+
+        Returns:
+            bool: Whether the case is in this category.
+        """
 
 
 class AllPartsCategory(Category):
@@ -328,6 +335,9 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
 
         Args:
             case (RegressionCase): The regression case to check
+
+        Raises:
+            ValueError: If no category found.
         """
         for cat in self.categories:
             self._attempt_category_for(cat, case)
@@ -366,7 +376,7 @@ class RegressionCheckerSeparator(pydantic.BaseModel):
         Args:
             prefix (str): The prefix for the saved file(s)
             metadata (MetaData): The metadata for the regression suite
-            overwrite (bool, optional): Whether to overwrite file(s) if/when needed. Defaults to False.
+            overwrite (bool): Whether to overwrite file(s) if/when needed. Defaults to False.
 
         Raises:
             ValueError: If the method is called before separation or no separtion was done
@@ -512,7 +522,7 @@ def separate_categories(category_yaml: str, strategy_type: StrategyType,
         strategy_type (StrategyType): The strategy for separation
         regression_suite_yaml (str): The regression suite YAML
         target_file_prefix (str): The target file prefix
-        overwrite (bool, optional): Whether to overwrite file(s) if/when needed. Defaults to False.
+        overwrite (bool): Whether to overwrite file(s) if/when needed. Defaults to False.
         overflow_category (bool): Whether to use an overflow category for items that don't go in other categories. Defaults to False.
     """
     separator = get_separator(read_categories(

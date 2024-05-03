@@ -29,6 +29,9 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         jsonpath (Optional[Path]): The json path to save the report to (if specified)
         overwrite (bool): Whether to overwrite the file if it exists. Defaults to False
         jsonindent (int): The indentation for json objects. Defaults to 0
+
+    Raises:
+        ValueError: If unable to overwrite file or folder does not exist.
     """
     if jsonpath and jsonpath.exists() and not overwrite:
         # check before doing anything so as to not waste time on the tests

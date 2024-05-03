@@ -72,9 +72,10 @@ class Snomed:
         release (str): Release of SNOMED CT folder.
         uk_ext (bool, optional): Specifies whether the version is a SNOMED UK extension released after 2021. Defaults to False.
         uk_drug_ext (bool, optional): Specifies whether the version is a SNOMED UK drug extension. Defaults to False.
+        au_ext (bool, optional): Specifies wether the version is a AU release. Defaults to False.
     """
 
-    def __init__(self, data_path, uk_ext=False, uk_drug_ext=False):
+    def __init__(self, data_path, uk_ext=False, uk_drug_ext=False, au_ext: bool = False):
         self.data_path = data_path
         self.release = data_path[-16:-8]
         self.uk_ext = uk_ext
@@ -88,6 +89,11 @@ class Snomed:
             # NOTE for UK extensions starting from 20231122 the
             #      OPCS4 refset ID seems to be different
             self.opcs_refset_id = '1382401000000109'
+        self.au_ext = au_ext
+        # validate
+        if (self.uk_ext or self.uk_drug_ext) and self.au_ext:
+            raise ValueError("Cannot both be a UK and and a AU version. "
+                             f"Got UK={uk_ext}, UK_Drug={uk_drug_ext}, AU={au_ext}")
 
     def to_concept_df(self):
         """
@@ -107,6 +113,8 @@ class Snomed:
             contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
             concept_snapshot = "sct2_Concept_Snapshot"
             description_snapshot = "sct2_Description_Snapshot-en"
+            if self.au_ext:
+                description_snapshot += "-AU"
             if self.uk_ext:
                 if "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
                     concept_snapshot = "sct2_Concept_UKCLSnapshot"
@@ -319,12 +327,15 @@ class Snomed:
         else:
             return self._refset_df2dict(snomed2icd10df)
 
-    def map_snomed2opcs4(self):
+    def map_snomed2opcs4(self) -> dict:
         """
         This function maps SNOMED CT concepts to OPCS-4 codes using the refset mappings provided in the SNOMED CT release package.
 
         Then it calls the internal function _map_snomed2refset() to get the DataFrame containing the OPCS-4 mappings.
         The function then converts the DataFrame to a dictionary using the internal function _refset_df2dict()
+
+        Raises:
+            AttributeError: If OPCS-4 mappings aren't available.
 
         Returns:
             dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
@@ -391,9 +402,6 @@ class Snomed:
             pd.DataFrame: Dataframe containing SNOMED CT to refset mappings and metadata.
             OR
             tuple: Tuple of dataframes containing SNOMED CT to refset mappings and metadata (ICD-10, OPCS4), if uk_ext is True.
-
-        Raises:
-            FileNotFoundError: If the path to the SNOMED CT directory is incorrect.
         """
         paths, snomed_releases = self._check_path_and_release()
         dfs2merge = []

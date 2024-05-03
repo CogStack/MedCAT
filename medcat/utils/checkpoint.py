@@ -68,10 +68,14 @@ class Checkpoint(object):
         """Retrieve the latest checkpoint from the parent directory.
 
         Args:
-            dir_path (string):
+            dir_path (str):
                 The path to the directory containing checkpoint files.
+
         Returns:
             T: A new checkpoint object.
+
+        Raises:
+            Exception: If no checkpoint is found.
         """
         if not os.path.isdir(dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
@@ -91,9 +95,9 @@ class Checkpoint(object):
         """Save the CDB as the latest checkpoint.
 
         Args:
-            cdb (medcat.CDB):
+            cdb (CDB):
                 The MedCAT CDB object to be checkpointed.
-            count (count):
+            count (int):
                 The number of the finished steps.
         """
         ckpt_file_path = os.path.join(os.path.abspath(self._dir_path), "checkpoint-%s-%s" % (self.steps, count))
@@ -109,8 +113,11 @@ class Checkpoint(object):
         """Restore the CDB from the latest checkpoint.
 
         Returns:
-            cdb (medcat.CDB):
+            cdb (CDB):
                 The MedCAT CDB object.
+
+        Raises:
+            Exception: If no checkpoint is found.
         """
         if not os.path.isdir(self._dir_path):
             raise Exception("Checkpoints not found. You need to train from scratch.")
@@ -194,10 +201,14 @@ class CheckpointManager(object):
         """Retrieve the latest training directory containing all checkpoints.
 
         Args:
-            base_dir_path (string):
+            base_dir_path (str):
                 The path to the directory containing all checkpointed trainings.
+
         Returns:
             str: The path to the latest training directory containing all checkpoints.
+
+        Raises:
+            ValueError: If no checkpoint is found.
         """
         if not os.path.isdir(base_dir_path):
             raise ValueError(f"Checkpoint folder passed in does not exist: {base_dir_path}")

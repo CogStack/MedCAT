@@ -1,4 +1,4 @@
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 from medcat.utils.data_utils import count_annotations
 from medcat.cdb import CDB
@@ -24,7 +24,7 @@ def _deid_text(cat, text: str, redact: bool = False) -> str:
     Args:
         cat (CAT): The CAT object to use for deid.
         text (str): The input document.
-        redact (bool, optional): Whether to redact. Defaults to False.
+        redact (bool): Whether to redact. Defaults to False.
 
     Returns:
         str: The de-identified document.
@@ -52,10 +52,19 @@ def deid_text(*args, **kwargs) -> str:
     return _deid_text(*args, **kwargs)
 
 
-def make_or_update_cdb(json_path, cdb=None, min_count=0):
+def make_or_update_cdb(json_path: str, cdb: Optional[CDB] = None,
+                       min_count: int = 0) -> CDB:
     """Creates a new CDB or updates an existing one with new
     concepts if the cdb argument is provided. All concepts that are less frequent
     than min_count will be ignored.
+
+    Args:
+        json_path (str): The json path
+        cdb (Optional[CDB]): The CDB if present. Defaults to None.
+        min_count (int): Minimum count to include. Defaults to 0.
+
+    Returns:
+        CDB: The same or new CDB.
     """
     cui2cnt = count_annotations(json_path)
     if cdb is None:

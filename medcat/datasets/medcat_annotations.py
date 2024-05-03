@@ -66,7 +66,7 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
         )
 
     def _split_generators(self, dl_manager): # noqa
-        """Returns SplitGenerators."""
+        """Returns SplitGenerators."""  # noqa
         return [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
@@ -77,7 +77,7 @@ class MedCATAnnotations(datasets.GeneratorBasedBuilder):
         ]
 
     def _generate_examples(self, filepath):
-        """This function returns the examples in the raw (text) form."""
+        """This function returns the examples in the raw (text) form."""  # noqa
         logging.info("generating examples from = %s", filepath)
         with open(filepath, 'rb') as f:
             docs = pickle.load(f)

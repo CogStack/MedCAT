@@ -13,6 +13,7 @@ from tqdm.autonotebook import tqdm
 from medcat.linking.context_based_linker import Linker
 from medcat.meta_cat import MetaCAT
 from medcat.ner.vocab_based_ner import NER
+from medcat.rel_cat import RelCAT
 from medcat.utils.normalizers import TokenNormalizer, BasicSpellChecker
 from medcat.config import Config
 from medcat.pipeline.pipe_runner import PipeRunner
@@ -161,6 +162,13 @@ class Pipe(object):
         # Used for sharing pre-processed data/tokens
         Doc.set_extension('share_tokens', default=None, force=True)
 
+    def add_rel_cat(self, rel_cat: RelCAT, name: Optional[str] = None) -> None:
+        component_name = spacy.util.get_object_name(rel_cat)
+        name = name if name is not None else component_name
+        Language.component(name=component_name, func=rel_cat)
+        self._nlp.add_pipe(component_name, name=name, last=True)
+        # dictionary containing relations of the form {}
+        Doc.set_extension("relations", default=[], force=True)
 
     def add_addl_ner(self, addl_ner: TransformersNER, name: Optional[str] = None) -> None:
         component_name = spacy.util.get_object_name(addl_ner)
@@ -169,6 +177,7 @@ class Pipe(object):
         self._nlp.add_pipe(component_name, name=name, last=True)
 
         Doc.set_extension('ents', default=[], force=True)
+        Doc.set_extension('relations', default=[], force=True)
         Span.set_extension('confidence', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
         Span.set_extension('cui', default=-1, force=True)
@@ -190,8 +199,6 @@ class Pipe(object):
                 Defaults to max(mp.cpu_count() - 1, 1).
             batch_size (int):
                 The number of texts to buffer. Defaults to 1000.
-            total (int):
-                The number of texts in total.
 
         Returns:
             Generator[Doc]:
@@ -255,7 +262,11 @@ class Pipe(object):
 
     @property
     def spacy_nlp(self) -> Language:
-        """The spaCy Language object."""
+        """The spaCy Language object.
+
+        Returns:
+            Language: The spacy model/language.
+        """
         return self._nlp
 
     @staticmethod
