@@ -57,7 +57,9 @@ class Model(MixingConfig, BaseModel):
     dropout: float = 0.5
     phase_number: int = 0
     """Indicates whether or not two phase learning is being performed.
-    1: Phase 1; 2: Phase 2; 0: None"""
+    1: Phase 1 - Train model on undersampled data
+    2: Phase 2 - Continue training on full data
+    0: None - 2 phase learning is not performed"""
     category_undersample: str = ''
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2

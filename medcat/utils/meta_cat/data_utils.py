@@ -34,8 +34,8 @@ def prepare_from_json(data: Dict,
                 {'Experiencer': 'Patient'} - Take care that the CASE has to match whatever is in the data. Defaults to `{}`.
         lowercase (bool):
             Should the text be lowercased before tokenization. Defaults to True.
-        cui_filter:
-            cui_filter
+        cui_filter (Optional[set]):
+            CUI filter if set. Defaults to None.
 
     Returns:
         out_data (dict):
@@ -71,32 +71,21 @@ def prepare_from_json(data: Dict,
                             start = ann['start']
                             end = ann['end']
 
-                            # Get the index of the center token
-                            flag = 0
+                            # Updated implementation to extract all the tokens for the medical entity (rather than the one)
                             ctoken_idx = []
-
                             for ind, pair in enumerate(doc_text['offset_mapping']):
                                 if start <= pair[0] or start <= pair[1]:
                                     if end <= pair[1]:
                                         ctoken_idx.append(ind)
                                         break
                                     else:
-                                        flag = 1
-                                if flag == 1:
-                                    if end <= pair[1] or end <= pair[0]:
-                                        break
-                                    else:
                                         ctoken_idx.append(ind)
-                            ind = 0
-                            for ind, pair in enumerate(doc_text['offset_mapping']):
-                                if start >= pair[0] and start < pair[1]:
-                                    break
 
                             _start = max(0, ctoken_idx[0] - cntx_left)
-                            _end = min(len(doc_text['input_ids']), ind + 1 + cntx_right)
+                            _end = min(len(doc_text['input_ids']), ctoken_idx[-1] + 1 + cntx_right)
+
                             cpos = cntx_left + min(0, ind - cntx_left)
                             cpos_new = [x - _start for x in ctoken_idx]
-                            _end = min(len(doc_text['input_ids']), ctoken_idx[-1] + 1 + cntx_right)
                             tkns = doc_text['input_ids'][_start:_end]
 
                             if replace_center is not None:
@@ -178,7 +167,9 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
     Returns:
         dict:
-            New data with integers inplace of strings for categry values.
+            New underesampled data (for 2 phase learning) with integers inplace of strings for category values
+        dict:
+            New data with integers inplace of strings for category values.
         dict:
             Map rom category value to ID for all categories in the data.
     """

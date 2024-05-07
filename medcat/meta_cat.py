@@ -122,7 +122,7 @@ class MetaCAT(PipeRunner):
         return hasher.hexdigest()
 
     @deprecated(message="Use `train_from_json` or `train_raw` instead")
-    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None, data_oversampled=None) -> Dict:
+    def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None, data_oversampled: Optional[list] = None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -132,7 +132,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
-            data_oversampled :
+            data_oversampled (Optional[list]):
                 In case of oversampling being performed, the data will be passed in the parameter
 
         Returns:
@@ -141,7 +141,7 @@ class MetaCAT(PipeRunner):
         return self.train_from_json(json_path, save_dir_path, data_oversampled=data_oversampled)
 
     def train_from_json(self, json_path: Union[str, list], save_dir_path: Optional[str] = None,
-                        data_oversampled=None) -> Dict:
+                        data_oversampled: Optional[list] = None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -151,7 +151,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
-            data_oversampled :
+            data_oversampled (Optional[list]):
                 In case of oversampling being performed, the data will be passed in the parameter
 
         Returns:
@@ -179,7 +179,7 @@ class MetaCAT(PipeRunner):
                 data_loaded = merge_data_loaded(data_loaded, json.load(f))
         return self.train_raw(data_loaded, save_dir_path, data_oversampled=data_oversampled)
 
-    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None, data_oversampled=None) -> Dict:
+    def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None, data_oversampled: Optional[list] = None) -> Dict:
         """Train or continue training a model given raw data. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -207,7 +207,7 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
-            data_oversampled :
+            data_oversampled (Optional[list]):
                 In case of oversampling being performed, the data will be passed in the parameter
                 The format of which is expected: [[['text','of','the','document'], [index of medical entity], "label" ],
                 ['text','of','the','document'], [index of medical entity], "label" ]]
@@ -473,33 +473,22 @@ class MetaCAT(PipeRunner):
             start = ent.start_char
             end = ent.end_char
 
-            flag = 0
+            # Updated implementation to extract all the tokens for the medical entity (rather than the one)
             ctoken_idx = []
             for ind, pair in enumerate(offset_mapping[last_ind:]):
+                # Checking if we've reached at the start of the entity
                 if start <= pair[0] or start <= pair[1]:
                     if end <= pair[1]:
-                        ctoken_idx.append(ind)
+                        ctoken_idx.append(ind) # End reached
                         break
                     else:
-                        flag = 1
-                if flag == 1:
-                    if end <= pair[1] or end <= pair[0]:
-                        break
-                    else:
-                        ctoken_idx.append(ind)
+                        ctoken_idx.append(ind) # Keep going
 
-            ind = 0
             # Start where the last ent was found, cannot be before it as we've sorted
-            for ind, pair in enumerate(offset_mapping[last_ind:]):
-                if start >= pair[0] and start < pair[1]:
-                    break
+            last_ind += ind  # If we did not start from 0 in the for loop
 
-            ind = last_ind + ind  # If we did not start from 0 in the for loop
-            last_ind = ind
-
-            # _start = max(0, ind - cntx_left)
             _start = max(0, ctoken_idx[0] - cntx_left)
-            _end = min(len(input_ids), ind + 1 + cntx_right)
+            _end = min(len(input_ids), ctoken_idx[-1] + 1 + cntx_right)
 
             tkns = input_ids[_start:_end]
             cpos = cntx_left + min(0, ind - cntx_left)
@@ -518,7 +507,6 @@ class MetaCAT(PipeRunner):
                 ln = e_ind - s_ind  # Length of the concept in tokens
                 assert self.tokenizer is not None
                 tkns = tkns[:cpos] + self.tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
-
             samples.append([tkns, cpos_new])
             ent_id2ind[ent._.id] = len(samples) - 1
 
