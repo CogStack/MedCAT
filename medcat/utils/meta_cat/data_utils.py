@@ -126,7 +126,7 @@ def prepare_for_oversampled_data(data: List,
        about rewriting this function - but would be strange to have more than 1M manually annotated documents.
 
        Args:
-           data (Dict):
+           data (List):
                Oversampled data expected in the following format:
                [[['text','of','the','document'], [index of medical entity], "label" ],
                 ['text','of','the','document'], [index of medical entity], "label" ]]
