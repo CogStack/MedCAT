@@ -119,7 +119,7 @@ def prepare_from_json(data: Dict,
     return out_data
 
 
-def prepare_for_oversampled_data(data: Dict,
+def prepare_for_oversampled_data(data: List,
                                  tokenizer: TokenizerWrapperBase) -> List:
     """Convert the data from a json format into a CSV-like format for training. This function is not very efficient (the one
        working with spacy documents as part of the meta_cat.pipe method is much better). If your dataset is > 1M documents think
@@ -134,7 +134,7 @@ def prepare_for_oversampled_data(data: Dict,
                 Something to split text into tokens for the LSTM/BERT/whatever meta models.
 
        Returns:
-            data_sampled (dict):
+            data_sampled (list):
                 The processed data in the format that can be merged with the output from prepare_from_json.
                 [[<[tokens]>, [index of medical entity], "label" ],
                 <[tokens]>, [index of medical entity], "label" ]]
