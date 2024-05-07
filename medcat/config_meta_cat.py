@@ -27,7 +27,7 @@ class General(MixingConfig, BaseModel):
     """Number of annotations to be meta-annotated at once in eval"""
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
-    tokenizer_name: str = 'bert-tokenizer'
+    tokenizer_name: str = 'bbpe'
     """Tokenizer name used with of MetaCAT"""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
@@ -47,12 +47,12 @@ class General(MixingConfig, BaseModel):
 
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
-    model_name: str = 'bert'
+    model_name: str = 'lstm'
     """NOTE: When changing model, make sure to change the tokenizer as well"""
     model_variant: str = 'bert-base-uncased'
     model_freeze_layers: bool = True
     num_layers: int = 2
-    input_size: int = 100
+    input_size: int = 300
     hidden_size: int = 300
     dropout: float = 0.5
     phase_number: int = 0
@@ -79,8 +79,8 @@ class Model(MixingConfig, BaseModel):
 
 class Train(MixingConfig, BaseModel):
     """The train part of the metaCAT config"""
-    batch_size: int = 32
-    nepochs: int = 5
+    batch_size: int = 100
+    nepochs: int = 50
     lr: float = 0.001
     test_size: float = 0.1
     shuffle_data: bool = True
