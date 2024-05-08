@@ -1,7 +1,15 @@
 import unittest
+import os
 import numpy as np
+from typing import Callable, Any, Dict
+from functools import partial
+
 from tests.helper import ForCDBMerging
-from medcat.utils.cdb_utils import merge_cdb
+
+from medcat.utils.cdb_utils import merge_cdb, captured_state_cdb, CDBState
+from medcat.cdb import CDB
+from medcat.vocab import Vocab
+from medcat.cat import CAT
 
 
 class CDBMergeTests(unittest.TestCase):
@@ -41,3 +49,62 @@ class CDBMergeTests(unittest.TestCase):
             self.assertTrue(np.array_equal(self.overwrite_cdb.cui2context_vectors[cui]["short"], self.zeroes))
             self.assertEqual(self.overwrite_cdb.addl_info["cui2ontologies"][cui], {"test_ontology"})
             self.assertEqual(self.overwrite_cdb.addl_info["cui2description"][cui], "test_description")
+
+
+class StateTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
+        cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "examples", "vocab.dat"))
+        cls.vocab.make_unigram_table()
+        cls.cdb.config.general.spacy_model = "en_core_web_md"
+        cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
+        cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
+
+    @classmethod
+    def do_smth_for_each_state_var(cls, cdb: CDB, callback: Callable[[str, Any], None]) -> None:
+        for k in CDBState.__annotations__:
+            v = getattr(cdb, k)
+            callback(k, v)
+
+
+class StateSavedTests(StateTests):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.initial_state = {}
+
+        def _set_info(k: str, v: Any, info_dict: Dict):
+            info_dict[k] = (len(v), len(str(v)))
+
+        # save initial state characteristics
+        cls.do_smth_for_each_state_var(cls.cdb, partial(_set_info, info_dict=cls.initial_state))
+        # capture state
+        with captured_state_cdb(cls.cdb):
+            # clear state
+            cls.do_smth_for_each_state_var(cls.cdb, lambda k, v: v.clear())
+            cls.cleared_state = {}
+            # save cleared state
+            cls.do_smth_for_each_state_var(cls.cdb, partial(_set_info, info_dict=cls.cleared_state))
+        # save after state - should be equal to before
+        cls.restored_state = {}
+        cls.do_smth_for_each_state_var(cls.cdb, partial(_set_info, info_dict=cls.restored_state))
+
+    def test_state_saved(self):
+        nr_of_targets = len(CDBState.__annotations__)
+        self.assertGreater(nr_of_targets, 0)
+        self.assertEqual(len(self.initial_state), nr_of_targets)
+        self.assertEqual(len(self.cleared_state), nr_of_targets)
+        self.assertEqual(len(self.restored_state), nr_of_targets)
+
+    def test_clearing_wroked(self):
+        self.assertNotEqual(self.initial_state, self.cleared_state)
+        for k, v in self.cleared_state.items():
+            with self.subTest(k):
+                # length is 0
+                self.assertFalse(v[0])
+
+    def test_state_restored(self):
+        self.assertEqual(self.initial_state, self.restored_state)
