@@ -108,3 +108,25 @@ class StateSavedTests(StateTests):
 
     def test_state_restored(self):
         self.assertEqual(self.initial_state, self.restored_state)
+
+
+class StateRestoredAfterTrain(StateTests):
+    SUPERVISED_TRAINING_JSON = os.path.join(os.path.dirname(__file__), "..", "resources", "medcat_trainer_export.json")
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        with captured_state_cdb(cls.cdb):
+            # do training
+            cls.undertest.train_supervised_from_json(cls.SUPERVISED_TRAINING_JSON)
+            cls.after_train_state = {}
+            # save cleared state
+            cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.after_train_state))
+        cls.restored_state = {}
+        cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.restored_state))
+
+    def test_train_state_changed(self):
+        self.assertNotEqual(self.initial_state, self.after_train_state)
+
+    def test_restored_state_same(self):
+        self.assertDictEqual(self.initial_state, self.restored_state)
