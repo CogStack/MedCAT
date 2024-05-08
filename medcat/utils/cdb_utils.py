@@ -1,6 +1,6 @@
 import logging
 import contextlib
-from typing import Dict, TypedDict, Set, List, Optional
+from typing import Dict, TypedDict, Set, List
 import numpy as np
 import tempfile
 import dill
