@@ -1,4 +1,6 @@
 import logging
+import contextlib
+from typing import Dict, TypedDict, Set, List
 import numpy as np
 
 from copy import deepcopy
@@ -118,3 +120,35 @@ def merge_cdb(cdb1: CDB,
                 cdb.vocab[word] = cdb2.vocab[word]
 
     return cdb
+
+
+CDBState = TypedDict(
+    'CDBState',
+    {
+        'name2cuis': Dict[str, List[str]],
+        'snames': Set[str],
+        'cui2names': Dict[str, Set[str]],
+        'cui2snames': Dict[str, Set[str]],
+        'cui2context_vectors': Dict[str, Dict[str, np.array]],
+        'cui2count_train': Dict[str, int],
+        'name_isupper': Dict,
+        'vocab': Dict[str, int],
+    })
+
+
+def copy_cdb_state(cdb: CDB) -> CDBState:
+    return {
+        k: deepcopy(getattr(cdb, k)) for k in CDBState.__annotations__
+    }
+
+
+def apply_cdb_state(cdb: CDB, state: CDBState) -> None:
+    for k, v in state.items():
+        setattr(cdb, k, v)
+
+
+@contextlib.contextmanager
+def captured_state_cdb(cdb: CDB):
+    state = copy_cdb_state(cdb)
+    yield
+    apply_cdb_state(cdb, state)
