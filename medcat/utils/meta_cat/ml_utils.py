@@ -157,7 +157,6 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         name (str): The name of the report. Defaults to Train.
     """
     if all_logits:
-        # print(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
         logger.info('Epoch: %d %s %s', epoch, "*" * 50, name)
         logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 

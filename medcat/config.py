@@ -103,7 +103,6 @@ class MixingConfig(FakeDict):
             save_path(str): Where to save the created json file
         """
         # We want to save the dict here, not the whole class
-
         json_string = jsonpickle.encode(
             {field: getattr(self, field) for field in self.fields()})
 

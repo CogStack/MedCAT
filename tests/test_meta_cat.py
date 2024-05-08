@@ -93,7 +93,10 @@ class MetaCATTests(unittest.TestCase):
 
         n_meta_cat.config.general.span_group = None
 
-    def test_z_bert_meta_cat(self):
+
+class MetaCATBertTest(MetaCATTests):
+    @classmethod
+    def setUpClass(cls) -> None:
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
         config = ConfigMetaCAT()
         config.general['category_name'] = 'Status'
@@ -102,20 +105,17 @@ class MetaCATTests(unittest.TestCase):
         config.train['batch_size'] = 64
         config.model['model_name'] = 'bert'
 
-        self.meta_cat = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
-        self.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
+        cls.meta_cat: MetaCAT = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
+        cls.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
+        os.makedirs(cls.tmp_dir, exist_ok=True)
 
+    def test_two_phase(self):
+        self.meta_cat.config.model['phase_number'] = 1
         self.test_train()
-        self.test_save_load()
-        self.test_predict_spangroup()
+        self.meta_cat.config.model['phase_number'] = 2
+        self.test_train()
 
-        def _test_two_phase():
-            self.meta_cat.config.model['phase_number'] = 1
-            self.test_train()
-            self.meta_cat.config.model['phase_number'] = 2
-            self.test_train()
-
-        _test_two_phase()
+        self.meta_cat.config.model['phase_number'] = 0
 
 
 if __name__ == '__main__':

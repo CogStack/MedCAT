@@ -84,13 +84,13 @@ class MetaCAT(PipeRunner):
                 The module
         """
         config = self.config
-        from medcat.utils.meta_cat.models import LSTM
-        from medcat.utils.meta_cat.models import BertForMetaAnnotation
         if config.model['model_name'] == 'lstm':
-            model: Union[LSTM, BertForMetaAnnotation] = LSTM(embeddings, config)
+            from medcat.utils.meta_cat.models import LSTM
+            model: nn.Module = LSTM(embeddings, config)
             logger.info("LSTM model used for classification")
 
         elif config.model['model_name'] == 'bert':
+            from medcat.utils.meta_cat.models import BertForMetaAnnotation
             model = BertForMetaAnnotation(config)
 
             if not config.model.model_freeze_layers:
@@ -289,6 +289,9 @@ class MetaCAT(PipeRunner):
         data = full_data
         if self.config.model.phase_number == 1:
             data = data_undersampled
+            if not t_config['auto_save_model']:
+                logger.info("For phase 1, model state has to be saved. Saving model...")
+                t_config['auto_save_model'] = True
 
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
