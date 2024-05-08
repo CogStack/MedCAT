@@ -110,7 +110,7 @@ class StateSavedTests(StateTests):
         self.assertEqual(self.initial_state, self.restored_state)
 
 
-class StateRestoredAfterTrain(StateTests):
+class StateWithTrainingTests(StateTests):
     SUPERVISED_TRAINING_JSON = os.path.join(os.path.dirname(__file__), "..", "resources", "medcat_trainer_export.json")
 
     @classmethod
@@ -124,6 +124,9 @@ class StateRestoredAfterTrain(StateTests):
             cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.after_train_state))
         cls.restored_state = {}
         cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.restored_state))
+
+
+class StateRestoredAfterTrain(StateWithTrainingTests):
 
     def test_train_state_changed(self):
         self.assertNotEqual(self.initial_state, self.after_train_state)
