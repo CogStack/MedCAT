@@ -18,6 +18,9 @@ venv
 db.sqlite3
 .ipynb_checkpoints
 
+# vscode 
+.vscode
+
 #tmp and similar files
 .nfs*
 *.log

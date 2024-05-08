@@ -6,12 +6,14 @@ from medcat.vocab import Vocab
 from medcat.config import Config
 from medcat.pipe import Pipe
 from medcat.meta_cat import MetaCAT
+from medcat.rel_cat import RelCAT
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.utils.normalizers import BasicSpellChecker, TokenNormalizer
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT as RelTokenizerWrapperBERT
 from transformers import AutoTokenizer
 
 
@@ -41,7 +43,9 @@ class PipeTests(unittest.TestCase):
         cls.linker = Linker(cls.cdb, cls.vocab, cls.config)
 
         _tokenizer = TokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
+        _tokenizer_rel = RelTokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
         cls.meta_cat = MetaCAT(tokenizer=_tokenizer)
+        cls.rel_cat = RelCAT(cls.cdb, tokenizer=_tokenizer_rel, init_model=True)
 
         cls.text = "stop of CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
@@ -56,6 +60,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.force_remove(PipeTests.ner.name)
         PipeTests.undertest.force_remove(PipeTests.linker.name)
         PipeTests.undertest.force_remove(PipeTests.meta_cat.name)
+        PipeTests.undertest.force_remove(PipeTests.rel_cat.name)
 
     def test_add_tagger(self):
         PipeTests.undertest.add_tagger(tagger=tag_skip_and_punct, name=tag_skip_and_punct.name, additional_fields=["is_punct"])
@@ -82,7 +87,12 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
 
         self.assertEqual(PipeTests.meta_cat.name, Language.get_factory_meta(PipeTests.meta_cat.name).factory)
-    
+
+    def test_add_rel_cat(self):
+        PipeTests.undertest.add_rel_cat(PipeTests.rel_cat)
+
+        self.assertEqual(PipeTests.rel_cat.name, Language.get_factory_meta(PipeTests.rel_cat.name).factory)
+
     def test_stopwords_loading(self):
         self.assertEqual(PipeTests.undertest._nlp.Defaults.stop_words, PipeTests.config.preprocessing.stopwords)
         doc = PipeTests.undertest(PipeTests.text)
@@ -95,6 +105,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_ner(PipeTests.ner)
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+        PipeTests.undertest.add_rel_cat(PipeTests.rel_cat)
 
         PipeTests.undertest.set_error_handler(_error_handler)
         docs = list(self.undertest.batch_multi_process([PipeTests.text, PipeTests.text, PipeTests.text], n_process=1, batch_size=1))
@@ -114,6 +125,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_ner(PipeTests.ner)
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+        PipeTests.undertest.add_rel_cat(PipeTests.rel_cat)
 
         docs = list(self.undertest(_generate_texts([PipeTests.text, None, PipeTests.text])))
 
@@ -128,6 +140,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_ner(PipeTests.ner)
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+        PipeTests.undertest.add_rel_cat(PipeTests.rel_cat)
 
         doc = self.undertest(PipeTests.text)
 
@@ -139,6 +152,7 @@ class PipeTests(unittest.TestCase):
         PipeTests.undertest.add_ner(PipeTests.ner)
         PipeTests.undertest.add_linker(PipeTests.linker)
         PipeTests.undertest.add_meta_cat(PipeTests.meta_cat)
+        PipeTests.undertest.add_rel_cat(PipeTests.rel_cat)
 
         docs = list(self.undertest([PipeTests.text, None, PipeTests.text]))
 
