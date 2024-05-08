@@ -151,6 +151,7 @@ def save_cdb_state(cdb: CDB, file_path: str) -> None:
     the_dict = {
         k: getattr(cdb, k) for k in CDBState.__annotations__
     }
+    logger.debug("Saving CDB state on disk at: '%s'", file_path)
     with open(file_path, 'wb') as f:
         dill.dump(the_dict, f)
 
@@ -164,10 +165,12 @@ def load_and_apply_cdb_state(cdb: CDB, file_path: str) -> None:
     # clear existing data on CDB
     # this is so that we don't occupy the memory for both the loaded
     # and the on-CDB data
+    logger.debug("Clearing CDB state in memory")
     for k in CDBState.__annotations__:
         val = getattr(cdb, k)
         setattr(cdb, k, None)
         del val
+    logger.debug("Loading CDB state from disk from '%s'", file_path)
     with open(file_path, 'rb') as f:
         data = dill.load(f)
     for k in CDBState.__annotations__:
