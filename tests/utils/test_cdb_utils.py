@@ -61,6 +61,13 @@ class StateTests(unittest.TestCase):
         cls.cdb.config.general.spacy_model = "en_core_web_md"
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
+        cls.initial_state = {}
+        # save initial state characteristics
+        cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.initial_state))
+
+    @classmethod
+    def _set_info(cls, k: str, v: Any, info_dict: Dict):
+        info_dict[k] = (len(v), len(str(v)))
 
     @classmethod
     def do_smth_for_each_state_var(cls, cdb: CDB, callback: Callable[[str, Any], None]) -> None:
@@ -74,23 +81,16 @@ class StateSavedTests(StateTests):
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
-        cls.initial_state = {}
-
-        def _set_info(k: str, v: Any, info_dict: Dict):
-            info_dict[k] = (len(v), len(str(v)))
-
-        # save initial state characteristics
-        cls.do_smth_for_each_state_var(cls.cdb, partial(_set_info, info_dict=cls.initial_state))
         # capture state
         with captured_state_cdb(cls.cdb):
             # clear state
             cls.do_smth_for_each_state_var(cls.cdb, lambda k, v: v.clear())
             cls.cleared_state = {}
             # save cleared state
-            cls.do_smth_for_each_state_var(cls.cdb, partial(_set_info, info_dict=cls.cleared_state))
+            cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.cleared_state))
         # save after state - should be equal to before
         cls.restored_state = {}
-        cls.do_smth_for_each_state_var(cls.cdb, partial(_set_info, info_dict=cls.restored_state))
+        cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.restored_state))
 
     def test_state_saved(self):
         nr_of_targets = len(CDBState.__annotations__)
