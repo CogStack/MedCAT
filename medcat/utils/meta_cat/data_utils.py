@@ -210,6 +210,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     for i in range(len(data)):
         if data[i][2] in category_value2id.values():
             label_data_[data[i][2]] = label_data_[data[i][2]] + 1
+    logger.info(f"Class distribution: {label_data_}")
     # Undersampling data
     if category_undersample is None or category_undersample == '':
         min_label = min(label_data_.values())
@@ -232,7 +233,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     for i in range(len(data_undersampled)):
         if data_undersampled[i][2] in category_value2id.values():
             label_data[data_undersampled[i][2]] = label_data[data_undersampled[i][2]] + 1
-    logger.info(f"Updated label_data: {label_data}")
+    # logger.info(f"Updated label_data: {label_data}")
 
     return data_undersampled, data, category_value2id
 
