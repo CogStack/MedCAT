@@ -1,8 +1,10 @@
 import unittest
 import os
+from unittest import mock
 import numpy as np
 from typing import Callable, Any, Dict
 from functools import partial
+import tempfile
 
 from tests.helper import ForCDBMerging
 
@@ -77,12 +79,13 @@ class StateTests(unittest.TestCase):
 
 
 class StateSavedTests(StateTests):
+    on_disk = False
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         # capture state
-        with captured_state_cdb(cls.cdb):
+        with captured_state_cdb(cls.cdb, save_state_to_disk=cls.on_disk):
             # clear state
             cls.do_smth_for_each_state_var(cls.cdb, lambda k, v: v.clear())
             cls.cleared_state = {}
@@ -99,7 +102,7 @@ class StateSavedTests(StateTests):
         self.assertEqual(len(self.cleared_state), nr_of_targets)
         self.assertEqual(len(self.restored_state), nr_of_targets)
 
-    def test_clearing_wroked(self):
+    def test_clearing_worked(self):
         self.assertNotEqual(self.initial_state, self.cleared_state)
         for k, v in self.cleared_state.items():
             with self.subTest(k):
@@ -108,6 +111,32 @@ class StateSavedTests(StateTests):
 
     def test_state_restored(self):
         self.assertEqual(self.initial_state, self.restored_state)
+
+
+class StateSavedOnDiskTests(StateSavedTests):
+    on_disk = True
+    _named_tempory_file = tempfile.NamedTemporaryFile
+
+    @classmethod
+    def saved_name_temp_file(cls):
+        tf = cls._named_tempory_file()
+        cls.temp_file_name = tf.name
+        return tf
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        with mock.patch("builtins.open", side_effect=open) as cls.popen:
+            with mock.patch("tempfile.NamedTemporaryFile", side_effect=cls.saved_name_temp_file) as cls.pntf:
+                return super().setUpClass()
+
+    def test_temp_file_called(self):
+        self.pntf.assert_called_once()
+
+    def test_saved_on_disk(self):
+        self.popen.assert_called()
+        self.assertGreaterEqual(self.popen.call_count, 2)
+        self.popen.assert_has_calls([mock.call(self.temp_file_name, 'wb'),
+                                     mock.call(self.temp_file_name, 'rb')])
 
 
 class StateWithTrainingTests(StateTests):
