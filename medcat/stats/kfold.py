@@ -1,4 +1,4 @@
-from typing import Protocol, Tuple, List, Dict, Optional, Set
+from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterator, Union, Callable, cast, Any
 
 from copy import deepcopy
 
@@ -9,7 +9,7 @@ from medcat.stats.stats import get_stats
 from medcat.stats.mctexport import MedCATTrainerExport, MedCATTrainerExportProject
 from medcat.stats.mctexport import MedCATTrainerExportDocument, MedCATTrainerExportAnnotation
 from medcat.stats.mctexport import count_all_annotations, count_all_docs
-from medcat.stats.mctexport import iter_anns, iter_docs
+from medcat.stats.mctexport import iter_anns, iter_docs, MedCATTrainerExportProjectInfo
 
 
 
@@ -52,6 +52,14 @@ class FoldCreator:
         self.mct_export = mct_export
         self.nr_of_folds = nr_of_folds
         self.use_annotations = use_annotations
+        self._targets: Union[
+            Iterator[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument, MedCATTrainerExportAnnotation]],
+            Iterator[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument]]
+        ]
+        self._adder: Union[
+            Callable[[MedCATTrainerExportProject, MedCATTrainerExportDocument, MedCATTrainerExportAnnotation], None],
+            Callable[[MedCATTrainerExportProject, MedCATTrainerExportDocument], None]
+        ]
         if self.use_annotations:
             self.total = count_all_annotations(self.mct_export)
             self._targets = iter_anns(self.mct_export)
@@ -95,18 +103,18 @@ class FoldCreator:
         cur_fold: MedCATTrainerExport = {
             'projects': []
         }
-        cur_project: MedCATTrainerExportProject = {}
+        cur_project: Optional[MedCATTrainerExportProject] = None
         included = 0
         for target in self._targets:
             (proj_name, proj_id, proj_cuis, proj_tuis), *target_info = target
             if not cur_project or cur_project['name'] != proj_name:
                 # first or new project
-                cur_project: MedCATTrainerExportProject = {
+                cur_project = cast(MedCATTrainerExportProject, {
                     'name': proj_name,
                     'id': proj_id,
                     'cuis': proj_cuis,
                     'documents': [],
-                }
+                })
                 # NOTE: Some MCT exports don't declare TUIs
                 if proj_tuis is not None:
                     cur_project['tuis'] = proj_tuis
@@ -128,20 +136,20 @@ class FoldCreator:
 
 
 def get_per_fold_metrics(cat: CATLike, folds: List[MedCATTrainerExport],
-                         *args, **kwargs) -> Tuple[Tuple]:
+                         *args, **kwargs) -> List[Tuple]:
     metrics = []
     for fold_nr, cur_fold in enumerate(folds):
         others = list(folds)
         others.pop(fold_nr)
         with captured_state_cdb(cat.cdb):
             for other in others:
-                cat.train_supervised_raw(other, *args, **kwargs)
-            stats = get_stats(cat, cur_fold, do_print=False)
+                cat.train_supervised_raw(cast(Dict[str, Any], other), *args, **kwargs)
+            stats = get_stats(cat, cast(Dict[str, Any], cur_fold), do_print=False)
             metrics.append(stats)
     return metrics
 
 
-def _update_all_weighted_average(joined: List[Dict[str, List[Tuple[int, float]]]],
+def _update_all_weighted_average(joined: List[Dict[str, Tuple[int, float]]],
                 single: List[Dict[str, float]], cui2count: Dict[str, int]) -> None:
     if len(joined) != len(single):
         raise ValueError(f"Incompatible lists. Joined {len(joined)} and single {len(single)}")
@@ -149,7 +157,7 @@ def _update_all_weighted_average(joined: List[Dict[str, List[Tuple[int, float]]]
         _update_one_weighted_average(j, s, cui2count)
 
 
-def _update_one_weighted_average(joined: Dict[str, List[Tuple[int, float]]],
+def _update_one_weighted_average(joined: Dict[str, Tuple[int, float]],
                 one: Dict[str, float],
                 cui2count: Dict[str, int]) -> None:
     for k in one:
@@ -181,11 +189,12 @@ def _merge_examples(all_examples: Dict, cur_examples: Dict) -> None:
             per_type_examples[ex_cui].extend(cui_examples_list)
 
 
-def get_metrics_mean(metrics: Tuple[Tuple[Dict]]) -> Tuple[Dict]:
+def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]]
+                     ) -> Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]:
     """The the mean of the provided metrics.
 
     Args:
-        metrics (Tuple[Tuple]): The metrics.
+        metrics (List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]): The metrics.
 
     Returns:
         fps (dict):
@@ -223,9 +232,9 @@ def get_metrics_mean(metrics: Tuple[Tuple[Dict]]) -> Tuple[Dict]:
         all_cui_prec, all_cui_rec, all_cui_f1
     ]
     # examples
-    all_examples = {}
+    all_examples: dict = {}
     for current in metrics:
-        cur_wa = list(current[3:-2])
+        cur_wa: list = list(current[3:-2])
         cur_counts = current[-2]
         _update_all_weighted_average(all_weighted_averages, cur_wa, cur_counts)
         # update ones that just need to be added up
@@ -244,7 +253,8 @@ def get_metrics_mean(metrics: Tuple[Tuple[Dict]]) -> Tuple[Dict]:
     for df, d in zip(final_wa, all_weighted_averages):
         for k, v in d.items():
             df[k] = v[1]  # only the value, ingore the weight
-    return (all_fps, all_fns, all_tps, *final_wa, all_cui_counts, all_examples)
+    return (all_fps, all_fns, all_tps, final_wa[0], final_wa[1], final_wa[2],
+            all_cui_counts, all_examples)
 
 
 def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int = 3,
