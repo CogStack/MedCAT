@@ -20,11 +20,11 @@ class MedCATTrainerExportProject(TypedDict):
     name: str
     id: Any
     cuis: str
-    tuis: Optional[str] = None
+    tuis: Optional[str]
     documents: List[MedCATTrainerExportDocument]
 
 
-MedCATTrainerExportProjectInfo = Tuple[str, Any, str, str]
+MedCATTrainerExportProjectInfo = Tuple[str, Any, str, Optional[str]]
 """The project name, project ID, CUIs str, and TUIs str"""
 
 
