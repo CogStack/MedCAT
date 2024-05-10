@@ -253,7 +253,7 @@ def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int 
 
     First this will split the MCT export into `k` folds. You can do
     this either per document or per-annotation.
-    
+
     For each of the `k` folds, it will start from the base model,
     train it with with the other `k-1` folds and record the metrics.
     After that the base model state is restored before doing the next fold.
@@ -264,6 +264,8 @@ def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int 
         mct_export_data (MedCATTrainerExport): The MCT export.
         k (int): The number of folds. Defaults to 3.
         use_annotations (bool): Whether to use annodations or docs. Defaults to False (docs).
+        *args: Arguments passed to the `CAT.train_supervised_raw` method.
+        **kwargs: Keyword arguments passed to the `CAT.train_supervised_raw` method.
 
     Returns:
         Tuple: The averaged metrics.
