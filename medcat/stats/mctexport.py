@@ -1,4 +1,5 @@
-from typing import TypedDict, List, Iterator, Tuple, Any, Optional
+from typing import List, Iterator, Tuple, Any, Optional
+from typing_extensions import TypedDict
 
 
 class MedCATTrainerExportAnnotation(TypedDict):
