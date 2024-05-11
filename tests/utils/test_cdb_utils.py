@@ -1,8 +1,6 @@
 import unittest
 import numpy as np
-
 from tests.helper import ForCDBMerging
-
 from medcat.utils.cdb_utils import merge_cdb
 
 
