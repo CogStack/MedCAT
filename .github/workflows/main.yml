@@ -33,7 +33,7 @@ jobs:
           flake8 medcat
       - name: Test
         run: |
-          python -m unittest -f discover
+          python -m unittest discover -f
 
   publish-to-test-pypi:
 
