@@ -8,11 +8,10 @@ from typing import Optional, List, Dict, Union, Any
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
 from medcat.config import Config
-from medcat.preprocessing.tokenizers import spacy_split_all
+# from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.preprocessing.tokenizers import thai_tokenizer_factory
 from medcat.preprocessing.cleaners import prepare_name
-from medcat.preprocessing.taggers import tag_skip_and_punct
-
-PH_REMOVE = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)($)")
+from medcat.preprocessing.taggers import tag_skip_punct_lang
 
 
 logger = logging.getLogger(__name__)
@@ -37,6 +36,7 @@ class CDBMaker(object):
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker
+        self.PH_REMOVE = re.compile("(\s)\([{}A-Za-z]+[^\)\(]*\)($)".format(config.general.additional_token_characters))
 
         if cdb is None:
             self.cdb = CDB(config=self.config)
@@ -44,10 +44,10 @@ class CDBMaker(object):
             self.cdb = cdb
 
         # Build the required spacy pipeline
-        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
-        self.pipe.add_tagger(tagger=tag_skip_and_punct,
-                             name='skip_and_punct',
-                             additional_fields=['is_punct'])
+        self.pipe = Pipe(tokenizer=thai_tokenizer_factory, config=config)
+        self.pipe.add_tagger(tagger=tag_skip_punct_lang,
+                             name='skip_punct_lang',
+                             additional_fields=['is_punct', 'lang'])
 
     def reset_cdb(self) -> None:
         """This will re-create a new internal CDB based on the same config.
@@ -186,7 +186,7 @@ class CDBMaker(object):
 
                         if self.config.cdb_maker.get('remove_parenthesis', 0) > 0 and name_status == 'P':
                             # Should we remove the content in parenthesis from primary names and add them also
-                            raw_name = PH_REMOVE.sub(" ", raw_name).strip()
+                            raw_name = self.PH_REMOVE.sub(" ", raw_name).strip()
                             if len(raw_name) >= self.config.cdb_maker['remove_parenthesis']:
                                 prepare_name(raw_name, self.pipe.spacy_nlp, names, self.config)
 

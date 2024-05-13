@@ -20,9 +20,10 @@ from spacy.language import Language
 import humanfriendly
 
 from medcat import __version__
-from medcat.preprocessing.tokenizers import spacy_split_all
+# from medcat.preprocessing.tokenizers import spacy_split_all
+from medcat.preprocessing.tokenizers import thai_tokenizer_factory
 from medcat.pipe import Pipe
-from medcat.preprocessing.taggers import tag_skip_and_punct
+from medcat.preprocessing.taggers import tag_skip_punct_lang
 from medcat.cdb import CDB
 from medcat.utils.data_utils import make_mc_train_test, get_false_positives
 from medcat.utils.normalizers import BasicSpellChecker
@@ -113,10 +114,10 @@ class CAT(object):
         logger.setLevel(config.general.log_level)
 
         # Build the pipeline
-        self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
-        self.pipe.add_tagger(tagger=tag_skip_and_punct,
-                             name='skip_and_punct',
-                             additional_fields=['is_punct'])
+        self.pipe = Pipe(tokenizer=thai_tokenizer_factory, config=config)
+        self.pipe.add_tagger(tagger=tag_skip_punct_lang,
+                             name='skip_punct_lang',
+                             additional_fields=['is_punct', 'lang'])
 
         if self.vocab is not None:
             spell_checker = BasicSpellChecker(cdb_vocab=self.cdb.vocab, config=config, data_vocab=self.vocab)

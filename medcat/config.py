@@ -332,6 +332,8 @@ class General(MixingConfig, BaseModel):
     spell_check: bool = True
     """Should we check spelling - note that this makes things much slower, use only if necessary. The only thing necessary
     for the spell checker to work is vocab.dat and cdb.dat built with concepts in the respective language."""
+    additional_token_characters: str = '\u0E00-\u0E7F'
+    """Addtional token characters to be process e.g. \u0E00-\u0E7F to add Thai characters"""
     diacritics: bool = False
     """Should we process diacritics - for languages other than English, symbols such as 'é, ë, ö' can be relevant.
     Note that this makes spell_check slower."""
@@ -571,7 +573,7 @@ class Config(MixingConfig, BaseModel):
         self.word_skipper = re.compile('^({})$'.format(
             '|'.join(self.preprocessing.words_to_skip)))
         # Very agressive punct checker, input will be lowercased
-        self.punct_checker = re.compile(r'[^a-z0-9]+')
+        self.punct_checker = re.compile(r'[^{}a-z0-9]+'.format(self.general.additional_token_characters))
 
     # Override
     def get_hash(self):

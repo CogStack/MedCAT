@@ -51,7 +51,7 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
             name = config.general['separator'].join(tokens)
 
             min_letters = config.cdb_maker.get('min_letters_required', 0)
-            if not min_letters or len(re.sub("[^A-Za-z]*", '', name)) >= min_letters:
+            if not min_letters or len(re.sub("[^{}A-Za-z]*".format(config.general.additional_token_characters), '', name)) >= min_letters:
                 if name not in names:
                     sname = ""
                     for token in tokens:
@@ -82,7 +82,7 @@ def basic_clean(text: str) -> str:
     text = re.sub("[:;\\|!?%#@%\&=><\-\*\+\^]", " ", text)
 
     # Remove dots not preeceded by a letter or number
-    text = re.sub("[^A-Za-z0-9]+\.", "", text)
+    text = re.sub("[^\u0E00-\u0E7FA-Za-z0-9]+\.", "", text) # edited, add \u0E00-\u0E7F
 
     # Remove commas not in-between numbers
     text = re.sub(",([^0-9])|([^0-9]),", r"\2\1 ", text)
@@ -124,7 +124,7 @@ def clean_text(text: str) -> str:
     text = re.sub("[:;\\|!?%#@%\&=><\-\*\+\^]", " ", text)
 
     # Remove dots not preeceded by a letter or number
-    text = re.sub("[^A-Za-z0-9]+\.", "", text)
+    text = re.sub("[^\u0E00-\u0E7FA-Za-z0-9]+\.", "", text) #edited
 
     # Remove commas not in-between numbers
     text = re.sub(",([^0-9])|([^0-9]),", r"\2\1 ", text)
@@ -140,8 +140,8 @@ def clean_text(text: str) -> str:
 
 
 BR_U4 = re.compile("\[[^\]]{0,3}\]")
-CB = re.compile("(\s)\([a-zA-Z]+[^\)\(]*\)(\s)")
-CB_D = re.compile("(\s)\([a-z]+[^\)\(]*\)($)")
+CB = re.compile("(\s)\([\u0E00-\u0E7Fa-zA-Z]+[^\)\(]*\)(\s)") #edited
+CB_D = re.compile("(\s)\([\u0E00-\u0E7Fa-z]+[^\)\(]*\)($)") #edited
 BR = re.compile("(^|\s)\[[^\]]*\]($|\s)")
 PH_RM = re.compile("(\(|\[)(observation|finding|symptoms|disease|observations|disorder|disease/finding)(\)|\])", flags=re.I)
 SKIP_CHARS = re.compile("[\[\]\*]+")
