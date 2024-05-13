@@ -1526,6 +1526,11 @@ class CAT(object):
 
         This method batches the data based on the number of documents as specified by the user.
 
+        NOTE: When providing a generator for `data`, the generator is evaluated (`list(in_data)`)
+              and thus all the data is kept in memory and (potentially) duplicated for use in
+              multiple threads. So if you're using a lot of data, it may be better to use
+              `CAT.multiprocessing_batch_char_size` instead.
+
         PS:
         This method supports Windows.
 
