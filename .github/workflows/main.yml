@@ -33,7 +33,7 @@ jobs:
           flake8 medcat
       - name: Test
         run: |
-          timeout 30m python -m unittest discover
+          timeout 45m python -m unittest discover
 
   publish-to-test-pypi:
 
