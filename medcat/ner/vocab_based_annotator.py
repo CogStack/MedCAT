@@ -19,14 +19,17 @@ def maybe_annotate_name(name: str, tkns: List[Token], doc: Doc, cdb: CDB, config
             The name found in the text of the document.
         tkns (List[spacy.tokens.Token]):
             Tokens that belong to this name in the spacy document.
-        doc (spacy.tokens.Doc):
+        doc (Doc):
             Spacy document to be annotated with named entities.
-        cdb (medcat.cdb.CDB):
+        cdb (CDB):
             Concept database.
-        config (medcat.config.Config):
+        config (Config):
             Global config for medcat.
         label (str):
             Label for this name (usually `concept` if we are using a vocab based approach).
+
+    Returns:
+        Optional[Span]: The Span, if relevant.
     """
 
     logger.debug("Maybe annotating name: %s", name)

@@ -1,4 +1,4 @@
-from typing import Any, List, Tuple, Union, Optional
+from typing import Any, List, Tuple, Union, Optional, Dict
 
 from spacy.tokens import Doc
 
@@ -33,7 +33,9 @@ class NerModel:
 
         Args:
             json_path (Union[str, list, None]): The JSON file path to read the training data from.
-            train_nr (int, optional): The number of the NER object in cat._addl_train to train. Defaults to 0.
+            train_nr (int): The number of the NER object in cat._addl_train to train. Defaults to 0.
+            *args: Additional arguments for TransformersNER.train .
+            **kwargs: Additional keyword arguments for TransformersNER.train .
 
         Returns:
             Tuple[Any, Any, Any]: df, examples, dataset
@@ -48,6 +50,8 @@ class NerModel:
 
         Args:
             text (Optional[str]): The input text.
+            *args: Additional arguments for cat.__call__ .
+            **kwargs: Additional keyword arguments for cat.__call__ .
 
         Returns:
             Optional[Doc]: The annotated document.
@@ -64,6 +68,8 @@ class NerModel:
 
         Args:
             text (str): The input text.
+            *args: Additional arguments for cat.get_entities .
+            **kwargs: Additional keyword arguments for cat.get_entities .
 
         Returns:
             dict: The output entities.
@@ -94,16 +100,17 @@ class NerModel:
         return cls(cat)
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str) -> 'NerModel':
+    def load_model_pack(cls, model_pack_path: str,config: Optional[Dict] = None) -> 'NerModel':
         """Load NER model from model pack.
 
         The method first wraps the loaded CAT instance.
 
         Args:
+            config: Config for DeId model pack (primarily for stride of overlap window)
             model_pack_path (str): The model pack path.
 
         Returns:
             NerModel: The resulting DeI model.
         """
-        cat = CAT.load_model_pack(model_pack_path)
+        cat = CAT.load_model_pack(model_pack_path,ner_config_dict=config)
         return cls(cat)

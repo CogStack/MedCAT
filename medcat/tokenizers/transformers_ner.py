@@ -38,10 +38,13 @@ class TransformersTokenizerNER(object):
         appropriate form for NER with BERT. It will split long text segments into max_len sequences.
 
         Args:
-            examples:
+            examples (Dict):
                 Stream of examples.
-            ignore_subwords:
+            ignore_subwords (bool):
                 If set to `True` subwords of any token will get the special label `X`.
+
+        Returns:
+            Dict: The same dict, modified.
         """
         self.hf_tokenizer = self.ensure_tokenizer()
         old_ids = examples['id']

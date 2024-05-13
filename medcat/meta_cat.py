@@ -5,7 +5,7 @@ import torch
 import numpy
 from multiprocessing import Lock
 from torch import nn, Tensor
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Span
 from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, Tuple, cast, Union
 from medcat.utils.hasher import Hasher
@@ -76,6 +76,9 @@ class MetaCAT(PipeRunner):
             embeddings (Optional[Tensor]):
                 The embedding densor
 
+        Raises:
+            ValueError: If the meta model is not LSTM
+
         Returns:
             nn.Module:
                 The module
@@ -89,8 +92,12 @@ class MetaCAT(PipeRunner):
 
         return model
 
-    def get_hash(self):
-        """A partial hash trying to catch differences between models."""
+    def get_hash(self) -> str:
+        """A partial hash trying to catch differences between models.
+
+        Returns:
+            str: The hex hash.
+        """
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.train['last_train_on'] is None:
@@ -110,6 +117,9 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
+
+        Returns:
+            Dict: The resulting report.
         """
         return self.train_from_json(json_path, save_dir_path)
 
@@ -123,6 +133,9 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
+
+        Returns:
+            Dict: The resulting report.
         """
 
         # Load the medcattrainer export
@@ -174,6 +187,13 @@ class MetaCAT(PipeRunner):
             save_dir_path (Optional[str]):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
+
+        Returns:
+            Dict: The resulting report.
+
+        Raises:
+            Exception: If no save path is specified, or category name not in data.
+            AssertionError: If no tokeniser is set
         """
         g_config = self.config.general
         t_config = self.config.train
@@ -248,10 +268,8 @@ class MetaCAT(PipeRunner):
                 The resulting model dict
 
         Raises:
-            AssertionError:
-                If self.tokenizer
-            Exception:
-                If the category name does not exist
+            AssertionError: If self.tokenizer
+            Exception: If the category name does not exist
         """
         g_config = self.config.general
         t_config = self.config.train
@@ -291,8 +309,7 @@ class MetaCAT(PipeRunner):
                 Path to the directory where everything will be saved.
 
         Raises:
-            AssertionError:
-                If self.tokenizer is None
+            AssertionError: If self.tokenizer is None
         """
         # Create dirs if they do not exist
         os.makedirs(save_dir_path, exist_ok=True)
@@ -357,6 +374,20 @@ class MetaCAT(PipeRunner):
 
         return meta_cat
 
+    def get_ents(self, doc: Doc) -> Iterable[Span]:
+        spangroup_name = self.config.general.span_group
+        if spangroup_name:
+            try:
+                return doc.spans[spangroup_name]
+            except KeyError:
+                raise Exception(f"Configuration error MetaCAT was configured to set meta_anns on {spangroup_name} but this spangroup was not set on the doc.")
+
+        # Should we annotate overlapping entities
+        if self.config.general['annotate_overlapping']:
+            return doc._.ents
+
+        return doc.ents
+
     def prepare_document(self, doc: Doc, input_ids: List, offset_mapping: List, lowercase: bool) -> Tuple:
         """Prepares document.
 
@@ -381,11 +412,7 @@ class MetaCAT(PipeRunner):
         cntx_right = config.general['cntx_right']
         replace_center = config.general['replace_center']
 
-        # Should we annotate overlapping entities
-        if config.general['annotate_overlapping']:
-            ents = doc._.ents
-        else:
-            ents = doc.ents
+        ents = self.get_ents(doc)
 
         samples = []
         last_ind = 0
@@ -436,9 +463,8 @@ class MetaCAT(PipeRunner):
             batch_size_chars (int):
                 Number of characters per batch
 
-        Returns:
-            Generator[List[Dic]]:
-                The document generator
+        Yields:
+            List[Doc]: The batch of documents.
         """
         docs = []
         char_count = 0
@@ -465,13 +491,16 @@ class MetaCAT(PipeRunner):
             *args: Unused arguments (due to override)
             **kwargs: Unused keyword arguments (due to override)
 
+        Yields:
+            Doc: The document.
+
         Returns:
-            Generator[Doc]:
-                The document generator
+            Iterator[Doc]: stream is None or empty.
         """
         # Just in case
         if stream is None or not stream:
-            return stream
+            # return an empty generator
+            return
 
         config = self.config
         id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
@@ -522,10 +551,7 @@ class MetaCAT(PipeRunner):
 
                     predictions = all_predictions[start_ind:end_ind]
                     confidences = all_confidences[start_ind:end_ind]
-                    if config.general['annotate_overlapping']:
-                        ents = doc._.ents
-                    else:
-                        ents = doc.ents
+                    ents = self.get_ents(doc)
 
                     for ent in ents:
                         ent_ind = ent_id2ind[ent._.id]
@@ -550,8 +576,11 @@ class MetaCAT(PipeRunner):
         document processing.
 
         Args:
-            doc (spacy.tokens.Doc):
+            doc (Doc):
                 A spacy document
+
+        Returns:
+            Doc: The same spacy document.
         """
 
         # Just call the pipe method
@@ -559,19 +588,17 @@ class MetaCAT(PipeRunner):
 
         return doc
 
-    def get_model_card(self, as_dict: bool = False):
+    def get_model_card(self, as_dict: bool = False) -> Union[str, dict]:
         """A minimal model card.
 
         Args:
-            as_dict (bool, optional):
-                return the model card as a dictionary instead of a str. (Default value = False)
+            as_dict (bool):
+                Return the model card as a dictionary instead of a str. (Default value = False)
 
         Returns:
-            str:
+            Union[str, dict]:
                 An indented JSON object.
-            OR
-            Dict:
-                A JSON object in dict form
+                OR A JSON object in dict form.
         """
         card = {
             'Category Name': self.config.general['category_name'],

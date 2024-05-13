@@ -64,9 +64,6 @@ class PerWordContextSelector(ContextSelector):
     """
 
     def __init__(self, words_before: int, words_after: int) -> None:
-        """_summary_
-
-        """
         self.words_before = words_before
         self.words_after = words_after
 
@@ -137,7 +134,7 @@ class UniqueNamePreserver:
 
         Args:
             orig_name (str): The original / base name
-            dupe_nr (int, optional): The number of the copy to start from. Defaults to 0.
+            dupe_nr (int): The number of the copy to start from. Defaults to 0.
 
         Returns:
             str: The unique name
@@ -176,7 +173,7 @@ def medcat_export_json_to_regression_yml(mct_export_file: str,
 
     Args:
         mct_export_file (str): The MCT export file path
-        cont_sel (ContextSelector, optional): The context selector. Defaults to PerSentenceSelector().
+        cont_sel (ContextSelector): The context selector. Defaults to PerSentenceSelector().
         model_card (Optional[dict]): The optional model card for generating metadata
 
     Returns:

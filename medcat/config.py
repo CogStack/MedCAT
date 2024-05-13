@@ -1,8 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
-from pydantic.dataclasses import Any, Callable, Dict, Optional, Union
 from pydantic.fields import ModelField
-from typing import List, Set, Tuple, cast
+from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -11,13 +10,11 @@ import re
 
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
+from medcat.utils.config_utils import attempt_fix_weighted_average_function
+from medcat.utils.config_utils import weighted_average
 
 
 logger = logging.getLogger(__name__)
-
-
-def weighted_average(step: int, factor: float) -> float:
-    return max(0.1, 1 - (step ** 2 * factor))
 
 
 def workers(workers_override: Optional[int] = None) -> int:
@@ -33,6 +30,10 @@ class FakeDict:
         except AttributeError as e:
             raise KeyError from e
 
+    def __setattr__(self, arg: str, val) -> None:
+        if isinstance(self, Linking) and arg == "weighted_average_function":
+            val = attempt_fix_weighted_average_function(val)
+        super().__setattr__(arg, val)
 
     def __setitem__(self, arg: str, val) -> None:
         setattr(self, arg, val)
@@ -142,7 +143,10 @@ class MixingConfig(FakeDict):
 
         Args:
             path(str): the path to the config file
-            extractor(ValueExtractor, optional):  (Default value = _DEFAULT_EXTRACTOR)
+            extractor(ValueExtractor):  (Default value = _DEFAULT_EXTRACTOR)
+
+        Raises:
+            ValueError: In case of unknown attribute.
         """
         with open(path, 'r') as f:
             for line in f:
@@ -232,7 +236,7 @@ class MixingConfig(FakeDict):
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, Field]: The dictionary of the field names and fields
+            Dict[str, ModelField]: The dictionary of the field names and fields
         """
         return cast(BaseModel, self).__fields__
 
@@ -435,6 +439,19 @@ class LinkingFilters(MixingConfig, BaseModel):
     cuis: Set[str] = set()
     cuis_exclude: Set[str] = set()
 
+    def __init__(self, **data):
+        if 'cuis' in data:
+            cuis = data['cuis']
+            if isinstance(cuis, dict) and len(cuis) == 0:
+                logger.warning("Loading an old model where "
+                               "config.linking.filters.cuis has been "
+                               "dict to an empty dict instead of an empty "
+                               "set. Converting the dict to a set in memory "
+                               "as that is what is expected. Please consider "
+                               "saving the model again.")
+                data['cuis'] = set(cuis.keys())
+        super().__init__(**data)
+
     def check_filters(self, cui: str) -> bool:
         """Checks is a CUI in the filters
 
@@ -537,6 +554,7 @@ class Config(MixingConfig, BaseModel):
     linking: Linking = Linking()
     word_skipper: re.Pattern = re.compile('') # empty pattern gets replaced upon init
     punct_checker: re.Pattern = re.compile('') # empty pattern gets replaced upon init
+    hash: Optional[str] = None
 
     class Config:
         # this if for word_skipper and punct_checker which would otherwise
@@ -561,6 +579,9 @@ class Config(MixingConfig, BaseModel):
     def get_hash(self):
         hasher = Hasher()
         for k, v in self.dict().items():
+            if k in ['hash', ]:
+                # ignore hash
+                continue
             if k not in ['version', 'general', 'linking']:
                 hasher.update(v, length=True)
             elif k == 'general':
@@ -576,5 +597,5 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=False)
                     else:
                         hasher.update(v2, length=True)
-
-        return hasher.hexdigest()
+        self.hash = hasher.hexdigest()
+        return self.hash

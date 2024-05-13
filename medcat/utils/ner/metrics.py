@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, merged_negative={0, 1, -100}, padding_label=-100, csize=15, subword_label=1,
             verbose=False):
-    """TODO: This could be done better, for sure. But it works."""
+    """TODO: This could be done better, for sure. But it works."""  # noqa
     predictions = np.array(p.predictions)
     predictions = softmax(predictions, axis=2)
     examples = None

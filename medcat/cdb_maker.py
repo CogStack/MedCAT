@@ -3,7 +3,7 @@ import numpy as np
 import datetime
 import logging
 import re
-from typing import Optional, List, Dict, Union
+from typing import Optional, List, Dict, Union, Any
 
 from medcat.pipe import Pipe
 from medcat.cdb import CDB
@@ -49,6 +49,14 @@ class CDBMaker(object):
                              name='skip_punct_lang',
                              additional_fields=['is_punct', 'lang'])
 
+    def reset_cdb(self) -> None:
+        """This will re-create a new internal CDB based on the same config.
+
+        This will be necessary if/when you're wishing to call `prepare_csvs`
+        multiple times on the same object `CDBMaker` instance.
+        """
+        self.cdb = CDB(config=self.config)
+
     def prepare_csvs(self,
                      csv_paths: Union[pd.DataFrame, List[str]],
                      sep: str = ',',
@@ -56,36 +64,45 @@ class CDBMaker(object):
                      escapechar: Optional[str] = None,
                      index_col: bool = False,
                      full_build: bool = False,
-                     only_existing_cuis: bool = False, **kwargs) -> CDB:
+                     only_existing_cuis: bool = False, **kwargs: Any) -> CDB:
         r"""Compile one or multiple CSVs into a CDB.
+
+        Note: This class/method generally uses the same instance of the CDB.
+              So if you're using the same CDBMaker and calling `prepare_csvs`
+              multiple times, you are likely to get leakage from prior calls
+              into new ones.
+              To reset the CDB, call `reset_cdb`.
 
         Args:
             csv_paths (Union[pd.DataFrame, List[str]]):
                 An array of paths to the csv files that should be processed. Can also be an array of pd.DataFrames
+            sep (str):
+                If necessary a custom separator for the csv files (Default value ',').
+            encoding (Optional[str]):
+                Encoding to be used for reading the CSV file (Default value `None`).
+            escapechar (Optional[str]):
+                Escape char for the CSV (Default value None).
+            index_col (bool):
+                Index column for pandas read_csv (Default value False).
             full_build (bool):
                 If False only the core portions of the CDB will be built (the ones required for
                 the functioning of MedCAT). If True, everything will be added to the CDB - this
                 usually includes concept descriptions, various forms of names etc (take care that
                 this option produces a much larger CDB) (Default value False).
-            sep (str):
-                If necessary a custom separator for the csv files (Default value ',').
-            encoding (str):
-                Encoding to be used for reading the CSV file (Default value `None`).
-            escapechar (str):
-                Escape char for the CSV (Default value None).
-            index_col (bool):
-                Index column for pandas read_csv (Default value False).
-            only_existing_cuis bool):
+            only_existing_cuis (bool):
                 If True no new CUIs will be added, but only linked names will be extended. Mainly used when
                 enriching names of a CDB (e.g. SNOMED with UMLS terms) (Default value `False`).
-        Returns:
-            medcat.cdb.CDB: CDB with the new concepts added.
+            kwargs (Any):
+                Will be passed to pandas for CSV reading
 
         Note:
             \*\*kwargs:
                 Will be passed to pandas for CSV reading
             csv:
                 Examples of the CSV used to make the CDB can be found on [GitHub](link)
+
+        Returns:
+            CDB: CDB with the new concepts added.
         """
 
         useful_columns = ['cui', 'name', 'ontologies', 'name_status', 'type_ids', 'description']
@@ -173,7 +190,7 @@ class CDBMaker(object):
                             if len(raw_name) >= self.config.cdb_maker['remove_parenthesis']:
                                 prepare_name(raw_name, self.pipe.spacy_nlp, names, self.config)
 
-                    self.cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
+                    self.cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status, type_ids=type_ids,
                                          description=description, full_build=full_build)
                     # DEBUG
                     logger.debug("\n\n**** Added\n CUI: %s\n Names: %s\n Ontologies: %s\n Name status: %s\n Type IDs: %s\n Description: %s\n Is full build: %s",

@@ -41,7 +41,7 @@ def get_semantic_version(version: str) -> SemanticVersion:
         ValueError: If the version string does not match the semantic versioning format.
 
     Returns:
-        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+        SemanticVersion: The major, minor and patch version
     """
     match = SEMANTIC_VERSION_PATTERN.match(version)
     if not match:
@@ -60,7 +60,7 @@ def get_version_from_modelcard(d: dict) -> SemanticVersion:
         d (dict): The model card in dict format.
 
     Returns:
-        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+        SemanticVersion: The major, minor and patch version
     """
     version_str: str = d["MedCAT Version"]
     return get_semantic_version(version_str)
@@ -78,7 +78,7 @@ def get_semantic_version_from_model(cat: CAT) -> SemanticVersion:
         cat (CAT): The CAT model.
 
     Returns:
-        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+        SemanticVersion: The major, minor and patch version
     """
     return get_version_from_modelcard(cat.get_model_card(as_dict=True))
 
@@ -93,7 +93,7 @@ def get_version_from_cdb_dump(cdb_path: str) -> SemanticVersion:
         cdb_path (str): The path to cdb.dat
 
     Returns:
-        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+        SemanticVersion: The major, minor and patch version
     """
     with open(cdb_path, 'rb') as f:
         d = dill.load(f)
@@ -114,7 +114,7 @@ def get_version_from_modelpack_zip(zip_path: str, cdb_file_name=CDB_FILE_NAME) -
         cdb_file_name (str, optional): The CDB file name to use. Defaults to "cdb.dat".
 
     Returns:
-        SemanticVersion | Tuple[int, int, int]: The major, minor and patch version
+        SemanticVersion: The major, minor and patch version
     """
     model_pack_path = CAT.attempt_unpack(zip_path)
     return get_version_from_cdb_dump(os.path.join(model_pack_path, cdb_file_name))
@@ -156,7 +156,7 @@ class ConfigUpgrader:
         By default this will ignore hidden files (those that start with '.').
 
         Args:
-            ignore_hidden (bool, optional): Whether to ignore hidden files. Defaults to True.
+            ignore_hidden (bool): Whether to ignore hidden files. Defaults to True.
 
         Returns:
             List[str]: The list of relevant file names to copy.
@@ -205,7 +205,7 @@ class ConfigUpgrader:
 
         Args:
             new_path (str): The path for the new model pack folder.
-            overwrite (bool, optional): Whether to overwrite new path. Defaults to False.
+            overwrite (bool): Whether to overwrite new path. Defaults to False.
 
         Raises:
             ValueError: If one of the target files exists and cannot be overwritten.

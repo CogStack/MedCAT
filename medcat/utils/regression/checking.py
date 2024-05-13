@@ -256,8 +256,6 @@ def get_ontology_and_version(model_card: dict) -> Tuple[str, str]:
         model_card (dict): The input model card.
 
     Returns:
-        str: The ontology (if found) or 'Unknown'
-    Returns:
         Tuple[str, str]: The ontology (if found) or 'Unknown'; and the version (if found) or 'Unknown'
     """
     try:
@@ -333,7 +331,6 @@ def fix_np_float64(d: dict) -> None:
 
     Args:
         d (dict): The input dict
-        prefix (str, optional): The prefix for t. Defaults to ''.
     """
     import numpy as np
     for k, v in d.items():

@@ -6,6 +6,7 @@ import asyncio
 import numpy as np
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
+from medcat.cdb import CDB
 
 
 class CDBTests(unittest.TestCase):
@@ -21,10 +22,20 @@ class CDBTests(unittest.TestCase):
         cdb_2_csv = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb_2.csv")
         self.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         os.makedirs(self.tmp_dir, exist_ok=True)
+        # resetting the CDB because otherwise the CDBMaker
+        # will refer to and modify the same instance of the CDB
+        # and this can (and does!) create side effects
+        CDBTests.cdb_maker.reset_cdb()
         self.undertest = CDBTests.cdb_maker.prepare_csvs([cdb_csv, cdb_2_csv], full_build=True)
 
     def tearDown(self) -> None:
         shutil.rmtree(self.tmp_dir)
+
+    def test_setup_changes_cdb(self):
+        id1 = id(self.undertest)
+        self.setUp()
+        id2 = id(self.undertest)
+        self.assertNotEqual(id1, id2)
 
     def test_name2cuis(self):
         self.assertEqual({
@@ -52,6 +63,13 @@ class CDBTests(unittest.TestCase):
         with tempfile.NamedTemporaryFile() as f:
             self.undertest.save(f.name)
             self.undertest.load(f.name)
+
+    def test_load_has_no_config(self):
+        with tempfile.NamedTemporaryFile() as f:
+            self.undertest.save(f.name)
+            cdb = CDB.load(f.name)
+            self.assertFalse(cdb._config_from_file)
+
 
     def test_save_async_and_load(self):
         with tempfile.NamedTemporaryFile() as f:

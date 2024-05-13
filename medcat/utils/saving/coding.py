@@ -11,7 +11,7 @@ class EncodeableObject(Protocol):
 
         Returns:
             dict: The dict to be serialised.
-        """
+        """  # noqa
 
 
 class UnsuitableObject(ValueError):
@@ -31,7 +31,7 @@ class PartEncoder(Protocol):
 
         Returns:
             Any: The encoded object
-        """
+        """  # noqa
 
 
 SET_IDENTIFIER = '==SET=='
@@ -60,7 +60,7 @@ class PartDecoder(Protocol):
 
         Returns:
             Union[dict, Any]: The dict if unable to decode, the decoded object otherwise
-        """
+        """  # noqa
 
 
 class SetDecoder(PartDecoder):

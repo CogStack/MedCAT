@@ -26,10 +26,11 @@ class NER(PipeRunner):
         doc._.ents and each entity can have the entitiy._.link_candidates - that the linker will resolve.
 
         Args:
-            doc (spacy.tokens.Doc):
+            doc (Doc):
                 Spacy document to be annotated with named entities.
-        Return
-            doc (spacy.tokens.Doc):
+
+        Returns:
+            doc (Doc):
                 Spacy document with detected entities.
         """
         # Just take the tokens we need

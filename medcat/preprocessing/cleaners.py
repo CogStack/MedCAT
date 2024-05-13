@@ -12,12 +12,14 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
     and add information generated from the `name`.
 
     Args:
-        nlp (spacy.lang.<lng>):
+        raw_name (str):
+            Thre raw name to prepare.
+        nlp (Language):
             Spacy nlp model.
         names (Dict):
             Dictionary of existing names for this concept in this row of a CSV. The new generated
             name versions and other required information will be added here.
-        config (medcat.config.Config):
+        config (Config):
             Global config for medcat.
 
     Returns:
@@ -47,8 +49,9 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
         if tokens is not None and tokens:
             snames = set()
             name = config.general['separator'].join(tokens)
-            
-            if not config.cdb_maker.get('min_letters_required', 0) or len(re.sub("[^{}A-Za-z]*".format(config.general.additional_token_characters), '', name)) >= config.cdb_maker.get('min_letters_required', 0):
+
+            min_letters = config.cdb_maker.get('min_letters_required', 0)
+            if not min_letters or len(re.sub("[^{}A-Za-z]*".format(config.general.additional_token_characters), '', name)) >= min_letters:
                 if name not in names:
                     sname = ""
                     for token in tokens:

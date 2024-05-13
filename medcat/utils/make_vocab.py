@@ -1,4 +1,5 @@
 import logging
+from typing import Optional, Iterator, Union
 from pathlib import Path
 from gensim.models import Word2Vec
 from medcat.vocab import Vocab
@@ -119,29 +120,46 @@ class MakeVocab(object):
         # Save the vocab also
         self.vocab.save(path=self.vocab_path)
 
-    def add_vectors(self, in_path=None, w2v=None, overwrite=False, data_iter=None, workers=14, epochs=2, min_count=10, window=10, vector_size=300,
-                    unigram_table_size=100000000):
+    def add_vectors(self, in_path: Optional[str] = None,
+                    w2v: Optional[Word2Vec] =None,
+                    overwrite: bool = False,
+                    data_iter: Optional[Iterator] = None,
+                    workers: int = 14, epochs: int = 2,
+                    min_count: int = 10, window: int = 10,
+                    vector_size: int = 300,
+                    unigram_table_size: int = 100_000_000) -> Word2Vec:
         """Add vectors to an existing vocabulary and save changes to the vocab_path.
 
         Args:
-            in_path (str):
+            in_path (Optional[str]):
                 Path to the data.txt that was created by the MakeVocab.make() function.
-            w2v (Word2Vec, optional):
+            w2v (Optional[Word2Vec]):
                 An existing word2vec instance. Default: None
             overwrite (bool):
                 If True it will overwrite existing vectors in the vocabulary. Default: False
-            data_iter (iterator):
+            data_iter (Optional[Iterator]):
                 If you want to provide a customer iterator over the data use this. If yes, then in_path is not needed.
-            **: Word2Vec arguments
+            workers (int): Number of workers for Word2Vec. Defaults to 14.
+            epochs (int): Number of epochs for Word2Vec. Defaults to 2.
+            min_count (int): Minimum count for Word2Vec. Defaults to 10.
+            window (int): Window size for Word2Vec. Defaults to 10.
+            vector_size (int): Vector size for Word2Vec. Defaults to 300.
+            unigram_table_size (int): Unigram table size for vocab. Defaults to 100_000_000.
+
+        Raises:
+            ValueError: In case of unknown input.
 
         Returns:
-            A trained word2vec model.
+            Word2Vec: A trained word2vec model.
         """
         if w2v is None:
-            if data_iter is None:
+            data: Union[Iterator, SimpleIter]
+            if data_iter is None and in_path:
                 data = SimpleIter(in_path)
-            else:
+            elif data_iter is not None:
                 data = data_iter
+            else:
+                raise ValueError(f"Unknown input: data iter: {repr(data_iter)} and path: {repr(in_path)}")
             w2v = Word2Vec(data, window=window, min_count=min_count, workers=workers, vector_size=vector_size, epochs=epochs)
 
         for word in w2v.wv.key_to_index.keys():
