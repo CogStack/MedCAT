@@ -1555,6 +1555,8 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
+        # TODO: Surely there's a way to not materialise all of the incoming data in memory?
+        #       This is counter productive for allowing the passing of generators.
         in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
