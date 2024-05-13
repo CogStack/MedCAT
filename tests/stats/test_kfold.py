@@ -91,12 +91,6 @@ class KFoldCreatorTests(MCTExportTests):
         fold, = folds
         self.assertIsInstance(fold, dict)
         self.assertIsMCTExport(fold)
-        # TODO - remove below
-        with open('temp/k-fold/ORIG.json', 'w') as f:
-            json.dump(self.mct_export, f, indent=2)
-        with open('temp/k-fold/FOLD0.json', 'w') as f:
-            json.dump(fold, f, indent=2)
-        # TODO - remove ABOVE
         self.assertEqual(
             nullify_doc_names_proj_ids(self.mct_export),
             nullify_doc_names_proj_ids(fold),
@@ -124,13 +118,8 @@ class KFoldCreatorNewExportAnnsTests(KFoldCreatorNewExportTests):
 
 class KFoldCATTests(MCTExportTests):
     _names = ['fps', 'fns', 'tps', 'prec', 'rec', 'f1', 'counts', 'examples']
-    # TODO - use something that can work
     EXPORT_PATH = NEW_EXPORT_PATH
     CAT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "examples")
-    # EXPORT_PATH = ("/Users/martratas/Documents/CogStack/MedCAT/"
-    #                "working_with_cogstack/data/medcattrainer_export/Keggle_MCT_export.json")
-    # CAT_PATH = ("/Users/martratas/Documents/CogStack/MedCAT/"
-    #             "MedCAT/temp/model_packs/20230227__kch_gstt_trained_model_494c3717f637bb89.zip")
     TOLERANCE_PLACES = 10  # tolerance of 10 digits
 
     @classmethod
@@ -181,30 +170,6 @@ class KFoldMetricsTests(KFoldCATTests):
                     self.assertDictsAlmostEqual(reg, folds1)
                 else:
                     self.assertEqual(reg, folds1)
-
-    # TODO - do we need this? Or what?
-    def _test_get_metrics(self):
-
-        def _print_stats(stats: tuple, names=self._names):
-            for name, stat in zip(names, stats):
-                print("-"*40, f"\n{name}")
-                for k in sorted(stat):
-                    print(f"{k:10s}: {stat[k]}")
-
-        stats = kfold.get_k_fold_stats(self.cat, self.mct_export)
-        print("STATS [Kfo]")
-        _print_stats(stats)
-        print("What about if I do it all at once?")
-        # stats_once = self.cat._print_stats(self.mct_export)
-        stats_once = self.reg_stats
-        print("STATS [REG]")
-        _print_stats(stats_once)
-        print("="*40)
-        print("Now per-type diffs")
-        print("="*40)
-        for name, p1, p2 in zip(self._names,
-                                stats, stats_once):
-            print(name, ":", p1, '\tvs\t', p2)
 
 
 class KFoldPerAnnsMetricsTests(KFoldMetricsTests):
