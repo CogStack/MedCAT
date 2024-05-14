@@ -2,7 +2,7 @@ import unittest
 import pickle
 import tempfile
 from medcat.config import Config, MixingConfig, VersionInfo, General, LinkingFilters
-from medcat.config import UseOfOldConfigOptionException
+from medcat.config import UseOfOldConfigOptionException, Linking
 from pydantic import ValidationError
 import os
 
@@ -248,6 +248,23 @@ class BackwardsCompatibilityTests(unittest.TestCase):
     def test_use_weighted_average_function_dict_nice_error(self):
         with self.assertRaises(UseOfOldConfigOptionException):
             self.config.linking['weighted_average_function'](0)
+
+
+class BackwardsCompatibilityWafPayloadTests(unittest.TestCase):
+    arg = 'weighted_average_function'
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config = Config()
+        with cls.assertRaises(cls, UseOfOldConfigOptionException) as cls.context:
+            cls.config.linking.weighted_average_function(0)
+        cls.raised = cls.context.exception
+
+    def test_exception_has_correct_conf_type(self):
+        self.assertIs(self.raised.conf_type, Linking)
+
+    def test_exception_has_correct_arg(self):
+        self.assertEqual(self.raised.arg_name, self.arg)
 
 
 if __name__ == '__main__':
