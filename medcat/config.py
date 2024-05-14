@@ -601,3 +601,35 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=True)
         self.hash = hasher.hexdigest()
         return self.hash
+
+
+class UseOfOldConfigOptionException(ValueError):
+
+    def __init__(self, conf_type: Type[FakeDict], arg_name: str, advice: str) -> None:
+        super().__init__(f"Tried to use {conf_type.__name__}.{arg_name}. "
+                         f"Advice: {advice}")
+        self.conf_type = conf_type
+        self.arg_name = arg_name
+        self.advice = advice
+
+
+# NOTE: The following is for backwards compatibility and should be removed
+#       at some point in the future
+
+# wrapper for functions for a better error in case of weighted_average_function
+# access
+def _wrapper(func, check_type: Type[FakeDict], advice: str):
+    def wrapper(*args, **kwargs):
+        if ((len(args) == 2 and len(kwargs) == 0) and
+                (isinstance(args[0], check_type) and
+                 args[1] == "weighted_average_function")):
+            raise UseOfOldConfigOptionException(Linking, args[1], advice)
+        return func(*args, **kwargs)
+    return wrapper
+
+
+# wrap Linking.__getattribute__ so that when getting weighted_average_function
+# we get a nicer exceptio
+_waf_advice = "You can use `cat.cdb.weighted_average_function` to access it directly"
+Linking.__getattribute__ = _wrapper(Linking.__getattribute__, Linking, _waf_advice)
+Linking.__getitem__ = _wrapper(Linking.__getitem__, Linking, _waf_advice)
