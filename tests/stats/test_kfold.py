@@ -40,7 +40,6 @@ def debug_print_test_names(cls):
 # TODO: REMOVE ABOVE
 
 
-@debug_print_test_names
 class MCTExportTests(unittest.TestCase):
     EXPORT_PATH = os.path.join(os.path.dirname(__file__), "..",
                                "resources", "medcat_trainer_export.json")
@@ -146,7 +145,6 @@ class KFoldCreatorNewExportAnnsTests(KFoldCreatorNewExportTests):
     USE_ANNOTATIONS = True
 
 
-@debug_print_test_names
 class KFoldCATTests(MCTExportTests):
     _names = ['fps', 'fns', 'tps', 'prec', 'rec', 'f1', 'counts', 'examples']
     EXPORT_PATH = NEW_EXPORT_PATH
@@ -174,7 +172,6 @@ class KFoldCATTests(MCTExportTests):
             self.assertAlmostEqual(v1, v2, places=tol)
 
 
-@debug_print_test_names
 class KFoldStatsConsistencyTests(KFoldCATTests):
 
     def test_mct_export_valid(self):
@@ -189,7 +186,6 @@ class KFoldStatsConsistencyTests(KFoldCATTests):
                 self.assertEqual(stats1, stats2)
 
 
-@debug_print_test_names
 class KFoldMetricsTests(KFoldCATTests):
     USE_ANNOTATIONS = False
 
@@ -209,7 +205,6 @@ class KFoldPerAnnsMetricsTests(KFoldMetricsTests):
     USE_ANNOTATIONS = True
 
 
-@debug_print_test_names
 class KFoldDuplicatedTests(KFoldCATTests):
     COPIES = 3
 
