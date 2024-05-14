@@ -242,7 +242,7 @@ class BackwardsCompatibilityTests(unittest.TestCase):
         self.config = Config()
 
     def test_use_weighted_average_function_identifier_nice_error(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(UseOfOldConfigOptionException):
             self.config.linking.weighted_average_function(0)
 
     def test_use_weighted_average_function_dict_nice_error(self):
