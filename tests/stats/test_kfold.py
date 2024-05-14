@@ -239,7 +239,6 @@ class KFoldDuplicatedTests(KFoldCATTests):
                 )
 
     def test_metrics_3_fold(self):
-        # stats_simple = self.cat._print_stats(self.mct_export)
         stats_simple = self.reg_stats
         for name, old, new in zip(self._names, stats_simple, self.stats_copied):
             if name == 'examples':
@@ -251,8 +250,6 @@ class KFoldDuplicatedTests(KFoldCATTests):
             if name in ("prec", "rec", "f1"):
                 # these should average to the same ??
                 all_keys = old.keys() | new.keys()
-                # nmo = [(cui, self.cat.cdb.cui2preferred_name.get(cui, cui)) for cui in new.keys() - old.keys()]
-                # omn = [(cui, self.cat.cdb.cui2preferred_name.get(cui, cui)) for cui in old.keys() - new.keys()]
                 for cui in all_keys:
                     cuiname = self.cat.cdb.cui2preferred_name.get(cui, cui)
                     with self.subTest(f"{name}-{cui} [{cuiname}]"):
@@ -260,8 +257,3 @@ class KFoldDuplicatedTests(KFoldCATTests):
                         self.assertIn(cui, new.keys(), f"CUI '{cui}' ({cuiname}) not in new")
                         v1, v2 = old[cui], new[cui]
                         self.assertEqual(v1, v2, f"Values not equal for {cui} ({self.cat.cdb.cui2preferred_name.get(cui, cui)})")
-                # self.assertEqual(old.keys(), new.keys(), f'keys not equal: [N-O] {nmo} and [O-N] {omn}')
-                # for k in old:
-                #     v1, v2 = old[k], new[k]
-                #     with self.subTest(f"{name}-{k}"):
-                #         self.assertEqual(v1, v2)
