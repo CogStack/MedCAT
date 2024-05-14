@@ -12,6 +12,35 @@ import unittest
 from .helpers import MCTExportPydanticModel, nullify_doc_names_proj_ids
 
 
+# TODO: REMOVE BELOW
+def debug_print_test_names(cls):
+    class Wrapper(cls):
+        def __init__(self, *args, **kwargs):
+            super().__init__(*args, **kwargs)
+            self.debug_wrap_test_methods()
+
+        def debug_wrap_test_methods(self):
+            for name in dir(self):
+                attr = getattr(self, name)
+                if callable(attr) and not name.startswith("__"):
+                    setattr(self, name, debug_print_test_name(attr))
+
+    def debug_print_test_name(func):
+        def wrapper(*args, **kwargs):
+            if func.__name__ == 'wrapper':
+                pass
+            elif func.__name__.startswith("test_"):
+                print("Running test method:", func.__name__, 'in', cls.__name__)
+            else:
+                print("Running non-test method:", func.__name__, 'in', cls.__name__)
+            return func(*args, **kwargs)
+        return wrapper
+
+    return Wrapper
+# TODO: REMOVE ABOVE
+
+
+@debug_print_test_names
 class MCTExportTests(unittest.TestCase):
     EXPORT_PATH = os.path.join(os.path.dirname(__file__), "..",
                                "resources", "medcat_trainer_export.json")
@@ -29,6 +58,7 @@ class MCTExportTests(unittest.TestCase):
         self.assertIsInstance(model, MCTExportPydanticModel)
 
 
+@debug_print_test_names
 class KFoldCreatorTests(MCTExportTests):
     K = 3
     USE_ANNOTATIONS = False
@@ -116,6 +146,7 @@ class KFoldCreatorNewExportAnnsTests(KFoldCreatorNewExportTests):
     USE_ANNOTATIONS = True
 
 
+@debug_print_test_names
 class KFoldCATTests(MCTExportTests):
     _names = ['fps', 'fns', 'tps', 'prec', 'rec', 'f1', 'counts', 'examples']
     EXPORT_PATH = NEW_EXPORT_PATH
@@ -143,6 +174,7 @@ class KFoldCATTests(MCTExportTests):
             self.assertAlmostEqual(v1, v2, places=tol)
 
 
+@debug_print_test_names
 class KFoldStatsConsistencyTests(KFoldCATTests):
 
     def test_mct_export_valid(self):
@@ -157,6 +189,7 @@ class KFoldStatsConsistencyTests(KFoldCATTests):
                 self.assertEqual(stats1, stats2)
 
 
+@debug_print_test_names
 class KFoldMetricsTests(KFoldCATTests):
     USE_ANNOTATIONS = False
 
@@ -176,6 +209,7 @@ class KFoldPerAnnsMetricsTests(KFoldMetricsTests):
     USE_ANNOTATIONS = True
 
 
+@debug_print_test_names
 class KFoldDuplicatedTests(KFoldCATTests):
     COPIES = 3
 
