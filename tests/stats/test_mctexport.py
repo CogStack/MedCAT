@@ -8,7 +8,6 @@ import unittest
 from .helpers import MCTExportPydanticModel
 
 
-@unittest.skipIf(True, "Disabled - let's see if GHA runs") # TODO - remove
 class MCTExportIterationTests(unittest.TestCase):
     EXPORT_PATH = os.path.join(os.path.dirname(__file__), "..",
                                "resources", "medcat_trainer_export.json")
