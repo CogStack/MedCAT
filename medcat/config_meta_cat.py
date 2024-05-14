@@ -1,12 +1,10 @@
 from typing import Dict, Any
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
-import logging
 
 
 class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
-    log_level: int = logging.INFO
     disable_component_lock: bool = False
     seed: int = 13
     description: str = "No description"

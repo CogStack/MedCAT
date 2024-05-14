@@ -57,8 +57,6 @@ class MetaCAT(PipeRunner):
             config = ConfigMetaCAT()
         self.config = config
         set_all_seeds(config.general['seed'])
-        logging.basicConfig(level=self.config.general.log_level)
-        logger.setLevel(self.config.general.log_level)
 
         if tokenizer is not None:
             # Set it in the config
