@@ -2,6 +2,7 @@ import unittest
 import pickle
 import tempfile
 from medcat.config import Config, MixingConfig, VersionInfo, General, LinkingFilters
+from medcat.config import UseOfOldConfigOptionException
 from pydantic import ValidationError
 import os
 
@@ -233,6 +234,20 @@ class ConfigLinkingFiltersTests(unittest.TestCase):
     def test_not_allow_empty_dict_for_cuis_exclude(self):
         with self.assertRaises(ValidationError):
             LinkingFilters(cuis_exclude={})
+
+
+class BackwardsCompatibilityTests(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.config = Config()
+
+    def test_use_weighted_average_function_identifier_nice_error(self):
+        with self.assertRaises(ValueError):
+            self.config.linking.weighted_average_function(0)
+
+    def test_use_weighted_average_function_dict_nice_error(self):
+        with self.assertRaises(UseOfOldConfigOptionException):
+            self.config.linking['weighted_average_function'](0)
 
 
 if __name__ == '__main__':
