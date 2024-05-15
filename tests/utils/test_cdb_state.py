@@ -91,11 +91,9 @@ class StateSavedOnDiskTests(StateSavedTests):
         print("NOTE: Doing StateSavedTests.setUpClass()")
         return rv
 
-    @unittest.skip("TEMP")  # TODO - remove
     def test_temp_file_called(self):
         self.pntf.assert_called_once()
 
-    @unittest.skip("TEMP")  # TODO - remove
     def test_saved_on_disk(self):
         self.popen.assert_called()
         self.assertGreaterEqual(self.popen.call_count, 2)
@@ -103,7 +101,6 @@ class StateSavedOnDiskTests(StateSavedTests):
                                      mock.call(self.temp_file_name, 'rb')])
 
 
-@unittest.skipIf(True, "Let's see if this works on GHA")  # TODO - remove
 class StateWithTrainingTests(StateTests):
     SUPERVISED_TRAINING_JSON = os.path.join(os.path.dirname(__file__), "..", "resources", "medcat_trainer_export.json")
 
@@ -117,7 +114,6 @@ class StateWithTrainingTests(StateTests):
         cls.restored_state = copy_cdb_state(cls.cdb)
 
 
-@unittest.skipIf(True, "Let's see if this works on GHA")  # TODO - remove
 class StateRestoredAfterTrain(StateWithTrainingTests):
 
     def test_train_state_changed(self):
