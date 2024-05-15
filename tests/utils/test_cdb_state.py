@@ -79,7 +79,10 @@ class StateSavedOnDiskTests(StateSavedTests):
     def setUpClass(cls) -> None:
         with mock.patch("builtins.open", side_effect=open) as cls.popen:
             with mock.patch("tempfile.NamedTemporaryFile", side_effect=cls.saved_name_temp_file) as cls.pntf:
-                return super().setUpClass()
+                print("NOTE: Doing StateSavedOnDiskTests.setUpClass() [all mocked]")
+                rv = super().setUpClass()
+                print("NOTE: DONE with StateSavedOnDiskTests.setUpClass() -> ", rv)
+                return rv
 
     @unittest.skip("TEMP")  # TODO - remove
     def test_temp_file_called(self):
