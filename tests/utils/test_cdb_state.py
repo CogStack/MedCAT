@@ -10,7 +10,6 @@ from medcat.vocab import Vocab
 from medcat.cat import CAT
 
 
-@unittest.skipIf(True, "Let's see if this works on GHA")  # TODO - remove
 class StateTests(unittest.TestCase):
 
     @classmethod
