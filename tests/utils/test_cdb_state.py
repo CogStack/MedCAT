@@ -2,10 +2,9 @@ import unittest
 import os
 from unittest import mock
 from typing import Callable, Any, Dict
-from functools import partial
 import tempfile
 
-from medcat.utils.cdb_state import captured_state_cdb, CDBState
+from medcat.utils.cdb_state import captured_state_cdb, CDBState, copy_cdb_state
 from medcat.cdb import CDB
 from medcat.vocab import Vocab
 from medcat.cat import CAT
@@ -22,9 +21,7 @@ class StateTests(unittest.TestCase):
         cls.cdb.config.general.spacy_model = "en_core_web_md"
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
-        cls.initial_state = {}
-        # save initial state characteristics
-        cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.initial_state))
+        cls.initial_state = copy_cdb_state(cls.cdb)
 
     @classmethod
     def _set_info(cls, k: str, v: Any, info_dict: Dict):
@@ -48,12 +45,9 @@ class StateSavedTests(StateTests):
         with captured_state_cdb(cls.cdb, save_state_to_disk=cls.on_disk):
             # clear state
             cls.do_smth_for_each_state_var(cls.cdb, lambda k, v: v.clear())
-            cls.cleared_state = {}
-            # save cleared state
-            cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.cleared_state))
+            cls.cleared_state = copy_cdb_state(cls.cdb)
         # save after state - should be equal to before
-        cls.restored_state = {}
-        cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.restored_state))
+        cls.restored_state = copy_cdb_state(cls.cdb)
 
     def test_state_saved(self):
         nr_of_targets = len(CDBState.__annotations__)
@@ -110,11 +104,8 @@ class StateWithTrainingTests(StateTests):
         with captured_state_cdb(cls.cdb):
             # do training
             cls.undertest.train_supervised_from_json(cls.SUPERVISED_TRAINING_JSON)
-            cls.after_train_state = {}
-            # save cleared state
-            cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.after_train_state))
-        cls.restored_state = {}
-        cls.do_smth_for_each_state_var(cls.cdb, partial(cls._set_info, info_dict=cls.restored_state))
+            cls.after_train_state = copy_cdb_state(cls.cdb)
+        cls.restored_state = copy_cdb_state(cls.cdb)
 
 
 @unittest.skipIf(True, "Let's see if this works on GHA")  # TODO - remove
