@@ -34,7 +34,6 @@ class StateTests(unittest.TestCase):
             callback(k, v)
 
 
-@unittest.skipIf(True, "Let's see if this works on GHA")  # TODO - remove
 class StateSavedTests(StateTests):
     on_disk = False
 
