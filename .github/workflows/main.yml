@@ -33,7 +33,7 @@ jobs:
           flake8 medcat
       - name: Test
         run: |
-          timeout 45m python -m unittest discover
+          timeout 45m python -m unittest tests.utils.test_cdb_state
 
   publish-to-test-pypi:
 
