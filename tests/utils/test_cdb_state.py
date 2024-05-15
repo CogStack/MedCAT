@@ -60,7 +60,7 @@ class StateSavedTests(StateTests):
         for k, v in self.cleared_state.items():
             with self.subTest(k):
                 # length is 0
-                self.assertFalse(v[0])
+                self.assertFalse(v)
 
     def test_state_restored(self):
         self.assertEqual(self.initial_state, self.restored_state)
