@@ -14,6 +14,7 @@ class StateTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
+        print("NOTE: Doing StateTests.setUpClass()")
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "examples", "vocab.dat"))
         cls.vocab.make_unigram_table()
@@ -21,6 +22,7 @@ class StateTests(unittest.TestCase):
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
         cls.initial_state = copy_cdb_state(cls.cdb)
+        print("NOTE: Finish StateTests.setUpClass()")
 
     @classmethod
     def _set_info(cls, k: str, v: Any, info_dict: Dict):
@@ -38,6 +40,7 @@ class StateSavedTests(StateTests):
 
     @classmethod
     def setUpClass(cls) -> None:
+        print("NOTE: Doing StateSavedTests.setUpClass()")
         super().setUpClass()
         # capture state
         with captured_state_cdb(cls.cdb, save_state_to_disk=cls.on_disk):
@@ -46,6 +49,7 @@ class StateSavedTests(StateTests):
             cls.cleared_state = copy_cdb_state(cls.cdb)
         # save after state - should be equal to before
         cls.restored_state = copy_cdb_state(cls.cdb)
+        print("NOTE: Finish StateSavedTests.setUpClass()")
 
     def test_state_saved(self):
         nr_of_targets = len(CDBState.__annotations__)
@@ -84,7 +88,8 @@ class StateSavedOnDiskTests(StateSavedTests):
                 print("NOTE: Doing StateSavedOnDiskTests.setUpClass() [all mocked]")
                 rv = super().setUpClass()
                 print("NOTE: DONE with StateSavedOnDiskTests.setUpClass() -> ", rv)
-                return rv
+        print("NOTE: Doing StateSavedTests.setUpClass()")
+        return rv
 
     @unittest.skip("TEMP")  # TODO - remove
     def test_temp_file_called(self):
