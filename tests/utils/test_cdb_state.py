@@ -77,7 +77,9 @@ class StateSavedOnDiskTests(StateSavedTests):
 
     @classmethod
     def setUpClass(cls) -> None:
+        print("NOTE: Doing StateSavedOnDiskTests.setUpClass() [before mock]")
         with mock.patch("builtins.open", side_effect=open) as cls.popen:
+            print("NOTE: Doing StateSavedOnDiskTests.setUpClass() [half mock]")
             with mock.patch("tempfile.NamedTemporaryFile", side_effect=cls.saved_name_temp_file) as cls.pntf:
                 print("NOTE: Doing StateSavedOnDiskTests.setUpClass() [all mocked]")
                 rv = super().setUpClass()
