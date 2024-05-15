@@ -67,7 +67,6 @@ class StateSavedTests(StateTests):
         self.assertEqual(self.initial_state, self.restored_state)
 
 
-@unittest.skipIf(True, "Let's see if this works on GHA")  # TODO - remove
 class StateSavedOnDiskTests(StateSavedTests):
     on_disk = True
     _named_tempory_file = tempfile.NamedTemporaryFile
