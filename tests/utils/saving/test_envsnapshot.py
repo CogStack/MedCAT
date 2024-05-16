@@ -49,7 +49,7 @@ class EnvSnapshotAloneTests(unittest.TestCase):
 
 
 CAT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples")
-ENV_SNAPSHOT_FILE_NAME = "environment_snapshot.json"
+ENV_SNAPSHOT_FILE_NAME = envsnapshot.ENV_SNAPSHOT_FILE_NAME
 
 
 class EnvSnapshotInCATTests(unittest.TestCase):

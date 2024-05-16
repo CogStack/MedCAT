@@ -40,7 +40,7 @@ from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
-from medcat.utils.saving.envsnapshot import get_environment_info
+from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
 
@@ -318,7 +318,7 @@ class CAT(object):
 
         # add a dependency snapshot
         env_info = get_environment_info()
-        env_info_path = os.path.join(save_dir_path, "environment_snapshot.json")
+        env_info_path = os.path.join(save_dir_path, ENV_SNAPSHOT_FILE_NAME)
         with open(env_info_path, 'w') as f:
             json.dump(env_info, f)
 

@@ -4,6 +4,9 @@ import pkg_resources
 import platform
 
 
+ENV_SNAPSHOT_FILE_NAME = "environment_snapshot.json"
+
+
 def get_installed_packages() -> List[List[str]]:
     """Get the installed packages and their versions.
 
