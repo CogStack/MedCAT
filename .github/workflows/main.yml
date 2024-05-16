@@ -38,8 +38,8 @@ jobs:
           midpoint=$((num_files / 2))
           first_half_nl=$(echo "$all_files" | head -n $midpoint)
           second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
-          python -m unittest ${first_half_nl[@]}
-          python -m unittest ${second_half_nl[@]}
+          timeout 25m python -m unittest ${first_half_nl[@]}
+          timeout 25m python -m unittest ${second_half_nl[@]}
 
   publish-to-test-pypi:
 
