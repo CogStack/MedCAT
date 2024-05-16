@@ -3,11 +3,17 @@ import platform
 import os
 import tempfile
 import json
+import zipfile
 
 from medcat.cat import CAT
 from medcat.utils.saving import envsnapshot
 
 import unittest
+
+
+def list_zip_contents(zip_file_path):
+    with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+        return zip_ref.namelist()
 
 
 class EnvSnapshotAloneTests(unittest.TestCase):
@@ -43,6 +49,7 @@ class EnvSnapshotAloneTests(unittest.TestCase):
 
 
 CAT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples")
+ENV_SNAPSHOT_FILE_NAME = "environment_snapshot.json"
 
 
 class EnvSnapshotInCATTests(unittest.TestCase):
@@ -54,7 +61,7 @@ class EnvSnapshotInCATTests(unittest.TestCase):
         cls._temp_dir = tempfile.TemporaryDirectory()
         mpn = cls.cat.create_model_pack(cls._temp_dir.name)
         cls.cat_folder = os.path.join(cls._temp_dir.name, mpn)
-        cls.envrion_file_path = os.path.join(cls.cat_folder, "environment_snapshot.json")
+        cls.envrion_file_path = os.path.join(cls.cat_folder, ENV_SNAPSHOT_FILE_NAME)
 
     def test_has_environment(self):
         self.assertTrue(os.path.exists(self.envrion_file_path))
@@ -67,3 +74,7 @@ class EnvSnapshotInCATTests(unittest.TestCase):
             with self.subTest(k):
                 v1, v2 = saved_info[k], self.expected_env[k]
                 self.assertEqual(v1, v2)
+
+    def test_zip_has_env_snapshot(self):
+        filenames = list_zip_contents(self.cat_folder + ".zip")
+        self.assertIn(ENV_SNAPSHOT_FILE_NAME, filenames)
