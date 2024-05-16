@@ -1,5 +1,4 @@
 from typing import Dict, Any
-
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
@@ -49,10 +48,20 @@ class General(MixingConfig, BaseModel):
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
+    """NOTE: When changing model, make sure to change the tokenizer as well"""
+    model_variant: str = 'bert-base-uncased'
+    model_freeze_layers: bool = True
     num_layers: int = 2
     input_size: int = 300
     hidden_size: int = 300
     dropout: float = 0.5
+    phase_number: int = 0
+    """Indicates whether or not two phase learning is being performed.
+    1: Phase 1 - Train model on undersampled data
+    2: Phase 2 - Continue training on full data
+    0: None - 2 phase learning is not performed"""
+    category_undersample: str = ''
+    model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
     """2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2
@@ -61,7 +70,7 @@ class Model(MixingConfig, BaseModel):
     emb_grad: bool = True
     """If True the embeddings will also be trained"""
     ignore_cpos: bool = False
-    """If set to True center positions will be ignored when calculating represenation"""
+    """If set to True center positions will be ignored when calculating representation"""
 
     class Config:
         extra = Extra.allow
@@ -77,6 +86,8 @@ class Train(MixingConfig, BaseModel):
     shuffle_data: bool = True
     """Used only during training, if set the dataset will be shuffled before train/test split"""
     class_weights: Optional[Any] = None
+    compute_class_weights: bool = False
+    """If true and if class weights are not provided, the class weights will be calculated based on the data"""
     score_average: str = 'weighted'
     """What to use for averaging F1/P/R across labels"""
     prerequisites: dict = {}
@@ -88,6 +99,10 @@ class Train(MixingConfig, BaseModel):
     """When was the last training run"""
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
+    loss_funct: str = 'cross_entropy'
+    """Loss function for the model"""
+    gamma: int = 2
+    """Focal Loss - how much the loss focuses on hard-to-classify examples."""
 
     class Config:
         extra = Extra.allow
