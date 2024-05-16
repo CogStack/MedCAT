@@ -1,11 +1,10 @@
-from typing import List, Tuple, Dict, Any
+from typing import List, Dict, Any
 
 import pkg_resources
 import platform
 
 
-
-def get_installed_packages() -> List[Tuple[str, str]]:
+def get_installed_packages() -> List[List[str]]:
     installed_packages = []
     for package in pkg_resources.working_set:
         installed_packages.append([package.project_name, package.version])
