@@ -33,8 +33,13 @@ jobs:
           flake8 medcat
       - name: Test
         run: |
-          timeout 45m python -m unittest $(git ls-files | grep '^tests/.*\.py$' | grep -v '/__init__\.py$' | grep -v 'utils/test_cdb_state.py' | grep -v 'stats/test_kfold.py' | grep -v 'stats/test_mctexport.py' | sed 's/\.py$//' | sed 's/\//./g')
-          timeout 45m python -m unittest tests.utils.test_cdb_state tests.stats.test_kfold tests.stats.test_kfold
+          all_files=$(git ls-files | grep '^tests/.*\.py$' | grep -v '/__init__\.py$' | sed 's/\.py$//' | sed 's/\//./g')
+          num_files=$(echo "$all_files" | wc -l)
+          midpoint=$((num_files / 2))
+          first_half_nl=$(echo "$all_files" | head -n $midpoint)
+          second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
+          python -m unittest ${first_half_nl[@]}
+          python -m unittest ${second_half_nl[@]}
 
   publish-to-test-pypi:
 
