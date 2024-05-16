@@ -1,0 +1,69 @@
+from typing import Any
+import platform
+import os
+import tempfile
+import json
+
+from medcat.cat import CAT
+from medcat.utils.saving import envsnapshot
+
+import unittest
+
+
+class EnvSnapshotAloneTests(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.env_info = envsnapshot.get_environment_info()
+
+    def test_info_is_dict(self):
+        self.assertIsInstance(self.env_info, dict)
+
+    def test_info_is_not_empty(self):
+        self.assertTrue(self.env_info)
+
+    def assert_has_target(self, target: str, expected: Any):
+        self.assertIn(target, self.env_info)
+        py_ver = self.env_info[target]
+        self.assertEqual(py_ver, expected)
+
+    def test_has_os(self):
+        self.assert_has_target("os", platform.platform())
+
+    def test_has_py_ver(self):
+        self.assert_has_target("python_version", platform.python_version())
+
+    def test_has_cpu_arch(self):
+        self.assert_has_target("cpu_architecture", platform.machine())
+
+    def test_has_dependencies(self, name: str = "dependencies"):
+        # NOTE: just making sure it's a anon-empty list
+        self.assertIn(name, self.env_info)
+        deps = self.env_info[name]
+        self.assertTrue(deps)
+
+
+CAT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples")
+
+
+class EnvSnapshotInCATTests(unittest.TestCase):
+    expected_env = envsnapshot.get_environment_info()
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.cat = CAT.load_model_pack(CAT_PATH)
+        cls._temp_dir = tempfile.TemporaryDirectory()
+        mpn = cls.cat.create_model_pack(cls._temp_dir.name)
+        cls.cat_folder = os.path.join(cls._temp_dir.name, mpn)
+        cls.envrion_file_path = os.path.join(cls.cat_folder, "environment_snapshot.json")
+
+    def test_has_environment(self):
+        self.assertTrue(os.path.exists(self.envrion_file_path))
+
+    def test_eviron_saved(self):
+        with open(self.envrion_file_path) as f:
+            saved_info: dict = json.load(f)
+        self.assertEqual(saved_info.keys(), self.expected_env.keys())
+        for k in saved_info:
+            with self.subTest(k):
+                v1, v2 = saved_info[k], self.expected_env[k]
+                self.assertEqual(v1, v2)
