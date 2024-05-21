@@ -2,18 +2,22 @@ import os
 import random
 import math
 import torch
+import torch.nn.functional as F
 import numpy as np
 import pandas as pd
 import torch.optim as optim
-from typing import List, Optional, Tuple, Any, Dict
+from typing import List, Optional, Tuple, Any, Dict, Union
 from torch import nn
 from scipy.special import softmax
 from medcat.config_meta_cat import ConfigMetaCAT
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
+from transformers import AdamW, get_linear_schedule_with_warmup
+
 
 import logging
-
 
 logger = logging.getLogger(__name__)
 
@@ -47,9 +51,13 @@ def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
             Same as data, but subsetted and as a tensor
         cpos ():
             Center positions for the data
+        attention_mask:
+            Indicating padding mask for the data
+        y:
+            class label of the data
     """
     max_seq_len = max([len(x[0]) for x in data])
-    x = [x[0][0:max_seq_len] + [pad_id]*max(0, max_seq_len - len(x[0])) for x in data[start_ind:end_ind]]
+    x = [x[0][0:max_seq_len] + [pad_id] * max(0, max_seq_len - len(x[0])) for x in data[start_ind:end_ind]]
     cpos = [x[1] for x in data[start_ind:end_ind]]
     y = None
     if len(data[0]) == 3:
@@ -57,9 +65,9 @@ def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
         y = torch.tensor([x[2] for x in data[start_ind:end_ind]], dtype=torch.long).to(device)
 
     x = torch.tensor(x, dtype=torch.long).to(device)
-    cpos = torch.tensor(cpos, dtype=torch.long).to(device)
-
-    return x, cpos, y
+    # cpos = torch.tensor(cpos, dtype=torch.long).to(device)
+    attention_masks = (x != 0).type(torch.int)
+    return x, cpos, attention_masks, y
 
 
 def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
@@ -94,8 +102,10 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
 
     with torch.no_grad():
         for i in range(num_batches):
-            x, cpos, _ = create_batch_piped_data(data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
-            logits = model(x, cpos, ignore_cpos=ignore_cpos)
+            x, cpos, attention_masks, _ = create_batch_piped_data(data, i * batch_size, (i + 1) * batch_size,
+                                                                  device=device, pad_id=pad_id)
+
+            logits = model(x, center_positions=cpos, attention_mask=attention_masks, ignore_cpos=ignore_cpos)
             all_logits.append(logits.detach().cpu().numpy())
 
     predictions = []
@@ -111,7 +121,7 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
 
 
 def split_list_train_test(data: List, test_size: float, shuffle: bool = True) -> Tuple:
-    """Shuffle and randomply split data
+    """Shuffle and randomly split data
 
     Args:
         data (List): The data.
@@ -124,9 +134,14 @@ def split_list_train_test(data: List, test_size: float, shuffle: bool = True) ->
     if shuffle:
         random.shuffle(data)
 
-    test_ind = int(len(data) * test_size)
-    test_data = data[:test_ind]
-    train_data = data[test_ind:]
+    X_features = [x[:-1] for x in data]
+    y_labels = [x[-1] for x in data]
+
+    X_train, X_test, y_train, y_test = train_test_split(X_features, y_labels, test_size=test_size,
+                                                        random_state=42)
+
+    train_data = [x + [y] for x, y in zip(X_train, y_train)]
+    test_data = [x + [y] for x, y in zip(X_test, y_test)]
 
     return train_data, test_data
 
@@ -142,12 +157,25 @@ def print_report(epoch: int, running_loss: List, all_logits: List, y: Any, name:
         name (str): The name of the report. Defaults to Train.
     """
     if all_logits:
-        logger.info('Epoch: %d %s %s', epoch, "*"*50, name)
+        logger.info('Epoch: %d %s %s', epoch, "*" * 50, name)
         logger.info(classification_report(y, np.argmax(np.concatenate(all_logits, axis=0), axis=1)))
 
 
+class FocalLoss(nn.Module):
+    def __init__(self, alpha=None, gamma=2):
+        super(FocalLoss, self).__init__()
+        self.alpha = alpha
+        self.gamma = gamma
+
+    def forward(self, inputs, targets):
+        ce_loss = F.cross_entropy(inputs, targets, reduction='none')
+        pt = torch.exp(-ce_loss)
+        loss = (self.alpha[targets] * (1 - pt) ** self.gamma * ce_loss).mean()
+        return loss
+
+
 def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_path: Optional[str] = None) -> Dict:
-    """Trains a LSTM model (for now) with autocheckpoints
+    """Trains a LSTM model and BERT with autocheckpoints
 
     Args:
         model (nn.Module): The model
@@ -162,18 +190,82 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         Exception: If auto-save is enabled but no save dir path is provided.
     """
     # Get train/test from data
-    train_data, test_data = split_list_train_test(data, test_size=config.train['test_size'], shuffle=config.train['shuffle_data'])
-    device = torch.device(config.general['device']) # Create a torch device
+    train_data, test_data = split_list_train_test(data, test_size=config.train['test_size'],
+                                                  shuffle=config.train['shuffle_data'])
+    device = torch.device(config.general['device'])  # Create a torch device
 
     class_weights = config.train['class_weights']
-    if class_weights is not None:
-        class_weights = torch.FloatTensor(class_weights).to(device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+
+    if class_weights is None:
+        if config.train['compute_class_weights'] is True:
+            y_ = [x[2] for x in train_data]
+            class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(y_), y=y_)
+            config.train['class_weights'] = class_weights
+            logger.info(f"Class weights computed: {class_weights}")
+
+            class_weights = torch.FloatTensor(class_weights).to(device)
+            if config.train['loss_funct'] == 'cross_entropy':
+                criterion: Union[FocalLoss, nn.CrossEntropyLoss] = nn.CrossEntropyLoss(
+                    weight=class_weights)
+            elif config.train['loss_funct'] == 'focal_loss':
+                criterion = FocalLoss(alpha=class_weights, gamma=config.train['gamma'])
+
+        else:
+            logger.warning("Class weights not provided and compute_class_weights parameter is set to False. No class weights used for training.")
+            if config.train['loss_funct'] == 'cross_entropy':
+                criterion = nn.CrossEntropyLoss()
+            elif config.train['loss_funct'] == 'focal_loss':
+                criterion = FocalLoss(gamma=config.train['gamma'])
     else:
-        criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+        class_weights = torch.FloatTensor(class_weights).to(device)
+        if config.train['loss_funct'] == 'cross_entropy':
+            criterion = nn.CrossEntropyLoss(
+                weight=class_weights)
+        elif config.train['loss_funct'] == 'focal_loss':
+            criterion = FocalLoss(alpha=class_weights, gamma=config.train['gamma'])
+
     parameters = filter(lambda p: p.requires_grad, model.parameters())
-    optimizer = optim.Adam(parameters, lr=config.train['lr'])
-    model.to(device) # Move the model to device
+
+    def initialize_model(classifier, data_, batch_size_, lr_, epochs=4):
+        """Initialize the Classifier, the optimizer and the learning rate scheduler.
+
+            Args:
+                classifier (nn.Module):
+                    The model to be trained
+                data_ (List):
+                    The data
+                batch_size_:
+                    Batch size
+                lr_:
+                    Learning rate for training
+                epochs:
+                    Number of training iterations
+
+            Returns:
+                classifier:
+                    model
+                optimizer_:
+                    optimizer
+                scheduler_:
+                    scheduler
+            """
+
+        # Create the optimizer
+        optimizer_ = AdamW(classifier.parameters(),
+                           lr=lr_,  # Default learning rate
+                           eps=1e-8,  # Default epsilon value
+                           weight_decay=1e-5
+                           )
+
+        # Total number of training steps
+        total_steps = int((len(data_) / batch_size_) * epochs)
+        logger.info('Total steps for optimizer: {}'.format(total_steps))
+
+        # Set up the learning rate scheduler
+        scheduler_ = get_linear_schedule_with_warmup(optimizer_,
+                                                     num_warmup_steps=0,  # Default value
+                                                     num_training_steps=total_steps)
+        return classifier, optimizer_, scheduler_
 
     batch_size = config.train['batch_size']
     batch_size_eval = config.general['batch_size_eval']
@@ -182,6 +274,13 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
     ignore_cpos = config.model['ignore_cpos']
     num_batches = math.ceil(len(train_data) / batch_size)
     num_batches_test = math.ceil(len(test_data) / batch_size_eval)
+    optimizer = optim.Adam(parameters, lr=config.train['lr'], weight_decay=1e-5)
+    if config.model.model_architecture_config is not None:
+        if config.model.model_architecture_config['lr_scheduler'] is True:
+            model, optimizer, scheduler = initialize_model(model, train_data, batch_size, config.train['lr'],
+                                                           epochs=nepochs)
+
+    model.to(device)  # Move the model to device
 
     # Can be pre-calculated for the whole dataset
     y_test = [x[2] for x in test_data]
@@ -193,8 +292,11 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         all_logits = []
         model.train()
         for i in range(num_batches):
-            x, cpos, y = create_batch_piped_data(train_data, i*batch_size, (i+1)*batch_size, device=device, pad_id=pad_id)
-            logits = model(x, center_positions=cpos, ignore_cpos=ignore_cpos)
+            model.zero_grad()
+
+            x, cpos, attention_masks, y = create_batch_piped_data(train_data, i * batch_size, (i + 1) * batch_size,
+                                                                  device=device, pad_id=pad_id)
+            logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos)
             loss = criterion(logits, y)
             loss.backward()
             # Track loss and logits
@@ -202,8 +304,11 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
             all_logits.append(logits.detach().cpu().numpy())
 
             parameters = filter(lambda p: p.requires_grad, model.parameters())
-            nn.utils.clip_grad_norm_(parameters, 0.25)
+            nn.utils.clip_grad_norm_(parameters, 0.15)
             optimizer.step()
+            if config.model.model_architecture_config is not None:
+                if config.model.model_architecture_config['lr_scheduler'] is True:
+                    scheduler.step()
 
         all_logits_test = []
         running_loss_test = []
@@ -211,8 +316,10 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
         with torch.no_grad():
             for i in range(num_batches_test):
-                x, cpos, y = create_batch_piped_data(test_data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
-                logits = model(x, cpos, ignore_cpos=ignore_cpos)
+                x, cpos, attention_masks, y = create_batch_piped_data(test_data, i * batch_size_eval,
+                                                                      (i + 1) * batch_size_eval, device=device,
+                                                                      pad_id=pad_id)
+                logits = model(x, attention_mask=attention_masks, center_positions=cpos, ignore_cpos=ignore_cpos)
 
                 # Track loss and logits
                 running_loss_test.append(loss.item())
@@ -221,12 +328,20 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         print_report(epoch, running_loss, all_logits, y=y_train, name='Train')
         print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
 
-        _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
+        _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),
+                                        output_dict=True)
         if not winner_report or _report[config.train['metric']['base']][config.train['metric']['score']] > \
                 winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
 
-            report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), output_dict=True)
+            report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),
+                                           output_dict=True)
+            cm = confusion_matrix(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), normalize='true')
+            report_train = classification_report(y_train, np.argmax(np.concatenate(all_logits, axis=0), axis=1),
+                                                 output_dict=True)
+
+            winner_report['confusion_matrix'] = cm
             winner_report['report'] = report
+            winner_report['report_train'] = report_train
             winner_report['epoch'] = epoch
 
             # Save if needed
@@ -237,8 +352,11 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
                 else:
                     path = os.path.join(save_dir_path, 'model.dat')
                     torch.save(model.state_dict(), path)
-                    logger.info("\n##### Model saved to %s at epoch: %d and %s/%s: %s #####\n", path, epoch, config.train['metric']['base'],
-                          config.train['metric']['score'], winner_report['report'][config.train['metric']['base']][config.train['metric']['score']])
+                    logger.info("\n##### Model saved to %s at epoch: %d and %s/%s: %s #####\n", path, epoch,
+                                config.train['metric']['base'],
+                                config.train['metric']['score'],
+                                winner_report['report'][config.train['metric']['base']][
+                                    config.train['metric']['score']])
 
     return winner_report
 
@@ -255,7 +373,7 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     Returns:
         Dict: Results (precision, recall, f1, examples, confusion matrix)
     """
-    device = torch.device(config.general['device']) # Create a torch device
+    device = torch.device(config.general['device'])  # Create a torch device
     batch_size_eval = config.general['batch_size_eval']
     pad_id = config.model['padding_idx']
     ignore_cpos = config.model['ignore_cpos']
@@ -263,9 +381,9 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
 
     if class_weights is not None:
         class_weights = torch.FloatTensor(class_weights).to(device)
-        criterion = nn.CrossEntropyLoss(weight=class_weights) # Set the criterion to Cross Entropy Loss
+        criterion = nn.CrossEntropyLoss(weight=class_weights)  # Set the criterion to Cross Entropy Loss
     else:
-        criterion = nn.CrossEntropyLoss() # Set the criterion to Cross Entropy Loss
+        criterion = nn.CrossEntropyLoss()  # Set the criterion to Cross Entropy Loss
 
     y_eval = [x[2] for x in data]
     num_batches = math.ceil(len(data) / batch_size_eval)
@@ -276,8 +394,11 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
 
     with torch.no_grad():
         for i in range(num_batches):
-            x, cpos, y = create_batch_piped_data(data, i*batch_size_eval, (i+1)*batch_size_eval, device=device, pad_id=pad_id)
-            logits = model(x, cpos, ignore_cpos=ignore_cpos)
+            x, cpos, attention_masks, y = create_batch_piped_data(data, i * batch_size_eval, (i + 1) * batch_size_eval,
+                                                                  device=device, pad_id=pad_id)
+
+            logits = model(x, center_positions=cpos, attention_mask=attention_masks, ignore_cpos=ignore_cpos)
+
             loss = criterion(logits, y)
 
             # Track loss and logits
@@ -290,13 +411,12 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     predictions = np.argmax(np.concatenate(all_logits, axis=0), axis=1)
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
-    labels = [name for (name, _) in sorted(config.general['category_value2id'].items(), key=lambda x:x[1])]
+    labels = [name for (name, _) in sorted(config.general['category_value2id'].items(), key=lambda x: x[1])]
     confusion = pd.DataFrame(
-        data=confusion_matrix(y_eval, predictions,),
+        data=confusion_matrix(y_eval, predictions, ),
         columns=["true " + label for label in labels],
         index=["predicted " + label for label in labels],
     )
-
 
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
@@ -304,10 +424,14 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         y = id2category_value[y_eval[i]]
         p = id2category_value[p]
         c = data[i][1]
+        if isinstance(c,list):
+            c = c[-1]
+
         tkns = data[i][0]
         assert tokenizer.hf_tokenizers is not None
-        text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<"+ tokenizer.hf_tokenizers.decode(tkns[c:c+1]).strip() + ">> " + \
-            tokenizer.hf_tokenizers.decode(tkns[c+1:])
+        text = tokenizer.hf_tokenizers.decode(tkns[0:c]) + " <<" + tokenizer.hf_tokenizers.decode(
+            tkns[c:c + 1]).strip() + ">> " + \
+               tokenizer.hf_tokenizers.decode(tkns[c + 1:])
         info = "Predicted: {}, True: {}".format(p, y)
         if p != y:
             # We made a mistake
