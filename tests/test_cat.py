@@ -712,7 +712,7 @@ class TestLoadingOldWeights(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(cls.cdb_path)
-        cls.wf = cls.cdb.config.linking.weighted_average_function
+        cls.wf = cls.cdb.weighted_average_function
 
     def test_can_call_weights(self):
         res = self.wf(step=1)

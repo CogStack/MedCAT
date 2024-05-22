@@ -117,10 +117,6 @@ class ModelCreationTests(unittest.TestCase):
         # The spacy model has full path in the loaded model, thus won't be equal
         cat.config.general.spacy_model = os.path.basename(
             cat.config.general.spacy_model)
-        # There can also be issues with loading the config.linking.weighted_average_function from file
-        # This should be fixed with newer models,
-        # but the example model is older, so has the older functionalitys
-        cat.config.linking.weighted_average_function = self.undertest.config.linking.weighted_average_function
         self.assertEqual(cat.config.asdict(), self.undertest.config.asdict())
         self.assertEqual(cat.cdb.config, self.undertest.cdb.config)
         self.assertEqual(len(cat.vocab.vocab), len(self.undertest.vocab.vocab))
