@@ -46,6 +46,13 @@ class CATLike(Protocol):
 
 
 class FoldCreator:
+    """The FoldCreator based on a MCT export.
+
+    Args:
+        mct_export (MedCATTrainerExport): The MCT export dict.
+        nr_of_folds (int): Number of folds to create.
+        use_annotations (bool): Whether to fold on number of annotations or documents.
+    """
 
     def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int,
                  use_annotations: bool) -> None:
