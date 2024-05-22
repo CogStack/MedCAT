@@ -49,6 +49,8 @@ logger = logging.getLogger(__name__) # separate logger from the package-level on
 
 HAS_NEW_SPACY = has_new_spacy()
 
+MIN_GEN_LEN_FOR_WARN = 10_000
+
 
 class CAT(object):
     """The main MedCAT class used to annotate documents, it is built on top of spaCy
@@ -1526,6 +1528,11 @@ class CAT(object):
 
         This method batches the data based on the number of documents as specified by the user.
 
+        NOTE: When providing a generator for `data`, the generator is evaluated (`list(in_data)`)
+              and thus all the data is kept in memory and (potentially) duplicated for use in
+              multiple threads. So if you're using a lot of data, it may be better to use
+              `CAT.multiprocessing_batch_char_size` instead.
+
         PS:
         This method supports Windows.
 
@@ -1550,7 +1557,20 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
+        # TODO: Surely there's a way to not materialise all of the incoming data in memory?
+        #       This is counter productive for allowing the passing of generators.
+        if isinstance(in_data, Iterable):
+            in_data = list(in_data)
+            in_data_len = len(in_data)
+            if in_data_len > MIN_GEN_LEN_FOR_WARN:
+                # only point this out when it's relevant, i.e over 10k items
+                logger.warning("The `CAT.multiprocessing_batch_docs_size` method just "
+                               f"materialised {in_data_len} items from the generator it "
+                               "was provided. This may use up a considerable amount of "
+                               "RAM, especially since the data may be duplicated across "
+                               "multiple threads when multiprocessing is used. If the "
+                               "process is kiled after this warning, please use the "
+                               "alternative method `multiprocessing_batch_char_size` instead")
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 
