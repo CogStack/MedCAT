@@ -1,6 +1,0 @@
-Django==3.2.25
-django-dbbackup==4.0.0b0
-django-storages[boto3]==1.12.3
-django-cron==0.5.1
-medcat==1.2.7
-urllib3==1.26.18
