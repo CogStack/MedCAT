@@ -6,7 +6,6 @@ import logging
 import aiofiles
 import numpy as np
 from typing import Dict, Set, Optional, List, Union, cast
-from functools import partial
 import os
 
 from medcat import __version__
@@ -14,8 +13,12 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.utils.decorators import deprecated
-from medcat.config import Config, weighted_average, workers
+from medcat.config import Config, workers
 from medcat.utils.saving.serializer import CDBSerializer
+from medcat.utils.config_utils import get_and_del_weighted_average_from_config
+from medcat.utils.config_utils import default_weighted_average
+from medcat.utils.config_utils import ensure_backward_compatibility
+from medcat.utils.config_utils import fix_waf_lambda, attempt_fix_weighted_average_function
 
 
 logger = logging.getLogger(__name__)
@@ -98,6 +101,7 @@ class CDB(object):
         self.vocab: Dict = {} # Vocabulary of all words ever in our cdb
         self._optim_params = None
         self.is_dirty = False
+        self._init_waf_from_config()
         self._hash: Optional[str] = None
         # the config hash is kept track of here so that
         # the CDB hash can be re-calculated when the config changes
@@ -106,6 +110,18 @@ class CDB(object):
         # since the config is now saved separately
         self._config_hash: Optional[str] = None
         self._memory_optimised_parts: Set[str] = set()
+
+    def _init_waf_from_config(self):
+        waf = get_and_del_weighted_average_from_config(self.config)
+        if waf is not None:
+            logger.info("Using (potentially) custom value of weighed "
+                        "average function")
+            self.weighted_average_function = attempt_fix_weighted_average_function(waf)
+        elif hasattr(self, 'weighted_average_function'):
+            # keep existing
+            pass
+        else:
+            self.weighted_average_function = default_weighted_average
 
     def get_name(self, cui: str) -> str:
         """Returns preferred name if it exists, otherwise it will return
@@ -558,6 +574,8 @@ class CDB(object):
             # this should be the behaviour for all newer models
             self.config = cast(Config, Config.load(config_path))
             logger.debug("Loaded config from CDB from %s", config_path)
+            # new config, potentially new weighted_average_function to read
+            self._init_waf_from_config()
         # mark config read from file
         self._config_from_file = True
 
@@ -582,7 +600,8 @@ class CDB(object):
         ser = CDBSerializer(path, json_path)
         cdb = ser.deserialize(CDB)
         cls._check_medcat_version(cdb.config.asdict())
-        cls._ensure_backward_compatibility(cdb.config)
+        fix_waf_lambda(cdb)
+        ensure_backward_compatibility(cdb.config, workers)
 
         # Overwrite the config with new data
         if config_dict is not None:
@@ -854,19 +873,6 @@ class CDB(object):
                          'cnt': self.cui2count_train.get(_cui, 0)}
 
         return res
-
-    @staticmethod
-    def _ensure_backward_compatibility(config: Config) -> None:
-        # Hacky way of supporting old CDBs
-        weighted_average_function = config.linking.weighted_average_function
-        if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
-            # the following type ignoring is for mypy because it is unable to detect the signature
-            config.linking.weighted_average_function = partial(weighted_average, factor=0.0004) # type: ignore
-        if config.general.workers is None:
-            config.general.workers = workers()
-        disabled_comps = config.general.spacy_disabled_components
-        if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
-            config.general.spacy_disabled_components.append('lemmatizer')
 
     @classmethod
     def _check_medcat_version(cls, config_data: Dict) -> None:
