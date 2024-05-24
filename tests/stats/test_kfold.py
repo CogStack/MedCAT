@@ -96,6 +96,12 @@ class KFoldCreatorTests(MCTExportTests):
             nullify_doc_names_proj_ids(fold),
         )
 
+    def test_has_reasonable_annotations_per_folds(self):
+        anns_per_folds = [kfold.count_all_annotations(fold) for fold in self.folds]
+        print(f"ANNS per folds:\n{anns_per_folds}")
+        docs_per_folds = [kfold.count_all_docs(fold) for fold in self.folds]
+        print(f"DOCS per folds:\n{docs_per_folds}")
+
 
 # this is a taylor-made export that
 # just contains a few "documents"
@@ -110,6 +116,26 @@ class KFoldCreatorPerAnnsTests(KFoldCreatorTests):
 
 class KFoldCreatorPerWeightedDocsTests(KFoldCreatorTests):
     SPLIT_TYPE = kfold.SplitType.DOCUMENTS_WEIGHTED
+    # should have a total of 435, so 145 per in ideal world
+    # but we'll allow the following deviation
+    PERMITTED_MAX_DEVIATION_IN_ANNS = 5
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.total_anns = kfold.count_all_annotations(cls.mct_export)
+        cls.expected_anns_per_fold = cls.total_anns // cls.K
+        cls.expected_lower_bound = cls.expected_anns_per_fold - cls.PERMITTED_MAX_DEVIATION_IN_ANNS
+        cls.expected_upper_bound = cls.expected_anns_per_fold + cls.PERMITTED_MAX_DEVIATION_IN_ANNS
+
+    def test_has_reasonable_annotations_per_folds(self):
+        anns_per_folds = [kfold.count_all_annotations(fold) for fold in self.folds]
+        for nr, anns in enumerate(anns_per_folds):
+            with self.subTest(f"Fold-{nr}"):
+                self.assertGreater(anns, self.expected_lower_bound)
+                self.assertLess(anns, self.expected_upper_bound)
+        # NOTE: as of testing, this will split [146, 145, 144]
+        #       whereas regular per-docs split will have [140, 163, 132]
 
 
 class KFoldCreatorNewExportTests(KFoldCreatorTests):
