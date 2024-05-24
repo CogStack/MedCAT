@@ -35,7 +35,7 @@ class KFoldCreatorTests(MCTExportTests):
 
 
     def setUp(self) -> None:
-        self.creator = kfold.FoldCreator(self.mct_export, self.K, split_type=self.SPLIT_TYPE)
+        self.creator = kfold.get_fold_creator(self.mct_export, self.K, split_type=self.SPLIT_TYPE)
         self.folds = self.creator.create_folds()
 
     def test_folding_does_not_modify_initial_export(self):
@@ -86,7 +86,7 @@ class KFoldCreatorTests(MCTExportTests):
         self.assertEqual(total_anns, count_all_once)
 
     def test_1fold_same_as_orig(self):
-        folds = kfold.FoldCreator(self.mct_export, 1, split_type=self.SPLIT_TYPE).create_folds()
+        folds = kfold.get_fold_creator(self.mct_export, 1, split_type=self.SPLIT_TYPE).create_folds()
         self.assertEqual(len(folds), 1)
         fold, = folds
         self.assertIsInstance(fold, dict)
@@ -228,7 +228,7 @@ class KFoldDuplicatedTests(KFoldCATTests):
         self.assertEqual(self.COPIES * self.anns_in_orig, self.anns_in_copy)
 
     def test_3_fold_identical_folds(self):
-        folds = kfold.FoldCreator(self.data_copied, nr_of_folds=self.COPIES,
+        folds = kfold.get_fold_creator(self.data_copied, nr_of_folds=self.COPIES,
                                   split_type=kfold.SplitType.DOCUMENTS).create_folds()
         self.assertEqual(len(folds), self.COPIES)
         for nr, fold in enumerate(folds):

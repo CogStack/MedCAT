@@ -1,5 +1,6 @@
-from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterator, Union, Callable, cast, Any
+from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterator, Callable, cast, Any
 
+from abc import ABC, abstractmethod
 from enum import Enum, auto
 from copy import deepcopy
 
@@ -49,12 +50,12 @@ class CATLike(Protocol):
 class SplitType(Enum):
     """The split type."""
     DOCUMENTS = auto()
-    """Split over number of documents"""
+    """Split over number of documents."""
     ANNOTATIONS = auto()
-    """Split over number of annotations"""
+    """Split over number of annotations."""
 
 
-class FoldCreator:
+class FoldCreator(ABC):
     """The FoldCreator based on a MCT export.
 
     Args:
@@ -63,32 +64,9 @@ class FoldCreator:
         use_annotations (bool): Whether to fold on number of annotations or documents.
     """
 
-    def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int,
-                 split_type: SplitType) -> None:
+    def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int) -> None:
         self.mct_export = mct_export
         self.nr_of_folds = nr_of_folds
-        self.split_type = split_type
-        self._targets: Union[
-            Iterator[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument, MedCATTrainerExportAnnotation]],
-            Iterator[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument]]
-        ]
-        self._adder: Union[
-            Callable[[MedCATTrainerExportProject, MedCATTrainerExportDocument, MedCATTrainerExportAnnotation], None],
-            Callable[[MedCATTrainerExportProject, MedCATTrainerExportDocument], None]
-        ]
-        if self.split_type is SplitType.ANNOTATIONS:
-            self.total = count_all_annotations(self.mct_export)
-            self._targets = iter_anns(self.mct_export)
-            self._adder = self._add_target_ann
-        else:
-            self.total = count_all_docs(self.mct_export)
-            self._targets = iter_docs(self.mct_export)
-            self._adder = self._add_target_doc
-        self.per_fold = self._init_per_fold()
-
-    def _add_target_doc(self, project: MedCATTrainerExportProject,
-                        doc: MedCATTrainerExportDocument) -> None:
-        project['documents'].append(doc)
 
     def _find_or_add_doc(self, project: MedCATTrainerExportProject, orig_doc: MedCATTrainerExportDocument
                          ) -> MedCATTrainerExportDocument:
@@ -100,10 +78,39 @@ class FoldCreator:
         project['documents'].append(new_doc)
         return new_doc
 
-    def _add_target_ann(self, project: MedCATTrainerExportProject, orig_doc: MedCATTrainerExportDocument,
-                        ann: MedCATTrainerExportAnnotation) -> None:
-        cur_doc: MedCATTrainerExportDocument = self._find_or_add_doc(project, orig_doc)
-        cur_doc['annotations'].append(ann)
+    def _create_new_project(self, proj_info: MedCATTrainerExportProjectInfo) -> MedCATTrainerExportProject:
+        (proj_name, proj_id, proj_cuis, proj_tuis) = proj_info
+        cur_project = cast(MedCATTrainerExportProject, {
+            'name': proj_name,
+            'id': proj_id,
+            'cuis': proj_cuis,
+            'documents': [],
+            })
+        # NOTE: Some MCT exports don't declare TUIs
+        if proj_tuis is not None:
+            cur_project['tuis'] = proj_tuis
+        return cur_project
+
+    @abstractmethod
+    def create_folds(self) -> List[MedCATTrainerExport]:
+        """Create folds.
+
+        Raises:
+            ValueError: If somethign went wrong.
+
+        Returns:
+            List[MedCATTrainerExport]: The created folds.
+        """
+
+
+class SimpleFoldCreator(FoldCreator):
+
+    def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int,
+                 counter: Callable[[MedCATTrainerExport], int]) -> None:
+        super().__init__(mct_export, nr_of_folds)
+        self._counter = counter
+        self.total = self._counter(mct_export)
+        self.per_fold = self._init_per_fold()
 
     def _init_per_fold(self) -> List[int]:
         per_fold = [self.total // self.nr_of_folds for _ in range(self.nr_of_folds)]
@@ -114,6 +121,68 @@ class FoldCreator:
             raise ValueError(f"Failed to calculate per-fold items. Got: {per_fold}")
         return per_fold
 
+    @abstractmethod
+    def _create_fold(self, fold_nr: int) -> MedCATTrainerExport:
+        pass
+
+    def create_folds(self) -> List[MedCATTrainerExport]:
+        return [
+            self._create_fold(fold_nr) for fold_nr in range(self.nr_of_folds)
+        ]
+
+
+
+class PerDocsFoldCreator(FoldCreator):
+
+    def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int) -> None:
+        super().__init__(mct_export, nr_of_folds)
+        self.nr_of_docs = count_all_docs(self.mct_export)
+        self.per_doc_simple = self.nr_of_docs // self.nr_of_folds
+        self._all_docs = list(iter_docs(self.mct_export))
+
+    def _create_fold(self, fold_nr: int) -> MedCATTrainerExport:
+        start_nr = self.per_doc_simple * fold_nr
+        # until the end for last fold, otherwise just the next set of docs
+        end_nr = self.nr_of_docs if fold_nr == self.nr_of_folds - 1 else start_nr + self.per_doc_simple
+        relevant_docs = self._all_docs[start_nr: end_nr]
+        export: MedCATTrainerExport = {
+            "projects": []
+        }
+        # helper for finding projects per name
+        used_projects: Dict[str, MedCATTrainerExportProject] = {}
+        for proj_info, doc in relevant_docs:
+            proj_name = proj_info[0]
+            if proj_name not in used_projects:
+                cur_project = self._create_new_project(proj_info) # TODO - make sure it's available
+                export['projects'].append(cur_project)
+                used_projects[proj_name] = cur_project
+            else:
+                cur_project = used_projects[proj_name]
+            cur_project['documents'].append(doc)
+        return export
+
+    def create_folds(self) -> List[MedCATTrainerExport]:
+        return [
+            self._create_fold(fold_nr) for fold_nr in range(self.nr_of_folds)
+        ]
+
+
+class PerAnnsFoldCreator(SimpleFoldCreator):
+
+    def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int) -> None:
+        super().__init__(mct_export, nr_of_folds, count_all_annotations)
+
+    def _add_target_ann(self, project: MedCATTrainerExportProject,
+                        orig_doc: MedCATTrainerExportDocument,
+                        ann: MedCATTrainerExportAnnotation) -> None:
+        cur_doc: MedCATTrainerExportDocument = self._find_or_add_doc(project, orig_doc)
+        cur_doc['annotations'].append(ann)
+
+    def _targets(self) -> Iterator[Tuple[MedCATTrainerExportProjectInfo,
+                                         MedCATTrainerExportDocument,
+                                         MedCATTrainerExportAnnotation]]:
+        return iter_anns(self.mct_export)
+
     def _create_fold(self, fold_nr: int) -> MedCATTrainerExport:
         per_fold = self.per_fold[fold_nr]
         cur_fold: MedCATTrainerExport = {
@@ -121,21 +190,14 @@ class FoldCreator:
         }
         cur_project: Optional[MedCATTrainerExportProject] = None
         included = 0
-        for target in self._targets:
-            (proj_name, proj_id, proj_cuis, proj_tuis), *target_info = target
+        for target in self._targets():
+            proj_info, cur_doc, cur_ann = target
+            proj_name = proj_info[0]
             if not cur_project or cur_project['name'] != proj_name:
                 # first or new project
-                cur_project = cast(MedCATTrainerExportProject, {
-                    'name': proj_name,
-                    'id': proj_id,
-                    'cuis': proj_cuis,
-                    'documents': [],
-                })
-                # NOTE: Some MCT exports don't declare TUIs
-                if proj_tuis is not None:
-                    cur_project['tuis'] = proj_tuis
+                cur_project = self._create_new_project(proj_info)
                 cur_fold['projects'].append(cur_project)
-            self._adder(cur_project, *target_info)
+            self._add_target_ann(cur_project, cur_doc, cur_ann)
             included += 1
             if included == per_fold:
                 break
@@ -145,10 +207,28 @@ class FoldCreator:
         return cur_fold
 
 
-    def create_folds(self) -> List[MedCATTrainerExport]:
-        return [
-            self._create_fold(fold_nr) for fold_nr in range(self.nr_of_folds)
-        ]
+def get_fold_creator(mct_export: MedCATTrainerExport,
+                     nr_of_folds: int,
+                     split_type: SplitType) -> FoldCreator:
+    """Get the appropriate fold creator.
+
+    Args:
+        mct_export (MedCATTrainerExport): The MCT export.
+        nr_of_folds (int): Number of folds to use.
+        split_type (SplitType): The type of split to use.
+
+    Raises:
+        ValueError: In case of an unknown split type.
+
+    Returns:
+        FoldCreator: The corresponding fold creator.
+    """
+    if split_type is SplitType.DOCUMENTS:
+        return PerDocsFoldCreator(mct_export=mct_export, nr_of_folds=nr_of_folds)
+    elif split_type is SplitType.ANNOTATIONS:
+        return PerAnnsFoldCreator(mct_export=mct_export, nr_of_folds=nr_of_folds)
+    else:
+        raise ValueError(f"Unknown Split Type: {split_type}")
 
 
 def get_per_fold_metrics(cat: CATLike, folds: List[MedCATTrainerExport],
@@ -296,7 +376,7 @@ def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int 
     Returns:
         Tuple: The averaged metrics.
     """
-    creator = FoldCreator(mct_export_data, k, split_type=split_type)
+    creator = get_fold_creator(mct_export_data, k, split_type=split_type)
     folds = creator.create_folds()
     per_fold_metrics = get_per_fold_metrics(cat, folds, *args, **kwargs)
     return get_metrics_mean(per_fold_metrics)
