@@ -17,7 +17,7 @@ class MCTExportIterationTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         with open(cls.EXPORT_PATH) as f:
-            cls.mct_export = json.load(f)
+            cls.mct_export: mctexport.MedCATTrainerExport = json.load(f)
 
     def test_conforms_to_template(self):
         # NOTE: This uses pydantic to make sure that the MedCATTrainerExport
@@ -30,3 +30,9 @@ class MCTExportIterationTests(unittest.TestCase):
 
     def test_iterates_over_all_anns(self):
         self.assertEqual(mctexport.count_all_annotations(self.mct_export), self.EXPECTED_ANNS)
+
+    def test_gets_correct_nr_of_annotations_per_doc(self):
+        for project in self.mct_export['projects']:
+            for doc in project["documents"]:
+                with self.subTest(f"Proj-{project['name']} ({project['id']})-{doc['name']} ({doc['id']})"):
+                    self.assertEqual(mctexport.get_nr_of_annotations(doc), len(doc["annotations"]))

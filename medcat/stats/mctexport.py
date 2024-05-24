@@ -62,8 +62,5 @@ def count_all_docs(export: MedCATTrainerExport) -> int:
     return len(list(iter_docs(export)))
 
 
-# def stich_exports(exports: List[MedCATTrainerExport]) -> MedCATTrainerExport:
-#     stiched: MedCATTrainerExport = {"projects": []}
-#     for export in exports:
-#         pass
-#     pass
+def get_nr_of_annotations(doc: MedCATTrainerExportDocument) -> int:
+    return len(doc['annotations'])
