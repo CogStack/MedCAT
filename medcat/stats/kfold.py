@@ -1,5 +1,6 @@
 from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterator, Union, Callable, cast, Any
 
+from enum import Enum, auto
 from copy import deepcopy
 
 from medcat.utils.checkpoint import Checkpoint
@@ -45,6 +46,11 @@ class CATLike(Protocol):
         pass
 
 
+class SplitType(Enum):
+    DOCUMENTS = auto()
+    ANNOTATIONS = auto()
+
+
 class FoldCreator:
     """The FoldCreator based on a MCT export.
 
@@ -55,10 +61,10 @@ class FoldCreator:
     """
 
     def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int,
-                 use_annotations: bool) -> None:
+                 split_type: SplitType) -> None:
         self.mct_export = mct_export
         self.nr_of_folds = nr_of_folds
-        self.use_annotations = use_annotations
+        self.split_type = split_type
         self._targets: Union[
             Iterator[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument, MedCATTrainerExportAnnotation]],
             Iterator[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument]]
@@ -67,7 +73,7 @@ class FoldCreator:
             Callable[[MedCATTrainerExportProject, MedCATTrainerExportDocument, MedCATTrainerExportAnnotation], None],
             Callable[[MedCATTrainerExportProject, MedCATTrainerExportDocument], None]
         ]
-        if self.use_annotations:
+        if self.split_type is SplitType.ANNOTATIONS:
             self.total = count_all_annotations(self.mct_export)
             self._targets = iter_anns(self.mct_export)
             self._adder = self._add_target_ann
@@ -265,7 +271,7 @@ def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dic
 
 
 def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int = 3,
-                     use_annotations: bool = False, *args, **kwargs) -> Tuple:
+                     split_type: SplitType = SplitType.DOCUMENTS, *args, **kwargs) -> Tuple:
     """Get the k-fold stats for the model with the specified data.
 
     First this will split the MCT export into `k` folds. You can do
@@ -280,14 +286,14 @@ def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int 
         cat (CATLike): The model pack.
         mct_export_data (MedCATTrainerExport): The MCT export.
         k (int): The number of folds. Defaults to 3.
-        use_annotations (bool): Whether to use annodations or docs. Defaults to False (docs).
+        split_type (SplitType): Whether to use annodations or docs. Defaults to DOCUMENTS.
         *args: Arguments passed to the `CAT.train_supervised_raw` method.
         **kwargs: Keyword arguments passed to the `CAT.train_supervised_raw` method.
 
     Returns:
         Tuple: The averaged metrics.
     """
-    creator = FoldCreator(mct_export_data, k, use_annotations=use_annotations)
+    creator = FoldCreator(mct_export_data, k, split_type=split_type)
     folds = creator.create_folds()
     per_fold_metrics = get_per_fold_metrics(cat, folds, *args, **kwargs)
     return get_metrics_mean(per_fold_metrics)

@@ -31,11 +31,11 @@ class MCTExportTests(unittest.TestCase):
 
 class KFoldCreatorTests(MCTExportTests):
     K = 3
-    USE_ANNOTATIONS = False
+    SPLIT_TYPE = kfold.SplitType.DOCUMENTS
 
 
     def setUp(self) -> None:
-        self.creator = kfold.FoldCreator(self.mct_export, self.K, use_annotations=self.USE_ANNOTATIONS)
+        self.creator = kfold.FoldCreator(self.mct_export, self.K, split_type=self.SPLIT_TYPE)
         self.folds = self.creator.create_folds()
 
     def test_folding_does_not_modify_initial_export(self):
@@ -70,7 +70,7 @@ class KFoldCreatorTests(MCTExportTests):
             docs = kfold.count_all_docs(fold)
             total_docs += docs
         count_all_once = kfold.count_all_docs(self.mct_export)
-        if self.USE_ANNOTATIONS:
+        if self.SPLIT_TYPE is kfold.SplitType.ANNOTATIONS:
             # NOTE: This may be greater if split in the middle of a document
             #       because that document may then exist in both folds
             self.assertGreaterEqual(total_docs, count_all_once)
@@ -86,7 +86,7 @@ class KFoldCreatorTests(MCTExportTests):
         self.assertEqual(total_anns, count_all_once)
 
     def test_1fold_same_as_orig(self):
-        folds = kfold.FoldCreator(self.mct_export, 1, use_annotations=self.USE_ANNOTATIONS).create_folds()
+        folds = kfold.FoldCreator(self.mct_export, 1, split_type=self.SPLIT_TYPE).create_folds()
         self.assertEqual(len(folds), 1)
         fold, = folds
         self.assertIsInstance(fold, dict)
@@ -105,7 +105,7 @@ NEW_EXPORT_PATH = os.path.join(os.path.dirname(__file__), "..",
 
 
 class KFoldCreatorPerAnnsTests(KFoldCreatorTests):
-    USE_ANNOTATIONS = True
+    SPLIT_TYPE = kfold.SplitType.ANNOTATIONS
 
 
 class KFoldCreatorNewExportTests(KFoldCreatorTests):
@@ -113,7 +113,7 @@ class KFoldCreatorNewExportTests(KFoldCreatorTests):
 
 
 class KFoldCreatorNewExportAnnsTests(KFoldCreatorNewExportTests):
-    USE_ANNOTATIONS = True
+    SPLIT_TYPE = kfold.SplitType.ANNOTATIONS
 
 
 class KFoldCATTests(MCTExportTests):
@@ -158,11 +158,11 @@ class KFoldStatsConsistencyTests(KFoldCATTests):
 
 
 class KFoldMetricsTests(KFoldCATTests):
-    USE_ANNOTATIONS = False
+    SPLIT_TYPE = kfold.SplitType.DOCUMENTS
 
     def test_metrics_1_fold_same_as_normal(self):
         stats = kfold.get_k_fold_stats(self.cat, self.mct_export, k=1,
-                                       use_annotations=self.USE_ANNOTATIONS)
+                                       split_type=self.SPLIT_TYPE)
         for name, reg, folds1 in zip(self._names, self.reg_stats, stats):
             with self.subTest(name):
                 if name != 'examples':
@@ -173,7 +173,7 @@ class KFoldMetricsTests(KFoldCATTests):
 
 
 class KFoldPerAnnsMetricsTests(KFoldMetricsTests):
-    USE_ANNOTATIONS = True
+    SPLIT_TYPE = kfold.SplitType.ANNOTATIONS
 
 
 class KFoldDuplicatedTests(KFoldCATTests):
@@ -228,7 +228,8 @@ class KFoldDuplicatedTests(KFoldCATTests):
         self.assertEqual(self.COPIES * self.anns_in_orig, self.anns_in_copy)
 
     def test_3_fold_identical_folds(self):
-        folds = kfold.FoldCreator(self.data_copied, nr_of_folds=self.COPIES, use_annotations=False).create_folds()
+        folds = kfold.FoldCreator(self.data_copied, nr_of_folds=self.COPIES,
+                                  split_type=kfold.SplitType.DOCUMENTS).create_folds()
         self.assertEqual(len(folds), self.COPIES)
         for nr, fold in enumerate(folds):
             with self.subTest(f"Fold-{nr}"):
