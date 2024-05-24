@@ -408,7 +408,7 @@ def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dic
 
 
 def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int = 3,
-                     split_type: SplitType = SplitType.DOCUMENTS, *args, **kwargs) -> Tuple:
+                     split_type: SplitType = SplitType.DOCUMENTS_WEIGHTED, *args, **kwargs) -> Tuple:
     """Get the k-fold stats for the model with the specified data.
 
     First this will split the MCT export into `k` folds. You can do
@@ -423,7 +423,7 @@ def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int 
         cat (CATLike): The model pack.
         mct_export_data (MedCATTrainerExport): The MCT export.
         k (int): The number of folds. Defaults to 3.
-        split_type (SplitType): Whether to use annodations or docs. Defaults to DOCUMENTS.
+        split_type (SplitType): Whether to use annodations or docs. Defaults to DOCUMENTS_WEIGHTED.
         *args: Arguments passed to the `CAT.train_supervised_raw` method.
         **kwargs: Keyword arguments passed to the `CAT.train_supervised_raw` method.
 
