@@ -10,8 +10,8 @@ def nullify_doc_names_proj_ids(export: MedCATTrainerExport) -> MedCATTrainerExpo
     return {'projects': [
         {
             'name': project['name'], 
-            'documents': [
+            'documents': sorted([
                 {k: v if k != 'name' else '' for k, v in doc.items()} for doc in project['documents']
-            ]
+            ], key=lambda doc: doc['id'])
         } for project in export['projects']
     ]}
