@@ -32,14 +32,14 @@ class MetaCATTests(unittest.TestCase):
     def test_train(self):
         json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources',
                                  'mct_export_for_meta_cat_test.json')
-        results = self.meta_cat.train(json_path, save_dir_path=self.tmp_dir)
+        results = self.meta_cat.train_from_json(json_path, save_dir_path=self.tmp_dir)
         if self.meta_cat.config.model.phase_number != 1:
             self.assertEqual(results['report']['weighted avg']['f1-score'], 1.0)
 
     def test_save_load(self):
         json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources',
                                  'mct_export_for_meta_cat_test.json')
-        self.meta_cat.train(json_path, save_dir_path=self.tmp_dir)
+        self.meta_cat.train_from_json(json_path, save_dir_path=self.tmp_dir)
         self.meta_cat.save(self.tmp_dir)
         n_meta_cat = MetaCAT.load(self.tmp_dir)
 
@@ -67,7 +67,7 @@ class MetaCATTests(unittest.TestCase):
     def test_predict_spangroup(self):
         json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'resources',
                                  'mct_export_for_meta_cat_test.json')
-        self.meta_cat.train(json_path, save_dir_path=self.tmp_dir)
+        self.meta_cat.train_from_json(json_path, save_dir_path=self.tmp_dir)
         self.meta_cat.save(self.tmp_dir)
         n_meta_cat = MetaCAT.load(self.tmp_dir)
 
