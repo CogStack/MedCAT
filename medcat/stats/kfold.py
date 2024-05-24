@@ -47,8 +47,11 @@ class CATLike(Protocol):
 
 
 class SplitType(Enum):
+    """The split type."""
     DOCUMENTS = auto()
+    """Split over number of documents"""
     ANNOTATIONS = auto()
+    """Split over number of annotations"""
 
 
 class FoldCreator:
