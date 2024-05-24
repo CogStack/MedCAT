@@ -1,8 +1,10 @@
-from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterator, Callable, cast, Any
+from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterable, Callable, cast, Any
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from copy import deepcopy
+
+import numpy as np
 
 from medcat.utils.checkpoint import Checkpoint
 from medcat.utils.cdb_state import captured_state_cdb
@@ -10,7 +12,7 @@ from medcat.utils.cdb_state import captured_state_cdb
 from medcat.stats.stats import get_stats
 from medcat.stats.mctexport import MedCATTrainerExport, MedCATTrainerExportProject
 from medcat.stats.mctexport import MedCATTrainerExportDocument, MedCATTrainerExportAnnotation
-from medcat.stats.mctexport import count_all_annotations, count_all_docs
+from medcat.stats.mctexport import count_all_annotations, count_all_docs, get_nr_of_annotations
 from medcat.stats.mctexport import iter_anns, iter_docs, MedCATTrainerExportProjectInfo
 
 
@@ -53,6 +55,25 @@ class SplitType(Enum):
     """Split over number of documents."""
     ANNOTATIONS = auto()
     """Split over number of annotations."""
+    DOCUMENTS_WEIGHTED = auto()
+    """Split over number of documents based on the number of annotations.
+    So essentially this ensures that the same document isn't in 2 folds
+    while trying to more equally distribute documents with different number
+    of annotations.
+    For example:
+        If we have 6 documents that we want to split into 3 folds.
+        The number of annotations per document are as follows:
+           [40, 40, 20, 10, 5, 5]
+        If we were to split this trivially over documents, we'd end up
+        with the 3 folds with number of annotations that are far from even:
+           [80, 30, 10]
+        However, if we use the annotations as weights, we would be able to
+        create folds that have more evenly distributed annotations, e.g:
+           [[D1,], [D2], [D3, D4, D5, D6]]
+        where D# denotes the number of the documents, with the number of
+        annotations being equal:
+           [ 40, 40, 20 + 10 + 5 + 5 = 40]
+    """
 
 
 class FoldCreator(ABC):
@@ -90,6 +111,25 @@ class FoldCreator(ABC):
         if proj_tuis is not None:
             cur_project['tuis'] = proj_tuis
         return cur_project
+
+    def _create_export_with_documents(self, relevant_docs: Iterable[Tuple[MedCATTrainerExportProjectInfo,
+                                                                          MedCATTrainerExportDocument]]) -> MedCATTrainerExport:
+        export: MedCATTrainerExport = {
+            "projects": []
+        }
+        # helper for finding projects per name
+        used_projects: Dict[str, MedCATTrainerExportProject] = {}
+        for proj_info, doc in relevant_docs:
+            proj_name = proj_info[0]
+            if proj_name not in used_projects:
+                cur_project = self._create_new_project(proj_info) # TODO - make sure it's available
+                export['projects'].append(cur_project)
+                used_projects[proj_name] = cur_project
+            else:
+                cur_project = used_projects[proj_name]
+            cur_project['documents'].append(doc)
+        return export
+
 
     @abstractmethod
     def create_folds(self) -> List[MedCATTrainerExport]:
@@ -145,21 +185,7 @@ class PerDocsFoldCreator(FoldCreator):
         # until the end for last fold, otherwise just the next set of docs
         end_nr = self.nr_of_docs if fold_nr == self.nr_of_folds - 1 else start_nr + self.per_doc_simple
         relevant_docs = self._all_docs[start_nr: end_nr]
-        export: MedCATTrainerExport = {
-            "projects": []
-        }
-        # helper for finding projects per name
-        used_projects: Dict[str, MedCATTrainerExportProject] = {}
-        for proj_info, doc in relevant_docs:
-            proj_name = proj_info[0]
-            if proj_name not in used_projects:
-                cur_project = self._create_new_project(proj_info) # TODO - make sure it's available
-                export['projects'].append(cur_project)
-                used_projects[proj_name] = cur_project
-            else:
-                cur_project = used_projects[proj_name]
-            cur_project['documents'].append(doc)
-        return export
+        return self._create_export_with_documents(relevant_docs)
 
     def create_folds(self) -> List[MedCATTrainerExport]:
         return [
@@ -178,7 +204,7 @@ class PerAnnsFoldCreator(SimpleFoldCreator):
         cur_doc: MedCATTrainerExportDocument = self._find_or_add_doc(project, orig_doc)
         cur_doc['annotations'].append(ann)
 
-    def _targets(self) -> Iterator[Tuple[MedCATTrainerExportProjectInfo,
+    def _targets(self) -> Iterable[Tuple[MedCATTrainerExportProjectInfo,
                                          MedCATTrainerExportDocument,
                                          MedCATTrainerExportAnnotation]]:
         return iter_anns(self.mct_export)
@@ -207,6 +233,31 @@ class PerAnnsFoldCreator(SimpleFoldCreator):
         return cur_fold
 
 
+class WeightedDocumentsCreator(FoldCreator):
+
+    def __init__(self, mct_export: MedCATTrainerExport, nr_of_folds: int,
+                 weight_calculator: Callable[[MedCATTrainerExportDocument], int]) -> None:
+        super().__init__(mct_export, nr_of_folds)
+        self._weight_calculator = weight_calculator
+        docs = [(doc, self._weight_calculator(doc[1])) for doc in iter_docs(self.mct_export)]
+        # descending order in weight
+        self._weighted_docs = sorted(docs, key=lambda d: d[1], reverse=True)
+
+    def create_folds(self) -> List[MedCATTrainerExport]:
+        doc_folds: List[List[Tuple[MedCATTrainerExportProjectInfo, MedCATTrainerExportDocument]]]
+        doc_folds = [[] for _ in range(self.nr_of_folds)]
+        fold_weights = [0] * self.nr_of_folds
+
+        for item, weight in self._weighted_docs:
+            # Find the subset with the minimum total weight
+            min_subset_idx = np.argmin(fold_weights)
+            # add the most heavily weighted document
+            doc_folds[min_subset_idx].append(item)
+            fold_weights[min_subset_idx] += weight
+
+        return [self._create_export_with_documents(docs) for docs in doc_folds]
+
+
 def get_fold_creator(mct_export: MedCATTrainerExport,
                      nr_of_folds: int,
                      split_type: SplitType) -> FoldCreator:
@@ -227,6 +278,9 @@ def get_fold_creator(mct_export: MedCATTrainerExport,
         return PerDocsFoldCreator(mct_export=mct_export, nr_of_folds=nr_of_folds)
     elif split_type is SplitType.ANNOTATIONS:
         return PerAnnsFoldCreator(mct_export=mct_export, nr_of_folds=nr_of_folds)
+    elif split_type is SplitType.DOCUMENTS_WEIGHTED:
+        return WeightedDocumentsCreator(mct_export=mct_export, nr_of_folds=nr_of_folds,
+                                        weight_calculator=get_nr_of_annotations)
     else:
         raise ValueError(f"Unknown Split Type: {split_type}")
 

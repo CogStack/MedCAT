@@ -108,12 +108,20 @@ class KFoldCreatorPerAnnsTests(KFoldCreatorTests):
     SPLIT_TYPE = kfold.SplitType.ANNOTATIONS
 
 
+class KFoldCreatorPerWeightedDocsTests(KFoldCreatorTests):
+    SPLIT_TYPE = kfold.SplitType.DOCUMENTS_WEIGHTED
+
+
 class KFoldCreatorNewExportTests(KFoldCreatorTests):
     EXPORT_PATH = NEW_EXPORT_PATH
 
 
 class KFoldCreatorNewExportAnnsTests(KFoldCreatorNewExportTests):
     SPLIT_TYPE = kfold.SplitType.ANNOTATIONS
+
+
+class KFoldCreatorNewExportWeightedDocsTests(KFoldCreatorNewExportTests):
+    SPLIT_TYPE = kfold.SplitType.DOCUMENTS_WEIGHTED
 
 
 class KFoldCATTests(MCTExportTests):
@@ -174,6 +182,10 @@ class KFoldMetricsTests(KFoldCATTests):
 
 class KFoldPerAnnsMetricsTests(KFoldMetricsTests):
     SPLIT_TYPE = kfold.SplitType.ANNOTATIONS
+
+
+class KFoldWeightedDocsMetricsTests(KFoldMetricsTests):
+    SPLIT_TYPE = kfold.SplitType.DOCUMENTS_WEIGHTED
 
 
 class KFoldDuplicatedTests(KFoldCATTests):
