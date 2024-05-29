@@ -358,12 +358,7 @@ class CAT(object):
         model_pack_path = cls.attempt_unpack(zip_path)
 
         # Load the CDB
-        cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
-        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
-        json_path = model_pack_path if has_jsons else None
-        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
-        cdb = CDB.load(cdb_path, json_path)
+        cdb = cls.load_cdb(model_pack_path)
 
         # load config
         config_path = os.path.join(model_pack_path, "config.json")
@@ -399,6 +394,16 @@ class CAT(object):
         cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
         logger.info(cat.get_model_card())  # Print the model card
         return cat
+
+    @classmethod
+    def load_cdb(cls, model_pack_path) -> CDB:
+        cdb_path = os.path.join(model_pack_path, "cdb.dat")
+        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
+        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
+        json_path = model_pack_path if has_jsons else None
+        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
+        cdb = CDB.load(cdb_path, json_path)
+        return cdb
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         """Push the text through the pipeline.
