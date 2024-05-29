@@ -121,7 +121,8 @@ class MetaCAT(PipeRunner):
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
 
-    @deprecated(message="Use `train_from_json` or `train_raw` instead")
+    @deprecated(message="Use `train_from_json` or `train_raw` instead",
+                depr_version=(1, 8, 0), removal_version=(1, 12, 0))
     def train(self, json_path: Union[str, list], save_dir_path: Optional[str] = None, data_oversampled: Optional[list] = None) -> Dict:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.

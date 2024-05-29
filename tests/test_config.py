@@ -2,6 +2,7 @@ import unittest
 import pickle
 import tempfile
 from medcat.config import Config, MixingConfig, VersionInfo, General, LinkingFilters
+from medcat.config import UseOfOldConfigOptionException, Linking
 from pydantic import ValidationError
 import os
 
@@ -208,6 +209,13 @@ class ConfigTests(unittest.TestCase):
         h2 = config.get_hash()
         self.assertEqual(h1, h2)
 
+    def test_can_save_load(self):
+        config = Config()
+        with tempfile.NamedTemporaryFile() as file:
+            config.save(file.name)
+            config2 = Config.load(file.name)
+        self.assertEqual(config, config2)
+
 
 class ConfigLinkingFiltersTests(unittest.TestCase):
 
@@ -226,6 +234,37 @@ class ConfigLinkingFiltersTests(unittest.TestCase):
     def test_not_allow_empty_dict_for_cuis_exclude(self):
         with self.assertRaises(ValidationError):
             LinkingFilters(cuis_exclude={})
+
+
+class BackwardsCompatibilityTests(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.config = Config()
+
+    def test_use_weighted_average_function_identifier_nice_error(self):
+        with self.assertRaises(UseOfOldConfigOptionException):
+            self.config.linking.weighted_average_function(0)
+
+    def test_use_weighted_average_function_dict_nice_error(self):
+        with self.assertRaises(UseOfOldConfigOptionException):
+            self.config.linking['weighted_average_function'](0)
+
+
+class BackwardsCompatibilityWafPayloadTests(unittest.TestCase):
+    arg = 'weighted_average_function'
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config = Config()
+        with cls.assertRaises(cls, UseOfOldConfigOptionException) as cls.context:
+            cls.config.linking.weighted_average_function(0)
+        cls.raised = cls.context.exception
+
+    def test_exception_has_correct_conf_type(self):
+        self.assertIs(self.raised.conf_type, Linking)
+
+    def test_exception_has_correct_arg(self):
+        self.assertEqual(self.raised.arg_name, self.arg)
 
 
 if __name__ == '__main__':
