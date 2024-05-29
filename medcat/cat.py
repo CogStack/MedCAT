@@ -376,27 +376,25 @@ class CAT(object):
         else:
             vocab = None
 
-        # Find meta models in the model_pack
+        # Find addl NER models in the model_pack
         trf_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('trf_')] if load_addl_ner else []
         addl_ner = []
         for trf_path in trf_paths:
             trf = TransformersNER.load(save_dir_path=trf_path)
-            trf.cdb = cdb # Set the cat.cdb to be the CDB of the TRF model
+            trf.cdb = cdb  # Set the cat.cdb to be the CDB of the TRF model
             addl_ner.append(trf)
 
         # Find meta models in the model_pack
-        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
         meta_cats = []
-        for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
-                                          config_dict=meta_cat_config_dict))
+        if load_meta_models:
+            meta_cats = cls.load_meta_cats(model_pack_path)
 
         cat = cls(cdb=cdb, config=cdb.config, vocab=vocab, meta_cats=meta_cats, addl_ner=addl_ner)
         logger.info(cat.get_model_card())  # Print the model card
         return cat
 
     @classmethod
-    def load_cdb(cls, model_pack_path) -> CDB:
+    def load_cdb(cls, model_pack_path: str) -> CDB:
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
         nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
         has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
@@ -404,6 +402,16 @@ class CAT(object):
         logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
         cdb = CDB.load(cdb_path, json_path)
         return cdb
+
+    @classmethod
+    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[MetaCAT]:
+        meta_paths = [os.path.join(model_pack_path, path)
+                      for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_cats = []
+        for meta_path in meta_paths:
+            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
+                                          config_dict=meta_cat_config_dict))
+        return meta_cats
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         """Push the text through the pipeline.
