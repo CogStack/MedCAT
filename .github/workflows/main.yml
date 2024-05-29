@@ -35,6 +35,23 @@ jobs:
         run: |
           timeout 17m python -m unittest discover
 
+      - name: Get the latest release version
+        id: get_latest_release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const latestRelease = await github.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.setOutput('latest_version', latestRelease.data.tag_name);
+
+      - name: Make sure there's no deprecated methods that should be removed.
+        env:
+          VERSION: ${{ steps.get_latest_release.outputs.latest_version }}
+        run: |
+          python tests/check_deprecations.py "$VERSION" --next-version
+
   publish-to-test-pypi:
 
     if: |
