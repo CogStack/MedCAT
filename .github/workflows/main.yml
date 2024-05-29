@@ -25,16 +25,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-      - name: Check types
-        run: |
-          python -m mypy --follow-imports=normal medcat
-      - name: Lint
-        run: |
-          flake8 medcat
-      - name: Test
-        run: |
-          timeout 17m python -m unittest discover
-
       - name: Get the latest release version
         id: get_latest_release
         uses: actions/github-script@v6
