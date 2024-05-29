@@ -48,7 +48,7 @@ def replace_entities_in_text(text: str,
 @deprecated("API now allows creating a DeId model (medcat.utils.ner.deid.DeIdModel). "
             "It aims to simplify the usage of DeId models. "
             "The use of this model is encouraged over the use of this method.",
-            depr_version=(1, 8, 0), removal_version=(1, 12, 0))
+            depr_version=(1, 8, 0), removal_version=(0, 0, 1))
 def deid_text(*args, **kwargs) -> str:
     return _deid_text(*args, **kwargs)
 
