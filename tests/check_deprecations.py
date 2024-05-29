@@ -133,6 +133,7 @@ def main(args: List[str] = sys_argv[1:],
     decorator_name = deprecated_decorator.__name__
     pos_args = [arg for arg in args if not arg.startswith("-")]
     codebase_path = 'medcat' if len(pos_args) <= 1 else pos_args[1]
+    print("arg0", repr(args[0]))
     medcat_version = tuple(int(s) for s in args[0].split("."))
     compare_next_minor_release = '--next-version' in args
 
