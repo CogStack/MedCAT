@@ -128,6 +128,11 @@ def get_deprecated_methods_that_should_have_been_removed(codebase_path: str,
     return should_be_removed
 
 
+def _ver2str(ver: Tuple[int, int, int]) -> str:
+    maj, min, patch = ver
+    return f"v{maj}.{min}.{patch}"
+
+
 def main(args: List[str] = sys_argv[1:],
          deprecated_decorator: Callable[[], Callable] = deprecated):
     decorator_name = deprecated_decorator.__name__
@@ -158,11 +163,12 @@ def main(args: List[str] = sys_argv[1:],
 
     to_remove = get_deprecated_methods_that_should_have_been_removed(codebase_path, decorator_name, medcat_version)
 
+    ver_descr = "next" if compare_next_minor_release else "current"
     for filepath, func_name, rem_ver in to_remove:
         print("SHOULD ALREADY BE REMOVED")
         print(f"In file: {filepath}")
         print(f" Method: {func_name}")
-        print(f" Scheduled for removal in: {rem_ver}")
+        print(f" Scheduled for removal in: {_ver2str(rem_ver)} ({ver_descr} version: {_ver2str(medcat_version)})")
     if to_remove:
         print("Found issues - see above")
         sys_exit(1)
