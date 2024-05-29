@@ -50,7 +50,7 @@ jobs:
         env:
           VERSION: ${{ steps.get_latest_release.outputs.latest_version }}
         run: |
-          python tests/check_deprecations.py "$VERSION" --next-version
+          python tests/check_deprecations.py "$VERSION" --next-version --remove-prefix
 
   publish-to-test-pypi:
 
