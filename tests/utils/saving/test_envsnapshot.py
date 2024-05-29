@@ -16,6 +16,26 @@ def list_zip_contents(zip_file_path):
         return zip_ref.namelist()
 
 
+class DirectDependenciesTests(unittest.TestCase):
+
+    def setUp(self) -> None:
+        self.direct_deps = envsnapshot.get_direct_dependencies()
+
+    def test_nonempty(self):
+        self.assertTrue(self.direct_deps)
+
+    def test_does_not_contain_versions(self, version_starters: str = '<=>~'):
+        for dep in self.direct_deps:
+            for vs in version_starters:
+                with self.subTest(f"DEP '{dep}' check for '{vs}'"):
+                    self.assertNotIn(vs, dep)
+
+    def test_deps_are_installed_packages(self):
+        for dep in self.direct_deps:
+            with self.subTest(f"Has '{dep}'"):
+                envsnapshot.pkg_resources.require(dep)
+
+
 class EnvSnapshotAloneTests(unittest.TestCase):
 
     def setUp(self) -> None:
