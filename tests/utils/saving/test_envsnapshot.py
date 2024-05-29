@@ -67,6 +67,11 @@ class EnvSnapshotAloneTests(unittest.TestCase):
         deps = self.env_info[name]
         self.assertTrue(deps)
 
+    def test_all_direct_dependencies_are_installed(self):
+        deps = self.env_info['dependencies']
+        direct_deps = envsnapshot.get_direct_dependencies()
+        self.assertEqual(len(deps), len(direct_deps))
+
 
 CAT_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..", "examples")
 ENV_SNAPSHOT_FILE_NAME = envsnapshot.ENV_SNAPSHOT_FILE_NAME
