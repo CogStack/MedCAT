@@ -134,7 +134,12 @@ def main(args: List[str] = sys_argv[1:],
     pos_args = [arg for arg in args if not arg.startswith("-")]
     codebase_path = 'medcat' if len(pos_args) <= 1 else pos_args[1]
     print("arg0", repr(args[0]))
-    medcat_version = tuple(int(s) for s in args[0].split("."))
+    remove_ver_prefix = '--remove-prefix' in args
+    pure_ver = pos_args[0]
+    if remove_ver_prefix:
+        # remove v from (e.g) v1.12.0
+        pure_ver = pure_ver[1:]
+    medcat_version = tuple(int(s) for s in pure_ver.split("."))
     compare_next_minor_release = '--next-version' in args
 
     # pad out medcat varesions
