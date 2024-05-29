@@ -301,9 +301,9 @@ class CATTests(unittest.TestCase):
         data_path = self.SUPERVISED_TRAINING_JSON
         ckpt_dir_path = temp_file
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
-        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
-                                                                                     checkpoint=checkpoint,
-                                                                                     nepochs=nepochs)
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised_from_json(data_path,
+                                                                                               checkpoint=checkpoint,
+                                                                                               nepochs=nepochs)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
@@ -328,13 +328,11 @@ class CATTests(unittest.TestCase):
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export.json")
         ckpt_dir_path = temp_file
         checkpoint = Checkpoint(dir_path=ckpt_dir_path, steps=1, max_to_keep=sys.maxsize)
-        self.undertest.train_supervised(data_path,
-                                        checkpoint=checkpoint,
-                                        nepochs=nepochs_train)
-        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised(data_path,
-                                                                                     checkpoint=checkpoint,
-                                                                                     nepochs=nepochs_train+nepochs_retrain,
-                                                                                     is_resumed=True)
+        self.undertest.train_supervised_from_json(data_path,
+                                                  checkpoint=checkpoint,
+                                                  nepochs=nepochs_train)
+        fp, fn, tp, p, r, f1, cui_counts, examples = self.undertest.train_supervised_from_json(
+            data_path, checkpoint=checkpoint, nepochs=nepochs_train+nepochs_retrain, is_resumed=True)
         checkpoints = [f for f in os.listdir(ckpt_dir_path) if "checkpoint-" in f]
         self.assertEqual({}, fp)
         self.assertEqual({}, fn)
@@ -351,15 +349,15 @@ class CATTests(unittest.TestCase):
     def test_train_supervised_does_not_retain_MCT_filters_default(self, extra_cui_filter=None):
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
         before = str(self.undertest.config.linking.filters)
-        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, extra_cui_filter=extra_cui_filter)
+        self.undertest.train_supervised_from_json(data_path, nepochs=1, use_filters=True, extra_cui_filter=extra_cui_filter)
         after = str(self.undertest.config.linking.filters)
         self.assertEqual(before, after)
 
     def test_train_supervised_can_retain_MCT_filters(self, extra_cui_filter=None, retain_extra_cui_filter=False):
         data_path = os.path.join(os.path.dirname(__file__), "resources", "medcat_trainer_export_filtered.json")
         before = str(self.undertest.config.linking.filters)
-        self.undertest.train_supervised(data_path, nepochs=1, use_filters=True, retain_filters=True,
-                                        extra_cui_filter=extra_cui_filter, retain_extra_cui_filter=retain_extra_cui_filter)
+        self.undertest.train_supervised_from_json(data_path, nepochs=1, use_filters=True, retain_filters=True,
+                                                  extra_cui_filter=extra_cui_filter, retain_extra_cui_filter=retain_extra_cui_filter)
         after = str(self.undertest.config.linking.filters)
         self.assertNotEqual(before, after)
         with open(data_path, 'r') as f:
@@ -701,7 +699,7 @@ def _get_meta_cat(meta_cat_dir):
                        config=config)
     os.makedirs(meta_cat_dir, exist_ok=True)
     json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "mct_export_for_meta_cat_test.json")
-    meta_cat.train(json_path, save_dir_path=meta_cat_dir)
+    meta_cat.train_from_json(json_path, save_dir_path=meta_cat_dir)
     return meta_cat
 
 

@@ -146,7 +146,8 @@ class CAT(object):
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
 
-    @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
+    @deprecated(message="Replaced with cat.pipe.spacy_nlp.",
+                depr_version=(1, 2, 7), removal_version=(1, 12, 0))
     def get_spacy_nlp(self) -> Language:
         """Returns the spacy pipeline with MedCAT
 
@@ -728,7 +729,8 @@ class CAT(object):
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
     @deprecated(message="Use train_supervised_from_json to train based on data "
-                "loaded from a json file")
+                "loaded from a json file",
+                depr_version=(1, 8, 0), removal_version=(1, 12, 0))
     def train_supervised(self,
                          data_path: str,
                          reset_cui_count: bool = False,
@@ -1228,7 +1230,8 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
-    @deprecated(message="Use `multiprocessing_batch_char_size` instead")
+    @deprecated(message="Use `multiprocessing_batch_char_size` instead",
+                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
                         nproc: int = 2,
@@ -1501,7 +1504,8 @@ class CAT(object):
 
         return docs
 
-    @deprecated(message="Use `multiprocessing_batch_docs_size` instead")
+    @deprecated(message="Use `multiprocessing_batch_docs_size` instead",
+                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
     def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,
