@@ -138,7 +138,7 @@ class CAT(object):
 
         # Add meta_annotation classes if they exist
         for meta_cat in self._meta_cats:
-            self.pipe.add_meta_cat(meta_cat, meta_cat.config.general.category_name)
+            self.pipe.add_meta_cat(meta_cat, meta_cat.config.pre_load.category_name)
 
         for rel_cat in self._rel_cats:
             self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))

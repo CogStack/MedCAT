@@ -691,9 +691,9 @@ class ModelWithZeroConfigsLoadTests(unittest.TestCase):
 
 def _get_meta_cat(meta_cat_dir):
     config = ConfigMetaCAT()
-    config.general["category_name"] = "Status"
+    config.pre_load.category_name = "Status"
     config.train["nepochs"] = 1
-    config.model["input_size"] = 10
+    config.pre_load.input_size = 10
     meta_cat = MetaCAT(tokenizer=TokenizerWrapperBERT(AutoTokenizer.from_pretrained("prajjwal1/bert-tiny")),
                        embeddings=None,
                        config=config)

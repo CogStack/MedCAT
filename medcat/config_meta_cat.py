@@ -6,11 +6,8 @@ class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
     disable_component_lock: bool = False
-    seed: int = 13
     description: str = "No description"
     """Should provide a basic description of this MetaCAT model"""
-    category_name: Optional[str] = None
-    """What category is this meta_cat model predicting/training"""
     category_value2id: Dict = {}
     """Map from category values to ID, if empty it will be autocalculated during training"""
     vocab_size: Optional[int] = None
@@ -27,8 +24,6 @@ class General(MixingConfig, BaseModel):
     """Number of annotations to be meta-annotated at once in eval"""
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
-    tokenizer_name: str = 'bbpe'
-    """Tokenizer name used with of MetaCAT"""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
     context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
@@ -47,28 +42,12 @@ class General(MixingConfig, BaseModel):
 
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
-    model_name: str = 'lstm'
-    """NOTE: When changing model, make sure to change the tokenizer as well"""
-    model_variant: str = 'bert-base-uncased'
-    model_freeze_layers: bool = True
-    num_layers: int = 2
-    input_size: int = 300
-    hidden_size: int = 300
-    dropout: float = 0.5
     phase_number: int = 0
     """Indicates whether or not two phase learning is being performed.
     1: Phase 1 - Train model on undersampled data
     2: Phase 2 - Continue training on full data
     0: None - 2 phase learning is not performed"""
     category_undersample: str = ''
-    model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
-    num_directions: int = 2
-    """2 - bidirectional model, 1 - unidirectional"""
-    nclasses: int = 2
-    """Number of classes that this model will output"""
-    padding_idx: int = -1
-    emb_grad: bool = True
-    """If True the embeddings will also be trained"""
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating representation"""
 
@@ -109,9 +88,40 @@ class Train(MixingConfig, BaseModel):
         validate_assignment = True
 
 
+class PreLoad(MixingConfig, BaseModel):
+    """The parts of config that only take effect when setting before loading a MetaCAT model.
+
+    Changes to the parameters listed here will generally only be effective if done
+    before a model is initialised or loaded.
+    """
+    seed: int = 13
+    """NOTE: If used along RelCAT or additional NER, only one of the seeds will take effect"""
+    category_name: Optional[str] = None
+    """What category is this meta_cat model predicting/training"""
+    tokenizer_name: str = 'bbpe'
+    """Tokenizer name used with of MetaCAT"""
+    model_name: str = 'lstm'
+    """NOTE: When changing model, make sure to change the tokenizer as well"""
+    model_variant: str = 'bert-base-uncased'
+    model_freeze_layers: bool = True
+    num_layers: int = 2
+    input_size: int = 300
+    hidden_size: int = 300
+    dropout: float = 0.5
+    model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
+    num_directions: int = 2
+    """2 - bidirectional model, 1 - unidirectional"""
+    nclasses: int = 2
+    """Number of classes that this model will output"""
+    padding_idx: int = -1
+    emb_grad: bool = True
+    """If True the embeddings will also be trained"""
+
+
 class ConfigMetaCAT(MixingConfig, BaseModel):
     """The MetaCAT part of the config"""
     general: General = General()
+    pre_load: PreLoad = PreLoad()
     model: Model = Model()
     train: Train = Train()
 

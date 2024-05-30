@@ -14,25 +14,25 @@ class LSTM(nn.Module):
 
         self.config = config
         # Get the required sizes
-        vocab_size = config.general['vocab_size']
-        embedding_size = config.model['input_size']
+        vocab_size = config.general.vocab_size
+        embedding_size = config.pre_load.input_size
 
         # Initialize embeddings
-        self.embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=config.model['padding_idx'])
+        self.embeddings = nn.Embedding(vocab_size, embedding_size, padding_idx=config.pre_load.padding_idx)
         if embeddings is not None:
             self.embeddings.load_state_dict(OrderedDict([('weight', embeddings)]))
             # Disable training for the embeddings - IMPORTANT
-            self.embeddings.weight.requires_grad = config.model['emb_grad']
+            self.embeddings.weight.requires_grad = config.pre_load.emb_grad
 
         # Create the RNN cell - devide
-        self.rnn = nn.LSTM(input_size=config.model['input_size'],
-                           hidden_size=config.model['hidden_size'] // config.model['num_directions'],
-                           num_layers=config.model['num_layers'],
-                           dropout=config.model['dropout'],
-                           bidirectional=config.model['num_directions'] == 2)
-        self.fc1 = nn.Linear(config.model['hidden_size'], config.model['nclasses'])
+        self.rnn = nn.LSTM(input_size=config.pre_load.input_size,
+                           hidden_size=config.pre_load.hidden_size // config.pre_load.num_directions,
+                           num_layers=config.pre_load.num_layers,
+                           dropout=config.pre_load.dropout,
+                           bidirectional=config.pre_load.num_directions == 2)
+        self.fc1 = nn.Linear(config.pre_load.hidden_size, config.pre_load.nclasses)
 
-        self.d1 = nn.Dropout(config.model['dropout'])
+        self.d1 = nn.Dropout(config.pre_load.dropout)
 
     def forward(self,
                 input_ids: torch.LongTensor,
@@ -42,7 +42,7 @@ class LSTM(nn.Module):
         x = input_ids
         # Get the mask from x
         if attention_mask is None:
-            mask = x != self.config.model['padding_idx']
+            mask = x != self.config.pre_load.padding_idx
         else:
             mask = attention_mask
 
@@ -65,9 +65,9 @@ class LSTM(nn.Module):
         # If this is  True we will always take the last state and not CPOS
         if ignore_cpos:
             x = hidden[0]
-            x = x.view(self.config.model['num_layers'], self.config.model['num_directions'], -1,
-                       self.config.model['hidden_size'] // self.config.model['num_directions'])
-            x = x[-1, :, :, :].permute(1, 2, 0).reshape(-1, self.config.model['hidden_size'])
+            x = x.view(self.config.pre_load.num_layers, self.config.pre_load.num_directions, -1,
+                       self.config.pre_load.hidden_size // self.config.pre_load.num_directions)
+            x = x[-1, :, :, :].permute(1, 2, 0).reshape(-1, self.config.pre_load.hidden_size)
         else:
             x_all = []
             for i, indices in enumerate(center_positions):
@@ -89,9 +89,9 @@ class BertForMetaAnnotation(nn.Module):
 
     def __init__(self, config):
         super(BertForMetaAnnotation, self).__init__()
-        _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,num_hidden_layers=config.model['num_layers'])
-        if config.model['input_size'] != _bertconfig.hidden_size:
-            logger.warning(f"\nInput size for {config.model.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.model['input_size']} Input size changed to {_bertconfig.hidden_size}")
+        _bertconfig = AutoConfig.from_pretrained(config.pre_load.model_variant,num_hidden_layers=config.pre_load.num_layers)
+        if config.pre_load.input_size != _bertconfig.hidden_size:
+            logger.warning(f"\nInput size for {config.pre_load.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.model['input_size']} Input size changed to {_bertconfig.hidden_size}")
 
         bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
         self.config = config
@@ -99,26 +99,26 @@ class BertForMetaAnnotation(nn.Module):
         self.bert = bert
         self.num_labels = config.model["nclasses"]
         for param in self.bert.parameters():
-            param.requires_grad = not config.model.model_freeze_layers
+            param.requires_grad = not config.pre_load.model_freeze_layers
 
-        hidden_size_2 = int(config.model.hidden_size / 2)
+        hidden_size_2 = int(config.pre_load.hidden_size / 2)
         # dropout layer
-        self.dropout = nn.Dropout(config.model.dropout)
+        self.dropout = nn.Dropout(config.pre_load.dropout)
         # relu activation function
         self.relu = nn.ReLU()
         # dense layer 1
-        self.fc1 = nn.Linear(_bertconfig.hidden_size*2, config.model.hidden_size)
+        self.fc1 = nn.Linear(_bertconfig.hidden_size*2, config.pre_load.hidden_size)
         # dense layer 2
-        self.fc2 = nn.Linear(config.model.hidden_size, hidden_size_2)
+        self.fc2 = nn.Linear(config.pre_load.hidden_size, hidden_size_2)
         # dense layer 3
         self.fc3 = nn.Linear(hidden_size_2, hidden_size_2)
         # dense layer 3 (Output layer)
-        model_arch_config = config.model.model_architecture_config
+        model_arch_config = config.pre_load.model_architecture_config
         if model_arch_config is not None:
             if model_arch_config['fc2'] is True or model_arch_config['fc3'] is True:
                 self.fc4 = nn.Linear(hidden_size_2, self.num_labels)
             else:
-                self.fc4 = nn.Linear(config.model.hidden_size, self.num_labels)
+                self.fc4 = nn.Linear(config.pre_load.hidden_size, self.num_labels)
         else:
             self.fc4 = nn.Linear(hidden_size_2, self.num_labels)
         # softmax activation function
@@ -183,14 +183,14 @@ class BertForMetaAnnotation(nn.Module):
         x = self.fc1(x)
         x = self.relu(x)
 
-        if self.config.model.model_architecture_config is not None:
-            if self.config.model.model_architecture_config['fc2'] is True:
+        if self.config.pre_load.model_architecture_config is not None:
+            if self.config.pre_load.model_architecture_config['fc2'] is True:
                 # fc2
                 x = self.fc2(x)
                 x = self.relu(x)
                 x = self.dropout(x)
 
-            if self.config.model.model_architecture_config['fc3'] is True:
+            if self.config.pre_load.model_architecture_config['fc3'] is True:
                 # fc3
                 x = self.fc3(x)
                 x = self.relu(x)

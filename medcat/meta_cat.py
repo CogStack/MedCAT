@@ -56,14 +56,14 @@ class MetaCAT(PipeRunner):
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
-        set_all_seeds(config.general['seed'])
+        set_all_seeds(config.pre_load.seed)
 
         if tokenizer is not None:
             # Set it in the config
-            config.general['tokenizer_name'] = tokenizer.name
-            config.general['vocab_size'] = tokenizer.get_size()
+            config.pre_load.tokenizer_name = tokenizer.name
+            config.general.vocab_size = tokenizer.get_size()
             # We will also set the padding
-            config.model['padding_idx'] = tokenizer.get_pad_id()
+            config.pre_load.padding_idx = tokenizer.get_pad_id()
         self.tokenizer = tokenizer
 
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
@@ -84,16 +84,16 @@ class MetaCAT(PipeRunner):
                 The module
         """
         config = self.config
-        if config.model['model_name'] == 'lstm':
+        if config.pre_load.model_name == 'lstm':
             from medcat.utils.meta_cat.models import LSTM
             model: nn.Module = LSTM(embeddings, config)
             logger.info("LSTM model used for classification")
 
-        elif config.model['model_name'] == 'bert':
+        elif config.pre_load.model_name == 'bert':
             from medcat.utils.meta_cat.models import BertForMetaAnnotation
             model = BertForMetaAnnotation(config)
 
-            if not config.model.model_freeze_layers:
+            if not config.pre_load.model_freeze_layers:
                 peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
                                          target_modules=["query", "value"], lora_dropout=0.2)
 
@@ -224,6 +224,7 @@ class MetaCAT(PipeRunner):
         """
         g_config = self.config.general
         t_config = self.config.train
+        pl_config = self.config.pre_load
 
         # Create directories if they don't exist
         if t_config['auto_save_model']:
@@ -240,7 +241,8 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name present
-        category_name = g_config['category_name']
+        category_name = pl_config.category_name
+        print("CN", category_name, 'vs', data.keys())
         if category_name not in data:
             raise Exception(
                 "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
@@ -264,12 +266,12 @@ class MetaCAT(PipeRunner):
                                                                                      category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         # Make sure the config number of classes is the same as the one found in the data
-        if len(category_value2id) != self.config.model['nclasses']:
+        if len(category_value2id) != self.config.pre_load.nclasses:
             logger.warning(
                 "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                    self.config.model['nclasses'], len(category_value2id)))
+                    self.config.pre_load.nclasses, len(category_value2id)))
             logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
-            self.config.model['nclasses'] = len(category_value2id)
+            self.config.pre_load.nclasses = len(category_value2id)
 
         if self.config.model.phase_number == 2 and save_dir_path is not None:
             model_save_path = os.path.join(save_dir_path, 'model.dat')
@@ -328,6 +330,7 @@ class MetaCAT(PipeRunner):
         """
         g_config = self.config.general
         t_config = self.config.train
+        pl_config = self.config.pre_load
 
         with open(json_path, 'r') as f:
             data_loaded: Dict = json.load(f)
@@ -340,7 +343,7 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name there
-        category_name = g_config['category_name']
+        category_name = pl_config.category_name
         if category_name not in data:
             raise Exception("The category name does not exist in this json file.")
 
@@ -408,12 +411,12 @@ class MetaCAT(PipeRunner):
 
         tokenizer: Optional[TokenizerWrapperBase] = None
         # Load tokenizer (TODO: This should be converted into a factory or something)
-        if config.general['tokenizer_name'] == 'bbpe':
+        if config.pre_load.tokenizer_name == 'bbpe':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBPE
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
-        elif config.general['tokenizer_name'] == 'bert-tokenizer':
+        elif config.pre_load.tokenizer_name == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model['model_variant'])
+            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.pre_load.model_variant)
 
         # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
@@ -620,13 +623,13 @@ class MetaCAT(PipeRunner):
                         value = id2category_value[predictions[ent_ind]]
                         confidence = confidences[ent_ind]
                         if ent._.meta_anns is None:
-                            ent._.meta_anns = {config.general['category_name']: {'value': value,
+                            ent._.meta_anns = {config.pre_load.category_name: {'value': value,
                                                                                  'confidence': float(confidence),
-                                                                                 'name': config.general['category_name']}}
+                                                                                 'name': config.pre_load.category_name}}
                         else:
-                            ent._.meta_anns[config.general['category_name']] = {'value': value,
+                            ent._.meta_anns[config.pre_load.category_name] = {'value': value,
                                                                                 'confidence': float(confidence),
-                                                                                'name': config.general['category_name']}
+                                                                                'name': config.pre_load.category_name}
                 yield from docs
             except Exception as e:
                 self.get_error_handler()(self.name, self, docs, e)
@@ -663,10 +666,10 @@ class MetaCAT(PipeRunner):
                 OR A JSON object in dict form.
         """
         card = {
-            'Category Name': self.config.general['category_name'],
-            'Description': self.config.general['description'],
-            'Classes': self.config.general['category_value2id'],
-            'Model': self.config.model['model_name']
+            'Category Name': self.config.pre_load.category_name,
+            'Description': self.config.general.description,
+            'Classes': self.config.general.category_value2id,
+            'Model': self.config.pre_load.model_name
         }
         if as_dict:
             return card
