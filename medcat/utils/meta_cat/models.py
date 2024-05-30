@@ -14,7 +14,7 @@ class LSTM(nn.Module):
 
         self.config = config
         # Get the required sizes
-        vocab_size = config.general.vocab_size
+        vocab_size = config.general['vocab_size']
         embedding_size = config.pre_load.input_size
 
         # Initialize embeddings

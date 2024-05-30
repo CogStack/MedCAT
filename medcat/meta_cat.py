@@ -63,7 +63,10 @@ class MetaCAT(PipeRunner):
             config.pre_load.tokenizer_name = tokenizer.name
             config.general.vocab_size = tokenizer.get_size()
             # We will also set the padding
-            config.pre_load.padding_idx = tokenizer.get_pad_id()
+            # NOTE: using __setitem__ so that types won't be checked
+            #       the types haven't been an issue before and the
+            #       latest change doesn't change behaviour.
+            config.pre_load['padding_idx'] = tokenizer.get_pad_id()
         self.tokenizer = tokenizer
 
         self.embeddings = torch.tensor(embeddings, dtype=torch.float32) if embeddings is not None else None
