@@ -65,7 +65,7 @@ class ModelCreationTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         cls.cdb = CDB.load(os.path.join(cls.EXAMPLES, "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(cls.EXAMPLES, "vocab.dat"))
-        cls.cdb.config.general.spacy_model = "en_core_web_md"
+        cls.cdb.config.pre_load.spacy_model = "en_core_web_md"
         cls.cdb.config.ner.min_name_len = 2
         cls.cdb.config.ner.upper_case_limit_len = 3
         cls.cdb.config.general.spell_check = True
@@ -115,8 +115,8 @@ class ModelCreationTests(unittest.TestCase):
         folder = self.test_dill_to_json()  # make sure the files exist
         cat = CAT.load_model_pack(folder)
         # The spacy model has full path in the loaded model, thus won't be equal
-        cat.config.general.spacy_model = os.path.basename(
-            cat.config.general.spacy_model)
+        cat.config.pre_load.spacy_model = os.path.basename(
+            cat.config.pre_load.spacy_model)
         self.assertEqual(cat.config.asdict(), self.undertest.config.asdict())
         self.assertEqual(cat.cdb.config, self.undertest.cdb.config)
         self.assertEqual(len(cat.vocab.vocab), len(self.undertest.vocab.vocab))

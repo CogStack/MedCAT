@@ -322,17 +322,8 @@ class CheckPoint(MixingConfig, BaseModel):
 
 class General(MixingConfig, BaseModel):
     """The general part of the config"""
-    spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
-                                       'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
-                                       'merge_entities', 'merge_subtokens']
     checkpoint: CheckPoint = CheckPoint()
     """Checkpointing config"""
-    log_level: int = logging.INFO
-    """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
-    log_format: str = '%(levelname)s:%(name)s: %(message)s'
-    log_path: str = './medcat.log'
-    spacy_model: str = 'en_core_web_md'
-    """What model will be used for tokenization"""
     separator: str = '~'
     """Separator that will be used to merge tokens of a name. Once a CDB is built this should
     always stay the same."""
@@ -380,10 +371,6 @@ class Preprocessing(MixingConfig, BaseModel):
     """Should stopwords be skipped/ingored when processing input"""
     min_len_normalize: int = 5
     """Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case"""
-    stopwords: Optional[set] = None
-    """If None the default set of stowords from spacy will be used. This must be a Set."""
-    max_document_length: int = 1000000
-    """Documents longer  than this will be trimmed"""
 
     class Config:
         extra = Extra.allow
@@ -545,11 +532,35 @@ class Linking(MixingConfig, BaseModel):
         validate_assignment = True
 
 
+class PreLoad(MixingConfig, BaseModel):
+    """The parts of config that only take effect when setting before loading a model.
+
+    Changes to the parameters listed here will generally only be effective if done
+    before a model is initialised or loaded.
+    """
+    spacy_model: str = 'en_core_web_md'
+    """The underlying spacy model name (or path) to use."""
+    spacy_disabled_components: List[str] = ['ner', 'parser', 'vectors', 'textcat',
+                                            'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
+                                            'merge_entities', 'merge_subtokens']
+    """The list of spacy components that will be disabled."""
+    preprocessing_stopwords: Optional[set] = None
+    """If None the default set of stowords from spacy will be used. This must be a Set."""
+    max_document_length: int = 1_000_000
+    """Documents longer than this will be trimmed. 1 000 000 is the internal spacy maximum."""
+    log_level: int = logging.INFO
+    """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
+    log_format: str = '%(levelname)s:%(name)s: %(message)s'
+    log_path: str = './medcat.log'
+    """What model will be used for tokenization"""
+
+
 class Config(MixingConfig, BaseModel):
     """The MedCAT config"""
     version: VersionInfo = VersionInfo()
     cdb_maker: CDBMaker = CDBMaker()
     annotation_output: AnnotationOutput = AnnotationOutput()
+    pre_load: PreLoad = PreLoad()
     general: General = General()
     preprocessing: Preprocessing = Preprocessing()
     ner: Ner = Ner()
@@ -584,9 +595,12 @@ class Config(MixingConfig, BaseModel):
             if k in ['hash', ]:
                 # ignore hash
                 continue
-            if k not in ['version', 'general', 'linking']:
+            if k not in ['version', 'general', 'linking', 'pre_load']:
                 hasher.update(v, length=True)
             elif k == 'general':
+                for k2, v2 in v.items():
+                    hasher.update(v2, length=False)
+            elif k == 'pre_load':
                 for k2, v2 in v.items():
                     if k2 != 'spacy_model':
                         hasher.update(v2, length=False)

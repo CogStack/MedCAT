@@ -15,7 +15,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_identifier_works(self):
         c = Config()
-        self.assertIsNotNone(c.general.spacy_model)
+        self.assertIsNotNone(c.pre_load.spacy_model)
 
     def test_identifier_works_all(self):
         # Ignoring work_skipper and punct checker since their values
@@ -34,7 +34,7 @@ class ConfigTests(unittest.TestCase):
 
     def test_legacy_getitem_works(self):
         c = Config()
-        self.assertIsNotNone(c.general['spacy_model'])
+        self.assertIsNotNone(c.pre_load['spacy_model'])
 
     def test_getitem_works_all(self):
         # Ignoring work_skipper and punct checker since their values
@@ -58,9 +58,9 @@ class ConfigTests(unittest.TestCase):
         # for the .general field as the first and as such
         # this test would fail
         bc1 = Config()
-        bc1.general.spacy_model = 'smth'
+        bc1.pre_load.spacy_model = 'smth'
         bc2 = Config()
-        self.assertNotEqual(bc2.general.spacy_model, bc1.general.spacy_model)
+        self.assertNotEqual(bc2.pre_load.spacy_model, bc1.pre_load.spacy_model)
 
     def test_config_get_hash_gets_same_value_on_each_pass(self):
         c = Config()
@@ -86,7 +86,7 @@ class ConfigTests(unittest.TestCase):
     def test_changed_config_different_hash(self):
         c = Config()
         hash1 = c.get_hash()
-        c.general.log_format = ''
+        c.pre_load.log_format = ''
         hash2 = c.get_hash()
         self.assertNotEqual(hash1, hash2)
 
@@ -109,13 +109,13 @@ class ConfigTests(unittest.TestCase):
         c = Config()
         h1 = c.get_hash()
         # save prev
-        prev_log_format = str(c.general.log_format)
+        prev_log_format = str(c.pre_load.log_format)
         # change
-        c.general.log_format = ''
+        c.pre_load.log_format = ''
         h2 = c.get_hash()
         self.assertNotEqual(h1, h2)
         # set back
-        c.general.log_format = prev_log_format
+        c.pre_load.log_format = prev_log_format
         h3 = c.get_hash()
         self.assertEqual(h1, h3)
 
@@ -131,9 +131,9 @@ class ConfigTests(unittest.TestCase):
         bc1: Config = Config()
         bc2: Config = Config()
         self.assertEqual(bc1, bc2)
-        bc1.general.spacy_model = 'Non-default-value'
-        self.assertNotEqual(bc1.general, bc2.general)
-        self.assertNotEqual(bc1.general.spacy_model, bc2.general.spacy_model)
+        bc1.pre_load.spacy_model = 'Non-default-value'
+        self.assertNotEqual(bc1.pre_load, bc2.pre_load)
+        self.assertNotEqual(bc1.pre_load.spacy_model, bc2.pre_load.spacy_model)
         self.assertNotEqual(bc1, bc2)
 
     def test_fails_upon_wrong_type_init(self):

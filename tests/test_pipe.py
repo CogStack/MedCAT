@@ -25,8 +25,8 @@ class PipeTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.config = Config()
-        cls.config.general['log_level'] = logging.INFO
-        cls.config.general["spacy_model"] = "en_core_web_md"
+        cls.config.pre_load.log_level = logging.INFO
+        cls.config.pre_load.spacy_model = "en_core_web_md"
         cls.config.ner['max_skip_tokens'] = 1
         cls.config.ner['upper_case_limit_len'] = 4
         cls.config.linking['disamb_length_limit'] = 2

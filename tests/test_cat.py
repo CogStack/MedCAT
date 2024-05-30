@@ -27,7 +27,7 @@ class CATTests(unittest.TestCase):
         cls.cdb = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
         cls.vocab.make_unigram_table()
-        cls.cdb.config.general.spacy_model = "en_core_web_md"
+        cls.cdb.config.pre_load.spacy_model = "en_core_web_md"
         cls.cdb.config.ner.min_name_len = 2
         cls.cdb.config.ner.upper_case_limit_len = 3
         cls.cdb.config.general.spell_check = True
@@ -587,7 +587,7 @@ class GetEntitiesWithStopWords(unittest.TestCase):
         cls.cdb2 = CDB.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples", "vocab.dat"))
         cls.vocab.make_unigram_table()
-        cls.cdb1.config.general.spacy_model = "en_core_web_md"
+        cls.cdb1.config.pre_load.spacy_model = "en_core_web_md"
         cls.cdb1.config.ner.min_name_len = 2
         cls.cdb1.config.ner.upper_case_limit_len = 3
         cls.cdb1.config.general.spell_check = True
@@ -602,7 +602,7 @@ class GetEntitiesWithStopWords(unittest.TestCase):
         # this (the following two lines)
         # needs to be done before initialising the CAT
         # since that initialises the pipe
-        cls.cdb2.config.preprocessing.stopwords = {"stop", "words"}
+        cls.cdb2.config.pre_load.preprocessing_stopwords = {"stop", "words"}
         cls.cdb2.config.preprocessing.skip_stopwords = True
         # the CAT that skips the stopwords
         cls.w_stopwords = CAT(cdb=cls.cdb2, config=cls.cdb2.config, vocab=cls.vocab, meta_cats=[])
@@ -643,7 +643,7 @@ class ModelLoadsUnreadableSpacy(unittest.TestCase):
         cls.temp_dir = tempfile.TemporaryDirectory()
         model_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "examples")
         cdb = CDB.load(os.path.join(model_path, 'cdb.dat'))
-        cdb.config.general.spacy_model = os.path.join(cls.temp_dir.name, "en_core_web_md")
+        cdb.config.pre_load.spacy_model = os.path.join(cls.temp_dir.name, "en_core_web_md")
         # save CDB in new location
         cdb.save(os.path.join(cls.temp_dir.name, 'cdb.dat'))
         # save config in new location

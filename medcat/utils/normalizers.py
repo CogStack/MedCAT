@@ -134,7 +134,7 @@ class TokenNormalizer(PipeRunner):
     def __init__(self, config, spell_checker=None):
         self.config = config
         self.spell_checker = spell_checker
-        self.nlp = spacy.load(config.general.spacy_model, disable=config.general.spacy_disabled_components)
+        self.nlp = spacy.load(config.pre_load.spacy_model, disable=config.pre_load.spacy_disabled_components)
         super().__init__(self.config.general.workers)
 
     # Override

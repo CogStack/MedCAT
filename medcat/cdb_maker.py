@@ -33,7 +33,7 @@ class CDBMaker(object):
     def __init__(self, config: Config, cdb: Optional[CDB] = None) -> None:
         self.config = config
         # Set log level
-        logger.setLevel(self.config.general['log_level'])
+        logger.setLevel(self.config.pre_load.log_level)
 
         # To make life a bit easier
         self.cnf_cm = config.cdb_maker

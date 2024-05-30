@@ -35,9 +35,9 @@ def ensure_backward_compatibility(config: BaseModel, workers: Callable[[], int])
         fix_waf_lambda(config.linking)  # type: ignore
     if config.general.workers is None:  # type: ignore
         config.general.workers = workers()  # type: ignore
-    disabled_comps = config.general.spacy_disabled_components  # type: ignore
+    disabled_comps = config.pre_load.spacy_disabled_components  # type: ignore
     if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
-        config.general.spacy_disabled_components.append('lemmatizer')  # type: ignore
+        config.pre_load.spacy_disabled_components.append('lemmatizer')  # type: ignore
 
 
 def get_and_del_weighted_average_from_config(config: BaseModel) -> Optional[Callable[[int], float]]:
