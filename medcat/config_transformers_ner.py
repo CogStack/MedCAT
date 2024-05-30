@@ -28,6 +28,7 @@ class PreLoad(MixingConfig, BaseModel):
     model_name: str = 'roberta-base'
     """Can be path also"""
     seed: int = 13
+    """NOTE: If used along RelCAT or RelCAT, only one of the seeds will take effect"""
     description: str = "No description"
     """Should provide a basic description of this MetaCAT model"""
 
