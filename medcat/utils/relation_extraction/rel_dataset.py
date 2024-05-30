@@ -39,7 +39,7 @@ class RelData(Dataset):
         self.tokenizer: TokenizerWrapperBERT = tokenizer
         self.dataset: Dict[Any, Any] = {}
 
-        self.log.setLevel(self.config.general.log_level)
+        self.log.setLevel(self.config.pre_load.log_level)
 
     def generate_base_relations(self, docs: Iterable[Doc]) -> List[Dict]:
         """ Util function, should be used if you want to train from spacy docs

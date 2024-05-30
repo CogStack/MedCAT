@@ -16,20 +16,21 @@ from transformers.models.bert.configuration_bert import BertConfig
 import spacy
 from spacy.tokens import Span, Doc
 
+
 class RelCATTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
         config = ConfigRelCAT()
-        config.general.device = "cpu"
-        config.general.model_name = "bert-base-uncased"
+        config.pre_load.device = "cpu"
+        config.pre_load.model_name = "bert-base-uncased"
         config.train.batch_size = 1
         config.train.nclasses = 3
-        config.model.hidden_size= 256
-        config.model.model_size = 2304
+        config.pre_load.hidden_size= 256
+        config.pre_load.model_size = 2304
 
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(
-            pretrained_model_name_or_path=config.general.model_name,
+            pretrained_model_name_or_path=config.pre_load.model_name,
             config=config), add_special_tokens=True)
 
         SPEC_TAGS = ["[s1]", "[e1]", "[s2]", "[e2]"]
