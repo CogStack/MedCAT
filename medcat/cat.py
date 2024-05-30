@@ -419,7 +419,7 @@ class CAT(object):
         # Find metacat models in the model_pack
         meta_cats = []
         if load_meta_models:
-            meta_cats = cls.load_meta_cats(model_pack_path)
+            meta_cats = [mc[1] for mc in cls.load_meta_cats(model_pack_path)]
 
         # Find Rel models in model_pack
         rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')] if load_rel_models else []
@@ -434,6 +434,13 @@ class CAT(object):
 
     @classmethod
     def load_cdb(cls, model_pack_path: str) -> CDB:
+        """
+        Loads the concept database from the provided model pack path
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+        Returns:
+            CDB: The loaded concept database
+        """
         cdb_path = os.path.join(model_pack_path, "cdb.dat")
         nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
         has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
@@ -443,14 +450,25 @@ class CAT(object):
         return cdb
 
     @classmethod
-    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[MetaCAT]:
+    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[tuple(str, MetaCAT)]:
+        """
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+            meta_cat_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in meta_cat.
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
+        Returns:
+            List[tuple(str, MetaCAT)]: list of pairs of meta cat model names (i.e. the task name) and the MetaCAT models.
+        """
         meta_paths = [os.path.join(model_pack_path, path)
                       for path in os.listdir(model_pack_path) if path.startswith('meta_')]
         meta_cats = []
         for meta_path in meta_paths:
             meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
                                           config_dict=meta_cat_config_dict))
-        return meta_cats
+        return list(zip(meta_paths, meta_cats))
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         """Push the text through the pipeline.
