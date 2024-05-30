@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, List
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
