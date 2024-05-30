@@ -419,7 +419,7 @@ class CAT(object):
         # Find metacat models in the model_pack
         meta_cats: List[MetaCAT] = []
         if load_meta_models:
-            meta_cats = [mc[1] for mc in cls.load_meta_cats(model_pack_path)]
+            meta_cats = [mc[1] for mc in cls.load_meta_cats(model_pack_path, meta_cat_config_dict)]
 
         # Find Rel models in model_pack
         rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')] if load_rel_models else []
