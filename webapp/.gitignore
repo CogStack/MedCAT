@@ -1,6 +1,0 @@
-webapp/data/*
-!webapp/data/.keep
-webapp/db/*
-!webapp/db/.keep
-webapp/models/*
-!webapp/models/.keep

@@ -1,3 +1,4 @@
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import List, Dict, Optional, Union, overload
@@ -26,7 +27,7 @@ class TokenizerWrapperBase(ABC):
 
     @classmethod
     @abstractmethod
-    def load(cls, dir_path: str, **kwargs) -> Tokenizer: ...
+    def load(cls, dir_path: str, model_variant: Optional[str] = '', **kwargs) -> Tokenizer: ...
 
     @abstractmethod
     def get_size(self) -> int: ...
@@ -70,13 +71,16 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         """Tokenize some text
 
         Args:
-            text (Union(str, List[str])):
+            text (Union[str, List[str]]):
                 Text/texts to be tokenized.
 
         Returns:
-            Union(dict, List[dict]):
+            Union(dict, List[Dict]):
                 Dictionary/ies containing `offset_mapping`, `input_ids` and `tokens` corresponding to the
                 input text/s.
+
+        Raises:
+            Exception: If the input is something other than text or a list of text.
         """
         self.hf_tokenizers = self.ensure_tokenizer()
 
@@ -109,7 +113,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
         self.hf_tokenizers.save_model(dir_path, prefix=self.name)
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs) -> "TokenizerWrapperBPE":
+    def load(cls, dir_path: str, model_variant: Optional[str] = '', **kwargs) -> "TokenizerWrapperBPE":
         tokenizer = cls()
         vocab_file = os.path.join(dir_path, f'{tokenizer.name}-vocab.json')
         merges_file = os.path.join(dir_path, f'{tokenizer.name}-merges.txt')
@@ -183,10 +187,14 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         self.hf_tokenizers.save_pretrained(path)
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs) -> "TokenizerWrapperBERT":
+    def load(cls, dir_path: str, model_variant: Optional[str] = '', **kwargs) -> "TokenizerWrapperBERT":
         tokenizer = cls()
         path = os.path.join(dir_path, cls.name)
-        tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
+        try:
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
+        except Exception as e:
+            logging.warning("Could not load tokenizer from path due to error: {}. Loading from library for model variant: {}".format(e,model_variant))
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(model_variant)
 
         return tokenizer
 

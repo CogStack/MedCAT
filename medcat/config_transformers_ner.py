@@ -13,6 +13,8 @@ class General(MixingConfig, BaseModel):
     """How many characters are piped at once into the meta_cat class"""
     ner_aggregation_strategy: str = 'simple'
     """Agg strategy for HF pipeline for NER"""
+    chunking_overlap_window: Optional[int] = 5
+    """Size of the overlap window used for chunking"""
     test_size: float = 0.2
     last_train_on: Optional[int] = None
     verbose_metrics: bool = False

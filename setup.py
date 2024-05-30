@@ -15,7 +15,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/CogStack/MedCAT",
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
-              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner',
+              'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
               'medcat.utils.saving', 'medcat.utils.regression', 'medcat.stats'],
     install_requires=[
         'numpy>=1.22.0,<1.26.0',  # 1.22.0 is first to support python 3.11; post 1.26.0 there's issues with scipy
@@ -40,6 +40,8 @@ setuptools.setup(
         'blis>=0.7.5', # allow later versions, tested with 0.7.9
         'click>=8.0.4', # allow later versions, tested with 8.1.3
         'pydantic>=1.10.0,<2.0', # for spacy compatibility; avoid 2.0 due to breaking changes
+        "humanfriendly~=10.0",  # for human readable file / RAM sizes
+        "peft>=0.8.2", # allow later versions, tested with 0.10.0
         ],
     classifiers=[
         "Programming Language :: Python :: 3",

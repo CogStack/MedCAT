@@ -1,22 +1,22 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
 from pydantic.fields import ModelField
-from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union
+from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
+import json
 from functools import partial
 import re
 
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
+from medcat.utils.config_utils import attempt_fix_weighted_average_function
+from medcat.utils.config_utils import weighted_average, is_old_type_config_dict
+from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook
 
 
 logger = logging.getLogger(__name__)
-
-
-def weighted_average(step: int, factor: float) -> float:
-    return max(0.1, 1 - (step ** 2 * factor))
 
 
 def workers(workers_override: Optional[int] = None) -> int:
@@ -32,6 +32,11 @@ class FakeDict:
         except AttributeError as e:
             raise KeyError from e
 
+    def __setattr__(self, arg: str, val) -> None:
+        # TODO: remove this in the future when we stop stupporting this in config
+        if isinstance(self, Linking) and arg == "weighted_average_function":
+            val = attempt_fix_weighted_average_function(val)
+        super().__setattr__(arg, val)
 
     def __setitem__(self, arg: str, val) -> None:
         setattr(self, arg, val)
@@ -101,8 +106,8 @@ class MixingConfig(FakeDict):
             save_path(str): Where to save the created json file
         """
         # We want to save the dict here, not the whole class
-        json_string = jsonpickle.encode(
-            {field: getattr(self, field) for field in self.fields()})
+        json_string = json.dumps(self.asdict(), cls=cast(Type[json.JSONEncoder],
+                                                         CustomDelegatingEncoder.def_inst))
 
         with open(save_path, 'w') as f:
             f.write(json_string)
@@ -141,7 +146,10 @@ class MixingConfig(FakeDict):
 
         Args:
             path(str): the path to the config file
-            extractor(ValueExtractor, optional):  (Default value = _DEFAULT_EXTRACTOR)
+            extractor(ValueExtractor):  (Default value = _DEFAULT_EXTRACTOR)
+
+        Raises:
+            ValueError: In case of unknown attribute.
         """
         with open(path, 'r') as f:
             for line in f:
@@ -199,7 +207,11 @@ class MixingConfig(FakeDict):
 
         # Read the jsonpickle string
         with open(save_path) as f:
-            config_dict = jsonpickle.decode(f.read())
+            config_dict = json.load(f, object_hook=default_hook)
+            if is_old_type_config_dict(config_dict):
+                logger.warning("Loading an old type of config (jsonpickle) from '%s'",
+                               save_path)
+                config_dict = jsonpickle.decode(f.read())
 
         config.merge_config(config_dict)
 
@@ -231,7 +243,7 @@ class MixingConfig(FakeDict):
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, Field]: The dictionary of the field names and fields
+            Dict[str, ModelField]: The dictionary of the field names and fields
         """
         return cast(BaseModel, self).__fields__
 
@@ -506,9 +518,6 @@ class Linking(MixingConfig, BaseModel):
     similarity calculation and will have a similarity of -1."""
     always_calculate_similarity: bool = False
     """Do we want to calculate context similarity even for concepts that are not ambigous."""
-    weighted_average_function: Callable[..., Any] = _DEFAULT_PARTIAL
-    """Weights for a weighted average
-    'weighted_average_function': partial(weighted_average, factor=0.02),"""
     calculate_dynamic_threshold: bool = False
     """Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
     and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
@@ -592,3 +601,39 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=True)
         self.hash = hasher.hexdigest()
         return self.hash
+
+
+class UseOfOldConfigOptionException(AttributeError):
+
+    def __init__(self, conf_type: Type[FakeDict], arg_name: str, advice: str) -> None:
+        super().__init__(f"Tried to use {conf_type.__name__}.{arg_name}. "
+                         f"Advice: {advice}")
+        self.conf_type = conf_type
+        self.arg_name = arg_name
+        self.advice = advice
+
+
+# NOTE: The following is for backwards compatibility and should be removed
+#       at some point in the future
+
+# wrapper for functions for a better error in case of weighted_average_function
+# access
+def _wrapper(func, check_type: Type[FakeDict], advice: str, exp_type: Type[Exception]):
+    def wrapper(*args, **kwargs):
+        try:
+            res = func(*args, **kwargs)
+        except exp_type as ex:
+            if ((len(args) == 2 and len(kwargs) == 0) and
+                    (isinstance(args[0], check_type) and
+                    args[1] == "weighted_average_function")):
+                raise UseOfOldConfigOptionException(Linking, args[1], advice) from ex
+            raise ex
+        return res
+    return wrapper
+
+
+# wrap Linking.__getattribute__ so that when getting weighted_average_function
+# we get a nicer exceptio
+_waf_advice = "You can use `cat.cdb.weighted_average_function` to access it directly"
+Linking.__getattribute__ = _wrapper(Linking.__getattribute__, Linking, _waf_advice, AttributeError)  # type: ignore
+Linking.__getitem__ = _wrapper(Linking.__getitem__, Linking, _waf_advice, KeyError)  # type: ignore

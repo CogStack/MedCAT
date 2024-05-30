@@ -1,6 +1,7 @@
 from typing import Any, Protocol, runtime_checkable, List, Union, Type, Optional, Callable
 
 import json
+import re
 
 
 @runtime_checkable
@@ -11,7 +12,7 @@ class EncodeableObject(Protocol):
 
         Returns:
             dict: The dict to be serialised.
-        """
+        """  # noqa
 
 
 class UnsuitableObject(ValueError):
@@ -31,10 +32,11 @@ class PartEncoder(Protocol):
 
         Returns:
             Any: The encoded object
-        """
+        """  # noqa
 
 
 SET_IDENTIFIER = '==SET=='
+PATTERN_IDENTIFIER = "==PATTERN=="
 
 
 class SetEncoder(PartEncoder):
@@ -60,7 +62,7 @@ class PartDecoder(Protocol):
 
         Returns:
             Union[dict, Any]: The dict if unable to decode, the decoded object otherwise
-        """
+        """  # noqa
 
 
 class SetDecoder(PartDecoder):
@@ -79,10 +81,34 @@ class SetDecoder(PartDecoder):
         return dct
 
 
+class PatternEncoder(PartEncoder):
+
+    def try_encode(self, obj):
+        if isinstance(obj, re.Pattern):
+            return {PATTERN_IDENTIFIER: obj.pattern}
+        raise UnsuitableObject()
+
+
+class PatternDecoder(PartDecoder):
+
+    def try_decode(self, dct: dict) -> Union[dict, re.Pattern]:
+        """Decode re.Patttern from input dicts.
+
+        Args:
+            dct (dict): The input dict
+
+        Returns:
+            Union[dict, set]: The original dict if this was not a serialized pattern, the pattern otherwise
+        """
+        if PATTERN_IDENTIFIER in dct:
+            return re.compile(dct[PATTERN_IDENTIFIER])
+        return dct
+
+
 PostProcessor = Callable[[Any], None]  # CDB -> None
 
-DEFAULT_ENCODERS: List[Type[PartEncoder]] = [SetEncoder, ]
-DEFAULT_DECODERS: List[Type[PartDecoder]] = [SetDecoder, ]
+DEFAULT_ENCODERS: List[Type[PartEncoder]] = [SetEncoder, PatternEncoder]
+DEFAULT_DECODERS: List[Type[PartDecoder]] = [SetDecoder, PatternDecoder]
 LOADING_POSTPROCESSORS: List[PostProcessor] = []
 
 
@@ -132,6 +158,8 @@ class CustomDelegatingDecoder(json.JSONDecoder):
     @classmethod
     def def_inst(cls) -> 'CustomDelegatingDecoder':
         if cls._def_inst is None:
+            cls._def_inst = cls([_cls() for _cls in DEFAULT_DECODERS])
+        elif len(cls._def_inst._delegates) < len(DEFAULT_DECODERS):
             cls._def_inst = cls([_cls() for _cls in DEFAULT_DECODERS])
         return cls._def_inst
 

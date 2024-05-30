@@ -5,6 +5,7 @@ import yaml
 from medcat.cdb_maker import CDBMaker
 from medcat.utils.make_vocab import MakeVocab
 from medcat.cat import CAT
+from medcat.cdb import CDB
 from medcat.config import Config
 from pathlib import Path
 
@@ -13,16 +14,17 @@ DEFAULT_UNIGRAM_TABLE_SIZE = 100000000
 logger = logging.getLogger(__package__)
 
 
-def create_cdb(concept_csv_file, medcat_config):
+def create_cdb(concept_csv_file: Path, medcat_config: Config) -> CDB:
     """Create concept database from csv.
 
     Args:
-        concept_csv_file (pathlib.Path):
+        concept_csv_file (Path):
             Path to CSV file containing all concepts and synonyms.
-        medcat_config (medcat.config.Config):
+        medcat_config (Config):
             MedCAT configuration file.
+
     Returns:
-        medcat.cdb.CDB:
+        CDB:
             MedCAT concept database containing list of entities and synonyms, without context embeddings.
     """
     logger.info('Creating concept database from concept table')

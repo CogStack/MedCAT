@@ -4,7 +4,7 @@ import logging
 import datasets
 from spacy.tokens import Doc
 from datetime import datetime
-from typing import Iterable, Iterator, Optional, Dict, List, cast, Union
+from typing import Iterable, Iterator, Optional, Dict, List, cast, Union, Tuple
 from spacy.tokens import Span
 
 from medcat.cdb import CDB
@@ -76,17 +76,23 @@ class TransformersNER(object):
         else:
             self.training_arguments = training_arguments
 
-
     def create_eval_pipeline(self):
-        self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer)
+
+        if self.config.general['chunking_overlap_window'] is None:
+            logger.warning("Chunking overlap window attribute in the config is set to None, hence chunking is disabled. Be cautious, PII data MAY BE REVEALED. To enable chunking, set the value to 0 or above.")
+        self.ner_pipe = pipeline(model=self.model, task="ner", tokenizer=self.tokenizer.hf_tokenizer,stride=self.config.general['chunking_overlap_window'])
         if not hasattr(self.ner_pipe.tokenizer, '_in_target_context_manager'):
             # NOTE: this will fix the DeID model(s) created before medcat 1.9.3
             #       though this fix may very well be unstable
             self.ner_pipe.tokenizer._in_target_context_manager = False
         self.ner_pipe.device = self.model.device
 
-    def get_hash(self):
-        """A partial hash trying to catch differences between models."""
+    def get_hash(self) -> str:
+        """A partial hash trying to catch differences between models.
+
+        Returns:
+            str: The hex hash.
+        """
         hasher = Hasher()
         # Set last_train_on if None
         if self.config.general['last_train_on'] is None:
@@ -147,21 +153,24 @@ class TransformersNER(object):
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
-              trainer_callbacks: Optional[List[TrainerCallback]]=None):
+              trainer_callbacks: Optional[List[TrainerCallback]]=None) -> Tuple:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
         Args:
             json_path (str or list):
                 Path/Paths to a MedCATtrainer export containing the meta_annotations we want to train for.
-            train_arguments(str):
-                HF TrainingArguments. If None the default will be used. Defaults to `None`.
             ignore_extra_labels:
                 Makes only sense when an existing deid model was loaded and from the new data we want to ignore
                 labels that did not exist in the old model.
+            dataset: Defaults to None.
+            meta_requirements: Defaults to None
             trainer_callbacks (List[TrainerCallback]):
                 A list of trainer callbacks for collecting metrics during the training at the client side. The
                 transformers Trainer object will be passed in when each callback is called.
+
+        Returns:
+            Tuple: The dataframe, examples, and the dataset
         """
 
         if dataset is None and json_path is not None:
@@ -341,10 +350,19 @@ class TransformersNER(object):
         Args:
             stream (Iterable[spacy.tokens.Doc]):
                 List of spacy documents.
+            *args: Extra arguments (not used here).
+            **kwargs: Extra keyword arguments (not used here).
+
+        Yields:
+            Doc: The same document.
+
+        Returns:
+            Iterator[Doc]: If the stream is None or empty.
         """
         # Just in case
         if stream is None or not stream:
-            return stream
+            # return an empty generator
+            return
 
         batch_size_chars = self.config.general['pipe_batch_size_in_chars']
         yield from self._process(stream, batch_size_chars)  # type: ignore
@@ -393,8 +411,11 @@ class TransformersNER(object):
         document processing.
 
         Args:
-            doc (spacy.tokens.Doc):
+            doc (Doc):
                 A spacy document
+
+        Returns:
+            Doc: The same spacy document.
         """
 
         # Just call the pipe method

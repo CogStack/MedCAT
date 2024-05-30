@@ -22,8 +22,8 @@ def combine_dicts(base_dict: dict, add_dict: dict, in_place: bool = False, ignor
     Args:
         base_dict (dict): The base dict to which we shall add
         add_dict (dict): The additional dict
-        in_place (bool, optional): Whether or not to modify the existing (base) dict. Defaults to False.
-        ignore_identicals (bool, optional): Whether to ignore identical cases (otherwise they get duplicated). Defaults to True.
+        in_place (bool): Whether or not to modify the existing (base) dict. Defaults to False.
+        ignore_identicals (bool): Whether to ignore identical cases (otherwise they get duplicated). Defaults to True.
 
     Returns:
         dict: The combined dict
@@ -68,7 +68,7 @@ def combine_contents(base_yaml: str, add_yaml: str, ignore_identicals: bool = Tr
     Args:
         base_yaml (str): The yaml of the base checker
         add_yaml (str): The yaml of the additional checker
-        ignore_identicals (bool, optional): Whether or not to ignore identical cases. Defaults to True.
+        ignore_identicals (bool): Whether or not to ignore identical cases. Defaults to True.
 
     Returns:
         str: The combined yaml contents
@@ -90,8 +90,8 @@ def combine_yamls(base_file: str, add_file: str, new_file: Optional[str] = None,
     Args:
         base_file (str): The base file
         add_file (str): The additional file
-        new_file (Optional[str], optional): The new file name. Defaults to None.
-        ignore_identicals (bool, optional): Whether or not to ignore identical cases. Defaults to True.
+        new_file (Optional[str]): The new file name. Defaults to None.
+        ignore_identicals (bool): Whether or not to ignore identical cases. Defaults to True.
 
     Returns:
         str: The new file name
