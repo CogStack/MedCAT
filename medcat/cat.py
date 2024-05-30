@@ -438,6 +438,7 @@ class CAT(object):
         Loads the concept database from the provided model pack path
         Args:
             model_pack_path (str): path to model pack, zip or dir.
+
         Returns:
             CDB: The loaded concept database
         """
@@ -459,6 +460,7 @@ class CAT(object):
                 A config dict that will overwrite existing configs in meta_cat.
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
                 Defaults to None.
+
         Returns:
             List[Tuple(str, MetaCAT)]: list of pairs of meta cat model names (i.e. the task name) and the MetaCAT models.
         """
