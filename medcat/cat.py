@@ -390,7 +390,7 @@ class CAT(object):
         model_pack_path = cls.attempt_unpack(zip_path)
 
         # Load the CDB
-        cdb = cls.load_cdb(model_pack_path)
+        cdb: CDB = cls.load_cdb(model_pack_path)
 
         # load config
         config_path = os.path.join(model_pack_path, "config.json")
@@ -417,7 +417,7 @@ class CAT(object):
             addl_ner.append(trf)
 
         # Find metacat models in the model_pack
-        meta_cats = []
+        meta_cats: List[MetaCAT] = []
         if load_meta_models:
             meta_cats = [mc[1] for mc in cls.load_meta_cats(model_pack_path)]
 
@@ -450,7 +450,7 @@ class CAT(object):
         return cdb
 
     @classmethod
-    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[tuple(str, MetaCAT)]:
+    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[Tuple[str, MetaCAT]]:
         """
 
         Args:
@@ -460,7 +460,7 @@ class CAT(object):
                 e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
                 Defaults to None.
         Returns:
-            List[tuple(str, MetaCAT)]: list of pairs of meta cat model names (i.e. the task name) and the MetaCAT models.
+            List[Tuple(str, MetaCAT)]: list of pairs of meta cat model names (i.e. the task name) and the MetaCAT models.
         """
         meta_paths = [os.path.join(model_pack_path, path)
                       for path in os.listdir(model_pack_path) if path.startswith('meta_')]
