@@ -436,6 +436,7 @@ class CAT(object):
     def load_cdb(cls, model_pack_path: str) -> CDB:
         """
         Loads the concept database from the provided model pack path
+
         Args:
             model_pack_path (str): path to model pack, zip or dir.
 
