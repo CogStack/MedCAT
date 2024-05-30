@@ -134,7 +134,7 @@ class CAT(object):
 
         # Add addl_ner if they exist
         for ner in self._addl_ner:
-            self.pipe.add_addl_ner(ner, ner.config.general.name)
+            self.pipe.add_addl_ner(ner, ner.config.pre_load.name)
 
         # Add meta_annotation classes if they exist
         for meta_cat in self._meta_cats:
@@ -299,7 +299,7 @@ class CAT(object):
         # Save addl_ner
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
-                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.general.name)
+                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.pre_load.name)
                 comp[1].save(trf_path)
 
         # Save all meta_cats

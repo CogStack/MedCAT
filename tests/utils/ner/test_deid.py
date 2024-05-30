@@ -41,6 +41,7 @@ class DeIDmodelCreationTests(unittest.TestCase):
         deid_model = deid.DeIdModel.create(ner)
         self.assertIsNotNone(deid_model)
 
+
 def _add_model(cls):
     cdb = make_or_update_cdb(TRAIN_DATA)
     config = transformers_ner.ConfigTransformersNER()

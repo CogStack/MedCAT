@@ -43,15 +43,15 @@ class TransformersNER(object):
             config = ConfigTransformersNER()
 
         self.config = config
-        set_all_seeds(config.general['seed'])
+        set_all_seeds(config.pre_load.seed)
 
-        self.model = AutoModelForTokenClassification.from_pretrained(config.general['model_name'])
+        self.model = AutoModelForTokenClassification.from_pretrained(config.pre_load.model_name)
 
         # Get the tokenizer either create a new one or load existing
-        if os.path.exists(os.path.join(config.general['model_name'], 'tokenizer.dat')):
-            self.tokenizer = TransformersTokenizerNER.load(os.path.join(config.general['model_name'], 'tokenizer.dat'))
+        if os.path.exists(os.path.join(config.pre_load.model_name, 'tokenizer.dat')):
+            self.tokenizer = TransformersTokenizerNER.load(os.path.join(config.pre_load.model_name, 'tokenizer.dat'))
         else:
-            hf_tokenizer = AutoTokenizer.from_pretrained(self.config.general['model_name'])
+            hf_tokenizer = AutoTokenizer.from_pretrained(self.config.pre_load.model_name)
             self.tokenizer = TransformersTokenizerNER(hf_tokenizer)
 
         if training_arguments is None:
@@ -193,7 +193,7 @@ class TransformersNER(object):
         if self.model.num_labels != len(self.tokenizer.label_map):
             logger.warning("The dataset contains labels we've not seen before, model is being reinitialized")
             logger.warning("Model: {} vs Dataset: {}".format(self.model.num_labels, len(self.tokenizer.label_map)))
-            self.model = AutoModelForTokenClassification.from_pretrained(self.config.general['model_name'], num_labels=len(self.tokenizer.label_map))
+            self.model = AutoModelForTokenClassification.from_pretrained(self.config.pre_load.model_name, num_labels=len(self.tokenizer.label_map))
             self.tokenizer.cui2name = {k:self.cdb.get_name(k) for k in self.tokenizer.label_map.keys()}
 
         self.model.config.id2label = {v:k for k,v in self.tokenizer.label_map.items()}
@@ -313,7 +313,7 @@ class TransformersNER(object):
 
         # Load config
         config = cast(ConfigTransformersNER, ConfigTransformersNER.load(os.path.join(save_dir_path, 'cat_config.json')))
-        config.general['model_name'] = save_dir_path
+        config.pre_load.model_name = save_dir_path
 
         # Overwrite loaded paramters with something new
         if config_dict is not None:
