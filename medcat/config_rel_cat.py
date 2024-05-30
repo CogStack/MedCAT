@@ -31,17 +31,7 @@ class General(MixingConfig, BaseModel):
 
 class Model(MixingConfig, BaseModel):
     """The model part of the RelCAT config"""
-    input_size: int = 300
-
-    dropout: float = 0.2
-    num_directions: int = 2
-    """2 - bidirectional model, 1 - unidirectional"""
-
     padding_idx: int = -1
-    emb_grad: bool = True
-    """If True the embeddings will also be trained"""
-    ignore_cpos: bool = False
-    """If set to True center positions will be ignored when calculating represenation"""
 
     class Config:
         extra = Extra.allow
@@ -55,7 +45,6 @@ class Train(MixingConfig, BaseModel):
     batch_size: int = 25
     nepochs: int = 1
     lr: float = 1e-4
-    adam_epsilon: float = 1e-4
     test_size: float = 0.2
     gradient_acc_steps: int = 1
     multistep_milestones: List[int] = [
@@ -64,11 +53,6 @@ class Train(MixingConfig, BaseModel):
     max_grad_norm: float = 1.0
     shuffle_data: bool = True
     """Used only during training, if set the dataset will be shuffled before train/test split"""
-    class_weights: Optional[Any] = None
-    score_average: str = "weighted"
-    """What to use for averaging F1/P/R across labels"""
-    auto_save_model: bool = True
-    """Should the model be saved during training for best results"""
 
     class Config:
         extra = Extra.allow
