@@ -1,6 +1,7 @@
 from medcat.config import Config
 from medcat.utils.saving.coding import default_hook, CustomDelegatingEncoder
 from medcat.utils import config_utils
+from medcat import config as main_config
 from medcat import config_meta_cat
 import json
 import os
@@ -52,16 +53,36 @@ class ConfigUtilsTests(unittest.TestCase):
         self.assertFalse(config_utils.is_old_type_config_dict(NEW_STYLE_DICT))
 
 
-class MetaCATConfigTests(unittest.TestCase):
+class OldFormatJsonTests(unittest.TestCase):
+
+    def assert_knows_old_format(self, file_path: str):
+        with open(file_path) as f:
+            d = json.load(f)
+        self.assertTrue(config_utils.is_old_type_config_dict(d))
+
+
+class OldConfigLoadTests(OldFormatJsonTests):
+    JSON_PICKLE_FILE_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_config.json"
+    )
+    EXPECTED_VERSION_HISTORY = ['0c0de303b6dc0020',]
+
+    def test_knows_is_old_format(self):
+        self.assert_knows_old_format(self.JSON_PICKLE_FILE_PATH)
+
+    def test_loads_old_style_correctly(self):
+        cnf: main_config.Config = main_config.Config.load(self.JSON_PICKLE_FILE_PATH)
+        self.assertEqual(cnf.version.history, self.EXPECTED_VERSION_HISTORY)
+
+
+class MetaCATConfigTests(OldFormatJsonTests):
     META_CAT_OLD_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "jsonpickle_meta_cat_config.json"
     )
     EXPECTED_SEED = -100
 
     def test_knows_is_old_format(self):
-        with open(self.META_CAT_OLD_PATH) as f:
-            d = json.load(f)
-        self.assertTrue(config_utils.is_old_type_config_dict(d))
+        self.assert_knows_old_format(self.META_CAT_OLD_PATH)
 
     def test_can_load_old_format_correctly(self):
         cnf: config_meta_cat.ConfigMetaCAT = config_meta_cat.ConfigMetaCAT.load(self.META_CAT_OLD_PATH)

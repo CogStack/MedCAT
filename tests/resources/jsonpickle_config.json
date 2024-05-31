@@ -1,0 +1,274 @@
+{
+    "version": {
+      "py/object": "medcat.config.VersionInfo",
+      "py/state": {
+        "__dict__": {
+          "history": ["0c0de303b6dc0020"],
+          "meta_cats": {},
+          "cdb_info": {},
+          "performance": {
+            "ner": {},
+            "meta": {}
+          },
+          "description": "No description",
+          "id": null,
+          "last_modified": null,
+          "location": null,
+          "ontology": null,
+          "medcat_version": null
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "cdb_maker": {
+      "py/object": "medcat.config.CDBMaker",
+      "py/state": {
+        "__dict__": {
+          "name_versions": [
+            "LOWER",
+            "CLEAN"
+          ],
+          "multi_separator": "|",
+          "remove_parenthesis": 5,
+          "min_letters_required": 2
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "annotation_output": {
+      "py/object": "medcat.config.AnnotationOutput",
+      "py/state": {
+        "__dict__": {
+          "doc_extended_info": false,
+          "context_left": -1,
+          "context_right": -1,
+          "lowercase_context": true,
+          "include_text_in_output": false
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "general": {
+      "py/object": "medcat.config.General",
+      "py/state": {
+        "__dict__": {
+          "spacy_disabled_components": [
+            "ner",
+            "parser",
+            "vectors",
+            "textcat",
+            "entity_linker",
+            "sentencizer",
+            "entity_ruler",
+            "merge_noun_chunks",
+            "merge_entities",
+            "merge_subtokens"
+          ],
+          "checkpoint": {
+            "py/object": "medcat.config.CheckPoint",
+            "py/state": {
+              "__dict__": {
+                "output_dir": "checkpoints",
+                "steps": null,
+                "max_to_keep": 1
+              },
+              "__fields_set__": {
+                "py/set": []
+              },
+              "__private_attribute_values__": {}
+            }
+          },
+          "log_level": 20,
+          "log_format": "%(levelname)s:%(name)s: %(message)s",
+          "log_path": "./medcat.log",
+          "spacy_model": "en_core_web_lg",
+          "separator": "~",
+          "spell_check": true,
+          "diacritics": false,
+          "spell_check_deep": false,
+          "spell_check_len_limit": 7,
+          "show_nested_entities": false,
+          "full_unlink": false,
+          "workers": 7,
+          "make_pretty_labels": null,
+          "map_cui_to_group": false
+        },
+        "__fields_set__": {
+          "py/set": [
+            "spacy_model"
+          ]
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "preprocessing": {
+      "py/object": "medcat.config.Preprocessing",
+      "py/state": {
+        "__dict__": {
+          "words_to_skip": {
+            "py/set": [
+              "nos"
+            ]
+          },
+          "keep_punct": {
+            "py/set": [
+              ".",
+              ":"
+            ]
+          },
+          "do_not_normalize": {
+            "py/set": [
+              "VBD",
+              "VBP",
+              "VBN",
+              "JJR",
+              "JJS",
+              "VBG"
+            ]
+          },
+          "skip_stopwords": false,
+          "min_len_normalize": 5,
+          "stopwords": {
+            "py/set": [
+              "three",
+              "two",
+              "one"
+            ]
+          },
+          "max_document_length": 1000000
+        },
+        "__fields_set__": {
+          "py/set": [
+            "stopwords"
+          ]
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "ner": {
+      "py/object": "medcat.config.Ner",
+      "py/state": {
+        "__dict__": {
+          "min_name_len": 3,
+          "max_skip_tokens": 2,
+          "check_upper_case_names": false,
+          "upper_case_limit_len": 4,
+          "try_reverse_word_order": false
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "linking": {
+      "py/object": "medcat.config.Linking",
+      "py/state": {
+        "__dict__": {
+          "optim": {
+            "type": "linear",
+            "base_lr": 1,
+            "min_lr": 0.00005
+          },
+          "context_vector_sizes": {
+            "xlong": 27,
+            "long": 18,
+            "medium": 9,
+            "short": 3
+          },
+          "context_vector_weights": {
+            "xlong": 0.1,
+            "long": 0.4,
+            "medium": 0.4,
+            "short": 0.1
+          },
+          "filters": {
+            "py/object": "medcat.config.LinkingFilters",
+            "py/state": {
+              "__dict__": {
+                "cuis": {
+                  "py/set": []
+                },
+                "cuis_exclude": {
+                  "py/set": []
+                }
+              },
+              "__fields_set__": {
+                "py/set": []
+              },
+              "__private_attribute_values__": {}
+            }
+          },
+          "train": true,
+          "random_replacement_unsupervised": 0.8,
+          "disamb_length_limit": 3,
+          "filter_before_disamb": false,
+          "train_count_threshold": 1,
+          "always_calculate_similarity": false,
+          "weighted_average_function": {
+            "py/object": "medcat.config._DefPartial",
+            "fun": {
+              "py/reduce": [
+                {
+                  "py/type": "functools.partial"
+                },
+                {
+                  "py/tuple": [
+                    {
+                      "py/function": "medcat.utils.config_utils.weighted_average"
+                    }
+                  ]
+                },
+                {
+                  "py/tuple": [
+                    {
+                      "py/function": "medcat.utils.config_utils.weighted_average"
+                    },
+                    {
+                      "py/tuple": []
+                    },
+                    {
+                      "factor": 0.0004
+                    },
+                    {}
+                  ]
+                }
+              ]
+            }
+          },
+          "calculate_dynamic_threshold": false,
+          "similarity_threshold_type": "static",
+          "similarity_threshold": 0.25,
+          "negative_probability": 0.5,
+          "negative_ignore_punct_and_num": true,
+          "prefer_primary_name": 0.35,
+          "prefer_frequent_concepts": 0.35,
+          "subsample_after": 30000,
+          "devalue_linked_concepts": false,
+          "context_ignore_center_tokens": false
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "word_skipper": {
+      "py/object": "re.Pattern",
+      "pattern": "^(nos)$"
+    },
+    "punct_checker": {
+      "py/object": "re.Pattern",
+      "pattern": "[^a-z0-9]+"
+    },
+    "hash": null
+  }
