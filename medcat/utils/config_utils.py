@@ -15,9 +15,12 @@ logger = logging.getLogger(__name__)
 
 
 def is_old_type_config_dict(d: dict) -> bool:
-    if set(('py/object', 'py/state')) <= set(d.keys()):
-        return True
-    return False
+    # all 2nd level keys
+    all_keys = set(sub_key for key in d for sub_key in (d[key] if isinstance(d[key], dict) else [key]))
+    # add 1st level keys
+    all_keys.update(d.keys())
+    # is old if py/object and py/state somewhere in keys
+    return set(('py/object', 'py/state')) <= all_keys
 
 
 def fix_waf_lambda(carrier: WAFCarrier) -> None:
