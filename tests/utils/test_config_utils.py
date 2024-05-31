@@ -48,3 +48,18 @@ class ConfigUtilsTests(unittest.TestCase):
 
     def test_identifies_new_style_dict(self):
         self.assertFalse(config_utils.is_old_type_config_dict(NEW_STYLE_DICT))
+
+
+class ConfigRemapperGeneralTests(unittest.TestCase):
+    ORIG_DICT = {'a': {'a1': 1, 'a2': 2}, 'b': {'b1': 3, 'b2': 4, 'b4': 5}}
+    EXAMPLE_MAPPINGS = {'c': {'a1_from_a': 'a.a1', 'b2_from_b': 'b.b2', 'b4_from_b': 'b.b4'}}
+    EXPECTED_OUT = {'a': {'a2': 2}, 'b': {'b1': 3}, 'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
+    EXPECTED_NEW = {'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
+
+    def test_remapping_works(self):
+        got = config_utils.remap_nested_dict(self.ORIG_DICT, self.EXAMPLE_MAPPINGS)
+        self.assertEqual(got, self.EXPECTED_OUT)
+
+    def test_remapping_into_new_works(self):
+        got = config_utils.remap_nested_dict(self.ORIG_DICT, self.EXAMPLE_MAPPINGS, in_place=False)
+        self.assertEqual(got, self.EXPECTED_NEW)

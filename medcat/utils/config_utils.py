@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Optional, Protocol
+from typing import Callable, Optional, Protocol, Dict, Any
 import logging
 from pydantic import BaseModel
 
@@ -119,3 +119,40 @@ def _fix_waf(waf):
                     "you may want to save the model pack again using "
                     "a newer version of python (3.11 or later).")
     return partial(weighted_average, *waf.args, **waf.keywords)
+
+
+def remap_nested_dict(current_dict: Dict[str, Any], mappings: Dict[str, Dict[str, str]],
+                      in_place: bool = True) -> Dict[str, Any]:
+    """Remaps nested dict according to the specified mappings.
+
+    Can do so in existing dict (i.e change it) or in a brand new dict.
+
+    If using a brand new dict, only keys specified in the mappings will exist in new dict.
+    Otherwise it will retain other keys as well.
+
+    The mappings describe for each target (new) parent path:
+    - Each new path maps to the old path (e.g `a.a1.a12`)
+
+    Args:
+        current_dict (Dict[str, Any]): Input nested dict.
+        mappings (Dict[str, Dict[str, str]]): The mappings.
+        in_place (bool): Whether to do this in existing dict. Defaults to True.
+
+    Returns:
+        Dict[str, Any]: Existing dict or new one.
+    """
+    target_dict = current_dict if in_place else {}
+    for target_key, key_mappings in mappings.items():
+        if target_key not in target_dict:
+            target_dict[target_key] = {}
+        cur_top_target = target_dict[target_key]
+        for sub_path, source_path in key_mappings.items():
+            source_value = current_dict
+            source_keys = source_path.split('.')
+            for nr, key in enumerate(source_keys):
+                if nr == len(source_keys) - 1 and in_place:
+                    source_value = source_value.pop(key)
+                else:
+                    source_value = source_value[key]
+            cur_top_target[sub_path] = source_value
+    return target_dict
