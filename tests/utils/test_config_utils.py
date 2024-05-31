@@ -1,7 +1,9 @@
 from medcat.config import Config
 from medcat.utils.saving.coding import default_hook, CustomDelegatingEncoder
 from medcat.utils import config_utils
+from medcat import config_meta_cat
 import json
+import os
 
 import unittest
 
@@ -48,3 +50,20 @@ class ConfigUtilsTests(unittest.TestCase):
 
     def test_identifies_new_style_dict(self):
         self.assertFalse(config_utils.is_old_type_config_dict(NEW_STYLE_DICT))
+
+
+class MetaCATConfigTests(unittest.TestCase):
+    META_CAT_OLD_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_meta_cat_config.json"
+    )
+    EXPECTED_SEED = -100
+
+    def test_knows_is_old_format(self):
+        with open(self.META_CAT_OLD_PATH) as f:
+            d = json.load(f)
+        self.assertTrue(config_utils.is_old_type_config_dict(d))
+
+    def test_can_load_old_format_correctly(self):
+        cnf: config_meta_cat.ConfigMetaCAT = config_meta_cat.ConfigMetaCAT.load(self.META_CAT_OLD_PATH)
+        self.assertIsInstance(cnf, config_meta_cat.ConfigMetaCAT)
+        self.assertEqual(cnf.general.seed, self.EXPECTED_SEED)
