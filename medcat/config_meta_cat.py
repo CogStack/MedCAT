@@ -1,6 +1,8 @@
 from typing import Dict, Any
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
+from medcat.utils.config_utils import legacy_remap_meta_cat_config
+
 
 class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
@@ -124,6 +126,10 @@ class ConfigMetaCAT(MixingConfig, BaseModel):
     pre_load: PreLoad = PreLoad()
     model: Model = Model()
     train: Train = Train()
+
+    @classmethod
+    def legacy_remapper(cls, d: Dict) -> Dict:
+        return legacy_remap_meta_cat_config(d)
 
     class Config:
         extra = Extra.allow

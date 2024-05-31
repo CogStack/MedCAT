@@ -190,3 +190,43 @@ def legacy_remap_mct_config(config_dict: dict) -> dict:
         dict: The same (changed) dict
     """
     return remap_nested_dict(config_dict, CONFIG_REMAP_MAPPINGS)
+
+
+# same as `CONFIG_REMAP_MAPPINGS` above
+META_CAT_CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'seed': 'general.seed',
+        'category_name': 'general.category_name',
+        'tokenizer_name': 'general.tokenizer_name',
+        # model
+        'model_name': 'model.model_name',
+        'model_variant': 'model.model_variant',
+        'model_freeze_layers': 'model.model_freeze_layers',
+        'num_layers': 'model.num_layers',
+        'input_size': 'model.input_size',
+        'hidden_size': 'model.hidden_size',
+        'dropout': 'model.dropout',
+        'model_architecture_config': 'model.model_architecture_config',
+        'num_directions': 'model.num_directions',
+        'nclasses': 'model.nclasses',
+        'padding_idx': 'model.padding_idx',
+        'emb_grad': 'model.emb_grad',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for main config"""
+
+
+def legacy_remap_meta_cat_config(config_dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, META_CAT_CONFIG_REMAP_MAPPINGS)

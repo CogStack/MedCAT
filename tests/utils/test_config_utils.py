@@ -2,6 +2,7 @@ from medcat.config import Config
 from medcat.utils.saving.coding import default_hook, CustomDelegatingEncoder
 from medcat.utils import config_utils
 from medcat import config as main_config
+from medcat import meta_cat
 import json
 import os
 
@@ -83,3 +84,21 @@ class ConfigRemapWithConfigTests(unittest.TestCase):
 
     def test_does_not_have_spacy_in_old_path(self):
         self.assertFalse(hasattr(self.config.general, "spacy_model"))
+
+
+
+class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_meta_cat_config.json"
+    )
+    EXPECTED_SEED = -130
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: meta_cat.ConfigMetaCAT = meta_cat.ConfigMetaCAT.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "seed"))
