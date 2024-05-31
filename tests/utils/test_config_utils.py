@@ -3,6 +3,8 @@ from medcat.utils.saving.coding import default_hook, CustomDelegatingEncoder
 from medcat.utils import config_utils
 from medcat import config as main_config
 from medcat import config_meta_cat
+from medcat import config_transformers_ner
+from medcat import config_rel_cat
 import json
 import os
 
@@ -79,7 +81,7 @@ class MetaCATConfigTests(OldFormatJsonTests):
     META_CAT_OLD_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "jsonpickle_meta_cat_config.json"
     )
-    EXPECTED_SEED = -100
+    EXPECTED_TARGET = -100
     TARGET_CLASS = config_meta_cat.ConfigMetaCAT
 
     @classmethod
@@ -92,4 +94,28 @@ class MetaCATConfigTests(OldFormatJsonTests):
     def test_can_load_old_format_correctly(self):
         cnf = self.TARGET_CLASS.load(self.META_CAT_OLD_PATH)
         self.assertIsInstance(cnf, self.TARGET_CLASS)
-        self.assertEqual(self.get_target(cnf), self.EXPECTED_SEED)
+        self.assertEqual(self.get_target(cnf), self.EXPECTED_TARGET)
+
+
+class TNERCATConfigTests(MetaCATConfigTests):
+    META_CAT_OLD_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_tner_config.json"
+    )
+    EXPECTED_TARGET = -100
+    TARGET_CLASS = config_transformers_ner.ConfigTransformersNER
+
+    @classmethod
+    def get_target(cls, cnf):
+        return cnf.general.pipe_batch_size_in_chars
+
+
+class RelCATConfigTests(MetaCATConfigTests):
+    META_CAT_OLD_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_rel_cat_config.json"
+    )
+    EXPECTED_TARGET = 100_000
+    TARGET_CLASS = config_rel_cat.ConfigRelCAT
+
+    @classmethod
+    def get_target(cls, cnf):
+        return cnf.train.lr
