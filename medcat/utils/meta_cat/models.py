@@ -87,17 +87,17 @@ class LSTM(nn.Module):
 class BertForMetaAnnotation(nn.Module):
     _keys_to_ignore_on_load_unexpected: List[str] = [r"pooler"]  # type: ignore
 
-    def __init__(self, config):
+    def __init__(self, config: ConfigMetaCAT):
         super(BertForMetaAnnotation, self).__init__()
         _bertconfig = AutoConfig.from_pretrained(config.pre_load.model_variant,num_hidden_layers=config.pre_load.num_layers)
         if config.pre_load.input_size != _bertconfig.hidden_size:
-            logger.warning(f"\nInput size for {config.pre_load.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.model['input_size']} Input size changed to {_bertconfig.hidden_size}")
+            logger.warning(f"\nInput size for {config.pre_load.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.pre_load.input_size} Input size changed to {_bertconfig.hidden_size}")
 
-        bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
+        bert = BertModel.from_pretrained(config.pre_load.model_variant, config=_bertconfig)
         self.config = config
         self.config.use_return_dict = False
         self.bert = bert
-        self.num_labels = config.model["nclasses"]
+        self.num_labels = config.pre_load.nclasses
         for param in self.bert.parameters():
             param.requires_grad = not config.pre_load.model_freeze_layers
 
