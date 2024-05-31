@@ -110,6 +110,11 @@ class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
     def test_does_not_have_spacy_in_old_path(self):
         self.assertFalse(hasattr(self.config.general, "seed"))
 
+    def test_converted_old_config_same_as_new_config(self):
+        new_config = config_meta_cat.ConfigMetaCAT()
+        new_config.pre_load.seed = self.EXPECTED_SEED
+        self.assertEqual(self.config, new_config)
+
 
 class ConfigRemapWithTNERConfigTests(unittest.TestCase):
     CONFIG_JSON_PATH = os.path.join(
