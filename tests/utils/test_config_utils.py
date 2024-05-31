@@ -80,11 +80,16 @@ class MetaCATConfigTests(OldFormatJsonTests):
         os.path.dirname(__file__), "..", "resources", "jsonpickle_meta_cat_config.json"
     )
     EXPECTED_SEED = -100
+    TARGET_CLASS = config_meta_cat.ConfigMetaCAT
+
+    @classmethod
+    def get_target(cls, cnf):
+        return cnf.general.seed
 
     def test_knows_is_old_format(self):
         self.assert_knows_old_format(self.META_CAT_OLD_PATH)
 
     def test_can_load_old_format_correctly(self):
-        cnf: config_meta_cat.ConfigMetaCAT = config_meta_cat.ConfigMetaCAT.load(self.META_CAT_OLD_PATH)
-        self.assertIsInstance(cnf, config_meta_cat.ConfigMetaCAT)
-        self.assertEqual(cnf.general.seed, self.EXPECTED_SEED)
+        cnf = self.TARGET_CLASS.load(self.META_CAT_OLD_PATH)
+        self.assertIsInstance(cnf, self.TARGET_CLASS)
+        self.assertEqual(self.get_target(cnf), self.EXPECTED_SEED)
