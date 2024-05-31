@@ -7,6 +7,7 @@ from medcat import config_transformers_ner
 from medcat import config_rel_cat
 import json
 import os
+from copy import deepcopy
 
 import unittest
 
@@ -62,17 +63,25 @@ class ConfigRemapperGeneralTests(unittest.TestCase):
     EXPECTED_OUT = {'a': {'a2': 2}, 'b': {'b1': 3}, 'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
     EXPECTED_NEW = {'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
 
+    @property
+    def orig_dict(self):
+        return deepcopy(self.ORIG_DICT)
+
+    @property
+    def orig_dict_missting1(self):
+        return deepcopy(self.ORIG_DICT_MISSING1)
+
     def test_remapping_works(self):
-        got = config_utils.remap_nested_dict(self.ORIG_DICT, self.EXAMPLE_MAPPINGS)
+        got = config_utils.remap_nested_dict(self.orig_dict, self.EXAMPLE_MAPPINGS)
         self.assertEqual(got, self.EXPECTED_OUT)
 
     def test_remapping_into_new_works(self):
-        got = config_utils.remap_nested_dict(self.ORIG_DICT, self.EXAMPLE_MAPPINGS, in_place=False)
+        got = config_utils.remap_nested_dict(self.orig_dict, self.EXAMPLE_MAPPINGS, in_place=False)
         self.assertEqual(got, self.EXPECTED_NEW)
 
     def test_missing_ignored(self):
         # 'a1' not in orig, so now not in got['c']
-        got = config_utils.remap_nested_dict(self.ORIG_DICT_MISSING1, self.EXAMPLE_MAPPINGS)
+        got = config_utils.remap_nested_dict(self.orig_dict_missting1, self.EXAMPLE_MAPPINGS)
         c = got['c']
         self.assertNotIn('a1_from_a', c)
 
