@@ -106,7 +106,7 @@ class MetaCAT(PipeRunner):
             logger.info("BERT model used for classification")
 
         else:
-            raise ValueError("Unknown model name %s" % config.model['model_name'])
+            raise ValueError("Unknown model name %s" % config.pre_load.model_name)
 
         return model
 
