@@ -106,6 +106,24 @@ class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
 
 class ConfigRemapWithTNERConfigTests(unittest.TestCase):
     CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_tner_config.json"
+    )
+    EXPECTED_SEED = -103
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: config_transformers_ner.ConfigTransformersNER = config_transformers_ner.ConfigTransformersNER.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "seed"))
+
+
+
+class ConfigRemapWithRelCATConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "pre_change_rel_cat_config.json"
     )
     EXPECTED_SEED = -113
