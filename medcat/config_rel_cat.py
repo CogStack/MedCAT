@@ -2,6 +2,8 @@ import logging
 from typing import Dict, List
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
+from medcat.utils.config_utils import legacy_remap_rel_cat_config
+
 
 class General(MixingConfig, BaseModel):
     """The General part of the RelCAT config"""
@@ -86,6 +88,10 @@ class ConfigRelCAT(MixingConfig, BaseModel):
     pre_load: PreLoad = PreLoad()
     model: Model = Model()
     train: Train = Train()
+
+    @classmethod
+    def legacy_remapper(cls, d: Dict) -> Dict:
+        return legacy_remap_rel_cat_config(d)
 
     class Config:
         extra = Extra.allow

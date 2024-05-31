@@ -258,3 +258,39 @@ def legacy_remap_tner_config(config_dict) -> dict:
         dict: The same (changed) dict
     """
     return remap_nested_dict(config_dict, TNER_CONFIG_REMAP_MAPPINGS)
+
+
+# same as `CONFIG_REMAP_MAPPINGS` above
+REL_CAT_CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'device': 'general.device',
+        'tokenizer_name': 'general.tokenizer_name',
+        'model_name': 'general.model_name',
+        'log_level': 'general.log_level',
+        'max_seq_length': 'general.max_seq_length',
+        'tokenizer_special_tokens': 'general.tokenizer_special_tokens',
+        'seed': 'general.seed',
+        'task': 'general.task',
+        # model
+        'hidden_size': 'model.hidden_size',
+        'hidden_layers': 'model.hidden_layers',
+        'model_size': 'model.model_size',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for NER config"""
+
+
+def legacy_remap_rel_cat_config(config_dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, REL_CAT_CONFIG_REMAP_MAPPINGS)

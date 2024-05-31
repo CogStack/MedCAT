@@ -4,6 +4,7 @@ from medcat.utils import config_utils
 from medcat import config as main_config
 from medcat import config_meta_cat
 from medcat import config_transformers_ner
+from medcat import config_rel_cat
 import json
 import os
 
@@ -105,13 +106,13 @@ class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
 
 class ConfigRemapWithTNERConfigTests(unittest.TestCase):
     CONFIG_JSON_PATH = os.path.join(
-        os.path.dirname(__file__), "..", "resources", "pre_change_tner_config.json"
+        os.path.dirname(__file__), "..", "resources", "pre_change_rel_cat_config.json"
     )
-    EXPECTED_SEED = -103
+    EXPECTED_SEED = -113
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.config: config_transformers_ner.ConfigTransformersNER = config_transformers_ner.ConfigTransformersNER.load(cls.CONFIG_JSON_PATH)
+        cls.config: config_rel_cat.ConfigRelCAT = config_rel_cat.ConfigRelCAT.load(cls.CONFIG_JSON_PATH)
 
     def test_gets_correct_spacy(self):
         self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
