@@ -57,6 +57,7 @@ class ConfigUtilsTests(unittest.TestCase):
 
 class ConfigRemapperGeneralTests(unittest.TestCase):
     ORIG_DICT = {'a': {'a1': 1, 'a2': 2}, 'b': {'b1': 3, 'b2': 4, 'b4': 5}}
+    ORIG_DICT_MISSING1 = {'a': {'a2': 2}, 'b': {'b1': 3, 'b2': 4, 'b4': 5}}
     EXAMPLE_MAPPINGS = {'c': {'a1_from_a': 'a.a1', 'b2_from_b': 'b.b2', 'b4_from_b': 'b.b4'}}
     EXPECTED_OUT = {'a': {'a2': 2}, 'b': {'b1': 3}, 'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
     EXPECTED_NEW = {'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
@@ -68,6 +69,12 @@ class ConfigRemapperGeneralTests(unittest.TestCase):
     def test_remapping_into_new_works(self):
         got = config_utils.remap_nested_dict(self.ORIG_DICT, self.EXAMPLE_MAPPINGS, in_place=False)
         self.assertEqual(got, self.EXPECTED_NEW)
+
+    def test_missing_ignored(self):
+        # 'a1' not in orig, so now not in got['c']
+        got = config_utils.remap_nested_dict(self.ORIG_DICT_MISSING1, self.EXAMPLE_MAPPINGS)
+        c = got['c']
+        self.assertNotIn('a1_from_a', c)
 
 
 class ConfigRemapWithConfigTests(unittest.TestCase):

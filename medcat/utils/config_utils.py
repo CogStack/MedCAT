@@ -145,18 +145,21 @@ def remap_nested_dict(current_dict: Dict[str, Any], mappings: Dict[str, Dict[str
     for target_key, key_mappings in mappings.items():
         if target_key not in target_dict:
             target_dict[target_key] = {}
-        cur_top_target = target_dict[target_key]
-        for sub_path, source_path in key_mappings.items():
-            source_value = current_dict
+        target_for_key = target_dict[target_key]
+        for target_path, source_path in key_mappings.items():
             source_keys = source_path.split('.')
+            source_value = current_dict
+            found = True
             for nr, key in enumerate(source_keys):
                 if key not in source_value:
-                    continue
+                    found = False
+                    break
                 if nr == len(source_keys) - 1 and in_place:
                     source_value = source_value.pop(key)
                 else:
                     source_value = source_value[key]
-            cur_top_target[sub_path] = source_value
+            if found:
+                target_for_key[target_path] = source_value
     return target_dict
 
 
