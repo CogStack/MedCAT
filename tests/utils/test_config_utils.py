@@ -1,7 +1,9 @@
 from medcat.config import Config
 from medcat.utils.saving.coding import default_hook, CustomDelegatingEncoder
 from medcat.utils import config_utils
+from medcat import config as main_config
 import json
+import os
 
 import unittest
 
@@ -63,3 +65,21 @@ class ConfigRemapperGeneralTests(unittest.TestCase):
     def test_remapping_into_new_works(self):
         got = config_utils.remap_nested_dict(self.ORIG_DICT, self.EXAMPLE_MAPPINGS, in_place=False)
         self.assertEqual(got, self.EXPECTED_NEW)
+
+
+
+class ConfigRemapWithConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_config.json"
+    )
+    EXPECTED_SPACY_MODEL = "no_such_spacy_model"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: main_config.Config = main_config.Config.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.spacy_model, self.EXPECTED_SPACY_MODEL)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "spacy_model"))

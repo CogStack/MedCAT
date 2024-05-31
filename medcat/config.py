@@ -13,6 +13,7 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.config_utils import attempt_fix_weighted_average_function
 from medcat.utils.config_utils import weighted_average, is_old_type_config_dict
+from medcat.utils.config_utils import legacy_remap_mct_config
 from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook
 
 
@@ -192,6 +193,20 @@ class MixingConfig(FakeDict):
         return str(cast(BaseModel, self).dict())
 
     @classmethod
+    def legacy_remapper(cls, d: dict) -> dict:
+        """This method is used for legacy remapping for different configs.
+
+        It is meant to be overwritten by specific config implementation.
+
+        Args:
+            d (dict): The input dict.
+
+        Returns:
+            dict: The remapped dict, generally the same instance.
+        """
+        return d
+
+    @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
         """Load config from a json file, note that fields that
         did not exist in the old config but do exist in the current
@@ -212,6 +227,10 @@ class MixingConfig(FakeDict):
                 logger.warning("Loading an old type of config (jsonpickle) from '%s'",
                                save_path)
                 config_dict = jsonpickle.decode(f.read())
+
+        # do legacy remap if applicable
+        # NOTE: If none set, this does nothing
+        config_dict = cls.legacy_remapper(config_dict)
 
         config.merge_config(config_dict)
 
@@ -615,6 +634,10 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=True)
         self.hash = hasher.hexdigest()
         return self.hash
+
+    @classmethod
+    def legacy_remapper(cls, d: Dict) -> Dict:
+        return legacy_remap_mct_config(d)
 
 
 class UseOfOldConfigOptionException(AttributeError):

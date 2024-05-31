@@ -156,3 +156,37 @@ def remap_nested_dict(current_dict: Dict[str, Any], mappings: Dict[str, Dict[str
                     source_value = source_value[key]
             cur_top_target[sub_path] = source_value
     return target_dict
+
+
+# for each section name (in the new config)
+#  - maps the new name to the path to the old name
+#  - only specifies changed paths
+CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'spacy_model': 'general.spacy_model',
+        'spacy_disabled_components': 'general.spacy_disabled_components',
+        'log_level': 'general.log_level',
+        'log_format': 'general.log_format',
+        'log_path': 'general.log_path',
+        # preprocessing
+        'preprocessing_stopwords': 'preprocessing.stopwords',
+        'max_document_length': 'preprocessing.max_document_length',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for main config"""
+
+
+def legacy_remap_mct_config(config_dict: dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, CONFIG_REMAP_MAPPINGS)
