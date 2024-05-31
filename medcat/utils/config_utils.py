@@ -213,7 +213,7 @@ META_CAT_CONFIG_REMAP_MAPPINGS = {
         'emb_grad': 'model.emb_grad',
     }
 }
-"""Remapping from v1.11 (inclusive) to newer config structure for main config"""
+"""Remapping from v1.11 (inclusive) to newer config structure for MetaCAT config"""
 
 
 def legacy_remap_meta_cat_config(config_dict) -> dict:
@@ -230,3 +230,31 @@ def legacy_remap_meta_cat_config(config_dict) -> dict:
         dict: The same (changed) dict
     """
     return remap_nested_dict(config_dict, META_CAT_CONFIG_REMAP_MAPPINGS)
+
+
+# same as `CONFIG_REMAP_MAPPINGS` above
+TNER_CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'name': 'general.name',
+        'model_name': 'general.model_name',
+        'seed': 'general.seed',
+        'description': 'general.description',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for NER config"""
+
+
+def legacy_remap_tner_config(config_dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, TNER_CONFIG_REMAP_MAPPINGS)

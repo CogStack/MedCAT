@@ -1,5 +1,7 @@
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
+from medcat.utils.config_utils import legacy_remap_tner_config
+
 
 class General(MixingConfig, BaseModel):
     """The general part of the Transformers NER config"""
@@ -37,6 +39,10 @@ class ConfigTransformersNER(MixingConfig, BaseModel):
     """The transformer NER config"""
     general: General = General()
     pre_load: PreLoad = PreLoad()
+
+    @classmethod
+    def legacy_remapper(cls, d: dict) -> dict:
+        return legacy_remap_tner_config(d)
 
     class Config:
         extra = Extra.allow

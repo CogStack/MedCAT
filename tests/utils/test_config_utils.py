@@ -2,7 +2,8 @@ from medcat.config import Config
 from medcat.utils.saving.coding import default_hook, CustomDelegatingEncoder
 from medcat.utils import config_utils
 from medcat import config as main_config
-from medcat import meta_cat
+from medcat import config_meta_cat
+from medcat import config_transformers_ner
 import json
 import os
 
@@ -68,7 +69,6 @@ class ConfigRemapperGeneralTests(unittest.TestCase):
         self.assertEqual(got, self.EXPECTED_NEW)
 
 
-
 class ConfigRemapWithConfigTests(unittest.TestCase):
     CONFIG_JSON_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "pre_change_config.json"
@@ -86,7 +86,6 @@ class ConfigRemapWithConfigTests(unittest.TestCase):
         self.assertFalse(hasattr(self.config.general, "spacy_model"))
 
 
-
 class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
     CONFIG_JSON_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "pre_change_meta_cat_config.json"
@@ -95,7 +94,24 @@ class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.config: meta_cat.ConfigMetaCAT = meta_cat.ConfigMetaCAT.load(cls.CONFIG_JSON_PATH)
+        cls.config: config_meta_cat.ConfigMetaCAT = config_meta_cat.ConfigMetaCAT.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "seed"))
+
+
+class ConfigRemapWithTNERConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_tner_config.json"
+    )
+    EXPECTED_SEED = -103
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: config_transformers_ner.ConfigTransformersNER = config_transformers_ner.ConfigTransformersNER.load(cls.CONFIG_JSON_PATH)
 
     def test_gets_correct_spacy(self):
         self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
