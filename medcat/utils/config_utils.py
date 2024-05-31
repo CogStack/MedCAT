@@ -150,6 +150,8 @@ def remap_nested_dict(current_dict: Dict[str, Any], mappings: Dict[str, Dict[str
             source_value = current_dict
             source_keys = source_path.split('.')
             for nr, key in enumerate(source_keys):
+                if key not in source_value:
+                    continue
                 if nr == len(source_keys) - 1 and in_place:
                     source_value = source_value.pop(key)
                 else:
