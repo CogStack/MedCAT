@@ -4,6 +4,7 @@ import os
 import tempfile
 import json
 import zipfile
+import re
 
 from medcat.cat import CAT
 from medcat.utils.saving import envsnapshot
@@ -14,6 +15,29 @@ import unittest
 def list_zip_contents(zip_file_path):
     with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
         return zip_ref.namelist()
+
+
+
+ENV_SNAPSHOT_FILE_NAME = "environment_snapshot.json"
+SETUP_PY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "setup.py"))
+SETUP_PY_REGEX = re.compile("install_requires=\[([\s\S]*?)\]")
+
+
+def get_direct_dependencies_regex() -> set:
+    if not os.path.exists(SETUP_PY_PATH):
+        raise FileNotFoundError(f"{SETUP_PY_PATH} does not exist.")
+    with open(SETUP_PY_PATH) as f:
+        setup_py_code = f.read()
+    found = SETUP_PY_REGEX.findall(setup_py_code)
+    if not found:
+        raise ValueError("Did not find install requirements in setup.py")
+    if len(found) > 1:
+        raise ValueError("Ambiguous install requirements in setup.py")
+    deps_str = found[0]
+    # evaluate list of dependencies (including potential version pins)
+    deps: list = eval("[" + deps_str + "]")
+    # remove versions where applicable
+    return set(re.split("[<=>~]", dep)[0] for dep in deps)
 
 
 class DirectDependenciesTests(unittest.TestCase):
@@ -34,6 +58,10 @@ class DirectDependenciesTests(unittest.TestCase):
         for dep in self.direct_deps:
             with self.subTest(f"Has '{dep}'"):
                 envsnapshot.pkg_resources.require(dep)
+
+    def test_deps_are_same_as_per_regex(self):
+        regex_deps = get_direct_dependencies_regex()
+        self.assertEqual(regex_deps, self.direct_deps)
 
 
 class EnvSnapshotAloneTests(unittest.TestCase):
