@@ -89,7 +89,7 @@ def predict(model: nn.Module, data: List[Tuple[List[int], int, Optional[int]]],
             For each prediction a confidence value
     """
 
-    pad_id = config.model['padding_idx']
+    pad_id = config.pre_load.padding_idx
     batch_size = config.general['batch_size_eval']
     device = config.general['device']
     ignore_cpos = config.model['ignore_cpos']
@@ -269,14 +269,14 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
     batch_size = config.train['batch_size']
     batch_size_eval = config.general['batch_size_eval']
-    pad_id = config.model['padding_idx']
+    pad_id = config.pre_load.padding_idx
     nepochs = config.train['nepochs']
     ignore_cpos = config.model['ignore_cpos']
     num_batches = math.ceil(len(train_data) / batch_size)
     num_batches_test = math.ceil(len(test_data) / batch_size_eval)
     optimizer = optim.Adam(parameters, lr=config.train['lr'], weight_decay=1e-5)
-    if config.model.model_architecture_config is not None:
-        if config.model.model_architecture_config['lr_scheduler'] is True:
+    if config.pre_load.model_architecture_config is not None:
+        if config.pre_load.model_architecture_config['lr_scheduler'] is True:
             model, optimizer, scheduler = initialize_model(model, train_data, batch_size, config.train['lr'],
                                                            epochs=nepochs)
 
@@ -306,8 +306,8 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
             parameters = filter(lambda p: p.requires_grad, model.parameters())
             nn.utils.clip_grad_norm_(parameters, 0.15)
             optimizer.step()
-            if config.model.model_architecture_config is not None:
-                if config.model.model_architecture_config['lr_scheduler'] is True:
+            if config.pre_load.model_architecture_config is not None:
+                if config.pre_load.model_architecture_config['lr_scheduler'] is True:
                     scheduler.step()
 
         all_logits_test = []
@@ -375,7 +375,7 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     """
     device = torch.device(config.general['device'])  # Create a torch device
     batch_size_eval = config.general['batch_size_eval']
-    pad_id = config.model['padding_idx']
+    pad_id = config.pre_load.padding_idx
     ignore_cpos = config.model['ignore_cpos']
     class_weights = config.train['class_weights']
 

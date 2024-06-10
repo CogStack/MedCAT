@@ -55,12 +55,12 @@ class RelCAT(PipeRunner):
         self.tokenizer: TokenizerWrapperBERT = tokenizer
         self.cdb = cdb
 
-        logging.basicConfig(level=self.config.general.log_level)
-        self.log.setLevel(self.config.general.log_level)
+        logging.basicConfig(level=self.config.pre_load.log_level)
+        self.log.setLevel(self.config.pre_load.log_level)
 
         self.is_cuda_available = torch.cuda.is_available()
         self.device = torch.device(
-            "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
+            "cuda" if self.is_cuda_available and self.config.pre_load.device != "cpu" else "cpu")
 
         self.model_config = BertConfig()
         self.model: BertModel_RelationExtraction
@@ -75,7 +75,7 @@ class RelCAT(PipeRunner):
         self.padding_seq = Pad_Sequence(seq_pad_value=self.pad_id,
                                         label_pad_value=self.pad_id)
 
-        set_all_seeds(config.general.seed)
+        set_all_seeds(config.pre_load.seed)
 
         if init_model:
             self._get_model()
@@ -102,7 +102,7 @@ class RelCAT(PipeRunner):
         self.model.bert_model.resize_token_embeddings(
             self.tokenizer.hf_tokenizers.vocab_size)
         save_state(self.model, optimizer=self.optimizer, scheduler=self.scheduler, epoch=self.epoch, best_f1=self.best_f1,
-                   path=save_path, model_name=self.config.general.model_name,
+                   path=save_path, model_name=self.config.pre_load.model_name,
                    task=self.task, is_checkpoint=False, final_export=True)
 
     def _get_model(self):
@@ -130,29 +130,29 @@ class RelCAT(PipeRunner):
             cls.log.info("Loaded config.json")
 
         tokenizer = None
-        tokenizer_path = os.path.join(load_path, config.general.tokenizer_name)
+        tokenizer_path = os.path.join(load_path, config.pre_load.tokenizer_name)
 
-        if "bert" in config.general.tokenizer_name:
+        if "bert" in config.pre_load.tokenizer_name:
             tokenizer_path = load_path
 
         if os.path.exists(tokenizer_path):
             tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
 
             cls.log.info("Tokenizer loaded from:" + tokenizer_path)
-        elif config.general.model_name:
+        elif config.pre_load.model_name:
             cls.log.info("Attempted to load Tokenizer from path:" + tokenizer_path +
-                  ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:" + config.general.model_name)
-            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.general.model_name),
-                                             max_seq_length=config.general.max_seq_length,
-                                             add_special_tokens=config.general.tokenizer_special_tokens
+                  ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:" + config.pre_load.model_name)
+            tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path=config.pre_load.model_name),
+                                             max_seq_length=config.pre_load.max_seq_length,
+                                             add_special_tokens=config.pre_load.tokenizer_special_tokens
                                              )
             create_tokenizer_pretrain(tokenizer, tokenizer_path)
         else:
             cls.log.info("Attempted to load Tokenizer from path:" + tokenizer_path +
                   ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:bert-base-uncased")
             tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(pretrained_model_name_or_path="bert-base-uncased"),
-                                             max_seq_length=config.general.max_seq_length,
-                                             add_special_tokens=config.general.tokenizer_special_tokens
+                                             max_seq_length=config.pre_load.max_seq_length,
+                                             add_special_tokens=config.pre_load.tokenizer_special_tokens
                                              )
 
         model_config = BertConfig()
@@ -164,11 +164,11 @@ class RelCAT(PipeRunner):
         else:
             try:
                 model_config = BertConfig.from_pretrained(
-                    pretrained_model_name_or_path=config.general.model_name, num_hidden_layers=config.model.hidden_layers)  # type: ignore
+                    pretrained_model_name_or_path=config.pre_load.model_name, num_hidden_layers=config.pre_load.hidden_layers)  # type: ignore
             except Exception as e:
                 cls.log.error("%s", str(e))
                 cls.log.info("Config for HF model not found: " +
-                      config.general.model_name + ". Using bert-base-uncased.")
+                      config.pre_load.model_name + ". Using bert-base-uncased.")
                 model_config = BertConfig.from_pretrained(
                     pretrained_model_name_or_path="bert-base-uncased")  # type: ignore
 
@@ -176,18 +176,18 @@ class RelCAT(PipeRunner):
 
         rel_cat = cls(cdb=cdb, config=config,
                       tokenizer=tokenizer,
-                      task=config.general.task)
+                      task=config.pre_load.task)
 
         rel_cat.model_config = model_config
 
         device = torch.device("cuda" if torch.cuda.is_available(
-        ) and config.general.device != "cpu" else "cpu")
+        ) and config.pre_load.device != "cpu" else "cpu")
 
         try:
             model_path = os.path.join(load_path, "model.dat")
 
-            if os.path.exists(os.path.join(load_path, config.general.model_name)):
-                rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.general.model_name,
+            if os.path.exists(os.path.join(load_path, config.pre_load.model_name)):
+                rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.pre_load.model_name,
                                                              relcat_config=config,
                                                              model_config=model_config)
             else:
@@ -198,7 +198,7 @@ class RelCAT(PipeRunner):
                 rel_cat.model.load_state_dict(
                     torch.load(model_path, map_location=device))
 
-            cls.log.info("Loaded HF model : " + config.general.model_name)
+            cls.log.info("Loaded HF model : " + config.pre_load.model_name)
         except Exception as e:
             cls.log.error("%s", str(e))
             cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
@@ -213,8 +213,8 @@ class RelCAT(PipeRunner):
         rel_cat.scheduler = None # type: ignore
 
         rel_cat.epoch, rel_cat.best_f1 = load_state(rel_cat.model, rel_cat.optimizer, rel_cat.scheduler, path=load_path,
-                                                    model_name=config.general.model_name,
-                                                    file_prefix=config.general.task,
+                                                    model_name=config.pre_load.model_name,
+                                                    file_prefix=config.pre_load.task,
                                                     device=device,
                                                     config=config)
 
@@ -432,13 +432,13 @@ class RelCAT(PipeRunner):
             if len(f1_per_epoch) > 0 and f1_per_epoch[-1] > self.best_f1:
                 self.best_f1 = f1_per_epoch[-1]
                 save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1, checkpoint_path,
-                           model_name=self.config.general.model_name, task=self.task, is_checkpoint=False)
+                           model_name=self.config.pre_load.model_name, task=self.task, is_checkpoint=False)
 
             if (epoch % 1) == 0:
                 save_results({"losses_per_epoch": losses_per_epoch, "accuracy_per_epoch": accuracy_per_epoch,
                               "f1_per_epoch": f1_per_epoch, "epoch": epoch}, file_prefix="train", path=checkpoint_path)
                 save_state(self.model, self.optimizer, self.scheduler, self.epoch, self.best_f1, checkpoint_path,
-                           model_name=self.config.general.model_name, task=self.task, is_checkpoint=True)
+                           model_name=self.config.pre_load.model_name, task=self.task, is_checkpoint=True)
 
     def evaluate_(self, output_logits, labels, ignore_idx):
         # ignore index (padding) when calculating accuracy

@@ -13,6 +13,7 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.config_utils import attempt_fix_weighted_average_function
 from medcat.utils.config_utils import weighted_average, is_old_type_config_dict
+from medcat.utils.config_utils import legacy_remap_mct_config
 from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook
 
 
@@ -192,6 +193,20 @@ class MixingConfig(FakeDict):
         return str(cast(BaseModel, self).dict())
 
     @classmethod
+    def legacy_remapper(cls, d: dict) -> dict:
+        """This method is used for legacy remapping for different configs.
+
+        It is meant to be overwritten by specific config implementation.
+
+        Args:
+            d (dict): The input dict.
+
+        Returns:
+            dict: The remapped dict, generally the same instance.
+        """
+        return d
+
+    @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
         """Load config from a json file, note that fields that
         did not exist in the old config but do exist in the current
@@ -213,6 +228,14 @@ class MixingConfig(FakeDict):
                             save_path)
             with open(save_path) as f:
                 config_dict = jsonpickle.decode(f.read())
+            # unwrap to dict if applicable
+            for key, val in list(config_dict.items()):
+                if isinstance(val, MixingConfig):
+                    config_dict[key] = val.asdict()
+
+        # do legacy remap if applicable
+        # NOTE: If none set, this does nothing
+        config_dict = cls.legacy_remapper(config_dict)
 
         config.merge_config(config_dict)
 
@@ -323,17 +346,8 @@ class CheckPoint(MixingConfig, BaseModel):
 
 class General(MixingConfig, BaseModel):
     """The general part of the config"""
-    spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
-                                       'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
-                                       'merge_entities', 'merge_subtokens']
     checkpoint: CheckPoint = CheckPoint()
     """Checkpointing config"""
-    log_level: int = logging.INFO
-    """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
-    log_format: str = '%(levelname)s:%(name)s: %(message)s'
-    log_path: str = './medcat.log'
-    spacy_model: str = 'en_core_web_md'
-    """What model will be used for tokenization"""
     separator: str = '~'
     """Separator that will be used to merge tokens of a name. Once a CDB is built this should
     always stay the same."""
@@ -381,10 +395,6 @@ class Preprocessing(MixingConfig, BaseModel):
     """Should stopwords be skipped/ingored when processing input"""
     min_len_normalize: int = 5
     """Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case"""
-    stopwords: Optional[set] = None
-    """If None the default set of stowords from spacy will be used. This must be a Set."""
-    max_document_length: int = 1000000
-    """Documents longer  than this will be trimmed"""
 
     class Config:
         extra = Extra.allow
@@ -546,11 +556,35 @@ class Linking(MixingConfig, BaseModel):
         validate_assignment = True
 
 
+class PreLoad(MixingConfig, BaseModel):
+    """The parts of config that only take effect when setting before loading a model.
+
+    Changes to the parameters listed here will generally only be effective if done
+    before a model is initialised or loaded.
+    """
+    spacy_model: str = 'en_core_web_md'
+    """The underlying spacy model name (or path) to use."""
+    spacy_disabled_components: List[str] = ['ner', 'parser', 'vectors', 'textcat',
+                                            'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
+                                            'merge_entities', 'merge_subtokens']
+    """The list of spacy components that will be disabled."""
+    preprocessing_stopwords: Optional[set] = None
+    """If None the default set of stowords from spacy will be used. This must be a Set."""
+    max_document_length: int = 1_000_000
+    """Documents longer than this will be trimmed. 1 000 000 is the internal spacy maximum."""
+    log_level: int = logging.INFO
+    """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
+    log_format: str = '%(levelname)s:%(name)s: %(message)s'
+    log_path: str = './medcat.log'
+    """What model will be used for tokenization"""
+
+
 class Config(MixingConfig, BaseModel):
     """The MedCAT config"""
     version: VersionInfo = VersionInfo()
     cdb_maker: CDBMaker = CDBMaker()
     annotation_output: AnnotationOutput = AnnotationOutput()
+    pre_load: PreLoad = PreLoad()
     general: General = General()
     preprocessing: Preprocessing = Preprocessing()
     ner: Ner = Ner()
@@ -585,9 +619,12 @@ class Config(MixingConfig, BaseModel):
             if k in ['hash', ]:
                 # ignore hash
                 continue
-            if k not in ['version', 'general', 'linking']:
+            if k not in ['version', 'general', 'linking', 'pre_load']:
                 hasher.update(v, length=True)
             elif k == 'general':
+                for k2, v2 in v.items():
+                    hasher.update(v2, length=False)
+            elif k == 'pre_load':
                 for k2, v2 in v.items():
                     if k2 != 'spacy_model':
                         hasher.update(v2, length=False)
@@ -602,6 +639,10 @@ class Config(MixingConfig, BaseModel):
                         hasher.update(v2, length=True)
         self.hash = hasher.hexdigest()
         return self.hash
+
+    @classmethod
+    def legacy_remapper(cls, d: Dict) -> Dict:
+        return legacy_remap_mct_config(d)
 
 
 class UseOfOldConfigOptionException(AttributeError):

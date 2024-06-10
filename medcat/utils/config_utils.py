@@ -1,5 +1,5 @@
 from functools import partial
-from typing import Callable, Optional, Protocol
+from typing import Callable, Optional, Protocol, Dict, Any
 import logging
 from pydantic import BaseModel
 
@@ -50,9 +50,9 @@ def ensure_backward_compatibility(config: BaseModel, workers: Callable[[], int])
         fix_waf_lambda(config.linking)  # type: ignore
     if config.general.workers is None:  # type: ignore
         config.general.workers = workers()  # type: ignore
-    disabled_comps = config.general.spacy_disabled_components  # type: ignore
+    disabled_comps = config.pre_load.spacy_disabled_components  # type: ignore
     if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
-        config.general.spacy_disabled_components.append('lemmatizer')  # type: ignore
+        config.pre_load.spacy_disabled_components.append('lemmatizer')  # type: ignore
 
 
 def get_and_del_weighted_average_from_config(config: BaseModel) -> Optional[Callable[[int], float]]:
@@ -134,3 +134,183 @@ def _fix_waf(waf):
                     "you may want to save the model pack again using "
                     "a newer version of python (3.11 or later).")
     return partial(weighted_average, *waf.args, **waf.keywords)
+
+
+def remap_nested_dict(current_dict: Dict[str, Any], mappings: Dict[str, Dict[str, str]],
+                      in_place: bool = True) -> Dict[str, Any]:
+    """Remaps nested dict according to the specified mappings.
+
+    Can do so in existing dict (i.e change it) or in a brand new dict.
+
+    If using a brand new dict, only keys specified in the mappings will exist in new dict.
+    Otherwise it will retain other keys as well.
+
+    The mappings describe for each target (new) parent path:
+    - Each new path maps to the old path (e.g `a.a1.a12`)
+
+    Args:
+        current_dict (Dict[str, Any]): Input nested dict.
+        mappings (Dict[str, Dict[str, str]]): The mappings.
+        in_place (bool): Whether to do this in existing dict. Defaults to True.
+
+    Returns:
+        Dict[str, Any]: Existing dict or new one.
+    """
+    target_dict = current_dict if in_place else {}
+    for target_key, key_mappings in mappings.items():
+        if target_key not in target_dict:
+            target_dict[target_key] = {}
+        target_for_key = target_dict[target_key]
+        for target_path, source_path in key_mappings.items():
+            source_keys = source_path.split('.')
+            source_value = current_dict
+            found = True
+            for nr, key in enumerate(source_keys):
+                if key not in source_value:
+                    found = False
+                    break
+                if nr == len(source_keys) - 1 and in_place:
+                    source_value = source_value.pop(key)
+                else:
+                    source_value = source_value[key]
+            if found:
+                target_for_key[target_path] = source_value
+    return target_dict
+
+
+# for each section name (in the new config)
+#  - maps the new name to the path to the old name
+#  - only specifies changed paths
+CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'spacy_model': 'general.spacy_model',
+        'spacy_disabled_components': 'general.spacy_disabled_components',
+        'log_level': 'general.log_level',
+        'log_format': 'general.log_format',
+        'log_path': 'general.log_path',
+        # preprocessing
+        'preprocessing_stopwords': 'preprocessing.stopwords',
+        'max_document_length': 'preprocessing.max_document_length',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for main config"""
+
+
+def legacy_remap_mct_config(config_dict: dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, CONFIG_REMAP_MAPPINGS)
+
+
+# same as `CONFIG_REMAP_MAPPINGS` above
+META_CAT_CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'seed': 'general.seed',
+        'category_name': 'general.category_name',
+        'tokenizer_name': 'general.tokenizer_name',
+        # model
+        'model_name': 'model.model_name',
+        'model_variant': 'model.model_variant',
+        'model_freeze_layers': 'model.model_freeze_layers',
+        'num_layers': 'model.num_layers',
+        'input_size': 'model.input_size',
+        'hidden_size': 'model.hidden_size',
+        'dropout': 'model.dropout',
+        'model_architecture_config': 'model.model_architecture_config',
+        'num_directions': 'model.num_directions',
+        'nclasses': 'model.nclasses',
+        'padding_idx': 'model.padding_idx',
+        'emb_grad': 'model.emb_grad',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for MetaCAT config"""
+
+
+def legacy_remap_meta_cat_config(config_dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, META_CAT_CONFIG_REMAP_MAPPINGS)
+
+
+# same as `CONFIG_REMAP_MAPPINGS` above
+TNER_CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'name': 'general.name',
+        'model_name': 'general.model_name',
+        'seed': 'general.seed',
+        'description': 'general.description',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for NER config"""
+
+
+def legacy_remap_tner_config(config_dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, TNER_CONFIG_REMAP_MAPPINGS)
+
+
+# same as `CONFIG_REMAP_MAPPINGS` above
+REL_CAT_CONFIG_REMAP_MAPPINGS = {
+    'pre_load': {
+        'device': 'general.device',
+        'tokenizer_name': 'general.tokenizer_name',
+        'model_name': 'general.model_name',
+        'log_level': 'general.log_level',
+        'max_seq_length': 'general.max_seq_length',
+        'tokenizer_special_tokens': 'general.tokenizer_special_tokens',
+        'seed': 'general.seed',
+        'task': 'general.task',
+        # model
+        'hidden_size': 'model.hidden_size',
+        'hidden_layers': 'model.hidden_layers',
+        'model_size': 'model.model_size',
+    }
+}
+"""Remapping from v1.11 (inclusive) to newer config structure for NER config"""
+
+
+def legacy_remap_rel_cat_config(config_dict) -> dict:
+    """Maps the nested dict config from old format to new.
+
+    The method changes the values within the input dict as needed.
+
+    This refers to the format change after version 1.11.
+
+    Args:
+        config_dict (dict): The original nested dict.
+
+    Returns:
+        dict: The same (changed) dict
+    """
+    return remap_nested_dict(config_dict, REL_CAT_CONFIG_REMAP_MAPPINGS)

@@ -13,7 +13,7 @@ class TransformerNERTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         config = Config()
-        config.general["spacy_model"] = "en_core_web_md"
+        config.pre_load.spacy_model = "en_core_web_md"
         cdb_maker = CDBMaker(config)
         cdb_csv = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "examples", "cdb.csv")
         cdb = cdb_maker.prepare_csvs([cdb_csv], full_build=True)

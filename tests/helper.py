@@ -95,7 +95,7 @@ class ForCDBMerging:
     def __init__(self) -> None:
         # generating cdbs - two maker are requested as they point to the same created CDB. 
         config = Config()
-        config.general["spacy_model"] = "en_core_web_md"
+        config.pre_load.spacy_model = "en_core_web_md"
         maker1 = CDBMaker(config)
         maker2 = CDBMaker(config) # second maker is required as it will otherwise point to same object
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "model_creator", "umls_sample.csv")

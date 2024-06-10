@@ -7,6 +7,7 @@ from medcat import config_transformers_ner
 from medcat import config_rel_cat
 import json
 import os
+from copy import deepcopy
 
 import unittest
 
@@ -55,6 +56,110 @@ class ConfigUtilsTests(unittest.TestCase):
         self.assertFalse(config_utils.is_old_type_config_dict(NEW_STYLE_DICT))
 
 
+class ConfigRemapperGeneralTests(unittest.TestCase):
+    ORIG_DICT = {'a': {'a1': 1, 'a2': 2}, 'b': {'b1': 3, 'b2': 4, 'b4': 5}}
+    ORIG_DICT_MISSING1 = {'a': {'a2': 2}, 'b': {'b1': 3, 'b2': 4, 'b4': 5}}
+    EXAMPLE_MAPPINGS = {'c': {'a1_from_a': 'a.a1', 'b2_from_b': 'b.b2', 'b4_from_b': 'b.b4'}}
+    EXPECTED_OUT = {'a': {'a2': 2}, 'b': {'b1': 3}, 'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
+    EXPECTED_NEW = {'c': {'a1_from_a': 1, 'b2_from_b': 4, 'b4_from_b': 5}}
+
+    @property
+    def orig_dict(self):
+        return deepcopy(self.ORIG_DICT)
+
+    @property
+    def orig_dict_missting1(self):
+        return deepcopy(self.ORIG_DICT_MISSING1)
+
+    def test_remapping_works(self):
+        got = config_utils.remap_nested_dict(self.orig_dict, self.EXAMPLE_MAPPINGS)
+        self.assertEqual(got, self.EXPECTED_OUT)
+
+    def test_remapping_into_new_works(self):
+        got = config_utils.remap_nested_dict(self.orig_dict, self.EXAMPLE_MAPPINGS, in_place=False)
+        self.assertEqual(got, self.EXPECTED_NEW)
+
+    def test_missing_ignored(self):
+        # 'a1' not in orig, so now not in got['c']
+        got = config_utils.remap_nested_dict(self.orig_dict_missting1, self.EXAMPLE_MAPPINGS)
+        c = got['c']
+        self.assertNotIn('a1_from_a', c)
+
+
+class ConfigRemapWithConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_config.json"
+    )
+    EXPECTED_SPACY_MODEL = "no_such_spacy_model"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: main_config.Config = main_config.Config.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.spacy_model, self.EXPECTED_SPACY_MODEL)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "spacy_model"))
+
+
+class ConfigRemapWithMetaCATConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_meta_cat_config.json"
+    )
+    EXPECTED_SEED = -130
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: config_meta_cat.ConfigMetaCAT = config_meta_cat.ConfigMetaCAT.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "seed"))
+
+    def test_converted_old_config_same_as_new_config(self):
+        new_config = config_meta_cat.ConfigMetaCAT()
+        new_config.pre_load.seed = self.EXPECTED_SEED
+        self.assertEqual(self.config, new_config)
+
+
+class ConfigRemapWithTNERConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_tner_config.json"
+    )
+    EXPECTED_SEED = -103
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: config_transformers_ner.ConfigTransformersNER = config_transformers_ner.ConfigTransformersNER.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "seed"))
+
+
+
+class ConfigRemapWithRelCATConfigTests(unittest.TestCase):
+    CONFIG_JSON_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "pre_change_rel_cat_config.json"
+    )
+    EXPECTED_SEED = -113
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.config: config_rel_cat.ConfigRelCAT = config_rel_cat.ConfigRelCAT.load(cls.CONFIG_JSON_PATH)
+
+    def test_gets_correct_spacy(self):
+        self.assertEqual(self.config.pre_load.seed, self.EXPECTED_SEED)
+
+    def test_does_not_have_spacy_in_old_path(self):
+        self.assertFalse(hasattr(self.config.general, "seed"))
+
+
 class OldFormatJsonTests(unittest.TestCase):
 
     def assert_knows_old_format(self, file_path: str):
@@ -78,7 +183,7 @@ class OldConfigLoadTests(OldFormatJsonTests):
 
 
 class MetaCATConfigTests(OldFormatJsonTests):
-    META_CAT_OLD_PATH = os.path.join(
+    TARGET_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "jsonpickle_meta_cat_config.json"
     )
     EXPECTED_TARGET = -100
@@ -86,19 +191,19 @@ class MetaCATConfigTests(OldFormatJsonTests):
 
     @classmethod
     def get_target(cls, cnf):
-        return cnf.general.seed
+        return cnf.pre_load.seed
 
     def test_knows_is_old_format(self):
-        self.assert_knows_old_format(self.META_CAT_OLD_PATH)
+        self.assert_knows_old_format(self.TARGET_PATH)
 
     def test_can_load_old_format_correctly(self):
-        cnf = self.TARGET_CLASS.load(self.META_CAT_OLD_PATH)
+        cnf = self.TARGET_CLASS.load(self.TARGET_PATH)
         self.assertIsInstance(cnf, self.TARGET_CLASS)
         self.assertEqual(self.get_target(cnf), self.EXPECTED_TARGET)
 
 
 class TNERCATConfigTests(MetaCATConfigTests):
-    META_CAT_OLD_PATH = os.path.join(
+    TARGET_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "jsonpickle_tner_config.json"
     )
     EXPECTED_TARGET = -100
@@ -110,7 +215,7 @@ class TNERCATConfigTests(MetaCATConfigTests):
 
 
 class RelCATConfigTests(MetaCATConfigTests):
-    META_CAT_OLD_PATH = os.path.join(
+    TARGET_PATH = os.path.join(
         os.path.dirname(__file__), "..", "resources", "jsonpickle_rel_cat_config.json"
     )
     EXPECTED_TARGET = 100_000

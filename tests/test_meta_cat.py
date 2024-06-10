@@ -17,9 +17,9 @@ class MetaCATTests(unittest.TestCase):
     def setUpClass(cls) -> None:
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
         config = ConfigMetaCAT()
-        config.general['category_name'] = 'Status'
+        config.pre_load.category_name = 'Status'
         config.train['nepochs'] = 2
-        config.model['input_size'] = 100
+        config.pre_load.input_size = 100
 
         cls.meta_cat: MetaCAT = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
 
@@ -99,11 +99,11 @@ class MetaCATBertTest(MetaCATTests):
     def setUpClass(cls) -> None:
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained('prajjwal1/bert-tiny'))
         config = ConfigMetaCAT()
-        config.general['category_name'] = 'Status'
+        config.pre_load.category_name = 'Status'
         config.train['nepochs'] = 2
-        config.model['input_size'] = 100
+        config.pre_load.input_size = 100
         config.train['batch_size'] = 64
-        config.model['model_name'] = 'bert'
+        config.pre_load.model_name = 'bert'
 
         cls.meta_cat: MetaCAT = MetaCAT(tokenizer=tokenizer, embeddings=None, config=config)
         cls.tmp_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
