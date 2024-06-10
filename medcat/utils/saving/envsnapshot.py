@@ -14,30 +14,18 @@ SETUP_PY_REGEX = re.compile("install_requires=\[([\s\S]*?)\]")
 def get_direct_dependencies() -> Set[str]:
     """Get the set of direct dependeny names.
 
-    The current implementation reads setup.py for the install_requires
-    keyword argument, evaluates the list, removes the versions and returns
+    The current implementation reads install_requires.txt for dependenceies,
+    removes comments, whitespace, quotes; removes the versions and returns
     the names as a set.
-
-    Raises:
-        FileNotFoundError: If the setup.py file was not found.
-        ValueError: If found different sets of instal lrequirements.
 
     Returns:
         Set[str]: The set of direct dependeny names.
     """
-    if not os.path.exists(SETUP_PY_PATH):
-        raise FileNotFoundError(f"{SETUP_PY_PATH} does not exist.")
-    with open(SETUP_PY_PATH) as f:
-        setup_py_code = f.read()
-    found = SETUP_PY_REGEX.findall(setup_py_code)
-    if not found:
-        raise ValueError("Did not find install requirements in setup.py")
-    if len(found) > 1:
-        raise ValueError("Ambiguous install requirements in setup.py")
-    deps_str = found[0]
-    # evaluate list of dependencies (including potential version pins)
-    deps: List[str] = eval("[" + deps_str + "]")
-    # remove versions where applicable
+    with open("install_requires.txt") as f:
+        # read every line, strip quotes and comments
+        dep_lines = [line.split("#")[0].replace("'", "").replace('"', "").strip() for line in f.readlines()]
+        # remove comment-only (or empty) lines
+        deps = [dep for dep in dep_lines if dep]
     return set(re.split("[<=>~]", dep)[0] for dep in deps)
 
 
