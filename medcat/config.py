@@ -228,6 +228,10 @@ class MixingConfig(FakeDict):
                             save_path)
             with open(save_path) as f:
                 config_dict = jsonpickle.decode(f.read())
+            # unwrap to dict if applicable
+            for key, val in list(config_dict.items()):
+                if isinstance(val, MixingConfig):
+                    config_dict[key] = val.asdict()
 
         # do legacy remap if applicable
         # NOTE: If none set, this does nothing
