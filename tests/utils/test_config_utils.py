@@ -158,3 +158,69 @@ class ConfigRemapWithRelCATConfigTests(unittest.TestCase):
 
     def test_does_not_have_spacy_in_old_path(self):
         self.assertFalse(hasattr(self.config.general, "seed"))
+
+
+class OldFormatJsonTests(unittest.TestCase):
+
+    def assert_knows_old_format(self, file_path: str):
+        with open(file_path) as f:
+            d = json.load(f)
+        self.assertTrue(config_utils.is_old_type_config_dict(d))
+
+
+class OldConfigLoadTests(OldFormatJsonTests):
+    JSON_PICKLE_FILE_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_config.json"
+    )
+    EXPECTED_VERSION_HISTORY = ['0c0de303b6dc0020',]
+
+    def test_knows_is_old_format(self):
+        self.assert_knows_old_format(self.JSON_PICKLE_FILE_PATH)
+
+    def test_loads_old_style_correctly(self):
+        cnf: main_config.Config = main_config.Config.load(self.JSON_PICKLE_FILE_PATH)
+        self.assertEqual(cnf.version.history, self.EXPECTED_VERSION_HISTORY)
+
+
+class MetaCATConfigTests(OldFormatJsonTests):
+    TARGET_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_meta_cat_config.json"
+    )
+    EXPECTED_TARGET = -100
+    TARGET_CLASS = config_meta_cat.ConfigMetaCAT
+
+    @classmethod
+    def get_target(cls, cnf):
+        return cnf.pre_load.seed
+
+    def test_knows_is_old_format(self):
+        self.assert_knows_old_format(self.TARGET_PATH)
+
+    def test_can_load_old_format_correctly(self):
+        cnf = self.TARGET_CLASS.load(self.TARGET_PATH)
+        self.assertIsInstance(cnf, self.TARGET_CLASS)
+        self.assertEqual(self.get_target(cnf), self.EXPECTED_TARGET)
+
+
+class TNERCATConfigTests(MetaCATConfigTests):
+    TARGET_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_tner_config.json"
+    )
+    EXPECTED_TARGET = -100
+    TARGET_CLASS = config_transformers_ner.ConfigTransformersNER
+
+    @classmethod
+    def get_target(cls, cnf):
+        return cnf.general.pipe_batch_size_in_chars
+
+
+class RelCATConfigTests(MetaCATConfigTests):
+    TARGET_PATH = os.path.join(
+        os.path.dirname(__file__), "..", "resources", "jsonpickle_rel_cat_config.json"
+    )
+    EXPECTED_TARGET = 100_000
+    TARGET_CLASS = config_rel_cat.ConfigRelCAT
+
+    @classmethod
+    def get_target(cls, cnf):
+        return cnf.train.lr

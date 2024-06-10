@@ -15,9 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 def is_old_type_config_dict(d: dict) -> bool:
-    if set(('py/object', 'py/state')) <= set(d.keys()):
-        return True
-    return False
+    """Checks if the dict provided is an old style (jsonpickle) config.
+
+    This checks for json-pickle specific keys such as py/object and py/state.
+    If both of those are keys somewhere within the 2 initial layers of the
+    nested dict, it's considered old style.
+
+    Args:
+        d (dict): Loaded config.
+
+    Returns:
+        bool: Whether it's an old style (jsonpickle) config.
+    """
+    # all 2nd level keys
+    all_keys = set(sub_key for key in d for sub_key in (d[key] if isinstance(d[key], dict) else [key]))
+    # add 1st level keys
+    all_keys.update(d.keys())
+    # is old if py/object and py/state somewhere in keys
+    return set(('py/object', 'py/state')) <= all_keys
 
 
 def fix_waf_lambda(carrier: WAFCarrier) -> None:
