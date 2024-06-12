@@ -148,7 +148,7 @@ class CDB(object):
                                             (self.cui2count_train.get(cui, 0) + 1)
         self.is_dirty = True
 
-    def remove_names(self, cui: str, names: Iterable[str]) -> None:
+    def _remove_names(self, cui: str, names: Iterable[str]) -> None:
         """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
