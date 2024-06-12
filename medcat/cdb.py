@@ -158,7 +158,7 @@ class CDB(object):
             cui (str):
                 Concept ID or unique identifer in this database.
             names (Iterable[str]):
-                Names to be removed (e.g list).
+                Names to be removed (e.g list, set, or even a dict (in which case keys will be used)).
         """
         for name in names:
             if name in self.name2cuis:
