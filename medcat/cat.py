@@ -691,7 +691,7 @@ class CAT(object):
 
         # Remove name from all CUIs
         for c in cuis:
-            self.cdb.remove_names(cui=c, names=names)
+            self.cdb.remove_names(cui=c, names=names.keys())
 
     def add_and_train_concept(self,
                               cui: str,
