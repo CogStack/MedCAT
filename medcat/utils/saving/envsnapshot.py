@@ -1,14 +1,11 @@
 from typing import List, Dict, Any, Set
 
-import os
 import re
 import pkg_resources
 import platform
 
 
 ENV_SNAPSHOT_FILE_NAME = "environment_snapshot.json"
-SETUP_PY_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "..", "setup.py"))
-SETUP_PY_REGEX = re.compile("install_requires=\[([\s\S]*?)\]")
 
 
 def get_direct_dependencies() -> Set[str]:
