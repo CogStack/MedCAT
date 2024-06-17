@@ -1,8 +1,11 @@
 import setuptools
+import shutil
 
 with open("./README.md", "r") as fh:
     long_description = fh.read()
 
+# make a copy of install requirements so that it gets distributed with the wheel
+shutil.copy('install_requires.txt', 'medcat/install_requires.txt')
 
 with open("install_requires.txt") as f:
     # read every line, strip quotes and comments
@@ -25,6 +28,8 @@ setuptools.setup(
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
               'medcat.utils.saving', 'medcat.utils.regression', 'medcat.stats'],
     install_requires=install_requires,
+    include_package_data=True,
+    package_data={"medcat": ["install_requires.txt"]},
     classifiers=[
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.8",

@@ -1,11 +1,23 @@
 from typing import List, Dict, Any, Set
 
+import os
 import re
 import pkg_resources
 import platform
 
 
 ENV_SNAPSHOT_FILE_NAME = "environment_snapshot.json"
+
+INSTALL_REQUIRES_FILE_PATH = os.path.join(os.path.dirname(__file__),
+                                          "..", "..", "..",
+                                          "install_requires.txt")
+# NOTE: The install_requires.txt file is copied into the wheel during build
+#       so that it can be included in the distributed package.
+#       However, that means it's 1 folder closer to this file since it'll now
+#       be in the root of the package rather than the root of the project.
+INSTALL_REQUIRES_FILE_PATH_PIP = os.path.join(os.path.dirname(__file__),
+                                              "..", "..",
+                                              "install_requires.txt")
 
 
 def get_direct_dependencies() -> Set[str]:
@@ -18,7 +30,11 @@ def get_direct_dependencies() -> Set[str]:
     Returns:
         Set[str]: The set of direct dependeny names.
     """
-    with open("install_requires.txt") as f:
+    req_file = INSTALL_REQUIRES_FILE_PATH
+    if not os.path.exists(req_file):
+        # When pip-installed. See note above near constant definiation
+        req_file = INSTALL_REQUIRES_FILE_PATH_PIP
+    with open(req_file) as f:
         # read every line, strip quotes and comments
         dep_lines = [line.split("#")[0].replace("'", "").replace('"', "").strip() for line in f.readlines()]
         # remove comment-only (or empty) lines
