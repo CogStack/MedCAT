@@ -23,7 +23,7 @@ def get_direct_dependencies() -> Set[str]:
         dep_lines = [line.split("#")[0].replace("'", "").replace('"', "").strip() for line in f.readlines()]
         # remove comment-only (or empty) lines
         deps = [dep for dep in dep_lines if dep]
-    return set(re.split("[<=>~]", dep)[0] for dep in deps)
+    return set(re.split("[@<=>~]", dep)[0].strip() for dep in deps)
 
 
 def get_installed_packages() -> List[List[str]]:
