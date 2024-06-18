@@ -181,7 +181,8 @@ class TransformersNER(object):
             dataset = datasets.load_dataset(os.path.abspath(transformers_ner.__file__),
                                             data_files={'train': json_path}, # type: ignore
                                             split='train',
-                                            cache_dir='/tmp/')
+                                            cache_dir='/tmp/',
+                                            trust_remote_code=True)
             # We split before encoding so the split is document level, as encoding
             #does the document spliting into max_seq_len
             dataset = dataset.train_test_split(test_size=self.config.general['test_size']) # type: ignore
