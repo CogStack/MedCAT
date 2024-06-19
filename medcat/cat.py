@@ -146,7 +146,8 @@ class CAT(object):
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
 
-    @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
+    @deprecated(message="Replaced with cat.pipe.spacy_nlp.",
+                depr_version=(1, 2, 7), removal_version=(1, 12, 0))
     def get_spacy_nlp(self) -> Language:
         """Returns the spacy pipeline with MedCAT
 
@@ -389,12 +390,7 @@ class CAT(object):
         model_pack_path = cls.attempt_unpack(zip_path)
 
         # Load the CDB
-        cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
-        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
-        json_path = model_pack_path if has_jsons else None
-        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
-        cdb = CDB.load(cdb_path, json_path)
+        cdb: CDB = cls.load_cdb(model_pack_path)
 
         # load config
         config_path = os.path.join(model_pack_path, "config.json")
@@ -421,11 +417,9 @@ class CAT(object):
             addl_ner.append(trf)
 
         # Find metacat models in the model_pack
-        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
-        meta_cats = []
-        for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
-                                          config_dict=meta_cat_config_dict))
+        meta_cats: List[MetaCAT] = []
+        if load_meta_models:
+            meta_cats = [mc[1] for mc in cls.load_meta_cats(model_pack_path, meta_cat_config_dict)]
 
         # Find Rel models in model_pack
         rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')] if load_rel_models else []
@@ -437,6 +431,47 @@ class CAT(object):
         logger.info(cat.get_model_card())  # Print the model card
 
         return cat
+
+    @classmethod
+    def load_cdb(cls, model_pack_path: str) -> CDB:
+        """
+        Loads the concept database from the provided model pack path
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+
+        Returns:
+            CDB: The loaded concept database
+        """
+        cdb_path = os.path.join(model_pack_path, "cdb.dat")
+        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
+        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
+        json_path = model_pack_path if has_jsons else None
+        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
+        cdb = CDB.load(cdb_path, json_path)
+        return cdb
+
+    @classmethod
+    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[Tuple[str, MetaCAT]]:
+        """
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+            meta_cat_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in meta_cat.
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
+
+        Returns:
+            List[Tuple(str, MetaCAT)]: list of pairs of meta cat model names (i.e. the task name) and the MetaCAT models.
+        """
+        meta_paths = [os.path.join(model_pack_path, path)
+                      for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_cats = []
+        for meta_path in meta_paths:
+            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
+                                          config_dict=meta_cat_config_dict))
+        return list(zip(meta_paths, meta_cats))
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         """Push the text through the pipeline.
@@ -728,7 +763,8 @@ class CAT(object):
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
     @deprecated(message="Use train_supervised_from_json to train based on data "
-                "loaded from a json file")
+                "loaded from a json file",
+                depr_version=(1, 8, 0), removal_version=(1, 12, 0))
     def train_supervised(self,
                          data_path: str,
                          reset_cui_count: bool = False,
@@ -1228,7 +1264,8 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
-    @deprecated(message="Use `multiprocessing_batch_char_size` instead")
+    @deprecated(message="Use `multiprocessing_batch_char_size` instead",
+                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
     def multiprocessing(self,
                         data: Union[List[Tuple], Iterable[Tuple]],
                         nproc: int = 2,
@@ -1501,7 +1538,8 @@ class CAT(object):
 
         return docs
 
-    @deprecated(message="Use `multiprocessing_batch_docs_size` instead")
+    @deprecated(message="Use `multiprocessing_batch_docs_size` instead",
+                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
     def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
                              nproc: Optional[int] = None,
                              batch_size: Optional[int] = None,

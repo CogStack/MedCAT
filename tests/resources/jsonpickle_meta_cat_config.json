@@ -1,0 +1,89 @@
+{
+    "general": {
+      "py/object": "medcat.config_meta_cat.General",
+      "py/state": {
+        "__dict__": {
+          "device": "cpu",
+          "disable_component_lock": false,
+          "seed": -100,
+          "description": "No description",
+          "category_name": null,
+          "category_value2id": {},
+          "vocab_size": null,
+          "lowercase": true,
+          "cntx_left": 15,
+          "cntx_right": 10,
+          "replace_center": null,
+          "batch_size_eval": 5000,
+          "annotate_overlapping": false,
+          "tokenizer_name": "bbpe",
+          "save_and_reuse_tokens": false,
+          "pipe_batch_size_in_chars": 20000000,
+          "span_group": null
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "model": {
+      "py/object": "medcat.config_meta_cat.Model",
+      "py/state": {
+        "__dict__": {
+          "model_name": "lstm",
+          "model_variant": "bert-base-uncased",
+          "model_freeze_layers": true,
+          "num_layers": 2,
+          "input_size": 300,
+          "hidden_size": 300,
+          "dropout": 0.5,
+          "phase_number": 0,
+          "category_undersample": "",
+          "model_architecture_config": {
+            "fc2": true,
+            "fc3": false,
+            "lr_scheduler": true
+          },
+          "num_directions": 2,
+          "nclasses": 2,
+          "padding_idx": -1,
+          "emb_grad": true,
+          "ignore_cpos": false
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "train": {
+      "py/object": "medcat.config_meta_cat.Train",
+      "py/state": {
+        "__dict__": {
+          "batch_size": 100,
+          "nepochs": 50,
+          "lr": 0.001,
+          "test_size": 0.1,
+          "shuffle_data": true,
+          "class_weights": null,
+          "compute_class_weights": false,
+          "score_average": "weighted",
+          "prerequisites": {},
+          "cui_filter": null,
+          "auto_save_model": true,
+          "last_train_on": null,
+          "metric": {
+            "base": "weighted avg",
+            "score": "f1-score"
+          },
+          "loss_funct": "cross_entropy",
+          "gamma": 2
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    }
+  }

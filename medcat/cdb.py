@@ -247,7 +247,8 @@ class CDB(object):
 
         self._add_concept(cui=cui, names=names, ontologies=set(), name_status=name_status, type_ids=set(), description='', full_build=full_build)
 
-    @deprecated("Use `cdb._add_concept` as this will be removed in a future release.")
+    @deprecated("Use `cdb._add_concept` as this will be removed in a future release.",
+                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
     def add_concept(self,
                     cui: str,
                     names: Dict[str, Dict],

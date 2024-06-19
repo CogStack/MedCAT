@@ -208,9 +208,10 @@ class MixingConfig(FakeDict):
         # Read the jsonpickle string
         with open(save_path) as f:
             config_dict = json.load(f, object_hook=default_hook)
-            if is_old_type_config_dict(config_dict):
-                logger.warning("Loading an old type of config (jsonpickle) from '%s'",
-                               save_path)
+        if is_old_type_config_dict(config_dict):
+            logger.warning("Loading an old type of config (jsonpickle) from '%s'",
+                            save_path)
+            with open(save_path) as f:
                 config_dict = jsonpickle.decode(f.read())
 
         config.merge_config(config_dict)
