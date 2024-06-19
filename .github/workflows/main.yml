@@ -41,6 +41,25 @@ jobs:
           timeout 25m python -m unittest ${first_half_nl[@]}
           timeout 25m python -m unittest ${second_half_nl[@]}
 
+      - name: Get the latest release version
+        id: get_latest_release
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const latestRelease = await github.rest.repos.getLatestRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            core.setOutput('latest_version', latestRelease.data.tag_name);
+
+      - name: Make sure there's no deprecated methods that should be removed.
+        # only run this for master -> production PR. I.e just before doing a release.
+        if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'production'
+        env:
+          VERSION: ${{ steps.get_latest_release.outputs.latest_version }}
+        run: |
+          python tests/check_deprecations.py "$VERSION" --next-version --remove-prefix
+
   publish-to-test-pypi:
 
     if: |
