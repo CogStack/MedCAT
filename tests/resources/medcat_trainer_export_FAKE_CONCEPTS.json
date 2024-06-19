@@ -1,0 +1,84 @@
+{
+    "projects": [
+        {
+            "cuis": "",
+            "tuis": "",
+            "name": "TEST-PROJ",
+            "id": "PROJ_FAKE",
+            "documents": [
+                {
+                    "name": "fake_doc_0",
+                    "id": 100,
+                    "last_modified": "-1",
+                    "text": "This virus is called virus M and was read from the second CSV we could find.",
+                    "annotations": [
+                        {
+                            "cui": "C0000039",
+                            "start": 5,
+                            "end": 10,
+                            "value": "virus"
+                        },
+                        {
+                            "cui": "C0000139",
+                            "start": 21,
+                            "end": 28,
+                            "value": "virus M"
+                        },
+                        {
+                            "cui": "C0000239",
+                            "start": 51,
+                            "end": 62,
+                            "value": "second CSV"
+                        }
+                    ]
+                },
+                {
+                    "name": "fake_doc_1",
+                    "id": 101,
+                    "last_modified": "-1",
+                    "text": "We found a virus. Turned out it was virus M. This was the second CSV we looked at.",
+                    "annotations": [
+                        {
+                            "cui": "C0000039",
+                            "start": 11,
+                            "end": 16,
+                            "value": "virus"
+                        },
+                        {
+                            "cui": "C0000139",
+                            "start": 36,
+                            "end": 43,
+                            "value": "virus M"
+                        },
+                        {
+                            "cui": "C0000239",
+                            "start": 58,
+                            "end": 69,
+                            "value": "second CSV"
+                        }
+                    ]
+                },
+                {
+                    "name": "fake_doc_2",
+                    "id": 102,
+                    "last_modified": "-1",
+                    "text": "We opened second CSV and found virus M to be the culprit.",
+                    "annotations": [
+                        {
+                            "cui": "C0000239",
+                            "start": 10,
+                            "end": 21,
+                            "value": "second CSV"
+                        },
+                        {
+                            "cui": "C0000139",
+                            "start": 31,
+                            "end": 38,
+                            "value": "virus M"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
