@@ -16,7 +16,6 @@ from itertools import islice, chain, repeat
 from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
-from spacy.language import Language
 import humanfriendly
 
 from medcat import __version__
@@ -37,7 +36,6 @@ from medcat.rel_cat import RelCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
-from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
 from medcat.stats.stats import get_stats
@@ -1217,26 +1215,6 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
-    @deprecated(message="Use `multiprocessing_batch_char_size` instead",
-                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
-    def multiprocessing(self,
-                        data: Union[List[Tuple], Iterable[Tuple]],
-                        nproc: int = 2,
-                        batch_size_chars: int = 5000 * 1000,
-                        only_cui: bool = False,
-                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                        separate_nn_components: bool = True,
-                        out_split_size_chars: Optional[int] = None,
-                        save_dir_path: str = os.path.abspath(os.getcwd()),
-                        min_free_memory=0.1) -> Dict:
-        return self.multiprocessing_batch_char_size(data=data, nproc=nproc,
-                                                    batch_size_chars=batch_size_chars,
-                                                    only_cui=only_cui, addl_info=addl_info,
-                                                    separate_nn_components=separate_nn_components,
-                                                    out_split_size_chars=out_split_size_chars,
-                                                    save_dir_path=save_dir_path,
-                                                    min_free_memory=min_free_memory)
-
     def multiprocessing_batch_char_size(self,
                                         data: Union[List[Tuple], Iterable[Tuple]],
                                         nproc: int = 2,
@@ -1490,22 +1468,6 @@ class CAT(object):
                 logger.warning(e, exc_info=True, stack_info=True)
 
         return docs
-
-    @deprecated(message="Use `multiprocessing_batch_docs_size` instead",
-                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
-    def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
-                             batch_size: Optional[int] = None,
-                             only_cui: bool = False,
-                             addl_info: List[str] = [],
-                             return_dict: bool = True,
-                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
-                                                    batch_size=batch_size,
-                                                    only_cui=only_cui,
-                                                    addl_info=addl_info,
-                                                    return_dict=return_dict,
-                                                    batch_factor=batch_factor)
 
     def multiprocessing_batch_docs_size(self,
                                         in_data: Union[List[Tuple], Iterable[Tuple]],
