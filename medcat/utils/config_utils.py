@@ -1,13 +1,77 @@
 from functools import partial
-from typing import Callable
+from typing import Callable, Optional, Protocol
 import logging
+from pydantic import BaseModel
+
+
+class WAFCarrier(Protocol):
+
+    @property
+    def weighted_average_function(self) -> Callable[[float], int]:
+        pass
 
 
 logger = logging.getLogger(__name__)
 
 
+def is_old_type_config_dict(d: dict) -> bool:
+    """Checks if the dict provided is an old style (jsonpickle) config.
+
+    This checks for json-pickle specific keys such as py/object and py/state.
+    If both of those are keys somewhere within the 2 initial layers of the
+    nested dict, it's considered old style.
+
+    Args:
+        d (dict): Loaded config.
+
+    Returns:
+        bool: Whether it's an old style (jsonpickle) config.
+    """
+    # all 2nd level keys
+    all_keys = set(sub_key for key in d for sub_key in (d[key] if isinstance(d[key], dict) else [key]))
+    # add 1st level keys
+    all_keys.update(d.keys())
+    # is old if py/object and py/state somewhere in keys
+    return set(('py/object', 'py/state')) <= all_keys
+
+
+def fix_waf_lambda(carrier: WAFCarrier) -> None:
+    weighted_average_function = carrier.weighted_average_function  # type: ignore
+    if callable(weighted_average_function) and getattr(weighted_average_function, "__name__", None) == "<lambda>":
+        # the following type ignoring is for mypy because it is unable to detect the signature
+        carrier.weighted_average_function = partial(weighted_average, factor=0.0004) # type: ignore
+
+
+# NOTE: This method is a hacky workaround. The type ignores are because I cannot
+#       import config here since it would produce a circular import
+def ensure_backward_compatibility(config: BaseModel, workers: Callable[[], int]) -> None:
+    # Hacky way of supporting old CDBs
+    if hasattr(config.linking, 'weighted_average_function'):  # type: ignore
+        fix_waf_lambda(config.linking)  # type: ignore
+    if config.general.workers is None:  # type: ignore
+        config.general.workers = workers()  # type: ignore
+    disabled_comps = config.general.spacy_disabled_components  # type: ignore
+    if 'tagger' in disabled_comps and 'lemmatizer' not in disabled_comps:
+        config.general.spacy_disabled_components.append('lemmatizer')  # type: ignore
+
+
+def get_and_del_weighted_average_from_config(config: BaseModel) -> Optional[Callable[[int], float]]:
+    if not hasattr(config, 'linking'):
+        return None
+    linking = config.linking
+    if not hasattr(linking, 'weighted_average_function'):
+        return None
+    waf = linking.weighted_average_function
+    delattr(linking, 'weighted_average_function')
+    return waf
+
+
 def weighted_average(step: int, factor: float) -> float:
     return max(0.1, 1 - (step ** 2 * factor))
+
+
+def default_weighted_average(step: int) -> float:
+    return weighted_average(step, factor=0.0004)
 
 
 def attempt_fix_weighted_average_function(waf: Callable[[int], float]

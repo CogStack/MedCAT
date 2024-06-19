@@ -10,6 +10,7 @@ from medcat.cat import CAT
 from medcat.vocab import Vocab
 
 from medcat.utils.saving.serializer import JsonSetSerializer, CDBSerializer, SPECIALITY_NAMES, ONE2MANY
+from medcat.utils.saving.envsnapshot import ENV_SNAPSHOT_FILE_NAME
 
 import medcat.utils.saving.coding as _
 
@@ -60,6 +61,7 @@ class ModelCreationTests(unittest.TestCase):
     json_model_pack = tempfile.TemporaryDirectory()
     EXAMPLES = os.path.join(os.path.dirname(
         os.path.realpath(__file__)), "..", "..", "..", "examples")
+    EXCEPTIONAL_JSONS = ['model_card.json', ENV_SNAPSHOT_FILE_NAME]
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -95,7 +97,7 @@ class ModelCreationTests(unittest.TestCase):
             SPECIALITY_NAMES) - len(ONE2MANY))
         for json in jsons:
             with self.subTest(f'JSON {json}'):
-                if json.endswith('model_card.json'):
+                if any(json.endswith(exception) for exception in self.EXCEPTIONAL_JSONS):
                     continue  # ignore model card here
                 if any(name in json for name in ONE2MANY):
                     # ignore cui2many and name2many
@@ -117,10 +119,6 @@ class ModelCreationTests(unittest.TestCase):
         # The spacy model has full path in the loaded model, thus won't be equal
         cat.config.general.spacy_model = os.path.basename(
             cat.config.general.spacy_model)
-        # There can also be issues with loading the config.linking.weighted_average_function from file
-        # This should be fixed with newer models,
-        # but the example model is older, so has the older functionalitys
-        cat.config.linking.weighted_average_function = self.undertest.config.linking.weighted_average_function
         self.assertEqual(cat.config.asdict(), self.undertest.config.asdict())
         self.assertEqual(cat.cdb.config, self.undertest.cdb.config)
         self.assertEqual(len(cat.vocab.vocab), len(self.undertest.vocab.vocab))

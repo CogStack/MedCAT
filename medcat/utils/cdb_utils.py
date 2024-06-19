@@ -63,7 +63,7 @@ def merge_cdb(cdb1: CDB,
                 ontologies.update(cdb2.addl_info['cui2ontologies'][cui])
             if 'cui2description' in cdb2.addl_info:
                 description = cdb2.addl_info['cui2description'][cui]
-        cdb.add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status,
+        cdb._add_concept(cui=cui, names=names, ontologies=ontologies, name_status=name_status,
                         type_ids=cdb2.cui2type_ids[cui], description=description, full_build=to_build)
         if cui in cdb1.cui2names:
             if (cui in cdb1.cui2count_train or cui in cdb2.cui2count_train) and not (overwrite_training == 1 and cui in cdb1.cui2count_train): 

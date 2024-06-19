@@ -1,0 +1,91 @@
+{
+    "general": {
+      "py/object": "medcat.config_rel_cat.General",
+      "py/state": {
+        "__dict__": {
+          "device": "cpu",
+          "relation_type_filter_pairs": [],
+          "vocab_size": null,
+          "lowercase": true,
+          "cntx_left": 15,
+          "cntx_right": 15,
+          "window_size": 300,
+          "mct_export_max_non_rel_sample_size": 200,
+          "mct_export_create_addl_rels": false,
+          "tokenizer_name": "bert",
+          "model_name": "bert-base-uncased",
+          "log_level": 20,
+          "max_seq_length": 512,
+          "tokenizer_special_tokens": false,
+          "annotation_schema_tag_ids": [],
+          "labels2idx": {},
+          "idx2labels": {},
+          "pin_memory": true,
+          "seed": 13,
+          "task": "train"
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "model": {
+      "py/object": "medcat.config_rel_cat.Model",
+      "py/state": {
+        "__dict__": {
+          "input_size": 300,
+          "hidden_size": 768,
+          "hidden_layers": 3,
+          "model_size": 5120,
+          "dropout": 0.2,
+          "num_directions": 2,
+          "padding_idx": -1,
+          "emb_grad": true,
+          "ignore_cpos": false
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    },
+    "train": {
+      "py/object": "medcat.config_rel_cat.Train",
+      "py/state": {
+        "__dict__": {
+          "nclasses": 2,
+          "batch_size": 25,
+          "nepochs": 1,
+          "lr": 100000,
+          "adam_epsilon": 0.0001,
+          "test_size": 0.2,
+          "gradient_acc_steps": 1,
+          "multistep_milestones": [
+            2,
+            4,
+            6,
+            8,
+            12,
+            15,
+            18,
+            20,
+            22,
+            24,
+            26,
+            30
+          ],
+          "multistep_lr_gamma": 0.8,
+          "max_grad_norm": 1,
+          "shuffle_data": true,
+          "class_weights": null,
+          "score_average": "weighted",
+          "auto_save_model": true
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    }
+  }
