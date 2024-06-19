@@ -146,16 +146,6 @@ class CAT(object):
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
 
-    @deprecated(message="Replaced with cat.pipe.spacy_nlp.",
-                depr_version=(1, 2, 7), removal_version=(1, 12, 0))
-    def get_spacy_nlp(self) -> Language:
-        """Returns the spacy pipeline with MedCAT
-
-        Returns:
-            Language: The spacy Language being used.
-        """
-        return self.pipe.spacy_nlp
-
     def get_hash(self, force_recalc: bool = False) -> str:
         """Will not be a deep hash but will try to catch all the changing parts during training.
 
