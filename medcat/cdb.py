@@ -5,7 +5,7 @@ import json
 import logging
 import aiofiles
 import numpy as np
-from typing import Dict, Set, Optional, List, Union, cast
+from typing import Dict, Set, Optional, List, Union, cast, Iterable
 import os
 
 from medcat import __version__
@@ -148,7 +148,12 @@ class CDB(object):
                                             (self.cui2count_train.get(cui, 0) + 1)
         self.is_dirty = True
 
-    def remove_names(self, cui: str, names: Dict[str, Dict]) -> None:
+    @deprecated("Deprecated. For internal use only. Use CAT.unlink_concept_name instead",
+                depr_version=(1, 12, 0), removal_version=(1, 13, 0))
+    def remove_names(self, cui: str, names: Iterable[str]) -> None:
+        self._remove_names(cui, names)
+
+    def _remove_names(self, cui: str, names: Iterable[str]) -> None:
         """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
         Why? Because it is bothersome to remove it from everywhere, but
@@ -157,10 +162,10 @@ class CDB(object):
         Args:
             cui (str):
                 Concept ID or unique identifer in this database.
-            names (Dict[str, Dict]):
-                Names to be removed, should look like: `{'name': {'tokens': tokens, 'snames': snames, 'raw_name': raw_name}, ...}`
+            names (Iterable[str]):
+                Names to be removed (e.g list, set, or even a dict (in which case keys will be used)).
         """
-        for name in names.keys():
+        for name in names:
             if name in self.name2cuis:
                 if cui in self.name2cuis[name]:
                     self.name2cuis[name].remove(cui)

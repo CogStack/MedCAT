@@ -689,13 +689,16 @@ class CAT(object):
             names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
 
         # If full unlink find all CUIs
-        if self.config.general.get('full_unlink', False):
+        if self.config.general.full_unlink:
+            logger.warning("In the config `full_unlink` is set to `True`. "
+                           "Thus removing all CUIs linked to the specified name"
+                           " (%s)", name)
             for n in names:
                 cuis.extend(self.cdb.name2cuis.get(n, []))
 
         # Remove name from all CUIs
         for c in cuis:
-            self.cdb.remove_names(cui=c, names=names)
+            self.cdb._remove_names(cui=c, names=names.keys())
 
     def add_and_train_concept(self,
                               cui: str,
