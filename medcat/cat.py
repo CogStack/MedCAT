@@ -40,6 +40,7 @@ from medcat.vocab import Vocab
 from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
+from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
 
@@ -317,6 +318,12 @@ class CAT(object):
         model_card_path = os.path.join(save_dir_path, "model_card.json")
         with open(model_card_path, 'w') as f:
             json.dump(self.get_model_card(as_dict=True), f, indent=2)
+
+        # add a dependency snapshot
+        env_info = get_environment_info()
+        env_info_path = os.path.join(save_dir_path, ENV_SNAPSHOT_FILE_NAME)
+        with open(env_info_path, 'w') as f:
+            json.dump(env_info, f)
 
         # Zip everything
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
