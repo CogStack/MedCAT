@@ -12,7 +12,6 @@ from medcat import __version__
 from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
-from medcat.utils.decorators import deprecated
 from medcat.config import Config, workers
 from medcat.utils.saving.serializer import CDBSerializer
 from medcat.utils.config_utils import get_and_del_weighted_average_from_config
