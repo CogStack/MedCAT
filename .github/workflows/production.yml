@@ -28,7 +28,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
-          python -m unittest discover
+          all_files=$(git ls-files | grep '^tests/.*\.py$' | grep -v '/__init__\.py$' | sed 's/\.py$//' | sed 's/\//./g')
+          num_files=$(echo "$all_files" | wc -l)
+          midpoint=$((num_files / 2))
+          first_half_nl=$(echo "$all_files" | head -n $midpoint)
+          second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
+          timeout 25m python -m unittest ${first_half_nl[@]}
+          timeout 25m python -m unittest ${second_half_nl[@]}
 
       - name: Install pypa/build
         run: >-
