@@ -321,12 +321,25 @@ class CheckPoint(MixingConfig, BaseModel):
         validate_assignment = True
 
 
+class UsageMonitor(MixingConfig, BaseModel):
+    enabled: bool = True
+    """Whether usage monitoring is enabled."""
+    batch_size: int = 10
+    """Number of logged events to write at once."""
+    file_prefix: str = "usage_"
+    """The prefix for logged files. The suffix will be the model hash."""
+    log_folder: str = "."
+    """The folder which contains the usage logs. In certain situations,
+    it may make sense to keep this separate from the overall logs."""
+
+
 class General(MixingConfig, BaseModel):
     """The general part of the config"""
     spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
                                        'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                        'merge_entities', 'merge_subtokens']
     checkpoint: CheckPoint = CheckPoint()
+    usage_monitor = UsageMonitor()
     """Checkpointing config"""
     log_level: int = logging.INFO
     """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
