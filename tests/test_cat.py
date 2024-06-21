@@ -592,6 +592,18 @@ class CATTests(unittest.TestCase):
             contents = f.readline()
         self.assertTrue(contents)
 
+    def test_get_entities_logs_usage(self,
+                                     text="The dog is sitting outside the house."):
+        # clear usage monitor buffer
+        self.undertest.usage_monitor.log_buffer.clear()
+        self.undertest.get_entities(text)
+        self.assertTrue(self.undertest.usage_monitor.log_buffer)
+        self.assertEqual(len(self.undertest.usage_monitor.log_buffer), 1)
+        line = self.undertest.usage_monitor.log_buffer[0]
+        # the 1st element is the input text length
+        input_text_length = line.split(",")[1]
+        self.assertEqual(str(len(text)), input_text_length)
+
 
 class GetEntitiesWithStopWords(unittest.TestCase):
     # NB! The order in which the different CDBs are created
