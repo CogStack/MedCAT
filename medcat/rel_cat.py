@@ -257,8 +257,8 @@ class RelCAT(PipeRunner):
     def train(self, export_data_path:str = "", train_csv_path:str = "", test_csv_path:str = "", checkpoint_path: str = "./"):
 
         if self.is_cuda_available:
-            self.log.info("Training on device:",
-                  torch.cuda.get_device_name(0), self.device)
+            self.log.info("Training on device:" +
+                str(torch.cuda.get_device_name(0)) + str(self.device))
 
         self.model = self.model.to(self.device)
 
