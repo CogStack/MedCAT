@@ -9,12 +9,9 @@ import random
 from pandas.core.series import Series
 from medcat.config_rel_cat import ConfigRelCAT
 
-from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
-from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
+from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT, TokenizerWrapperLlama
 
 from torch import nn
-from medcat.config_rel_cat import ConfigRelCAT
-from typing import Any, List, Tuple
 
 
 logger = logging.getLogger(__name__)
@@ -74,14 +71,14 @@ def save_bin_file(file_name, data, path="./"):
         pickle.dump(data, f)
 
 
-def save_state(model: BertModel_RelationExtraction, optimizer: torch.optim.Adam, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
+def save_state(model: nn.Module, optimizer: torch.optim.Adam, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
     """ Used by RelCAT.save() and RelCAT.train()
         Saves the RelCAT model state.
         For checkpointing multiple files are created, best_f1, loss etc. score.
         If you want to export the model after training set final_export=True and leave is_checkpoint=False.
 
     Args:
-        model (BertModel_RelationExtraction): model
+        model (nn.Module): BertModel_RelationExtraction | LlamaModel_RelationExtraction
         optimizer (torch.optim.Adam, optional): Defaults to None.
         scheduler (torch.optim.lr_scheduler.MultiStepLR, optional): Defaults to None.
         epoch (int): Defaults to None.
@@ -112,11 +109,11 @@ def save_state(model: BertModel_RelationExtraction, optimizer: torch.optim.Adam,
         }, os.path.join(path, file_name))
 
 
-def load_state(model: BertModel_RelationExtraction, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device: torch.device =torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
+def load_state(model: nn.Module, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device: torch.device =torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
     """ Used by RelCAT.load() and RelCAT.train()
 
     Args:
-        model (BertModel_RelationExtraction): model, it has to be initialized before calling this method via BertModel_RelationExtraction(...)
+        model (nn.Module): BertModel_RelationExtraction | LlamaModel_RelationExtraction, it has to be initialized before calling this method via (Bert/Llama)Model_RelationExtraction(...)
         optimizer (_type_): optimizer
         scheduler (_type_): scheduler
         path (str, optional): Defaults to "./".
@@ -213,12 +210,12 @@ def put_blanks(relation_data: List, blanking_threshold: float = 0.5) -> List:
     return blanked_relation
 
 
-def create_tokenizer_pretrain(tokenizer: TokenizerWrapperBERT, tokenizer_path: str):
+def create_tokenizer_pretrain(tokenizer: TokenizerWrapperBERT | TokenizerWrapperLlama, tokenizer_path: str):
     """ 
         This method simply adds the default special tokens that we ecounter.
 
     Args:
-        tokenizer (TokenizerWrapperBERT): BERT tokenizer.
+        tokenizer (TokenizerWrapperBERT | TokenizerWrapperLlama): BERT/Llama tokenizer.
         tokenizer_path (str): path where tokenizer is to be saved.
     """
 
@@ -230,7 +227,7 @@ def create_tokenizer_pretrain(tokenizer: TokenizerWrapperBERT, tokenizer_path: s
 
 
 # Used for creating data sets for pretraining
-def tokenize(relations_dataset: Series, tokenizer: TokenizerWrapperBERT, mask_probability: float = 0.5) -> Tuple:
+def tokenize(relations_dataset: Series, tokenizer: TokenizerWrapperBERT | TokenizerWrapperLlama, mask_probability: float = 0.5) -> Tuple:
     (tokens, span_1_pos, span_2_pos), ent1_text, ent2_text, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = relations_dataset
 
     cls_token = tokenizer.hf_tokenizers.cls_token

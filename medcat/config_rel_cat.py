@@ -55,6 +55,9 @@ class Model(MixingConfig, BaseModel):
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating represenation"""
 
+    llama_use_pooled_output: bool = False
+    """If set to True, used only in Llama model, it will add the extra tensor formed from selecting the max of the last hidden layer"""
+
     class Config:
         extra = Extra.allow
         validate_assignment = True

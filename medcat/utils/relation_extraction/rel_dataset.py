@@ -192,13 +192,22 @@ class RelData(Dataset):
 
         doc_length = len(tokenizer_data["tokens"])
 
+
         if ent1_ent2_tokens_start_pos != (-1, -1):
             ent1_token_start_pos, ent2_token_start_pos = ent1_ent2_tokens_start_pos[0],\
                 ent1_ent2_tokens_start_pos[1]
-            # add + 1 to the pos cause of [CLS]
+
             if self.config.general.annotation_schema_tag_ids:
-                ent1_token_start_pos, ent2_token_start_pos = ent1_ent2_tokens_start_pos[0] + 1,\
-                    ent1_ent2_tokens_start_pos[1] + 1
+                # we assume that ent1 start token is pos 0 and ent2 start token is pos 2
+                # e.g: [s1], [e1], [s2], [e2]
+                _ent1_start_tkn_id = self.config.general.annotation_schema_tag_ids[0]
+                _ent2_start_tkn_id = self.config.general.annotation_schema_tag_ids[2]
+
+                for _idx_ent_1_2_tkn_idx, _ent_1_2_tkn_id in enumerate(tokenizer_data["input_ids"]):
+                    if _ent_1_2_tkn_id == _ent1_start_tkn_id:
+                        ent1_token_start_pos = _idx_ent_1_2_tkn_idx
+                    if _ent_1_2_tkn_id == _ent2_start_tkn_id:
+                        ent2_token_start_pos = _idx_ent_1_2_tkn_idx
 
             ent1_start_char_pos, _ = tokenizer_data["offset_mapping"][ent1_token_start_pos]
             ent2_start_char_pos, _ = tokenizer_data["offset_mapping"][ent2_token_start_pos]
@@ -229,8 +238,8 @@ class RelData(Dataset):
                         far_pos = pos if far_pos < pos else far_pos
                     ent2_right_ent_context_token_pos_end = far_pos
 
-                if ent2_right_ent_context_token_pos_end >= doc_length - 1:
-                    ent2_right_ent_context_token_pos_end = doc_length - 2
+                if ent2_right_ent_context_token_pos_end >= doc_length:
+                    ent2_right_ent_context_token_pos_end = doc_length
                 else:
                     right_context_start_end_pos = tokenizer_data[
                         "offset_mapping"][ent2_right_ent_context_token_pos_end][1]
@@ -238,17 +247,37 @@ class RelData(Dataset):
                 ent1_token = tokenizer_data["tokens"][ent1_token_start_pos]
                 ent2_token = tokenizer_data["tokens"][ent2_token_start_pos]
 
+                if left_context_start_char_pos > right_context_start_end_pos:
+                    tmp = right_context_start_end_pos
+                    right_context_start_end_pos = left_context_start_char_pos
+                    left_context_start_char_pos = tmp
+
                 window_tokenizer_data = self.tokenizer(
                     doc_text[left_context_start_char_pos:right_context_start_end_pos])
 
                 # update token loc to match new selection
                 if self.config.general.annotation_schema_tag_ids:
-                    ent1_token_start_pos = \
-                        window_tokenizer_data["input_ids"].index(
-                            self.config.general.annotation_schema_tag_ids[0])
-                    ent2_token_start_pos = \
-                        window_tokenizer_data["input_ids"].index(
-                            self.config.general.annotation_schema_tag_ids[2])
+                    try:
+                        ent1_token_start_pos = \
+                            window_tokenizer_data["input_ids"].index(
+                                self.config.general.annotation_schema_tag_ids[0])
+                        ent2_token_start_pos = \
+                            window_tokenizer_data["input_ids"].index(
+                                self.config.general.annotation_schema_tag_ids[2])
+                        _ent1_token_end_pos = \
+                            window_tokenizer_data["input_ids"].index(
+                                self.config.general.annotation_schema_tag_ids[1])
+                        _ent2_token_end_pos = \
+                            window_tokenizer_data["input_ids"].index(
+                                self.config.general.annotation_schema_tag_ids[3])
+
+                        assert ent1_token_start_pos
+                        assert ent2_token_start_pos
+                        assert _ent1_token_end_pos
+                        assert _ent2_token_end_pos 
+                    except Exception:
+                        self.log.info("document id + " + str(doc_id) + " failed to process relations.")
+                        return {"output_relations": relation_instances, "nclasses": self.config.model.padding_idx, "labels2idx": {}, "idx2label": {}}
                 else:
                     ent2_token_start_pos = ent2_token_start_pos - ent1_token_start_pos
                     ent1_token_start_pos = self.config.general.cntx_left if ent1_token_start_pos - \
@@ -322,6 +351,7 @@ class RelData(Dataset):
 
                                     right_context_start_end_pos = len(
                                         doc_text) - 1
+
                                     ent2_right_ent_context_token_pos_end = _ent2_token_idx + \
                                         self.config.general.cntx_right
 

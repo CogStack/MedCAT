@@ -1,5 +1,4 @@
 import logging
-from typing import Any, List, Optional, Tuple
 import torch
 from torch import nn
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
@@ -7,7 +6,7 @@ from transformers.models.bert.configuration_bert import BertConfig
 from medcat.config_rel_cat import ConfigRelCAT
 
 from transformers.models.llama import LlamaModel, LlamaConfig
-
+from typing import Any, Optional, Tuple
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
 
 
@@ -225,8 +224,10 @@ class LlamaModel_RelationExtraction(nn.Module):
 
             seq_tags = torch.stack(seq_tags, dim=0)
 
-            #new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
-            new_pooled_output = torch.cat((seq_tags[0, seq_tags[1]]), dim=1)
+            if self.relcat_config.model.llama_use_pooled_output:
+                new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
+            else:
+                new_pooled_output = torch.cat((seq_tags[0, seq_tags[1]]), dim=1)
         else:
             e1e2_output = []
             temp_e1 = []
@@ -294,9 +295,11 @@ class LlamaModel_RelationExtraction(nn.Module):
         # (batch_size, sequence_length, hidden_size)
         sequence_output = model_output.last_hidden_state
 
-        pooled_output = self.llama_pooler(model_output)
-
-        pooled_output = pooled_output.to(self.relcat_config.general.device)
+        if self.relcat_config.model.llama_use_pooled_output:
+            pooled_output = self.llama_pooler(model_output)
+            pooled_output = pooled_output.to(self.relcat_config.general.device)
+        else:
+            pooled_output = model_output
 
         classification_logits = self.output2logits(
             pooled_output, sequence_output, input_ids, e1_e2_start)
@@ -329,7 +332,7 @@ class LlamaPooler(nn.Module):
         # e.g: first_token_tensor = hidden_states[:, 0] # original
         # so instead we pool across all the tokens from the last hidden layer.
 
-        pooled_output, _ = torch.max(hidden_states.hidden_states[-1], dim=1)
+        pooled_output, _ = torch.max(hidden_states[-1], dim=1)
         pooled_output = self.dense(pooled_output)
         pooled_output = self.activation(pooled_output)
 

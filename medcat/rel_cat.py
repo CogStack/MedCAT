@@ -20,9 +20,9 @@ from torch.utils.data import DataLoader
 from torch.optim import Adam
 from torch.optim.lr_scheduler import MultiStepLR
 from medcat.utils.meta_cat.ml_utils import set_all_seeds
-from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
+from medcat.utils.relation_extraction.models import BertModel_RelationExtraction, LlamaModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
-from medcat.utils.relation_extraction.utils import create_tokenizer_pretrain, load_results, load_state, save_results, save_state, split_list_train_test_by_class
+from medcat.utils.relation_extraction.ml_utils import create_tokenizer_pretrain, load_results, load_state, save_results, save_state, split_list_train_test_by_class
 from medcat.utils.relation_extraction.rel_dataset import RelData
 
 
