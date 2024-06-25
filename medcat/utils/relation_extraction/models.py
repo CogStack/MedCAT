@@ -227,7 +227,7 @@ class LlamaModel_RelationExtraction(nn.Module):
             if self.relcat_config.model.llama_use_pooled_output:
                 new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
             else:
-                new_pooled_output = torch.cat((seq_tags[0, seq_tags[1]]), dim=1)
+                new_pooled_output = torch.cat((seq_tags[0], seq_tags[1]), dim=1)
         else:
             e1e2_output = []
             temp_e1 = []
@@ -299,6 +299,7 @@ class LlamaModel_RelationExtraction(nn.Module):
             pooled_output = self.llama_pooler(model_output)
             pooled_output = pooled_output.to(self.relcat_config.general.device)
         else:
+            # otherwise just use the normal model output
             pooled_output = model_output
 
         classification_logits = self.output2logits(
