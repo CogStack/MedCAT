@@ -298,9 +298,6 @@ class LlamaModel_RelationExtraction(nn.Module):
         if self.relcat_config.model.llama_use_pooled_output:
             pooled_output = self.llama_pooler(model_output)
             pooled_output = pooled_output.to(self.relcat_config.general.device)
-        else:
-            # otherwise just use the normal model output
-            pooled_output = model_output
 
         classification_logits = self.output2logits(
             pooled_output, sequence_output, input_ids, e1_e2_start)

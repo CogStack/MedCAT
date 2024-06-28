@@ -63,7 +63,7 @@ class RelCAT(PipeRunner):
             "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
 
         self.model_config = BertConfig()
-        self.model: BertModel_RelationExtraction
+        self.model: BertModel_RelationExtraction | LlamaModel_RelationExtraction
         self.task: str = task
         self.checkpoint_path: str = "./"
         self.optimizer: Adam = None # type: ignore

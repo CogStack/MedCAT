@@ -149,7 +149,7 @@ class RelData(Dataset):
         for label_num in list(idx2label.keys()):
             sample_count = 0
             for output_relation in output_relations:
-                if label_num == output_relation[5]:
+                if idx2label[label_num] == output_relation[4]:
                     sample_count += 1
             self.log.info(
                 " label: " + idx2label[label_num] + " | samples: " + str(sample_count))
@@ -178,7 +178,7 @@ class RelData(Dataset):
                     "idx2label": {}}
                 }
         """
-        relation_instances = []
+        relation_instances: List[List] = []
 
         chars_to_exclude = ":!@#$%^&*()-+?_=.,;<>/[]{}"
         tokenizer_data = None
@@ -660,7 +660,7 @@ class RelData(Dataset):
         for label_num in list(idx2label.keys()):
             sample_count = 0
             for output_relation in output_relations:
-                if int(label_num) == int(output_relation[5]):
+                if idx2label[label_num] == output_relation[4]:
                     sample_count += 1
             self.log.info(
                 " label: " + idx2label[label_num] + " | samples: " + str(sample_count))
