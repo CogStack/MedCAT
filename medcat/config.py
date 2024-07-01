@@ -322,7 +322,7 @@ class CheckPoint(MixingConfig, BaseModel):
 
 
 class UsageMonitor(MixingConfig, BaseModel):
-    enabled: bool = True
+    enabled: bool = False
     """Whether usage monitoring is enabled."""
     batch_size: int = 10
     """Number of logged events to write at once."""
