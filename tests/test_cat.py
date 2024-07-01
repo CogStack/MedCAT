@@ -37,6 +37,7 @@ class CATTests(unittest.TestCase):
         cls.cdb.config.linking.disamb_length_limit = 5
         cls.cdb.config.general.full_unlink = True
         cls._temp_logs_folder = tempfile.TemporaryDirectory()
+        cls.cdb.config.general.usage_monitor.enabled = True
         cls.cdb.config.general.usage_monitor.log_folder = cls._temp_logs_folder.name
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
