@@ -504,7 +504,12 @@ class CAT(object):
                 # NOTE: pipe returns Doc (not List[Doc]) since we passed str (not List[str])
                 #       that's why we ignore type here
                 #       But it could still be None if the text is empty
-                nents = 0 if rval is None else len(rval.ents)  # type: ignore
+                if rval is None:
+                    nents = 0
+                elif self.config.general.show_nested_entities:
+                    nents = len(rval._.ents)  # type: ignore
+                else:
+                    nents = len(rval.ents)  # type: ignore
                 self.usage_monitor.log_inference(l1, l2, nents)
                 return rval  # type: ignore
             else:
