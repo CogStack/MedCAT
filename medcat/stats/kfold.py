@@ -1,4 +1,4 @@
-from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterable, Callable, cast, Any
+from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterable, Callable, cast, Any, Union
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto
@@ -311,9 +311,20 @@ def _merge_examples(all_examples: Dict, cur_examples: Dict) -> None:
             per_type_examples[ex_cui].extend(cui_examples_list)
 
 
+# helper types
+IntValuedMetric = Union[
+    Dict[str, int],
+    Dict[str, Tuple[int, float]]
+]
+FloatValuedMetric = Union[
+    Dict[str, float],
+    Dict[str, Tuple[float, float]]
+]
+
+
 class PerCUIMetrics(BaseModel):
-    weights: list = []
-    vals: list = []
+    weights: List[Union[int, float]] = []
+    vals: List[Union[int, float]] = []
 
     def add(self, val, weight: int = 1):
         self.weights.append(weight)
@@ -401,28 +412,39 @@ def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dic
         _add_weighted_helper(all_weighted_averages, cur_wa, cur_counts)
         cur_examples = current[-1]
         _merge_examples(all_examples, cur_examples)
-    cui_prec: Dict[str, float] = {}
-    cui_rec: Dict[str, float] = {}
-    cui_f1: Dict[str, float] = {}
-    final_wa = [
-        cui_prec, cui_rec, cui_f1
+    # conversion from PerCUI metrics to int/float and (if needed) STD
+    cui_fps: IntValuedMetric = {}
+    cui_fns: IntValuedMetric = {}
+    cui_tps: IntValuedMetric = {}
+    cui_prec: FloatValuedMetric = {}
+    cui_rec: FloatValuedMetric = {}
+    cui_f1: FloatValuedMetric = {}
+    final_counts: IntValuedMetric = {}
+    to_change: List[Union[IntValuedMetric, FloatValuedMetric]] = [
+        cui_fps, cui_fns, cui_tps, final_counts,
+        cui_prec, cui_rec, cui_f1,
     ]
     # get the mean and/or std
-    for df in all_additives:
-        for k in list(df):
-            v = df[k]
-            if not include_std:
-                df[k] = v.get_mean()
-            else:
-                df[k] = (v.get_mean(), v.get_std())
-    for df, d in zip(final_wa, all_weighted_averages):
+    for nr, (df, d) in enumerate(zip(to_change, all_additives + all_weighted_averages)):
         for k, v in d.items():
-            if not include_std:
+            if nr == 3 and not include_std:
+                # counts need to be added up
+                # NOTE: the type:ignore comment _shouldn't_ be necessary
+                #       but mypy thinks we're setting a float or integer
+                #       where a tuple is expected
+                df[k] = sum(v.vals)  # type: ignore
+                # NOTE: The current implementation shows the sum for counts
+                #       if not STD is required, but the mean along with the
+                #       standard deviation if the latter is required.
+            elif not include_std:
                 df[k] = v.get_mean()
             else:
-                df[k] = (v.get_mean(), v.get_std())
-    return (all_fps, all_fns, all_tps, final_wa[0], final_wa[1], final_wa[2],
-            all_cui_counts, all_examples)
+                # NOTE: the type:ignore comment _shouldn't_ be necessary
+                #       but mypy thinks we're setting a tuple
+                #       where a float or integer is expected
+                df[k] = (v.get_mean(), v.get_std())  # type: ignore
+    return (cui_fps, cui_fns, cui_tps, cui_prec, cui_rec, cui_f1,
+            final_counts, all_examples)
 
 
 def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int = 3,
