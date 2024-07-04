@@ -216,6 +216,7 @@ class KFoldWeightedDocsMetricsTests(KFoldMetricsTests):
 
 class KFoldDuplicatedTests(KFoldCATTests):
     COPIES = 3
+    INCLUDE_STD = False
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -232,8 +233,8 @@ class KFoldDuplicatedTests(KFoldCATTests):
             project['documents'] = copies
         cls.docs_in_copy = kfold.count_all_docs(cls.data_copied)
         cls.anns_in_copy = kfold.count_all_annotations(cls.data_copied)
-        cls.stats_copied = kfold.get_k_fold_stats(cls.cat, cls.data_copied, k=cls.COPIES)
-        cls.stats_copied_2 = kfold.get_k_fold_stats(cls.cat, cls.data_copied, k=cls.COPIES)
+        cls.stats_copied = kfold.get_k_fold_stats(cls.cat, cls.data_copied, k=cls.COPIES, include_std=cls.INCLUDE_STD)
+        cls.stats_copied_2 = kfold.get_k_fold_stats(cls.cat, cls.data_copied, k=cls.COPIES, include_std=cls.INCLUDE_STD)
 
     # some stats with real model/data will be e.g 0.99 vs 0.9747
     # so in that case, lower it to 1 or so
@@ -296,3 +297,135 @@ class KFoldDuplicatedTests(KFoldCATTests):
                         self.assertIn(cui, new.keys(), f"CUI '{cui}' ({cuiname}) not in new")
                         v1, v2 = old[cui], new[cui]
                         self.assertEqual(v1, v2, f"Values not equal for {cui} ({self.cat.cdb.cui2preferred_name.get(cui, cui)})")
+
+
+class MetricsMeanSTDTests(unittest.TestCase):
+    METRICS = [
+        # m1
+        [
+            # fps
+            {"FPCUI": 3},
+            # fns
+            {"FNCUI": 4},
+            # tps
+            {"TPCUI": 5},
+            # prec
+            {"PREC_CUI": 0.3},
+            # recall
+            {"REC_CUI": 0.4},
+            # f1
+            {"F1_CUI": 0.5},
+            # counts
+            {"FPCUI": 3, "FNCUI": 4, "TPCUI": 5,
+             "PREC_CUI": 3, "REC_CUI": 4, "F1_CUI": 5},
+            # examples
+            {}
+        ],
+        # m2
+        [
+            # fps
+            {"FPCUI": 13},
+            # fns
+            {"FNCUI": 14},
+            # tps
+            {"TPCUI": 15},
+            # prec
+            {"PREC_CUI": 0.9},
+            # recall
+            {"REC_CUI": 0.8},
+            # f1
+            {"F1_CUI": 0.7},
+            # counts
+            {"FPCUI": 13, "FNCUI": 14, "TPCUI": 15,
+             "PREC_CUI": 13, "REC_CUI": 14, "F1_CUI": 15},
+            # examples
+            {}
+        ]
+    ]
+    EXPECTED_METRICS = (
+            # these are simple averages and std
+            # fps
+            {"FPCUI": (8, 5.0)},
+            # fns
+            {"FNCUI": (9, 5.0)},
+            # tps
+            {"TPCUI": (10, 5.0)},
+            # these are WEIGHTED averages and std
+            # NOTE: This within numerical precision,
+            #       but assertAlmostEqual should still work
+            # prec
+            {"PREC_CUI": (0.7875, 0.23418742493993994)},
+            # recall
+            {"REC_CUI": (0.7111111111111112, 0.16629588385661961)},
+            # f1
+            {"F1_CUI": (0.65, 0.08660254037844385)},
+            # counts
+            {"FPCUI": (8, 5.0), "FNCUI": (9, 5.0), "TPCUI": (10, 5.0),
+             "PREC_CUI": (8, 5.0), "REC_CUI": (9, 5.0), "F1_CUI": (10, 5.0)},
+            # examples
+            {}
+    )
+    _names = ['fps', 'fns', 'tps', 'prec', 'rec', 'f1', 'counts', 'examples']
+
+    def setUp(self) -> None:
+        self.metrics = kfold.get_metrics_mean(self.METRICS, include_std=True)
+
+    def test_gets_expected_means_and_std(self):
+        for name, part, exp_part in zip(self._names, self.metrics, self.EXPECTED_METRICS):
+            with self.subTest(f"{name}"):
+                self.assertEqual(part.keys(), exp_part.keys())
+            for cui in exp_part:
+                got_val, exp_val = part[cui], exp_part[cui]
+                with self.subTest(f"{name}-{cui}"):
+                    # iterating since this way I can use the assertAlmostEqual method
+                    for nr1, nr2 in zip(got_val, exp_val):
+                        self.assertAlmostEqual(nr1, nr2)
+
+
+class KFoldDuplicatedSTDTests(KFoldDuplicatedTests):
+    INCLUDE_STD = True
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        # NOTE: This would compare to the "regular" stats which
+        #       do not contain standard deviations
+        #       and such the results are not directly comparable
+        cls.test_metrics_3_fold = lambda _: None
+
+    def test_gets_std(self):
+        for name, stat in zip(self._names, self.stats_copied):
+            if name == 'examples':
+                continue
+            for cui, val in stat.items():
+                cuiname = self.cat.cdb.cui2preferred_name.get(cui, cui)
+                with self.subTest(f"{name}-{cui} [{cuiname}]"):
+                    self.assertIsInstance(val, tuple)
+
+    def test_std_is_0(self):
+        # NOTE: 0 because the data is copied and as such there's no variance
+        for name, stat in zip(self._names, self.stats_copied):
+            if name == 'examples':
+                continue
+            for cui, val in stat.items():
+                cuiname = self.cat.cdb.cui2preferred_name.get(cui, cui)
+                with self.subTest(f"{name}-{cui} [{cuiname}]"):
+                    self.assertEqual(val[1], 0, f'STD for CUI {cui} not 0')
+
+    def test_std_nonzero_diff_nr_of_folds(self):
+        # NOTE: this will expect some standard deviations to be non-zero
+        #       but they will not all be non-zero (e.g) in case only 1 of the
+        #       folds saw the example
+        stats = kfold.get_k_fold_stats(self.cat, self.mct_export,
+                                       k=self.COPIES - 1, include_std=True)
+        total_cnt = 0
+        std_0_cnt = 0
+        for name, stat in zip(self._names, stats):
+            if name == 'examples':
+                continue
+            for val in stat.values():
+                total_cnt += 1
+                if val[1] == 0:
+                    std_0_cnt += 1
+        self.assertGreaterEqual(total_cnt - std_0_cnt, 4,
+                                "Expected some standard deviations to be nonzeros")
