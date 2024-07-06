@@ -13,7 +13,7 @@ attrs==23.1.0
 backcall==0.2.0
 blis==0.7.11
 catalogue==2.0.10
-certifi==2023.7.22
+certifi==2024.7.4
 charset-normalizer==3.3.0
 click==8.1.7
 comm==0.1.4
