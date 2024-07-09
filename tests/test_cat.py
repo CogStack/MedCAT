@@ -597,6 +597,7 @@ class CATTests(unittest.TestCase):
                 # to fix envsnapshot
                 patch('platform.platform', return_value='TEST')):
             self.undertest.create_model_pack(fake_folder)
+            self.undertest.config.version.history.append(self.undertest.get_hash())
 
     def test_subsequent_simple_hashes_same(self):
         self.undertest.config.general.simple_hash = True  # will be reset at setUp
