@@ -577,6 +577,7 @@ class CATTests(unittest.TestCase):
         self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
 
     def test_simple_hashing_is_faster(self):
+        self.undertest.config.general.simple_hash = False
         st = time.perf_counter()
         self.undertest.get_hash(force_recalc=True)
         took_normal = time.perf_counter() - st
