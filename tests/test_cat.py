@@ -589,15 +589,15 @@ class CATTests(unittest.TestCase):
         self.assertLess(took_simple, took_normal)
 
     def perform_fake_save(self, fake_folder: str = "FAKE_FOLDER"):
-        with (patch('os.makedirs')(),
-                patch('os.path.join', return_value=f"{fake_folder}/data.dat")(),
-                patch('builtins.open', mock_open())(),
-                patch('shutil.copytree')(),
-                patch('shutil.make_archive')(),
-                # to fix envsnapshot
-                patch('platform.platform', return_value='TEST')()):
-            self.undertest.create_model_pack(fake_folder)
-            self.undertest.config.version.history.append(self.undertest.get_hash())
+        with patch('os.makedirs'):
+            with patch('os.path.join', return_value=f"{fake_folder}/data.dat"):
+                with patch('builtins.open', mock_open()):
+                    with patch('shutil.copytree'):
+                        with patch('shutil.make_archive'):
+                            # to fix envsnapshot
+                            with patch('platform.platform', return_value='TEST'):
+                                self.undertest.create_model_pack(fake_folder)
+                                self.undertest.config.version.history.append(self.undertest.get_hash())
 
     def test_subsequent_simple_hashes_same(self):
         self.undertest.config.general.simple_hash = True  # will be reset at setUp
