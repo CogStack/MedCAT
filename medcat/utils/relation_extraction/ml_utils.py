@@ -57,6 +57,7 @@ def split_list_train_test_by_class(data: List, test_size: float = 0.2, shuffle: 
                     train_data.append(data[row_idx])
                     test_data.append(data[row_idx])
 
+
     return train_data, test_data
 
 

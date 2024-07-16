@@ -22,6 +22,8 @@ class General(MixingConfig, BaseModel):
     """Limit the number of 'Other' samples selected for training/test. This is applied per encountered medcat project, sample_size/num_projects. """
     mct_export_create_addl_rels: bool = False
     """When processing relations from a MedCAT export, relations labeled as 'Other' are created from all the annotations pairs available"""
+    mct_export_create_addl_rels_by_type: bool = False
+    """When creating the 'Other' relation class, actually split this class into subclasses based on concept types"""
 
     tokenizer_name: str = "bert"
     model_name: str = "bert-base-uncased"
