@@ -6,6 +6,7 @@ from medcat.utils import usage_monitoring
 import tempfile
 
 from unittest import TestCase
+from unittest.mock import patch
 
 
 class UsageMonitorBaseTests(TestCase):
@@ -86,3 +87,41 @@ class InterMediateUsageMonitorTests(UsageMonitorBaseTests):
         lines = self._get_saved_lines()
         self.assertTrue(lines)
         self.assertEqual(len(lines), self.expected_in_file)
+
+
+class UMT(UsageMonitorBaseTests):
+    ENABLED_DICT = {
+        "MEDCAT_LOGS": "True",
+        "MEDCAT_LOGS_LOCATION": "."
+    }
+    DISABLED_DICT_1 = {
+        "MEDCAT_LOGS": "False",
+        "MEDCAT_LOGS_LOCATION": "FAIL" # should not change anything
+    }
+    DISABLED_DICT_2 = {
+        "MEDCAT_LOGS": "0",
+        "MEDCAT_LOGS_LOCATION": "."
+    }
+
+    def setUp(self) -> None:
+        super().setUp()
+        self.config.enabled = "auto"
+        self.config.log_folder = self._temp_dir.name
+        self.monitor = usage_monitoring.UsageMonitor(self.MODEL_HASH,
+                                                     self.config)
+
+    @patch.dict(os.environ, ENABLED_DICT)
+    def test_listens_to_os_environ_enabled(self):
+        self.assertTrue(self.monitor._should_log())
+        self.assertNotEqual(self.config.log_folder, self._temp_dir.name)
+        self.assertEqual(self.config.log_folder, self.ENABLED_DICT["MEDCAT_LOGS_LOCATION"])
+
+    @patch.dict(os.environ, DISABLED_DICT_1)
+    def test_listens_to_os_environ_disabled_1(self):
+        self.assertFalse(self.monitor._should_log())
+        self.assertEqual(self.config.log_folder, self._temp_dir.name)
+
+    @patch.dict(os.environ, DISABLED_DICT_2)
+    def test_listens_to_os_environ_disabled_2(self):
+        self.assertFalse(self.monitor._should_log())
+        self.assertEqual(self.config.log_folder, self._temp_dir.name)
