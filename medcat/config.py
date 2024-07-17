@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
 from pydantic.fields import ModelField
-from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type
+from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type, Literal
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -322,15 +322,25 @@ class CheckPoint(MixingConfig, BaseModel):
 
 
 class UsageMonitor(MixingConfig, BaseModel):
-    enabled: bool = False
-    """Whether usage monitoring is enabled."""
-    batch_size: int = 10
+    enabled: Literal[True, False, 'auto'] = False
+    r"""Whether usage monitoring is enabled (True), disabled (False), or automatic ('auto').
+
+    If set to False, no logging is performed.
+    If set to True, logs are saved in the location specified by `log_folder`.
+    If set to 'auto', logs will be automatically distributed according to the
+    OS preferred logs location. That is:
+     - For Linux: ~/.local/share/medcat/logs/
+     - For Windows: C:\Users\%USERNAME%\.cache\medcat\logs\
+    """
+    batch_size: int = 100
     """Number of logged events to write at once."""
     file_prefix: str = "usage_"
     """The prefix for logged files. The suffix will be the model hash."""
     log_folder: str = "."
     """The folder which contains the usage logs. In certain situations,
-    it may make sense to keep this separate from the overall logs."""
+    it may make sense to keep this separate from the overall logs.
+
+    NOTE: Does not take affect if `enabled` is set to 'auto'"""
 
 
 class General(MixingConfig, BaseModel):
