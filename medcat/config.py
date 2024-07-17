@@ -360,6 +360,11 @@ class General(MixingConfig, BaseModel):
     if `long` it will be CUI | Name | Confidence"""
     map_cui_to_group: bool = False
     """If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group"""
+    simple_hash: bool = False
+    """Whether to use a simple hash.
+
+    NOTE: While using a simple hash is faster at save time, it is less
+    reliable due to not taking into account all the details of the changes."""
 
     class Config:
         extra = Extra.allow

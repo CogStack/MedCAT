@@ -158,6 +158,10 @@ class CAT(object):
             str: The resulting hash
         """
         hasher = Hasher()
+        if self.config.general.simple_hash:
+            logger.info("Using simplified hashing that only takes into account the model card")
+            hasher.update(self.get_model_card())
+            return hasher.hexdigest()
         hasher.update(self.cdb.get_hash(force_recalc))
 
         hasher.update(self.config.get_hash())
