@@ -327,8 +327,10 @@ class UsageMonitor(MixingConfig, BaseModel):
 
     If set to False, no logging is performed.
     If set to True, logs are saved in the location specified by `log_folder`.
-    If set to 'auto', logs will be automatically distributed according to the
-    OS preferred logs location. That is:
+    If set to 'auto', logs will be automatically enabled or disabled based on
+    environmenta variable (`MEDCAT_LOGS` - setting it to False or 0 disabled logging)
+    and distributed according to the OS preferred logs location (`MEDCAT_LOGS_LOCATION`).
+    The defaults for the location are:
      - For Linux: ~/.local/share/medcat/logs/
      - For Windows: C:\Users\%USERNAME%\.cache\medcat\logs\
     """
