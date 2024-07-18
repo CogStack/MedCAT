@@ -132,6 +132,24 @@ class B_CDBMakerEditTests(unittest.TestCase):
     def tearDownClass(cls) -> None:
         cls.maker.destroy_pipe()
 
+    # NOTE: The following tests are state-dependent. That is to say,
+    #       if the order in which they're executed changes, they may fail.
+    #       They currently rely on the fact that test methods are executed
+    #       in anlphabetic order. But this is overall not good test design
+    #       since failure of one unit could lead to the failure of another
+    #       in unsexpected ways (since there's an expectation on the state).
+    #
+    #       e.g, if I run:
+    #           python -m unittest\
+    #               tests.test_cdb_maker.B_CDBMakerEditTests.test_bd_addition_of_context_vector_positive\
+    #               tests.test_cdb_maker.B_CDBMakerEditTests.test_bc_filter_by_cui\
+    #               tests.test_cdb_maker.B_CDBMakerEditTests.test_bb_removal_of_name\
+    #               tests.test_cdb_maker.B_CDBMakerEditTests.test_ba_addition_of_new_name
+    #       Then there will be failures in `test_ba_addition_of_new_name` and `test_bb_removal_of_name`
+    #       due to the changes in state.
+    #
+    #       Though to make it clear, in the standard configuration the tests run in the
+    #       "correct" order and are successful.
     def test_ba_addition_of_new_name(self):
         self.cdb.add_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.spacy_nlp, {}, self.config), name_status='P', full_build=True)
         self.assertEqual(len(self.cdb.name2cuis), 6, "Should equal 6")
@@ -142,7 +160,7 @@ class B_CDBMakerEditTests(unittest.TestCase):
         self.assertIn('my~:~new~name~.', self.cdb.name2cuis2status)
 
     def test_bb_removal_of_name(self):
-        self.cdb.remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.spacy_nlp, {}, self.config))
+        self.cdb._remove_names(cui='C0000239', names=prepare_name('MY: new,-_! Name.', self.maker.pipe.spacy_nlp, {}, self.config))
         self.assertEqual(len(self.cdb.name2cuis), 5, "Should equal 5")
         self.assertNotIn('my:newname.', self.cdb.name2cuis2status)
 

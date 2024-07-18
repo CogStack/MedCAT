@@ -1,7 +1,9 @@
 import json
 import os
 import sys
+import time
 import unittest
+from unittest.mock import mock_open, patch
 import tempfile
 import shutil
 import logging
@@ -48,6 +50,7 @@ class CATTests(unittest.TestCase):
 
     def setUp(self):
         self._temp_file = tempfile.NamedTemporaryFile()
+        self.cdb.config.general.simple_hash = False
 
     def tearDown(self) -> None:
         self.cdb.config.annotation_output.include_text_in_output = False
@@ -572,6 +575,43 @@ class CATTests(unittest.TestCase):
     def test_add_and_train_concept_cdb_warns_short_name(self):
         short_name = 'a'
         self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
+
+    def test_simple_hashing_is_faster(self):
+        self.undertest.config.general.simple_hash = False
+        st = time.perf_counter()
+        self.undertest.get_hash(force_recalc=True)
+        took_normal = time.perf_counter() - st
+        self.undertest.config.general.simple_hash = True  # will be reset at setUp
+        st = time.perf_counter()
+        self.undertest.get_hash(force_recalc=True)
+        took_simple = time.perf_counter() - st
+        # NOTE: In reality simple has should take less than 5 ms
+        self.assertLess(took_simple, took_normal)
+
+    def perform_fake_save(self, fake_folder: str = "FAKE_FOLDER"):
+        with patch('os.makedirs'):
+            with patch('os.path.join', return_value=f"{fake_folder}/data.dat"):
+                with patch('builtins.open', mock_open()):
+                    with patch('shutil.copytree'):
+                        with patch('shutil.make_archive'):
+                            # to fix envsnapshot
+                            with patch('platform.platform', return_value='TEST'):
+                                self.undertest.create_model_pack(fake_folder)
+                                self.undertest.config.version.history.append(self.undertest.get_hash())
+
+    def test_subsequent_simple_hashes_same(self):
+        self.undertest.config.general.simple_hash = True  # will be reset at setUp
+        hash1 = self.undertest.get_hash(force_recalc=True)
+        hash2 = self.undertest.get_hash(force_recalc=True)
+        self.assertEqual(hash1, hash2)
+
+    def test_simple_hashing_changes_after_save(self):
+        self.undertest.config.general.simple_hash = True  # will be reset at setUp
+        hash1 = self.undertest.get_hash(force_recalc=True)
+        # simulating save
+        self.perform_fake_save()
+        hash2 = self.undertest.get_hash(force_recalc=True)
+        self.assertNotEqual(hash1, hash2)
 
 
 class GetEntitiesWithStopWords(unittest.TestCase):

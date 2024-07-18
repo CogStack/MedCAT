@@ -16,7 +16,6 @@ from itertools import islice, chain, repeat
 from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
-from spacy.language import Language
 import humanfriendly
 
 from medcat import __version__
@@ -37,9 +36,9 @@ from medcat.rel_cat import RelCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
-from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
+from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
 
@@ -146,16 +145,6 @@ class CAT(object):
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.pre_load.max_document_length
 
-    @deprecated(message="Replaced with cat.pipe.spacy_nlp.",
-                depr_version=(1, 2, 7), removal_version=(1, 12, 0))
-    def get_spacy_nlp(self) -> Language:
-        """Returns the spacy pipeline with MedCAT
-
-        Returns:
-            Language: The spacy Language being used.
-        """
-        return self.pipe.spacy_nlp
-
     def get_hash(self, force_recalc: bool = False) -> str:
         """Will not be a deep hash but will try to catch all the changing parts during training.
 
@@ -169,6 +158,10 @@ class CAT(object):
             str: The resulting hash
         """
         hasher = Hasher()
+        if self.config.general.simple_hash:
+            logger.info("Using simplified hashing that only takes into account the model card")
+            hasher.update(self.get_model_card())
+            return hasher.hexdigest()
         hasher.update(self.cdb.get_hash(force_recalc))
 
         hasher.update(self.config.get_hash())
@@ -317,6 +310,12 @@ class CAT(object):
         model_card_path = os.path.join(save_dir_path, "model_card.json")
         with open(model_card_path, 'w') as f:
             json.dump(self.get_model_card(as_dict=True), f, indent=2)
+
+        # add a dependency snapshot
+        env_info = get_environment_info()
+        env_info_path = os.path.join(save_dir_path, ENV_SNAPSHOT_FILE_NAME)
+        with open(env_info_path, 'w') as f:
+            json.dump(env_info, f)
 
         # Zip everything
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
@@ -682,13 +681,16 @@ class CAT(object):
             names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
 
         # If full unlink find all CUIs
-        if self.config.general.get('full_unlink', False):
+        if self.config.general.full_unlink:
+            logger.warning("In the config `full_unlink` is set to `True`. "
+                           "Thus removing all CUIs linked to the specified name"
+                           " (%s)", name)
             for n in names:
                 cuis.extend(self.cdb.name2cuis.get(n, []))
 
         # Remove name from all CUIs
         for c in cuis:
-            self.cdb.remove_names(cui=c, names=names)
+            self.cdb._remove_names(cui=c, names=names.keys())
 
     def add_and_train_concept(self,
                               cui: str,
@@ -762,43 +764,6 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
-    @deprecated(message="Use train_supervised_from_json to train based on data "
-                "loaded from a json file",
-                depr_version=(1, 8, 0), removal_version=(1, 12, 0))
-    def train_supervised(self,
-                         data_path: str,
-                         reset_cui_count: bool = False,
-                         nepochs: int = 1,
-                         print_stats: int = 0,
-                         use_filters: bool = False,
-                         terminate_last: bool = False,
-                         use_overlaps: bool = False,
-                         use_cui_doc_limit: bool = False,
-                         test_size: int = 0,
-                         devalue_others: bool = False,
-                         use_groups: bool = False,
-                         never_terminate: bool = False,
-                         train_from_false_positives: bool = False,
-                         extra_cui_filter: Optional[Set] = None,
-                         retain_extra_cui_filter: bool = False,
-                         checkpoint: Optional[Checkpoint] = None,
-                         retain_filters: bool = False,
-                         is_resumed: bool = False) -> Tuple:
-        """Train supervised by reading data from a json file.
-
-        Refer to `train_supervvised_from_json` and/or `train_supervised_raw`
-        for further details.
-
-        # noqa: DAR101
-        # noqa: DAR201
-        """
-        return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
-                                               print_stats, use_filters, terminate_last,
-                                               use_overlaps, use_cui_doc_limit, test_size,
-                                               devalue_others, use_groups, never_terminate,
-                                               train_from_false_positives, extra_cui_filter,
-                                               retain_extra_cui_filter, checkpoint,
-                                               retain_filters, is_resumed)
 
     def train_supervised_from_json(self,
                                    data_path: str,
@@ -1264,26 +1229,6 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
-    @deprecated(message="Use `multiprocessing_batch_char_size` instead",
-                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
-    def multiprocessing(self,
-                        data: Union[List[Tuple], Iterable[Tuple]],
-                        nproc: int = 2,
-                        batch_size_chars: int = 5000 * 1000,
-                        only_cui: bool = False,
-                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                        separate_nn_components: bool = True,
-                        out_split_size_chars: Optional[int] = None,
-                        save_dir_path: str = os.path.abspath(os.getcwd()),
-                        min_free_memory=0.1) -> Dict:
-        return self.multiprocessing_batch_char_size(data=data, nproc=nproc,
-                                                    batch_size_chars=batch_size_chars,
-                                                    only_cui=only_cui, addl_info=addl_info,
-                                                    separate_nn_components=separate_nn_components,
-                                                    out_split_size_chars=out_split_size_chars,
-                                                    save_dir_path=save_dir_path,
-                                                    min_free_memory=min_free_memory)
-
     def multiprocessing_batch_char_size(self,
                                         data: Union[List[Tuple], Iterable[Tuple]],
                                         nproc: int = 2,
@@ -1537,22 +1482,6 @@ class CAT(object):
                 logger.warning(e, exc_info=True, stack_info=True)
 
         return docs
-
-    @deprecated(message="Use `multiprocessing_batch_docs_size` instead",
-                depr_version=(1, 10, 0), removal_version=(1, 12, 0))
-    def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
-                             batch_size: Optional[int] = None,
-                             only_cui: bool = False,
-                             addl_info: List[str] = [],
-                             return_dict: bool = True,
-                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
-                                                    batch_size=batch_size,
-                                                    only_cui=only_cui,
-                                                    addl_info=addl_info,
-                                                    return_dict=return_dict,
-                                                    batch_factor=batch_factor)
 
     def multiprocessing_batch_docs_size(self,
                                         in_data: Union[List[Tuple], Iterable[Tuple]],
