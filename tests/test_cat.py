@@ -1,7 +1,9 @@
 import json
 import os
 import sys
+import time
 import unittest
+from unittest.mock import mock_open, patch
 import tempfile
 import shutil
 import logging
@@ -52,6 +54,7 @@ class CATTests(unittest.TestCase):
 
     def setUp(self):
         self._temp_file = tempfile.NamedTemporaryFile()
+        self.cdb.config.general.simple_hash = False
 
     def tearDown(self) -> None:
         self.cdb.config.annotation_output.include_text_in_output = False
@@ -74,7 +77,6 @@ class CATTests(unittest.TestCase):
     def test_callable_with_single_none_text(self):
         self.assertIsNone(self.undertest(None))
 
-    
     in_data_mp = [
         (1, "The dog is sitting outside the house and second csv."),
         (2, ""),
@@ -149,7 +151,7 @@ class CATTests(unittest.TestCase):
             (3, "The dog is sitting outside the house."),
         ]
         out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=False)
-        self.assertTrue(type(out) == list)
+        self.assertTrue(type(out) is list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
         self.assertEqual('second csv', out[0][1]['entities'][0]['source_value'])
@@ -165,7 +167,7 @@ class CATTests(unittest.TestCase):
             (3, None),
         ]
         out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=1, batch_size=1, return_dict=False)
-        self.assertTrue(type(out) == list)
+        self.assertTrue(type(out) is list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
         self.assertEqual({'entities': {}, 'tokens': []}, out[0][1])
@@ -181,7 +183,7 @@ class CATTests(unittest.TestCase):
             (3, "The dog is sitting outside the house.")
         ]
         out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=True)
-        self.assertTrue(type(out) == dict)
+        self.assertTrue(type(out) is dict)
         self.assertEqual(3, len(out))
         self.assertEqual({'entities': {}, 'tokens': []}, out[1])
         self.assertEqual({'entities': {}, 'tokens': []}, out[2])
@@ -538,7 +540,7 @@ class CATTests(unittest.TestCase):
             return self.assertNoLogs(logger=logger, level=level)
         else:
             return self.__assertNoLogs(logger=logger, level=level)
-    
+
     @contextlib.contextmanager
     def __assertNoLogs(self, logger: logging.Logger, level: int):
         try:
@@ -551,7 +553,7 @@ class CATTests(unittest.TestCase):
 
     def assertLogsDuringAddAndTrainConcept(self, logger: logging.Logger, log_level,
                                            name: str, name_status: str, nr_of_calls: int):
-        cui = 'CUI-%d'%(hash(name) + id(name))
+        cui = 'CUI-%d' % (hash(name) + id(name))
         with (self.assertLogs(logger=logger, level=log_level)
               if nr_of_calls == 1
               else self._assertNoLogs(logger=logger, level=log_level)):
@@ -604,6 +606,43 @@ class CATTests(unittest.TestCase):
         # the 1st element is the input text length
         input_text_length = line.split(",")[1]
         self.assertEqual(str(len(text)), input_text_length)
+
+    def test_simple_hashing_is_faster(self):
+        self.undertest.config.general.simple_hash = False
+        st = time.perf_counter()
+        self.undertest.get_hash(force_recalc=True)
+        took_normal = time.perf_counter() - st
+        self.undertest.config.general.simple_hash = True  # will be reset at setUp
+        st = time.perf_counter()
+        self.undertest.get_hash(force_recalc=True)
+        took_simple = time.perf_counter() - st
+        # NOTE: In reality simple has should take less than 5 ms
+        self.assertLess(took_simple, took_normal)
+
+    def perform_fake_save(self, fake_folder: str = "FAKE_FOLDER"):
+        with patch('os.makedirs'):
+            with patch('os.path.join', return_value=f"{fake_folder}/data.dat"):
+                with patch('builtins.open', mock_open()):
+                    with patch('shutil.copytree'):
+                        with patch('shutil.make_archive'):
+                            # to fix envsnapshot
+                            with patch('platform.platform', return_value='TEST'):
+                                self.undertest.create_model_pack(fake_folder)
+                                self.undertest.config.version.history.append(self.undertest.get_hash())
+
+    def test_subsequent_simple_hashes_same(self):
+        self.undertest.config.general.simple_hash = True  # will be reset at setUp
+        hash1 = self.undertest.get_hash(force_recalc=True)
+        hash2 = self.undertest.get_hash(force_recalc=True)
+        self.assertEqual(hash1, hash2)
+
+    def test_simple_hashing_changes_after_save(self):
+        self.undertest.config.general.simple_hash = True  # will be reset at setUp
+        hash1 = self.undertest.get_hash(force_recalc=True)
+        # simulating save
+        self.perform_fake_save()
+        hash2 = self.undertest.get_hash(force_recalc=True)
+        self.assertNotEqual(hash1, hash2)
 
 
 class GetEntitiesWithStopWords(unittest.TestCase):
