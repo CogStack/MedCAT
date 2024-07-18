@@ -1,8 +1,9 @@
-from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterable, Callable, cast, Any
+from typing import Protocol, Tuple, List, Dict, Optional, Set, Iterable, Callable, cast, Any, Union
 
 from abc import ABC, abstractmethod
 from enum import Enum, auto
 from copy import deepcopy
+from pydantic import BaseModel
 
 import numpy as np
 
@@ -299,35 +300,6 @@ def get_per_fold_metrics(cat: CATLike, folds: List[MedCATTrainerExport],
     return metrics
 
 
-def _update_all_weighted_average(joined: List[Dict[str, Tuple[int, float]]],
-                single: List[Dict[str, float]], cui2count: Dict[str, int]) -> None:
-    if len(joined) != len(single):
-        raise ValueError(f"Incompatible lists. Joined {len(joined)} and single {len(single)}")
-    for j, s in zip(joined, single):
-        _update_one_weighted_average(j, s, cui2count)
-
-
-def _update_one_weighted_average(joined: Dict[str, Tuple[int, float]],
-                one: Dict[str, float],
-                cui2count: Dict[str, int]) -> None:
-    for k in one:
-        if k not in joined:
-            joined[k] = (0, 0)
-        prev_w, prev_val = joined[k]
-        new_w, new_val = cui2count[k], one[k]
-        total_w = prev_w + new_w
-        total_val = (prev_w * prev_val + new_w * new_val) / total_w
-        joined[k] = (total_w, total_val)
-
-
-def _update_all_add(joined: List[Dict[str, int]], single: List[Dict[str, int]]) -> None:
-    if len(joined) != len(single):
-        raise ValueError(f"Incompatible number of stuff: {len(joined)} vs {len(single)}")
-    for j, s in zip(joined, single):
-        for k, v in s.items():
-            j[k] = j.get(k, 0) + v
-
-
 def _merge_examples(all_examples: Dict, cur_examples: Dict) -> None:
     for ex_type, ex_dict in cur_examples.items():
         if ex_type not in all_examples:
@@ -339,12 +311,61 @@ def _merge_examples(all_examples: Dict, cur_examples: Dict) -> None:
             per_type_examples[ex_cui].extend(cui_examples_list)
 
 
-def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]]
-                     ) -> Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]:
+# helper types
+IntValuedMetric = Union[
+    Dict[str, int],
+    Dict[str, Tuple[int, float]]
+]
+FloatValuedMetric = Union[
+    Dict[str, float],
+    Dict[str, Tuple[float, float]]
+]
+
+
+class PerCUIMetrics(BaseModel):
+    weights: List[Union[int, float]] = []
+    vals: List[Union[int, float]] = []
+
+    def add(self, val, weight: int = 1):
+        self.weights.append(weight)
+        self.vals.append(val)
+
+    def get_mean(self):
+        return sum(w * v for w, v in zip(self.weights, self.vals)) / sum(self.weights)
+
+    def get_std(self):
+        mean = self.get_mean()
+        return (sum(w * (v - mean)**2 for w, v in zip(self.weights, self.vals)) / sum(self.weights))**.5
+
+
+def _add_helper(joined: List[Dict[str, PerCUIMetrics]],
+                single: List[Dict[str, int]]) -> None:
+    if len(joined) != len(single):
+        raise ValueError(f"Incompatible number of stuff: {len(joined)} vs {len(single)}")
+    for j, s in zip(joined, single):
+        for k, v in s.items():
+            if k not in j:
+                j[k] = PerCUIMetrics()
+            j[k].add(v)
+
+
+def _add_weighted_helper(joined: List[Dict[str, PerCUIMetrics]],
+                         single: List[Dict[str, float]],
+                         cui2count: Dict[str, int]) -> None:
+    for j, s in zip(joined, single):
+        for k, v in s.items():
+            if k not in j:
+                j[k] = PerCUIMetrics()
+            j[k].add(v, cui2count[k])
+
+
+def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]],
+                     include_std: bool) -> Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]:
     """The the mean of the provided metrics.
 
     Args:
         metrics (List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dict, Dict]): The metrics.
+        include_std (bool): Whether to include the standard deviation.
 
     Returns:
         fps (dict):
@@ -365,15 +386,15 @@ def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dic
             Examples for each of the fp, fn, tp. Format will be examples['fp']['cui'][<list_of_examples>].
     """
     # additives
-    all_fps: Dict[str, int] = {}
-    all_fns: Dict[str, int] = {}
-    all_tps: Dict[str, int] = {}
+    all_fps: Dict[str, PerCUIMetrics] = {}
+    all_fns: Dict[str, PerCUIMetrics] = {}
+    all_tps: Dict[str, PerCUIMetrics] = {}
     # weighted-averages
-    all_cui_prec: Dict[str, Tuple[int, float]] = {}
-    all_cui_rec: Dict[str, Tuple[int, float]] = {}
-    all_cui_f1: Dict[str, Tuple[int, float]] = {}
+    all_cui_prec: Dict[str, PerCUIMetrics] = {}
+    all_cui_rec: Dict[str, PerCUIMetrics] = {}
+    all_cui_f1: Dict[str, PerCUIMetrics] = {}
     # additive
-    all_cui_counts: Dict[str, int] = {}
+    all_cui_counts: Dict[str, PerCUIMetrics] = {}
     # combined
     all_additives = [
         all_fps, all_fns, all_tps, all_cui_counts
@@ -386,29 +407,49 @@ def get_metrics_mean(metrics: List[Tuple[Dict, Dict, Dict, Dict, Dict, Dict, Dic
     for current in metrics:
         cur_wa: list = list(current[3:-2])
         cur_counts = current[-2]
-        _update_all_weighted_average(all_weighted_averages, cur_wa, cur_counts)
-        # update ones that just need to be added up
         cur_adds = list(current[:3]) + [cur_counts]
-        _update_all_add(all_additives, cur_adds)
-        # merge examples
+        _add_helper(all_additives, cur_adds)
+        _add_weighted_helper(all_weighted_averages, cur_wa, cur_counts)
         cur_examples = current[-1]
         _merge_examples(all_examples, cur_examples)
-    cui_prec: Dict[str, float] = {}
-    cui_rec: Dict[str, float] = {}
-    cui_f1: Dict[str, float] = {}
-    final_wa = [
-        cui_prec, cui_rec, cui_f1
+    # conversion from PerCUI metrics to int/float and (if needed) STD
+    cui_fps: IntValuedMetric = {}
+    cui_fns: IntValuedMetric = {}
+    cui_tps: IntValuedMetric = {}
+    cui_prec: FloatValuedMetric = {}
+    cui_rec: FloatValuedMetric = {}
+    cui_f1: FloatValuedMetric = {}
+    final_counts: IntValuedMetric = {}
+    to_change: List[Union[IntValuedMetric, FloatValuedMetric]] = [
+        cui_fps, cui_fns, cui_tps, final_counts,
+        cui_prec, cui_rec, cui_f1,
     ]
-    # just remove the weight / count
-    for df, d in zip(final_wa, all_weighted_averages):
+    # get the mean and/or std
+    for nr, (df, d) in enumerate(zip(to_change, all_additives + all_weighted_averages)):
         for k, v in d.items():
-            df[k] = v[1]  # only the value, ingore the weight
-    return (all_fps, all_fns, all_tps, final_wa[0], final_wa[1], final_wa[2],
-            all_cui_counts, all_examples)
+            if nr == 3 and not include_std:
+                # counts need to be added up
+                # NOTE: the type:ignore comment _shouldn't_ be necessary
+                #       but mypy thinks we're setting a float or integer
+                #       where a tuple is expected
+                df[k] = sum(v.vals)  # type: ignore
+                # NOTE: The current implementation shows the sum for counts
+                #       if not STD is required, but the mean along with the
+                #       standard deviation if the latter is required.
+            elif not include_std:
+                df[k] = v.get_mean()
+            else:
+                # NOTE: the type:ignore comment _shouldn't_ be necessary
+                #       but mypy thinks we're setting a tuple
+                #       where a float or integer is expected
+                df[k] = (v.get_mean(), v.get_std())  # type: ignore
+    return (cui_fps, cui_fns, cui_tps, cui_prec, cui_rec, cui_f1,
+            final_counts, all_examples)
 
 
 def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int = 3,
-                     split_type: SplitType = SplitType.DOCUMENTS_WEIGHTED, *args, **kwargs) -> Tuple:
+                     split_type: SplitType = SplitType.DOCUMENTS_WEIGHTED,
+                     include_std: bool = False, *args, **kwargs) -> Tuple:
     """Get the k-fold stats for the model with the specified data.
 
     First this will split the MCT export into `k` folds. You can do
@@ -424,13 +465,15 @@ def get_k_fold_stats(cat: CATLike, mct_export_data: MedCATTrainerExport, k: int 
         mct_export_data (MedCATTrainerExport): The MCT export.
         k (int): The number of folds. Defaults to 3.
         split_type (SplitType): Whether to use annodations or docs. Defaults to DOCUMENTS_WEIGHTED.
+        include_std (bool): Whether to include stanrdard deviation. Defaults to False.
         *args: Arguments passed to the `CAT.train_supervised_raw` method.
         **kwargs: Keyword arguments passed to the `CAT.train_supervised_raw` method.
 
     Returns:
-        Tuple: The averaged metrics.
+        Tuple: The averaged metrics. Potentially with their corresponding standard deviations.
     """
     creator = get_fold_creator(mct_export_data, k, split_type=split_type)
     folds = creator.create_folds()
     per_fold_metrics = get_per_fold_metrics(cat, folds, *args, **kwargs)
-    return get_metrics_mean(per_fold_metrics)
+    means = get_metrics_mean(per_fold_metrics, include_std)
+    return means
