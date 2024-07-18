@@ -7,8 +7,8 @@ import logging
 from medcat.config import UsageMonitor as UsageMonitorConfig
 
 
-LOGS_ENV = "MEDCAT_LOGS"
-LOGS_LOC_ENV = "MEDCAT_LOGS_LOCATION"
+LOGS_ENV = "MEDCAT_USAGE_LOGS"
+LOGS_LOC_ENV = "MEDCAT_USAGE_LOGS_LOCATION"
 
 DEFAULT_LOGS_WINDOWS = os.path.join(os.environ.get('APPDATA', "NOT WINDOWS"), 'medcat', 'logs')
 DEFAULT_LOGS_LINUX = os.path.expanduser("~/.local/share/medcat/logs/")

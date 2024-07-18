@@ -91,16 +91,16 @@ class InterMediateUsageMonitorTests(UsageMonitorBaseTests):
 
 class UMT(UsageMonitorBaseTests):
     ENABLED_DICT = {
-        "MEDCAT_LOGS": "True",
-        "MEDCAT_LOGS_LOCATION": "."
+        "MEDCAT_USAGE_LOGS": "True",
+        "MEDCAT_USAGE_LOGS_LOCATION": "."
     }
     DISABLED_DICT_1 = {
-        "MEDCAT_LOGS": "False",
-        "MEDCAT_LOGS_LOCATION": "FAIL" # should not change anything
+        "MEDCAT_USAGE_LOGS": "False",
+        "MEDCAT_USAGE_LOGS_LOCATION": "FAIL" # should not change anything
     }
     DISABLED_DICT_2 = {
-        "MEDCAT_LOGS": "0",
-        "MEDCAT_LOGS_LOCATION": "."
+        "MEDCAT_USAGE_LOGS": "0",
+        "MEDCAT_USAGE_LOGS_LOCATION": "."
     }
 
     def setUp(self) -> None:
@@ -114,7 +114,7 @@ class UMT(UsageMonitorBaseTests):
     def test_listens_to_os_environ_enabled(self):
         self.assertTrue(self.monitor._should_log())
         self.assertNotEqual(self.config.log_folder, self._temp_dir.name)
-        self.assertEqual(self.config.log_folder, self.ENABLED_DICT["MEDCAT_LOGS_LOCATION"])
+        self.assertEqual(self.config.log_folder, self.ENABLED_DICT["MEDCAT_USAGE_LOGS_LOCATION"])
 
     @patch.dict(os.environ, DISABLED_DICT_1)
     def test_listens_to_os_environ_disabled_1(self):
