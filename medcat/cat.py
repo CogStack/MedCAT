@@ -41,6 +41,7 @@ from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
 from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
+from medcat.utils.usage_monitoring import UsageMonitor
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
@@ -108,6 +109,7 @@ class CAT(object):
         self._rel_cats = rel_cats
         self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
+        self.usage_monitor = UsageMonitor(self.get_hash(), self.config.general.usage_monitor)
 
     def _create_pipeline(self, config: Config):
         # Set log level
@@ -497,8 +499,26 @@ class CAT(object):
             logger.error("The input text should be either a string or a sequence of strings but got %s", type(text))
             return None
         else:
-            text = self._get_trimmed_text(str(text))
-            return self.pipe(text)  # type: ignore
+            text = str(text)  # NOTE: shouldn't be necessary but left it in
+            if self.config.general.usage_monitor.enabled:
+                l1 = len(text)
+                text = self._get_trimmed_text(text)
+                l2 = len(text)
+                rval = self.pipe(text)
+                # NOTE: pipe returns Doc (not List[Doc]) since we passed str (not List[str])
+                #       that's why we ignore type here
+                #       But it could still be None if the text is empty
+                if rval is None:
+                    nents = 0
+                elif self.config.general.show_nested_entities:
+                    nents = len(rval._.ents)  # type: ignore
+                else:
+                    nents = len(rval.ents)  # type: ignore
+                self.usage_monitor.log_inference(l1, l2, nents)
+                return rval  # type: ignore
+            else:
+                text = self._get_trimmed_text(text)
+                return self.pipe(text)  # type: ignore
 
     def __repr__(self) -> str:
         """Prints the model_card for this CAT instance.

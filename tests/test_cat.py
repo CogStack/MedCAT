@@ -38,6 +38,9 @@ class CATTests(unittest.TestCase):
         cls.cdb.config.linking.train = True
         cls.cdb.config.linking.disamb_length_limit = 5
         cls.cdb.config.general.full_unlink = True
+        cls._temp_logs_folder = tempfile.TemporaryDirectory()
+        cls.cdb.config.general.usage_monitor.enabled = True
+        cls.cdb.config.general.usage_monitor.log_folder = cls._temp_logs_folder.name
         cls.meta_cat_dir = os.path.join(os.path.dirname(os.path.realpath(__file__)), "tmp")
         cls.undertest = CAT(cdb=cls.cdb, config=cls.cdb.config, vocab=cls.vocab, meta_cats=[])
         cls._linkng_filters = cls.undertest.config.linking.filters.copy_of()
@@ -47,6 +50,7 @@ class CATTests(unittest.TestCase):
         cls.undertest.destroy_pipe()
         if os.path.exists(cls.meta_cat_dir):
             shutil.rmtree(cls.meta_cat_dir)
+        cls._temp_logs_folder.cleanup()
 
     def setUp(self):
         self._temp_file = tempfile.NamedTemporaryFile()
@@ -57,6 +61,10 @@ class CATTests(unittest.TestCase):
         # need to make sure linking filters are not retained beyond a test scope
         self.undertest.config.linking.filters = self._linkng_filters.copy_of()
         self._temp_file.close()
+        # remove existing contents / empty file log file
+        log_file_path = self.undertest.usage_monitor.log_file
+        if os.path.exists(log_file_path):
+            os.remove(log_file_path)
 
     def test_callable_with_single_text(self):
         text = "The dog is sitting outside the house."
@@ -69,7 +77,6 @@ class CATTests(unittest.TestCase):
     def test_callable_with_single_none_text(self):
         self.assertIsNone(self.undertest(None))
 
-    
     in_data_mp = [
         (1, "The dog is sitting outside the house and second csv."),
         (2, ""),
@@ -144,7 +151,7 @@ class CATTests(unittest.TestCase):
             (3, "The dog is sitting outside the house."),
         ]
         out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=False)
-        self.assertTrue(type(out) == list)
+        self.assertTrue(type(out) is list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
         self.assertEqual('second csv', out[0][1]['entities'][0]['source_value'])
@@ -160,7 +167,7 @@ class CATTests(unittest.TestCase):
             (3, None),
         ]
         out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=1, batch_size=1, return_dict=False)
-        self.assertTrue(type(out) == list)
+        self.assertTrue(type(out) is list)
         self.assertEqual(3, len(out))
         self.assertEqual(1, out[0][0])
         self.assertEqual({'entities': {}, 'tokens': []}, out[0][1])
@@ -176,7 +183,7 @@ class CATTests(unittest.TestCase):
             (3, "The dog is sitting outside the house.")
         ]
         out = self.undertest.multiprocessing_batch_docs_size(in_data, nproc=2, return_dict=True)
-        self.assertTrue(type(out) == dict)
+        self.assertTrue(type(out) is dict)
         self.assertEqual(3, len(out))
         self.assertEqual({'entities': {}, 'tokens': []}, out[1])
         self.assertEqual({'entities': {}, 'tokens': []}, out[2])
@@ -533,7 +540,7 @@ class CATTests(unittest.TestCase):
             return self.assertNoLogs(logger=logger, level=level)
         else:
             return self.__assertNoLogs(logger=logger, level=level)
-    
+
     @contextlib.contextmanager
     def __assertNoLogs(self, logger: logging.Logger, level: int):
         try:
@@ -546,7 +553,7 @@ class CATTests(unittest.TestCase):
 
     def assertLogsDuringAddAndTrainConcept(self, logger: logging.Logger, log_level,
                                            name: str, name_status: str, nr_of_calls: int):
-        cui = 'CUI-%d'%(hash(name) + id(name))
+        cui = 'CUI-%d' % (hash(name) + id(name))
         with (self.assertLogs(logger=logger, level=log_level)
               if nr_of_calls == 1
               else self._assertNoLogs(logger=logger, level=log_level)):
@@ -575,6 +582,30 @@ class CATTests(unittest.TestCase):
     def test_add_and_train_concept_cdb_warns_short_name(self):
         short_name = 'a'
         self.assertLogsDuringAddAndTrainConcept(cdb_logger, logging.WARNING, name=short_name, name_status='P', nr_of_calls=1)
+
+    def test_get_entities_gets_monitored(self,
+                                         text="Some text"):
+        repeats = self.undertest.config.general.usage_monitor.batch_size
+        # ensure something gets written to the file
+        for _ in range(repeats):
+            self.undertest.get_entities(text)
+        log_file_path = self.undertest.usage_monitor.log_file
+        self.assertTrue(os.path.exists(log_file_path))
+        with open(log_file_path) as f:
+            contents = f.readline()
+        self.assertTrue(contents)
+
+    def test_get_entities_logs_usage(self,
+                                     text="The dog is sitting outside the house."):
+        # clear usage monitor buffer
+        self.undertest.usage_monitor.log_buffer.clear()
+        self.undertest.get_entities(text)
+        self.assertTrue(self.undertest.usage_monitor.log_buffer)
+        self.assertEqual(len(self.undertest.usage_monitor.log_buffer), 1)
+        line = self.undertest.usage_monitor.log_buffer[0]
+        # the 1st element is the input text length
+        input_text_length = line.split(",")[1]
+        self.assertEqual(str(len(text)), input_text_length)
 
     def test_simple_hashing_is_faster(self):
         self.undertest.config.general.simple_hash = False
