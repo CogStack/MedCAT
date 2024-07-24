@@ -1,6 +1,9 @@
 import dill
 from typing import Optional, Dict
 from transformers.tokenization_utils_base import PreTrainedTokenizerBase
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class TransformersTokenizerNER(object):
@@ -35,7 +38,7 @@ class TransformersTokenizerNER(object):
 
     def encode(self, examples: Dict, ignore_subwords: bool = False) -> Dict:
         """Used with huggingface datasets map function to convert medcat_ner dataset into the
-        appropriate form for NER with BERT. It will split long text segments into max_len sequences.
+        appropriate form for NER with BERT. It will split long text segments into max_len sequences (performs chunking).
 
         Args:
             examples (Dict):
@@ -92,6 +95,7 @@ class TransformersTokenizerNER(object):
                         labels.append(self.label_map['X'])
 
                 if len(input_ids) >= self.max_len:
+                    logger.info("Document exceeding max length encountered. Performing chunking...")
                     # Split into multiple examples if too long
                     examples['input_ids'].append(input_ids)
                     examples['labels'].append(labels)
