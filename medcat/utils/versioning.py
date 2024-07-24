@@ -212,7 +212,7 @@ class ConfigUpgrader:
 
         Raises:
             ValueError: If one of the target files exists and cannot be overwritten.
-            ValueError: If model pack does not need an upgrade
+            IncorrectModel: If model pack does not need an upgrade
         """
         if not self.needs_upgrade():
             raise IncorrectModel(f"Model pack does not need ugprade: {self.model_pack_path} "
@@ -220,7 +220,10 @@ class ConfigUpgrader:
         logger.info("Starting to upgrade %s at (version %s)",
                     self.model_pack_path, self.current_version)
         files_to_copy = self._get_relevant_files()
-        self._check_existance(files_to_copy, new_path, overwrite)
+        try:
+            self._check_existance(files_to_copy, new_path, overwrite)
+        except ValueError as e:
+            raise e
         logger.debug("Copying files from %s", self.model_pack_path)
         self._copy_files(files_to_copy, new_path)
         logger.info("Going to try and fix CDB")
@@ -375,6 +378,9 @@ def allow_loading_with_pre_1_12(args: argparse.Namespace):
     - modelpack: The input model pack path
     - newpath: The output model pack path
     - overwrite: Whether to overwrite the new model
+
+    Raises:
+        ValueError: If the file already exists
 
     Args:
         args (argparse.Namespace): The CLI arguments.
