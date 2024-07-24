@@ -95,7 +95,9 @@ class TransformersTokenizerNER(object):
                         labels.append(self.label_map['X'])
 
                 if len(input_ids) >= self.max_len:
-                    logger.debug(f"Document exceeding max length encountered. Length of current document is {len(tokens['offset_mapping'])}. Performing chunking...")
+                    logger.debug(
+                        "Document exceeding max length encountered. Length of current document is %d. Performing chunking...",
+                        len(tokens['offset_mapping']))
                     # Split into multiple examples if too long
                     examples['input_ids'].append(input_ids)
                     examples['labels'].append(labels)
