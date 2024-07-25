@@ -49,9 +49,9 @@ class RegressionCase(BaseModel):
     def _determine_success(self, cui: str, ents: Dict[Any, Dict[str, str]],
                            repl_locs: List[Tuple[int, int]]) -> List[bool]:
         found_cuis = [ents[nr]['cui'] for nr in ents]
+        found: List[bool] = [False for _ in repl_locs]
         if cui not in found_cuis:
-            return [False for _ in repl_locs]
-        found: List[bool] = []
+            return found
         for nr in ents:
             cent = ents[nr]
             for rnr, (start, end) in enumerate(repl_locs):
