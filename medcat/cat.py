@@ -356,6 +356,7 @@ class CAT(object):
                         zip_path: str,
                         meta_cat_config_dict: Optional[Dict] = None,
                         ner_config_dict: Optional[Dict] = None,
+                        medcat_config_dict: Optional[Dict] = None,
                         load_meta_models: bool = True,
                         load_addl_ner: bool = True,
                         load_rel_models: bool = True) -> "CAT":
@@ -373,6 +374,10 @@ class CAT(object):
                 A config dict that will overwrite existing configs in transformers ner.
                 e.g. ner_config_dict = {'general': {'chunking_overlap_window': 6}.
                 Defaults to None.
+            medcat_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in the main medcat config
+                before pipe initialisation. This can be useful if wanting to change something
+                that only takes effect at init time (e.g spacy model). Defaults to None.
             load_meta_models (bool):
                 Whether to load MetaCAT models if present (Default value True).
             load_addl_ner (bool):
@@ -395,7 +400,7 @@ class CAT(object):
 
         # load config
         config_path = os.path.join(model_pack_path, "config.json")
-        cdb.load_config(config_path)
+        cdb.load_config(config_path, medcat_config_dict)
 
         # TODO load addl_ner
 
