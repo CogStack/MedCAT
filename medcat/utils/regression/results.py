@@ -27,13 +27,15 @@ class FailReason(str, Enum):
 
 
 class FailDescriptor(pydantic.BaseModel):
+    success_parts: List[bool]
     cui: str
     name: str
     reason: FailReason
     extra: str = ''
 
     @classmethod
-    def get_reason_for(cls, cui: str, name: str, res: dict, translation: TranslationLayer) -> 'FailDescriptor':
+    def get_reason_for(cls, cui: str, name: str, res: dict, translation: TranslationLayer,
+                       success_parts: List[bool]) -> 'FailDescriptor':
         """Get the fail reason for the failure of finding the specifeid CUI and name
         where the resulting entities are presented.
 
@@ -42,6 +44,7 @@ class FailDescriptor(pydantic.BaseModel):
             name (str): The name that was expected
             res (dict): The entities that were annotated
             translation (TranslationLayer): The translation layer
+            success_parts (List[bool]): The swaps that were successful.
 
         Returns:
             FailDescriptor: The corresponding fail descriptor
@@ -96,7 +99,8 @@ class FailDescriptor(pydantic.BaseModel):
                     fail_reason = FailReason.INCORRECT_SPAN_SMALL
                 else:
                     fail_reason = FailReason.CONCEPT_NOT_ANNOTATED
-        return FailDescriptor(cui=cui, name=name, reason=fail_reason, extra=extra)
+        return FailDescriptor(success_parts=success_parts, cui=cui, name=name,
+                              reason=fail_reason, extra=extra)
 
 
 class SingleResultDescriptor(pydantic.BaseModel):
@@ -109,16 +113,17 @@ class SingleResultDescriptor(pydantic.BaseModel):
     failures: List[FailDescriptor] = []
     """The description of failures"""
 
-    def report_success(self, cui: str, name: str, success: bool, fail_reason: Optional[FailDescriptor]) -> None:
+    def report_success(self, cui: str, name: str,
+                       success: List[bool], fail_reason: Optional[FailDescriptor]) -> None:
         """Report a test case and its successfulness
 
         Args:
             cui (str): The CUI being checked
             name (str): The name being checked
-            success (bool): Whether or not the check was successful
+            success (List[bool]): Which parts of the check were successful
             fail_reason (Optional[FailDescriptor]): The reason for the failure (if applicable)
         """
-        if success:
+        if all(success):
             self.success += 1
         else:
             self.fail += 1
@@ -139,14 +144,15 @@ class SingleResultDescriptor(pydantic.BaseModel):
 class ResultDescriptor(SingleResultDescriptor):
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
 
-    def report(self, cui: str, name: str, phrase: str, success: bool, fail_reason: Optional[FailDescriptor]) -> None:
+    def report(self, cui: str, name: str, phrase: str,
+               success: List[bool], fail_reason: Optional[FailDescriptor]) -> None:
         """Report a test case and its successfulness
 
         Args:
             cui (str): The CUI being checked
             name (str): The name being checked
             phrase (str): The phrase being checked
-            success (bool): Whether or not the check was successful
+            success (st[bool]): Which parts of the check were successful
             fail_reason (Optional[FailDescriptor]): The reason for the failure (if applicable)
         """
         super().report_success(cui, name, success, fail_reason)

@@ -3,6 +3,7 @@ import yaml
 import logging
 import tqdm
 import datetime
+import re
 
 from pydantic import BaseModel, Field
 
@@ -45,8 +46,22 @@ class RegressionCase(BaseModel):
                 cur_gen = filter.get_applicable_targets(translation, cur_gen)
             yield from cur_gen
 
+    def _determine_success(self, cui: str, ents: Dict[Any, Dict[str, str]],
+                           repl_locs: List[Tuple[int, int]]) -> List[bool]:
+        found_cuis = [ents[nr]['cui'] for nr in ents]
+        if cui not in found_cuis:
+            return [False for _ in repl_locs]
+        found: List[bool] = []
+        for nr in ents:
+            cent = ents[nr]
+            for rnr, (start, end) in enumerate(repl_locs):
+                if cent['cui'] == cui and cent['start'] == start and cent['end'] == end:
+                    found[rnr] = True
+        return found
+
     def check_specific_for_phrase(self, cat: CAT, cui: str, name: str, phrase: str,
-                                  translation: TranslationLayer) -> bool:
+                                  translation: TranslationLayer,
+                                  _placeholder: str = '%s') -> bool:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
@@ -56,22 +71,24 @@ class RegressionCase(BaseModel):
             name (str): The target name
             phrase (str): The phrase to check
             translation (TranslationLayer): The translation layer
+            _placeholder (str): The placeholder. Defaults to '%s'.
 
         Returns:
             bool: Whether or not the target was correctly identified
         """
-        res = cat.get_entities(phrase % name, only_cui=False)
+        repl_locs = list((m.start(), m.end()) for m in re.finditer(re.escape(_placeholder), phrase))
+        res = cat.get_entities(phrase.replace(_placeholder, name), only_cui=False)
         ents = res['entities']
-        found_cuis = [ents[nr]['cui'] for nr in ents]
-        success = cui in found_cuis
+        success = self._determine_success(cui, ents, repl_locs)
         fail_reason: Optional[FailDescriptor]
-        if success:
+        if all(success):
             logger.debug(
                 'Matched test case %s in phrase "%s"', (cui, name), phrase)
             fail_reason = None
         else:
             fail_reason = FailDescriptor.get_reason_for(cui, name, res,
-                                                        translation)
+                                                        translation, success)
+            found_cuis = [ents[nr]['cui'] for nr in ents]
             found_names = [ents[nr]['source_value'] for nr in ents]
             cuis_names = ', '.join([f'{fcui}|{fname}'
                                     for fcui, fname in zip(found_cuis, found_names)])
@@ -80,7 +97,7 @@ class RegressionCase(BaseModel):
                 'found the following CUIS/names: %s', fail_reason, (cui, name), phrase, cuis_names)
         self.report.report(cui, name, phrase,
                            success, fail_reason)
-        return success
+        return all(success)
 
     def _get_all_cuis_names_types(self) -> Tuple[Set[str], Set[str], Set[str]]:
         cuis = set()
