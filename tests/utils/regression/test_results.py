@@ -25,11 +25,11 @@ class TestFailReason(unittest.TestCase):
     tl = TranslationLayer(cui2names, name2cuis, cui2type_ids, cui2children)
 
     def test_cui_not_found(self, cui='cui-100', name='random n4m3'):
-        fr = FailDescriptor.get_reason_for(cui, name, {}, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, {}, self.tl, [True])
         self.assertIs(fr.reason, FailReason.CUI_NOT_FOUND)
 
     def test_cui_name_found(self, cui='cui1', name='random n4m3-not-there'):
-        fr = FailDescriptor.get_reason_for(cui, name, {}, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, {}, self.tl, [True])
         self.assertIs(fr.reason, FailReason.NAME_NOT_FOUND)
 
 
@@ -53,11 +53,11 @@ class TestFailReasonWithResultAndChildren(TestFailReason):
                           TestFailReason.cui2type_ids, cui2children)
 
     def test_found_child(self, cui='cui1', name='name-cui1-2'):
-        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui2, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui2, self.tl, [True])
         self.assertIs(fr.reason, FailReason.CUI_CHILD_FOUND)
 
     def test_found_parent(self, cui='cui2', name='name-cui2-1'):
-        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl, [True])
         self.assertIs(fr.reason, FailReason.CUI_PARENT_FOUND)
 
 
@@ -98,22 +98,22 @@ class TestFailReasonWithSpanningConcepts(unittest.TestCase):
 
     def test_gets_incorrect_span_big(self, cui='cui1', name='shallow'):
         fr = FailDescriptor.get_reason_for(
-            cui, name, self.res_w_cui11, self.tl)
+            cui, name, self.res_w_cui11, self.tl, [True])
         self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_BIG)
 
     def test_gets_incorrect_span_bigger(self, cui='cui1', name='shallow'):
         fr = FailDescriptor.get_reason_for(
-            cui, name, self.res_w_cui111, self.tl)
+            cui, name, self.res_w_cui111, self.tl, [True])
         self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_BIG)
 
     def test_gets_incorrect_span_small(self, cui='cui1.1', name='broader shallow'):
-        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl, [True])
         self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_SMALL)  # HERE
 
     def test_gets_incorrect_span_smaller(self, cui='cui1.1.1', name='even broader shallow'):
-        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_cui1, self.tl, [True])
         self.assertIs(fr.reason, FailReason.INCORRECT_SPAN_SMALL)  # and HERE
 
     def test_gets_not_annotated(self, cui='cui2', name='name-2'):
-        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_all, self.tl)
+        fr = FailDescriptor.get_reason_for(cui, name, self.res_w_all, self.tl, [True])
         self.assertIs(fr.reason, FailReason.CONCEPT_NOT_ANNOTATED)
