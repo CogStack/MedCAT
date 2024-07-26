@@ -4,6 +4,7 @@ import unittest
 from medcat.utils.regression.targeting import FilterType, FilterStrategy, FilterOptions
 from medcat.utils.regression.targeting import TypedFilter, TranslationLayer
 from medcat.utils.regression.checking import RegressionChecker, RegressionCase
+from medcat.utils.regression.results import Finding
 
 DICT_WITH_CUI = {'cui': '123'}
 DICT_WITH_MULTI_CUI = {'cui': ['111', '101']}
@@ -72,7 +73,7 @@ class FakeCat:
             cuis = list(self.tl.name2cuis[text])
             if only_cui:
                 return {'entities': dict((i, cui) for i, cui in enumerate(cuis))}
-            return {'entities': dict((i, {'cui': cui, 'source_value': text, 'start': 10, 'end': 15})
+            return {'entities': dict((i, {'cui': cui, 'source_value': text, 'start': 0, 'end': 4})
                                      for i, cui in enumerate(cuis))}
         return {}
 
@@ -305,7 +306,9 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         self.assertEqual(success, len(
             tl.cui2names[TestRegressionCase.TARGET_CUI]))
@@ -319,7 +322,9 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE_NAME
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         self.assertEqual(success, len(
             tl.name2cuis[TestRegressionCase.TARGET_NAME]))
@@ -333,7 +338,9 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE_TYPE_ID
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         self.assertEqual(success, len(EXAMPLE_TYPE_T1_CUI))
 
@@ -351,7 +358,9 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(cdb)
         D = self.D_PARENT_W_CHILDREN
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         expected = len(cdb.cui2names[self.PARENT_CUI]) + \
             len(cdb.cui2names[self.CHILD_CUI])
@@ -378,7 +387,9 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(cdb)
         D = self.D_MULIT_CHILD_1
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         expected = len(cdb.cui2names[self.P_CUI])
         # children
@@ -400,7 +411,9 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(cdb)
         D = self.D_MULIT_CHILD_2
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         expected = len(cdb.cui2names[self.P_CUI])
         # children
@@ -420,7 +433,9 @@ class TestRegressionCase(unittest.TestCase):
         D = {'targeting': {'strategy': 'any', 'filters': {
             'cui': ['C123', 'C124'], 'name': ['N223', 'N224']}}, 'phrases': ['%s']}
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        success, fail = rc.check_case(FakeCat(tl), tl)
+        findings = rc.check_case(FakeCat(tl), tl)
+        fail = findings.get(Finding.FAIL, 0)
+        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         expected = sum([len(tl.cui2children[cui]) for cui in D['targeting']
                        ['filters']['cui']]) + len(D['targeting']['filters']['name'])

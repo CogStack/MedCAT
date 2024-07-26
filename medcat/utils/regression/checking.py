@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TranslationLayer, FilterStrategy
 
-from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor, Finding
+from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
 logger = logging.getLogger(__name__)
 
@@ -73,27 +73,21 @@ class RegressionCase(BaseModel):
         ph_start = phrase.find(placeholder)
         res = cat.get_entities(phrase.replace(placeholder, name), only_cui=False)
         ents = res['entities']
-        success = Finding.determine(cui, ph_start, ph_start + len(name),
+        finding = Finding.determine(cui, ph_start, ph_start + len(name),
                                     translation, ents)
-        fail_reason: Optional[FailDescriptor]
-        if success is Finding.IDENTICAL:
+        if finding is Finding.IDENTICAL:
             logger.debug(
                 'Matched test case %s in phrase "%s"', (cui, name), phrase)
-            fail_reason = None
         else:
-            # TODO - the following probably needs an overhaul
-            fail_reason = FailDescriptor.get_reason_for(cui, name, res,
-                                                        translation)
             found_cuis = [ents[nr]['cui'] for nr in ents]
             found_names = [ents[nr]['source_value'] for nr in ents]
             cuis_names = ', '.join([f'{fcui}|{fname}'
                                     for fcui, fname in zip(found_cuis, found_names)])
             logger.debug(
-                'FAILED to match (%s) test case %s in phrase "%s", '
-                'found the following CUIS/names: %s', fail_reason, (cui, name), phrase, cuis_names)
-        self.report.report(cui, name, phrase,
-                           success, fail_reason)
-        return success
+                'FAILED to (fully) match (%s) test case %s in phrase "%s", '
+                'found the following CUIS/names: %s', finding, (cui, name), phrase, cuis_names)
+        self.report.report(cui, name, phrase, finding)
+        return finding
 
     def _get_all_cuis_names_types(self) -> Tuple[Set[str], Set[str], Set[str]]:
         cuis = set()
@@ -148,7 +142,7 @@ class RegressionCase(BaseModel):
             for cui in cui_filter.values:
                 yield cui, name
 
-    def check_case(self, cat: CAT, translation: TranslationLayer) -> Tuple[int, int]:
+    def check_case(self, cat: CAT, translation: TranslationLayer) -> Dict[Finding, int]:
         """Check the regression case against a model.
         I.e check all its applicable targets.
 
@@ -157,16 +151,15 @@ class RegressionCase(BaseModel):
             translation (TranslationLayer): The translation layer
 
         Returns:
-            Tuple[int, int]: Number of successes and number of failures
+            Dict[Finding, int]: The total findings.
         """
-        success = 0
-        fail = 0
+        findings: Dict[Finding, int] = {}
         for cui, name, phrase in self.get_all_subcases(translation):
-            if self.check_specific_for_phrase(cat, cui, name, phrase, translation):
-                success += 1
-            else:
-                fail += 1
-        return success, fail
+            finding = self.check_specific_for_phrase(cat, cui, name, phrase, translation)
+            if finding not in findings:
+                findings[finding] = 0
+            findings[finding] += 1
+        return findings
 
     def to_dict(self) -> dict:
         """Converts the RegressionCase to a dict for serialisation.
@@ -395,20 +388,15 @@ class RegressionChecker:
         Returns:
             MultiDescriptor: A report description
         """
-        successes, fails = 0, 0
         if total is not None:
-            for case, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
-                if case.check_specific_for_phrase(cat, ti, phrase, translation):
-                    successes += 1
-                else:
-                    fails += 1
+            for regr_case, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
+                # NOTE: the finding is reported in the per-case report
+                regr_case.check_specific_for_phrase(cat, ti, phrase, translation)
         else:
-            for case in tqdm.tqdm(self.cases):
-                for cui, name, phrase in case.get_all_subcases(translation):
-                    if case.check_specific_for_phrase(cat, cui, name, phrase, translation):
-                        successes += 1
-                    else:
-                        fails += 1
+            for regr_case in tqdm.tqdm(self.cases):
+                for cui, name, phrase in regr_case.get_all_subcases(translation):
+                    # NOTE: the finding is reported in the per-case report
+                    regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation)
         return self.report
 
     def __str__(self) -> str:
