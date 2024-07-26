@@ -62,9 +62,16 @@ class Finding(Enum):
     """The recongised CUI is a grandparent of the expected CUI but the span is an exact match."""
     FOUND_ANY_CHILD = auto()
     """The recongised CUI is a child of the expected CUI but the span is an exact match."""
-    # TODO - anything else?
+    FOUND_CHILD_PARTIAL = auto()
+    """The recognised CUI is a child yet the match is only partial (smaller/bigger/partial)."""
     FAIL = auto()
     """The concept was not recognised in any meaningful way."""
+
+    def has_correct_cui(self):
+        return self in (
+            Finding.IDENTICAL, Finding.BIGGER_SPAN_RIGHT, Finding.BIGGER_SPAN_LEFT,
+            Finding.BIGGER_SPAN_BOTH, Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP
+        )
 
     @classmethod
     def determine(cls, exp_cui: str, exp_start: int, exp_end: int,
@@ -219,6 +226,9 @@ class FindingDeterminer:
                                         check_grandparent=False)
             if finding in (Finding.IDENTICAL, Finding.FOUND_ANY_CHILD):
                 return Finding.FOUND_ANY_CHILD
+            elif finding.has_correct_cui():
+                # i.e a partial match with same CUI
+                return Finding.FOUND_CHILD_PARTIAL
             self._checked_children.add(child)
         return None
 
@@ -254,7 +264,7 @@ class Strictness(Enum):
     STRICT = auto()
     """A strict option which allows identical or children."""
     NORMAL = auto()
-    """Normal strictness also allows partial overlaps on target concept."""
+    """Normal strictness also allows partial overlaps on target concept and children."""
     LENIENT = auto()
     """Lenient stictness also allows parents and grandparents."""
 
@@ -263,7 +273,7 @@ STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
     Strictness.STRICTEST: {Finding.IDENTICAL},
     Strictness.STRICT: {Finding.IDENTICAL, Finding.FOUND_ANY_CHILD},
     Strictness.NORMAL: {
-        Finding.IDENTICAL, Finding.FOUND_ANY_CHILD,
+        Finding.IDENTICAL, Finding.FOUND_ANY_CHILD, Finding.FOUND_CHILD_PARTIAL,
         Finding.BIGGER_SPAN_RIGHT, Finding.BIGGER_SPAN_LEFT,
         Finding.BIGGER_SPAN_BOTH,
         Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP
