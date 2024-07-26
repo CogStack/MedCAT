@@ -46,7 +46,8 @@ class RegressionCase(BaseModel):
             yield from cur_gen
 
     def check_specific_for_phrase(self, cat: CAT, cui: str, name: str, phrase: str,
-                                  translation: TranslationLayer) -> bool:
+                                  translation: TranslationLayer,
+                                  placeholder: str = '%s') -> bool:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
@@ -56,11 +57,20 @@ class RegressionCase(BaseModel):
             name (str): The target name
             phrase (str): The phrase to check
             translation (TranslationLayer): The translation layer
+            placeholder (str): The placeholder to replace. Defaults to '%s'.
+
+        Raises:
+            MalformedRegressionCaseException: If there are too many placeholders in phrase.
 
         Returns:
             bool: Whether or not the target was correctly identified
         """
-        res = cat.get_entities(phrase % name, only_cui=False)
+        nr_of_placeholders = phrase.count(placeholder)
+        if nr_of_placeholders != 1:
+            raise MalformedRegressionCaseException(f"Got {nr_of_placeholders} placeholders "
+                                                   f"({placeholder}) (expected 1) for phrase: " +
+                                                   phrase)
+        res = cat.get_entities(phrase.replace(placeholder, name), only_cui=False)
         ents = res['entities']
         found_cuis = [ents[nr]['cui'] for nr in ents]
         success = cui in found_cuis
@@ -474,3 +484,9 @@ class RegressionChecker:
         with open(file_name) as f:
             data = yaml.safe_load(f)
         return RegressionChecker.from_dict(data)
+
+
+class MalformedRegressionCaseException(ValueError):
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
