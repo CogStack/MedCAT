@@ -139,6 +139,66 @@ class FindingFromEntsTests(unittest.TestCase):
                 self.assertEqual(found, expected)
 
 
+EXAMPLE_INFOS = [
+    # CUI, NAME, TYPE_ID
+    ['C123', 'N123', 'T1'],
+    ['C124', 'N124', 'T1'],
+    ['C223', 'N223', 'T2'],
+    ['C224', 'N224', 'T2'],
+    # non-unique name
+    ['C323', 'N123', 'T3'],
+    ['C324', 'N124', 'T3'],
+]
+
+
+class FindingFromEntsWithChildrenTests(unittest.TestCase):
+    FAKE_CDB = FakeCDB(*EXAMPLE_INFOS)
+    TL = TranslationLayer.from_CDB(FAKE_CDB)
+    THE_PARENT = "C123"
+    THE_CHILD = "C124"
+    PT2CHILD = {
+        THE_PARENT: {THE_CHILD}
+    }
+    CHILD_MAPPED_EXACT_SPAN = {**_get_example_kwargs(cui=THE_PARENT),
+                               "found_entities": {0: _get_example_ent(cui=THE_CHILD)}}
+    CHILD_MAPPED_PARTIAL_SAPN1 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=5, end=14)}}
+    CHILD_MAPPED_PARTIAL_SAPN2 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=5, end=15)}}
+    CHILD_MAPPED_PARTIAL_SAPN3 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=5, end=20)}}
+    CHILD_MAPPED_PARTIAL_SAPN4 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=10, end=14)}}
+    CHILD_MAPPED_PARTIAL_SAPN5 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=10, end=20)}}
+    CHILD_MAPPED_PARTIAL_SAPN6 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=11, end=14)}}
+    CHILD_MAPPED_PARTIAL_SAPN7 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=11, end=15)}}
+    CHILD_MAPPED_PARTIAL_SAPN8 = {**_get_example_kwargs(cui=THE_PARENT),
+                                  "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=11, end=20)}}
+    PARTIAL_CHILDREN = [
+        CHILD_MAPPED_PARTIAL_SAPN1, CHILD_MAPPED_PARTIAL_SAPN2, CHILD_MAPPED_PARTIAL_SAPN3,
+        CHILD_MAPPED_PARTIAL_SAPN4, CHILD_MAPPED_PARTIAL_SAPN5, CHILD_MAPPED_PARTIAL_SAPN6,
+        CHILD_MAPPED_PARTIAL_SAPN7, CHILD_MAPPED_PARTIAL_SAPN8
+    ]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        cls.FAKE_CDB.addl_info['pt2ch'].update(cls.PT2CHILD)
+
+    def test_finds_child_exact_span(self):
+        finding = Finding.determine(tl=self.TL, **self.CHILD_MAPPED_EXACT_SPAN)
+        self.assertIs(finding, Finding.FOUND_ANY_CHILD)
+
+    def test_finds_child_partial_span(self):
+        for nr, ekwargs in enumerate(self.PARTIAL_CHILDREN):
+            with self.subTest(f"{nr}: {ekwargs}"):
+                finding = Finding.determine(tl=self.TL, **ekwargs)
+                self.assertIs(finding, Finding.FOUND_CHILD_PARTIAL)
+
+
 class FindingFromEntsStrictTests(FindingFromEntsTests):
 
     @classmethod
