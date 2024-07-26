@@ -72,7 +72,8 @@ class FakeCat:
             cuis = list(self.tl.name2cuis[text])
             if only_cui:
                 return {'entities': dict((i, cui) for i, cui in enumerate(cuis))}
-            return {'entities': dict((i, {'cui': cui, 'source_value': text}) for i, cui in enumerate(cuis))}
+            return {'entities': dict((i, {'cui': cui, 'source_value': text, 'start': 10, 'end': 15})
+                                     for i, cui in enumerate(cuis))}
         return {}
 
 

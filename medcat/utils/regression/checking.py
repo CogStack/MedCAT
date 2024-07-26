@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TranslationLayer, FilterStrategy
 
-from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor
+from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor, Finding
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ class RegressionCase(BaseModel):
 
     def check_specific_for_phrase(self, cat: CAT, cui: str, name: str, phrase: str,
                                   translation: TranslationLayer,
-                                  placeholder: str = '%s') -> bool:
+                                  placeholder: str = '%s') -> Finding:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
@@ -63,25 +63,28 @@ class RegressionCase(BaseModel):
             MalformedRegressionCaseException: If there are too many placeholders in phrase.
 
         Returns:
-            bool: Whether or not the target was correctly identified
+            Finding: The nature to which the target was (or wasn't) identified
         """
         nr_of_placeholders = phrase.count(placeholder)
         if nr_of_placeholders != 1:
             raise MalformedRegressionCaseException(f"Got {nr_of_placeholders} placeholders "
                                                    f"({placeholder}) (expected 1) for phrase: " +
                                                    phrase)
+        ph_start = phrase.find(placeholder)
         res = cat.get_entities(phrase.replace(placeholder, name), only_cui=False)
         ents = res['entities']
-        found_cuis = [ents[nr]['cui'] for nr in ents]
-        success = cui in found_cuis
+        success = Finding.determine(cui, ph_start, ph_start + len(name),
+                                    translation, ents)
         fail_reason: Optional[FailDescriptor]
-        if success:
+        if success is Finding.IDENTICAL:
             logger.debug(
                 'Matched test case %s in phrase "%s"', (cui, name), phrase)
             fail_reason = None
         else:
+            # TODO - the following probably needs an overhaul
             fail_reason = FailDescriptor.get_reason_for(cui, name, res,
                                                         translation)
+            found_cuis = [ents[nr]['cui'] for nr in ents]
             found_names = [ents[nr]['source_value'] for nr in ents]
             cuis_names = ', '.join([f'{fcui}|{fname}'
                                     for fcui, fname in zip(found_cuis, found_names)])

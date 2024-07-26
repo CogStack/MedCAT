@@ -1,6 +1,7 @@
 from enum import Enum
 import logging
 from typing import Dict, Iterable, Iterator, List, Set, Any, Tuple, Union
+from functools import lru_cache
 
 from pydantic import BaseModel
 
@@ -92,6 +93,17 @@ class TranslationLayer:
                     if name in all_names:
                         continue  # should have been yielded above
                     yield cui, name
+
+    def get_direct_children(self, cui: str) -> List[str]:
+        return list(self.cui2children.get(cui, []))
+
+    @lru_cache(maxsize=10_000)
+    def get_direct_parents(self, cui: str) -> List[str]:
+        parents = []
+        for pot_parent, children in self.cui2children.items():
+            if cui in children:
+                parents.append(pot_parent)
+        return parents
 
     def get_children_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
         """Get the children of the specifeid CUI in the listed CUIs (if they exist).
