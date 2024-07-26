@@ -60,6 +60,9 @@ class StatsBuilder:
         # Add extra filter if set
         set_project_filters(self.addl_info, self.filters, project, self.extra_cui_filter, self.use_project_filters)
 
+        project_name = cast(str, project.get('name'))
+        project_id = cast(str, project.get('id'))
+
         documents = project["documents"]
         for dind, doc in tqdm(
             enumerate(documents),
@@ -67,8 +70,7 @@ class StatsBuilder:
             total=len(documents),
             leave=False,
         ):
-            self.process_document(cast(str, project.get('name')),
-                                  cast(str, project.get('id')), doc)
+            self.process_document(project_name, project_id, doc)
 
     def process_document(self, project_name: str, project_id: str, doc: dict) -> None:
         anns = self._get_doc_annotations(doc)

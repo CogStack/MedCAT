@@ -40,7 +40,7 @@ import logging
 from medcat.cat import CAT
 from medcat.utils.ner.model import NerModel
 
-from medcat.utils.ner.helpers import _deid_text as deid_text, replace_entities_in_text
+from medcat.utils.ner.helpers import replace_entities_in_text
 
 
 logger = logging.getLogger(__name__)
@@ -69,6 +69,12 @@ class DeIdModel(NerModel):
     def deid_text(self, text: str, redact: bool = False) -> str:
         """Deidentify text and potentially redact information.
 
+        De-identified text.
+        If redaction is enabled, identifiable entities will be
+        replaced with starts (e.g `*****`).
+        Otherwise, the replacement will be the CUI or in other words,
+        the type of information that was hidden (e.g [PATIENT]).
+
         Args:
             text (str): The text to deidentify.
             redact (bool): Whether to redact the information.
@@ -76,8 +82,8 @@ class DeIdModel(NerModel):
         Returns:
             str: The deidentified text.
         """
-        self.cat.get_entities
-        return deid_text(self.cat, text, redact=redact)
+        entities = self.cat.get_entities(text)['entities']
+        return replace_entities_in_text(text, entities, self.cat.cdb.get_name, redact=redact)
 
     def deid_multi_texts(self,
                          texts: Union[Iterable[str], Iterable[Tuple]],

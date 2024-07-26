@@ -16,7 +16,6 @@ from itertools import islice, chain, repeat
 from datetime import date
 from tqdm.autonotebook import tqdm, trange
 from spacy.tokens import Span, Doc, Token
-from spacy.language import Language
 import humanfriendly
 
 from medcat import __version__
@@ -37,17 +36,20 @@ from medcat.rel_cat import RelCAT
 from medcat.utils.meta_cat.data_utils import json_to_fake_spacy
 from medcat.config import Config
 from medcat.vocab import Vocab
-from medcat.utils.decorators import deprecated
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
+from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
+from medcat.utils.usage_monitoring import UsageMonitor
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
 
 
 HAS_NEW_SPACY = has_new_spacy()
+
+MIN_GEN_LEN_FOR_WARN = 10_000
 
 
 class CAT(object):
@@ -107,6 +109,7 @@ class CAT(object):
         self._rel_cats = rel_cats
         self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
+        self.usage_monitor = UsageMonitor(self.get_hash(), self.config.general.usage_monitor)
 
     def _create_pipeline(self, config: Config):
         # Set log level
@@ -144,15 +147,6 @@ class CAT(object):
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
 
-    @deprecated(message="Replaced with cat.pipe.spacy_nlp.")
-    def get_spacy_nlp(self) -> Language:
-        """Returns the spacy pipeline with MedCAT
-
-        Returns:
-            Language: The spacy Language being used.
-        """
-        return self.pipe.spacy_nlp
-
     def get_hash(self, force_recalc: bool = False) -> str:
         """Will not be a deep hash but will try to catch all the changing parts during training.
 
@@ -166,6 +160,10 @@ class CAT(object):
             str: The resulting hash
         """
         hasher = Hasher()
+        if self.config.general.simple_hash:
+            logger.info("Using simplified hashing that only takes into account the model card")
+            hasher.update(self.get_model_card())
+            return hasher.hexdigest()
         hasher.update(self.cdb.get_hash(force_recalc))
 
         hasher.update(self.config.get_hash())
@@ -315,6 +313,12 @@ class CAT(object):
         with open(model_card_path, 'w') as f:
             json.dump(self.get_model_card(as_dict=True), f, indent=2)
 
+        # add a dependency snapshot
+        env_info = get_environment_info()
+        env_info_path = os.path.join(save_dir_path, ENV_SNAPSHOT_FILE_NAME)
+        with open(env_info_path, 'w') as f:
+            json.dump(env_info, f)
+
         # Zip everything
         shutil.make_archive(os.path.join(_save_dir_path, model_pack_name), 'zip', root_dir=save_dir_path)
 
@@ -387,12 +391,7 @@ class CAT(object):
         model_pack_path = cls.attempt_unpack(zip_path)
 
         # Load the CDB
-        cdb_path = os.path.join(model_pack_path, "cdb.dat")
-        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
-        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
-        json_path = model_pack_path if has_jsons else None
-        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
-        cdb = CDB.load(cdb_path, json_path)
+        cdb: CDB = cls.load_cdb(model_pack_path)
 
         # load config
         config_path = os.path.join(model_pack_path, "config.json")
@@ -419,11 +418,9 @@ class CAT(object):
             addl_ner.append(trf)
 
         # Find metacat models in the model_pack
-        meta_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('meta_')] if load_meta_models else []
-        meta_cats = []
-        for meta_path in meta_paths:
-            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
-                                          config_dict=meta_cat_config_dict))
+        meta_cats: List[MetaCAT] = []
+        if load_meta_models:
+            meta_cats = [mc[1] for mc in cls.load_meta_cats(model_pack_path, meta_cat_config_dict)]
 
         # Find Rel models in model_pack
         rel_paths = [os.path.join(model_pack_path, path) for path in os.listdir(model_pack_path) if path.startswith('rel_')] if load_rel_models else []
@@ -435,6 +432,47 @@ class CAT(object):
         logger.info(cat.get_model_card())  # Print the model card
 
         return cat
+
+    @classmethod
+    def load_cdb(cls, model_pack_path: str) -> CDB:
+        """
+        Loads the concept database from the provided model pack path
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+
+        Returns:
+            CDB: The loaded concept database
+        """
+        cdb_path = os.path.join(model_pack_path, "cdb.dat")
+        nr_of_jsons_expected = len(SPECIALITY_NAMES) - len(ONE2MANY)
+        has_jsons = len(glob.glob(os.path.join(model_pack_path, '*.json'))) >= nr_of_jsons_expected
+        json_path = model_pack_path if has_jsons else None
+        logger.info('Loading model pack with %s', 'JSON format' if json_path else 'dill format')
+        cdb = CDB.load(cdb_path, json_path)
+        return cdb
+
+    @classmethod
+    def load_meta_cats(cls, model_pack_path: str, meta_cat_config_dict: Optional[Dict] = None) -> List[Tuple[str, MetaCAT]]:
+        """
+
+        Args:
+            model_pack_path (str): path to model pack, zip or dir.
+            meta_cat_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in meta_cat.
+                e.g. meta_cat_config_dict = {'general': {'device': 'cpu'}}.
+                Defaults to None.
+
+        Returns:
+            List[Tuple(str, MetaCAT)]: list of pairs of meta cat model names (i.e. the task name) and the MetaCAT models.
+        """
+        meta_paths = [os.path.join(model_pack_path, path)
+                      for path in os.listdir(model_pack_path) if path.startswith('meta_')]
+        meta_cats = []
+        for meta_path in meta_paths:
+            meta_cats.append(MetaCAT.load(save_dir_path=meta_path,
+                                          config_dict=meta_cat_config_dict))
+        return list(zip(meta_paths, meta_cats))
 
     def __call__(self, text: Optional[str], do_train: bool = False) -> Optional[Doc]:
         """Push the text through the pipeline.
@@ -461,8 +499,26 @@ class CAT(object):
             logger.error("The input text should be either a string or a sequence of strings but got %s", type(text))
             return None
         else:
-            text = self._get_trimmed_text(str(text))
-            return self.pipe(text)  # type: ignore
+            text = str(text)  # NOTE: shouldn't be necessary but left it in
+            if self.config.general.usage_monitor.enabled:
+                l1 = len(text)
+                text = self._get_trimmed_text(text)
+                l2 = len(text)
+                rval = self.pipe(text)
+                # NOTE: pipe returns Doc (not List[Doc]) since we passed str (not List[str])
+                #       that's why we ignore type here
+                #       But it could still be None if the text is empty
+                if rval is None:
+                    nents = 0
+                elif self.config.general.show_nested_entities:
+                    nents = len(rval._.ents)  # type: ignore
+                else:
+                    nents = len(rval.ents)  # type: ignore
+                self.usage_monitor.log_inference(l1, l2, nents)
+                return rval  # type: ignore
+            else:
+                text = self._get_trimmed_text(text)
+                return self.pipe(text)  # type: ignore
 
     def __repr__(self) -> str:
         """Prints the model_card for this CAT instance.
@@ -645,13 +701,16 @@ class CAT(object):
             names = prepare_name(name, self.pipe.spacy_nlp, {}, self.config)
 
         # If full unlink find all CUIs
-        if self.config.general.get('full_unlink', False):
+        if self.config.general.full_unlink:
+            logger.warning("In the config `full_unlink` is set to `True`. "
+                           "Thus removing all CUIs linked to the specified name"
+                           " (%s)", name)
             for n in names:
                 cuis.extend(self.cdb.name2cuis.get(n, []))
 
         # Remove name from all CUIs
         for c in cuis:
-            self.cdb.remove_names(cui=c, names=names)
+            self.cdb._remove_names(cui=c, names=names.keys())
 
     def add_and_train_concept(self,
                               cui: str,
@@ -725,42 +784,6 @@ class CAT(object):
                 for _cui in cuis:
                     self.linker.context_model.train(cui=_cui, entity=spacy_entity, doc=spacy_doc, negative=True)  # type: ignore
 
-    @deprecated(message="Use train_supervised_from_json to train based on data "
-                "loaded from a json file")
-    def train_supervised(self,
-                         data_path: str,
-                         reset_cui_count: bool = False,
-                         nepochs: int = 1,
-                         print_stats: int = 0,
-                         use_filters: bool = False,
-                         terminate_last: bool = False,
-                         use_overlaps: bool = False,
-                         use_cui_doc_limit: bool = False,
-                         test_size: int = 0,
-                         devalue_others: bool = False,
-                         use_groups: bool = False,
-                         never_terminate: bool = False,
-                         train_from_false_positives: bool = False,
-                         extra_cui_filter: Optional[Set] = None,
-                         retain_extra_cui_filter: bool = False,
-                         checkpoint: Optional[Checkpoint] = None,
-                         retain_filters: bool = False,
-                         is_resumed: bool = False) -> Tuple:
-        """Train supervised by reading data from a json file.
-
-        Refer to `train_supervvised_from_json` and/or `train_supervised_raw`
-        for further details.
-
-        # noqa: DAR101
-        # noqa: DAR201
-        """
-        return self.train_supervised_from_json(data_path, reset_cui_count, nepochs,
-                                               print_stats, use_filters, terminate_last,
-                                               use_overlaps, use_cui_doc_limit, test_size,
-                                               devalue_others, use_groups, never_terminate,
-                                               train_from_false_positives, extra_cui_filter,
-                                               retain_extra_cui_filter, checkpoint,
-                                               retain_filters, is_resumed)
 
     def train_supervised_from_json(self,
                                    data_path: str,
@@ -1226,25 +1249,6 @@ class CAT(object):
             pickle.dump((annotated_ids, part_counter), open(annotated_ids_path, 'wb'))
         return part_counter
 
-    @deprecated(message="Use `multiprocessing_batch_char_size` instead")
-    def multiprocessing(self,
-                        data: Union[List[Tuple], Iterable[Tuple]],
-                        nproc: int = 2,
-                        batch_size_chars: int = 5000 * 1000,
-                        only_cui: bool = False,
-                        addl_info: List[str] = ['cui2icd10', 'cui2ontologies', 'cui2snomed'],
-                        separate_nn_components: bool = True,
-                        out_split_size_chars: Optional[int] = None,
-                        save_dir_path: str = os.path.abspath(os.getcwd()),
-                        min_free_memory=0.1) -> Dict:
-        return self.multiprocessing_batch_char_size(data=data, nproc=nproc,
-                                                    batch_size_chars=batch_size_chars,
-                                                    only_cui=only_cui, addl_info=addl_info,
-                                                    separate_nn_components=separate_nn_components,
-                                                    out_split_size_chars=out_split_size_chars,
-                                                    save_dir_path=save_dir_path,
-                                                    min_free_memory=min_free_memory)
-
     def multiprocessing_batch_char_size(self,
                                         data: Union[List[Tuple], Iterable[Tuple]],
                                         nproc: int = 2,
@@ -1499,21 +1503,6 @@ class CAT(object):
 
         return docs
 
-    @deprecated(message="Use `multiprocessing_batch_docs_size` instead")
-    def multiprocessing_pipe(self, in_data: Union[List[Tuple], Iterable[Tuple]],
-                             nproc: Optional[int] = None,
-                             batch_size: Optional[int] = None,
-                             only_cui: bool = False,
-                             addl_info: List[str] = [],
-                             return_dict: bool = True,
-                             batch_factor: int = 2) -> Union[List[Tuple], Dict]:
-        return self.multiprocessing_batch_docs_size(in_data=in_data, nproc=nproc,
-                                                    batch_size=batch_size,
-                                                    only_cui=only_cui,
-                                                    addl_info=addl_info,
-                                                    return_dict=return_dict,
-                                                    batch_factor=batch_factor)
-
     def multiprocessing_batch_docs_size(self,
                                         in_data: Union[List[Tuple], Iterable[Tuple]],
                                         nproc: Optional[int] = None,
@@ -1525,6 +1514,11 @@ class CAT(object):
         """Run multiprocessing NOT FOR TRAINING.
 
         This method batches the data based on the number of documents as specified by the user.
+
+        NOTE: When providing a generator for `data`, the generator is evaluated (`list(in_data)`)
+              and thus all the data is kept in memory and (potentially) duplicated for use in
+              multiple threads. So if you're using a lot of data, it may be better to use
+              `CAT.multiprocessing_batch_char_size` instead.
 
         PS:
         This method supports Windows.
@@ -1550,7 +1544,20 @@ class CAT(object):
         if nproc == 0:
             raise ValueError("nproc cannot be set to zero")
 
-        in_data = list(in_data) if isinstance(in_data, Iterable) else in_data
+        # TODO: Surely there's a way to not materialise all of the incoming data in memory?
+        #       This is counter productive for allowing the passing of generators.
+        if isinstance(in_data, Iterable):
+            in_data = list(in_data)
+            in_data_len = len(in_data)
+            if in_data_len > MIN_GEN_LEN_FOR_WARN:
+                # only point this out when it's relevant, i.e over 10k items
+                logger.warning("The `CAT.multiprocessing_batch_docs_size` method just "
+                               f"materialised {in_data_len} items from the generator it "
+                               "was provided. This may use up a considerable amount of "
+                               "RAM, especially since the data may be duplicated across "
+                               "multiple threads when multiprocessing is used. If the "
+                               "process is kiled after this warning, please use the "
+                               "alternative method `multiprocessing_batch_char_size` instead")
         n_process = nproc if nproc is not None else min(max(cpu_count() - 1, 1), math.ceil(len(in_data) / batch_factor))
         batch_size = batch_size if batch_size is not None else math.ceil(len(in_data) / (batch_factor * abs(n_process)))
 

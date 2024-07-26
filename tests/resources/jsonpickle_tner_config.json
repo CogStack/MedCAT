@@ -1,0 +1,23 @@
+{
+    "general": {
+      "py/object": "medcat.config_transformers_ner.General",
+      "py/state": {
+        "__dict__": {
+          "name": "deid",
+          "model_name": "roberta-base",
+          "seed": 13,
+          "description": "No description",
+          "pipe_batch_size_in_chars": -100,
+          "ner_aggregation_strategy": "simple",
+          "chunking_overlap_window": 5,
+          "test_size": 0.2,
+          "last_train_on": null,
+          "verbose_metrics": false
+        },
+        "__fields_set__": {
+          "py/set": []
+        },
+        "__private_attribute_values__": {}
+      }
+    }
+  }
