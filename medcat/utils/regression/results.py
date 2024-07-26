@@ -6,19 +6,65 @@ from medcat.utils.regression.targeting import TranslationLayer
 
 
 class Finding(Enum):
+    """Describes whether or how the finding verified.
+
+    The idea is that we know where we expect the entity to be recognised
+    and the enum constants describe how the recognition compared to the
+    expectation.
+
+    In essence, we want to know the relative positions of the two pairs of
+    numbers (character numbers):
+    - Expected Start, Expected End
+    - Recognised Start, Recognised End
+
+    We can model this as 4 numbers on the number line. And we want to know
+    their position relative to eachother.
+    For example, if the expected positions are marked with * and recognised
+    positions with #, we may have something like:
+    ___*__#_______#*______________
+    Which would indicate that there is a partial, but smaller span recognised.
+    """
     # same CUIs
     IDENTICAL = auto()
+    """The CUI and the span recognised are identical to what was expected."""
     BIGGER_SPAN_RIGHT = auto()
+    """The CUI is the same, but the recognised span is longer on the right.
+
+    If we use the notation from the class doc string, e.g:
+    _*#__*__#"""
     BIGGER_SPAN_LEFT = auto()
+    """The CUI is the same, but the recognised span is longer on the left.
+
+    If we use the notation from the class doc string, e.g:
+    _#_*__*#_"""
     BIGGER_SPAN_BOTH = auto()
+    """The CUI is the same, but the recognised span is longer on both sides.
+
+    If we use the notation from the class doc string, e.g:
+    _#__*__*__#_"""
     SMALLER_SPAN = auto()
-    SPAN_OVERLAP = auto()  # neither start NOR end match expectation, but there is some overlap
+    """The CUI is the same, but the recognised span is smaller.
+
+    If we use the notation from the class doc string, e.g:
+    _*_#_#_*_ (neither start nor end match)
+    _*#_#_*__ (start matches, but end is before expected)
+    _*__#_#*_ (end matches, but start is after expected)"""
+    SPAN_OVERLAP = auto()
+    """The CUI is the same, but the span overlaps partially.
+
+    If we use the notation from the class doc string, e.g:
+    _*_#__*_#_ (starts between expected start and end, but ends beyond)
+    _#_*_#_*__ (start before expected start, but ends between expected start and end)"""
     # slightly different CUIs
     FOUND_DIR_PARENT = auto()
+    """The recongised CUI is a parent of the expected CUI but the span is an exact match."""
     FOUND_DIR_GRANDPARENT = auto()
+    """The recongised CUI is a grandparent of the expected CUI but the span is an exact match."""
     FOUND_ANY_CHILD = auto()
+    """The recongised CUI is a child of the expected CUI but the span is an exact match."""
     # TODO - anything else?
     FAIL = auto()
+    """The concept was not recognised in any meaningful way."""
 
     @classmethod
     def determine(cls, exp_cui: str, exp_start: int, exp_end: int,
@@ -27,12 +73,46 @@ class Finding(Enum):
                   check_children: bool = True, check_parent: bool = True,
                   check_grandparent: bool = True
                   ) -> 'Finding':
+        """Determine the finding type based on the input
+
+        Args:
+            exp_cui (str): Expected CUI.
+            exp_start (int): Expected span start.
+            exp_end (int): Expected span end.
+            tl (TranslationLayer): The translation layer.
+            found_entities (Dict[str, Dict[str, Any]]): The entities found by the model.
+            strict_only (bool): Whether to use a strict-only mode (either identical or fail). Defaults to False.
+            check_children (bool): Whether to check the children. Defaults to True.
+            check_parent (bool): Whether to check for parent(s). Defaults to True.
+            check_grandparent (bool): Whether to check for grandparent(s). Defaults to True.
+
+        Returns:
+            Finding: The type of finding determined.
+        """
         return FindingDeterminer(exp_cui, exp_start, exp_end,
                                  tl, found_entities, strict_only,
                                  check_parent, check_grandparent, check_children).determine()
 
 
 class FindingDeterminer:
+    """A helper class to determine the type of finding.
+
+    This is mostly useful to split the responsibilities of
+    looking at children/parents as well as to keep track of
+    the already-checked children to avoid infinite recursion
+    (which could happen in - e.g - a SNOMED model).
+
+    Args:
+        exp_cui (str): The expected CUI.
+        exp_start (int): The expected span start.
+        exp_end (int): The expected span end.
+        tl (TranslationLayer): The translation layer.
+        found_entities (Dict[str, Dict[str, Any]]): The entities found by the model.
+        strict_only (bool): Whether to use strict-only mode (either identical or fail). Defaults to False.
+        check_children (bool): Whether ot check the children. Defaults to True.
+        check_parent (bool): Whether to check for parent(s). Defaults to True.
+        check_grandparent (bool): Whether to check for granparent(s). Defaults to True.
+    """
 
     def __init__(self, exp_cui: str, exp_start: int, exp_end: int,
                     tl: TranslationLayer, found_entities: Dict[str, Dict[str, Any]],
@@ -52,6 +132,22 @@ class FindingDeterminer:
         self._checked_children: Set[str] = set()
 
     def _determine_raw(self, start: int, end: int) -> Optional[Finding]:
+        """Determines the raw SPAN-ONLY finding.
+
+        I.e this assumes the concept is appropriate.
+        It will return None if there is no overlapping span.
+
+        Args:
+            start (int): The start of the span.
+            end (int): The end of the span.
+
+        Raises:
+            MalformedFinding: If the start is greater than the end.
+            MalformedFinding: If the expected start is greater than the expected end.
+
+        Returns:
+            Optional[Finding]: The finding, if a match is found.
+        """
         if end < start:
             raise MalformedFinding(f"The end ({end}) is smaller than the start ({start})")
         elif self.exp_end < self.exp_start:
@@ -127,6 +223,15 @@ class FindingDeterminer:
         return None
 
     def determine(self) -> 'Finding':
+        """Determine the finding based on the given information.
+
+        First, the strict check is done (either identical or not).
+        Then, parents are checked (if requried).
+        After that, children are checked (if required).
+
+        Returns:
+            Finding: The appropriate finding.
+        """
         finding = self._get_strict()
         if finding is not None:
             return finding
@@ -143,10 +248,15 @@ class FindingDeterminer:
 
 
 class Strictness(Enum):
+    """The total strictness on which to judge the results."""
     STRICTEST = auto()
+    """The strictest option which only allows identical findings."""
     STRICT = auto()
+    """A strict option which allows identical or children."""
     NORMAL = auto()
-    LAX = auto()
+    """Normal strictness also allows partial overlaps on target concept."""
+    LENIENT = auto()
+    """Lenient stictness also allows parents and grandparents."""
 
 
 STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
@@ -158,7 +268,7 @@ STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
         Finding.BIGGER_SPAN_BOTH,
         Finding.SMALLER_SPAN, Finding.SPAN_OVERLAP
     },
-    Strictness.LAX: {
+    Strictness.LENIENT: {
         Finding.IDENTICAL, Finding.FOUND_ANY_CHILD,
         Finding.BIGGER_SPAN_RIGHT, Finding.BIGGER_SPAN_LEFT,
         Finding.BIGGER_SPAN_BOTH,
