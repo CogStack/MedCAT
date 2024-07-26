@@ -4,6 +4,7 @@ import os
 import torch.optim
 import torch
 import torch.nn as nn
+import spacy
 
 from tqdm import tqdm
 from datetime import date, datetime
@@ -13,8 +14,8 @@ from medcat.config import Config
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
-from spacy.tokens import Doc
-from typing import Dict, Iterable, Iterator, cast
+from spacy.tokens import Doc, Span
+from typing import Dict, Iterable, Iterator, List, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader
 from torch.optim import Adam
@@ -660,6 +661,53 @@ class RelCAT(PipeRunner):
             pbar.close()
 
             yield doc
+
+    def predict_text_with_anns(self, text: str, annotations: List[Dict]) -> Doc:
+        """ Creates spacy doc from text and annotation input. Predicts using self.__call__
+
+        Args:
+            text (str): text
+            annotations (Dict): dict containing the entities from NER (of your choosing), the format
+                must be the following format:
+                        [ 
+                            {
+                                "cui": "202099003", -this is optional
+                                "value": "discoid lateral meniscus",
+                                "start": 294,
+                                "end": 318
+                            },
+                            {
+                                "cui": "202099003",
+                                "value": "Discoid lateral meniscus",
+                                "start": 1905,
+                                "end": 1929,
+                            }
+                        ]
+
+        Returns:
+            Doc: spacy doc with the relations.
+        """
+
+        Span.set_extension('id', default=0, force=True)
+        Span.set_extension('cui', default=None, force=True)
+        Doc.set_extension('ents', default=[], force=True)
+        Doc.set_extension('relations', default=[], force=True)
+        nlp = spacy.blank(self.config.general.language)
+        doc = nlp(text)
+
+        for ann in annotations:
+            tkn_idx = []
+            for ind, word in enumerate(doc):
+                end_char = word.idx + len(word.text)
+                if end_char <= ann['end'] and end_char > ann['start']:
+                    tkn_idx.append(ind)
+            entity = Span(doc, min(tkn_idx), max(tkn_idx) + 1, label=ann["value"])
+            entity._.cui = ann["cui"]
+            doc._.ents.append(entity)
+
+        doc = self(doc)
+
+        return doc
 
     def __call__(self, doc: Doc) -> Doc:
         doc = next(self.pipe(iter([doc])))

@@ -68,8 +68,8 @@ class RelCATTests(unittest.TestCase):
 
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path)
-        self.rel_cat.config.general.mct_export_create_addl_rels = True
-        self.rel_cat.config.general.mct_export_max_non_rel_sample_size = 10
+        self.rel_cat.config.general.create_addl_rels = True
+        self.rel_cat.config.general.addl_rels_max_sample_size = 10
         self.rel_cat.config.train.test_size = 0.1
         self.rel_cat.config.train.nclasses = 3
         self.rel_cat.model.relcat_config.train.nclasses = 3
@@ -106,6 +106,7 @@ class RelCATTests(unittest.TestCase):
         if self.finished:
             if os.path.exists(self.tmp_dir):
                 shutil.rmtree(self.tmp_dir)
+
 
 if __name__ == '__main__':
     unittest.main()

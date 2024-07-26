@@ -386,7 +386,6 @@ class RelData(Dataset):
                             ent2_token_end_pos = [i for i in range(0, doc_length_tokens) if ent2_end_char_pos
                                                 in range(tokenized_text_data["offset_mapping"][i][0], tokenized_text_data["offset_mapping"][i][1] + 1)][0]
 
-
                             if self.config.general.relation_type_filter_pairs:
                                 for rel_pair in self.config.general.relation_type_filter_pairs:
                                     if rel_pair[0] in ent1_types and rel_pair[1] in ent2_types:
@@ -420,7 +419,7 @@ class RelData(Dataset):
 
                         # restore ent1
                         ent1_token = tmp_ent1
-        
+
         # cleanup
         relation_instances = [rel for rel in relation_instances if rel != []]
 
@@ -476,7 +475,7 @@ class RelData(Dataset):
 
                         ent1_types = ann_ids_ents[ann_id]["types"]
 
-                        if self.config.general.mct_export_create_addl_rels:
+                        if self.config.general.create_addl_rels:
                             for _, ent2_ann in enumerate(annotations[ent1_idx + 1:]):
                                 ent2_types = list(self.cdb.cui2type_ids.get(ent2_ann["cui"], ""))
 
@@ -484,7 +483,7 @@ class RelData(Dataset):
                                     _relation_type = "Other"
 
                                     # create new Other subclass class if enabled
-                                    if self.config.general.mct_export_create_addl_rels_by_type:
+                                    if self.config.general.create_addl_rels_by_type:
                                         _relation_type = "Other" + ent1_types[0] + "-" + ent2_types[0]
 
                                     _other_relations_subset.append({
@@ -502,7 +501,7 @@ class RelData(Dataset):
                                         "validated": True
                                     })
 
-                    non_rel_sample_size_limit = int(int(self.config.general.mct_export_max_non_rel_sample_size) / len(data['projects']))
+                    non_rel_sample_size_limit = int(int(self.config.general.addl_rels_max_sample_size) / len(data['projects']))
 
                     if non_rel_sample_size_limit > 0 and len(_other_relations_subset) > 0:
                         random.shuffle(_other_relations_subset)
@@ -582,17 +581,19 @@ class RelData(Dataset):
                                     ent2_token_end_pos=ent2_token_end_pos,
                                     is_mct_export=True
                             )
+
                             if len(final_relation) > 0:
-                                final_relation[0][4] = relation_label
-                                final_relation[0][6] = start_entity_types
-                                final_relation[0][7] = end_entity_types
-                                final_relation[0][8] = start_entity_id
-                                final_relation[0][9] = end_entity_id
-                                final_relation[0][10] = start_entity_cui
-                                final_relation[0][11] = end_entity_cui
+                                final_relation[4] = relation_label
+                                final_relation[6] = start_entity_types
+                                final_relation[7] = end_entity_types
+                                final_relation[8] = start_entity_id
+                                final_relation[9] = end_entity_id
+                                final_relation[10] = start_entity_cui
+                                final_relation[11] = end_entity_cui
 
                                 relation_instances.append(final_relation)
-                output_relations.extend(relation_instances)
+
+                    output_relations.extend(relation_instances)
 
         all_relation_labels = [relation[4] for relation in output_relations]
 
@@ -613,6 +614,7 @@ class RelData(Dataset):
                     sample_count += 1
             self.log.info(
                 " label: " + idx2label[label_num] + " | samples: " + str(sample_count))
+ 
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
