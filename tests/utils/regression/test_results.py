@@ -21,7 +21,7 @@ class FindingRawTests(unittest.TestCase):
         # (exp start, exp end, start, end), expected finding
         # start < exp_start
         ((10, 15, 0, 1), None),
-        ((10, 15, 0, 11), Finding.SPAN_OVERLAP),
+        ((10, 15, 0, 11), Finding.PARTIAL_OVERLAP),
         ((10, 15, 0, 15), Finding.BIGGER_SPAN_LEFT),
         ((10, 15, 0, 25), Finding.BIGGER_SPAN_BOTH),
         # start == exp_start
@@ -31,7 +31,7 @@ class FindingRawTests(unittest.TestCase):
         # exp_start < start < exp_end
         ((10, 15, 12, 13), Finding.SMALLER_SPAN),
         ((10, 15, 12, 15), Finding.SMALLER_SPAN),
-        ((10, 15, 12, 25), Finding.SPAN_OVERLAP),
+        ((10, 15, 12, 25), Finding.PARTIAL_OVERLAP),
         # exp_start >= end_end
         ((10, 15, 20, 25), None),
     ]
@@ -97,10 +97,10 @@ class FindingFromEntsTests(unittest.TestCase):
         # overlapping span
         ({**_get_example_kwargs(),
           "found_entities": {0: _get_example_ent(start=5, end=12)},
-         }, Finding.SPAN_OVERLAP),
+         }, Finding.PARTIAL_OVERLAP),
         ({**_get_example_kwargs(),
           "found_entities": {0: _get_example_ent(start=12, end=122)},
-         }, Finding.SPAN_OVERLAP),
+         }, Finding.PARTIAL_OVERLAP),
         # identical with some noise start
         ({**_get_example_kwargs(),
           "found_entities": {0: _get_example_ent(start=0, end=5),

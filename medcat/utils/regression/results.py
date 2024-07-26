@@ -49,7 +49,7 @@ class Finding(Enum):
     _*_#_#_*_ (neither start nor end match)
     _*#_#_*__ (start matches, but end is before expected)
     _*__#_#*_ (end matches, but start is after expected)"""
-    SPAN_OVERLAP = auto()
+    PARTIAL_OVERLAP = auto()
     """The CUI is the same, but the span overlaps partially.
 
     If we use the notation from the class doc string, e.g:
@@ -161,7 +161,7 @@ class FindingDeterminer:
             if end < self.exp_start:
                 return None
             elif end < self.exp_end:
-                return Finding.SPAN_OVERLAP  # TODO - distinguish[overlap]?
+                return Finding.PARTIAL_OVERLAP  # TODO - distinguish[overlap]?
             elif end == self.exp_end:
                 return Finding.BIGGER_SPAN_LEFT
             return Finding.BIGGER_SPAN_BOTH
@@ -176,7 +176,7 @@ class FindingDeterminer:
                 return Finding.SMALLER_SPAN # TODO - distinguish[smaller]?
             elif end == self.exp_end:
                 return Finding.SMALLER_SPAN # TODO - distinguish[smaller]?
-            return Finding.SPAN_OVERLAP  # TODO - distinguish[overlap]?
+            return Finding.PARTIAL_OVERLAP  # TODO - distinguish[overlap]?
         # if start > exp_end -> no match
         return None
 
@@ -266,13 +266,13 @@ STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
         Finding.IDENTICAL, Finding.FOUND_ANY_CHILD,
         Finding.BIGGER_SPAN_RIGHT, Finding.BIGGER_SPAN_LEFT,
         Finding.BIGGER_SPAN_BOTH,
-        Finding.SMALLER_SPAN, Finding.SPAN_OVERLAP
+        Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP
     },
     Strictness.LENIENT: {
         Finding.IDENTICAL, Finding.FOUND_ANY_CHILD,
         Finding.BIGGER_SPAN_RIGHT, Finding.BIGGER_SPAN_LEFT,
         Finding.BIGGER_SPAN_BOTH,
-        Finding.SMALLER_SPAN, Finding.SPAN_OVERLAP,
+        Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP,
         Finding.FOUND_DIR_PARENT, Finding.FOUND_DIR_GRANDPARENT,
     }
 }
