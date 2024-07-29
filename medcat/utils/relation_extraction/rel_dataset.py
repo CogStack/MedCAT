@@ -373,7 +373,9 @@ class RelData(Dataset):
                             ent1_token = ent2_token
                             ent2_token = tmp_ent1
 
-                        if str(ent2_token) not in chars_to_exclude and str(ent1_token) != str(ent2_token):
+                        if str(ent2_token) not in chars_to_exclude and str(ent1_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and \
+                                str(ent2_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and str(ent1_token) != str(ent2_token):
+
                             ent2_type_id = list(self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
                             ent2_types = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ent2_type_id]
 
@@ -567,7 +569,7 @@ class RelData(Dataset):
                         ent2_token_end_pos = [i for i in range(0, doc_token_length) if ann_end_end_pos
                                                         in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
-                        if start_entity_id != end_entity_id and relation.get('validated', True):
+                        if start_entity_id != end_entity_id and relation.get('validated', True) and start_entity_value not in self.tokenizer.all_special_tokens and end_entity_value not in self.tokenizer.all_special_tokens :
                             final_relation = self._create_relation_validation(text=doc_text,
                                     doc_id=doc_id,
                                     tokenized_text_data=tokenizer_text_data,
@@ -614,7 +616,6 @@ class RelData(Dataset):
                     sample_count += 1
             self.log.info(
                 " label: " + idx2label[label_num] + " | samples: " + str(sample_count))
- 
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 

@@ -18,6 +18,8 @@ class General(MixingConfig, BaseModel):
     window_size: int = 300
     """Max acceptable dinstance between entities (in characters), care when using this as it can produce sentences that are over 512 tokens (limit is given by tokenizer)"""
 
+    limit_samples_per_class: int = -1
+    """Number of samples per class, this limit is applied for train samples, so if train samples are 100 then test would be 20."""
     addl_rels_max_sample_size:int = 200
     """Limit the number of 'Other' samples selected for training/test. This is applied per encountered medcat project, sample_size/num_projects. """
     create_addl_rels: bool = False

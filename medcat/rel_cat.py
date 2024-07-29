@@ -227,7 +227,8 @@ class RelCAT(PipeRunner):
 
         if split_sets:
             train_data["output_relations"], test_data["output_relations"] = split_list_train_test_by_class(data["output_relations"],
-                                                                                                test_size=self.config.train.test_size)
+                                                                                                test_size=self.config.train.test_size, shuffle=self.config.train.shuffle_data,
+                                                                                                sample_limit=self.config.general.limit_samples_per_class)
 
             test_data_label_names = [rec[4] for rec in test_data["output_relations"]]
 

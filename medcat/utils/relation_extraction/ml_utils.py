@@ -17,7 +17,7 @@ from torch import nn
 logger = logging.getLogger(__name__)
 
 
-def split_list_train_test_by_class(data: List, test_size: float = 0.2, shuffle: bool = True) -> Tuple[List, List]:
+def split_list_train_test_by_class(data: List, sample_limit: int = -1, test_size: float = 0.2, shuffle: bool = True) -> Tuple[List, List]:
     """
 
     Args:
@@ -37,25 +37,53 @@ def split_list_train_test_by_class(data: List, test_size: float = 0.2, shuffle: 
     test_data = []
 
     row_id_labels = {row_idx: data[row_idx][5] for row_idx in range(len(data))}
+    lbl_id_to_name = {data[row_idx][5] : data[row_idx][4] for row_idx in range((len(data)))}
+
     count_per_label = {lbl: list(row_id_labels.values()).count(
         lbl) for lbl in set(row_id_labels.values())}
 
+    new_label_count_train = {}
+    new_label_count_test = {}
+
     for lbl_id, count in count_per_label.items():
+        if sample_limit != -1 and count > sample_limit:
+            count = sample_limit
+
         _test_records_size = int(count * test_size)
-        tmp_count = 0
+
+        test_sample_count = 0
+        train_sample_count = 0
+
         if _test_records_size not in [0, 1]:
             for row_idx, _lbl_id in row_id_labels.items():
                 if _lbl_id == lbl_id:
-                    if tmp_count < _test_records_size:
+                    if test_sample_count < _test_records_size:
                         test_data.append(data[row_idx])
-                        tmp_count += 1
+                        test_sample_count += 1
                     else:
-                        train_data.append(data[row_idx])
+                        if sample_limit != -1:
+                            if train_sample_count < sample_limit:
+                                train_data.append(data[row_idx])
+                                train_sample_count += 1
+                        else:
+                            train_data.append(data[row_idx])
+                            train_sample_count += 1
+
         else:
             for row_idx, _lbl_id in row_id_labels.items():
                 if _lbl_id == lbl_id:
                     train_data.append(data[row_idx])
                     test_data.append(data[row_idx])
+                    train_sample_count += 1
+                    test_sample_count += 1
+
+        new_label_count_test[lbl_id] = test_sample_count
+        new_label_count_train[lbl_id] = train_sample_count
+
+    logging.info("Relations after train, test split :  train - " + str(sum(new_label_count_train.values()))  + " | test - " + str(sum(new_label_count_test.values())))
+
+    for label_id in list(lbl_id_to_name.keys()):
+        logging.info(" label: " + lbl_id_to_name[label_id] + " samples | train " + str(new_label_count_train[label_id]) + " | test " + str(new_label_count_test[label_id]))
 
 
     return train_data, test_data
