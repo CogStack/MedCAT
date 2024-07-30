@@ -203,9 +203,9 @@ class OptionSet(BaseModel):
             section (Dict[str, Any]): The dict to parse
 
         Raises:
-            ValueError: If incorrect number of CUIs when not allowing any combination
-            ValueError: If placeholders not a list
-            ValueError: If multiple placehodlers with same place holder
+            ProblematicOptionSetException: If incorrect number of CUIs when not allowing any combination
+            ProblematicOptionSetException: If placeholders not a list
+            ProblematicOptionSetException: If multiple placehodlers with same place holder
 
         Returns:
             OptionSet: The resulting OptionSet
