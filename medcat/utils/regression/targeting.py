@@ -173,7 +173,7 @@ class PhraseChanger(BaseModel):
 
 class OptionSet(BaseModel):
     options: List[TargetPlaceholder]
-    allow_any_combinations: bool
+    allow_any_combinations: bool = False
 
     @classmethod
     def from_dict(cls, section: Dict[str, Any]) -> 'OptionSet':
@@ -184,7 +184,7 @@ class OptionSet(BaseModel):
             'placeholders': [
                 {
                 'placeholder': <e.g {DIAGNOSIS}'>,
-                'cui': <the CUI>,
+                'cuis': <the CUI>,
                 'prefname-only': 'true'
                 }, <potentially more>],
             'any-combination': <True or False>
@@ -197,6 +197,8 @@ class OptionSet(BaseModel):
 
         Raises:
             ValueError: If incorrect number of CUIs when not allowing any combination
+            ValueError: If placeholders not a list
+            ValueError: If multiple placehodlers with same place holder
 
         Returns:
             OptionSet: The resulting OptionSet
@@ -211,8 +213,15 @@ class OptionSet(BaseModel):
             raise ValueError(f"Unkown 'any-combination' value: {allow_any_in}")
         if 'placeholders' not in section:
             raise ValueError("Misconfigured - no placeholders")  # TODO - specific exception
-        for part in section['placeholders']:
+        section_placeholders = section['placeholders']
+        if not isinstance(section_placeholders, list):
+            raise ValueError("Misconfigured - placehodlers not a list")  # TODO - specific exception
+        used_ph = set()
+        for part in section_placeholders:
             placeholder = part['placeholder']
+            if placeholder in used_ph:
+                raise ValueError("Misconfigured - multiple identical placeholders")  # TODO - specific exception
+            used_ph.add(placeholder)
             target_cuis: List[str] = part['cuis']
             if not isinstance(target_cuis, list):
                 pass # TODO - raise an exception regarding malformed config
@@ -223,6 +232,8 @@ class OptionSet(BaseModel):
             option = TargetPlaceholder(placeholder=placeholder, target_cuis=target_cuis,
                                    onlyprefnames=onlyprefnames)
             options.append(option)
+        if not options:
+            raise ValueError("Misconfigured - no placeholders")
         if not allow_any_combinations:
             # NOTE: need to have same number of target_cuis for each placeholder
             # NOTE: there needs to be at least on option / placeholder anyway
