@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import TranslationLayer, OptionSet, PhraseChanger
-
+from medcat.utils.regression.utils import partial_substitute
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
 logger = logging.getLogger(__name__)
@@ -91,7 +91,14 @@ class RegressionCase(BaseModel):
         for changer, placeholder, cui, name in self.get_all_targets(translation):
             for phrase in self.phrases:
                 # NOTE: yielding the prhase as changed by the additional / other placeholders
-                yield placeholder, cui, name, changer(phrase)
+                changed_phrase = changer(phrase)
+                num_of_phs = changed_phrase.count(placeholder)
+                if num_of_phs == 1:
+                    yield placeholder, cui, name, changed_phrase
+                    return
+                for cntr in range(num_of_phs):
+                    final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
+                    yield placeholder, cui, name, final_phrase
 
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Dict[Finding, int]:
         """Check the regression case against a model.
