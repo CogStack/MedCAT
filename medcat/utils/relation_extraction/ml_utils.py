@@ -30,9 +30,6 @@ def split_list_train_test_by_class(data: List, sample_limit: int = -1, test_size
         Tuple[List, List]: train and test datasets
     """
 
-    if shuffle:
-        random.shuffle(data)
-
     train_data = []
     test_data = []
 
@@ -85,6 +82,9 @@ def split_list_train_test_by_class(data: List, sample_limit: int = -1, test_size
     for label_id in list(lbl_id_to_name.keys()):
         logging.info(" label: " + lbl_id_to_name[label_id] + " samples | train " + str(new_label_count_train[label_id]) + " | test " + str(new_label_count_test[label_id]))
 
+    if shuffle:
+        random.shuffle(train_data)
+        random.shuffle(test_data)
 
     return train_data, test_data
 
