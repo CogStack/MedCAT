@@ -188,3 +188,37 @@ class TestRegressionChecker(unittest.TestCase):
     def test_reads_default(self, yaml_file='configs/default_regression_tests.yml'):
         rc = RegressionChecker.from_yaml(yaml_file)
         self.assertIsInstance(rc, RegressionChecker)
+
+
+class MultiPlaceholderTests(unittest.TestCase):
+    THE_DICT = {
+        "mulit-placeholder-case": {
+            'targeting': {
+                'placeholders': [
+                    {
+                        'placeholder': '[CONCEPT]',
+                        'cuis': ['C123', 'C124']
+                        # either has 1 name
+                    }
+                ]
+            },
+            'phrases': [
+                "This [CONCEPT] has mulitple [CONCEPT] instances of [CONCEPT]"
+                # 3 instances
+            ]
+        }
+    }
+    EXPECTED_CASES = 2 * 1 * 3  # 2 CUIs, 1 name each, 3 placeholders
+    FAKE_CDB = FakeCDB(*EXAMPLE_INFOS)
+    TL = TranslationLayer.from_CDB(FAKE_CDB)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.rc = RegressionChecker.from_dict(cls.THE_DICT)
+
+    def test_reads_successfully(self):
+        self.assertIsInstance(self.rc, RegressionChecker)
+
+    def test_gets_cases(self):
+        cases = list(self.rc.get_all_subcases(self.TL))
+        self.assertEqual(len(cases), self.EXPECTED_CASES)
