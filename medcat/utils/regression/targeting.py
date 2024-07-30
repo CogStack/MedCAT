@@ -152,8 +152,8 @@ class TranslationLayer:
         return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child)
 
 
-class FilterOptions(BaseModel):
-    """A class describing the options for the filters
+class TargetPlaceholder(BaseModel):
+    """A class describing the options for a specific palceholder.
     """
     placeholder: str
     target_cuis: List[str]
@@ -172,12 +172,12 @@ class PhraseChanger(BaseModel):
 
 
 class OptionSet(BaseModel):
-    options: List[FilterOptions]
+    options: List[TargetPlaceholder]
     allow_any_combinations: bool
 
     @classmethod
     def from_dict(cls, section: Dict[str, Any]) -> 'OptionSet':
-        """Construct a FilterOptions instance from a dict.
+        """Construct a OptionSet instance from a dict.
 
         The assumed structure is:
         {
@@ -201,7 +201,7 @@ class OptionSet(BaseModel):
         Returns:
             OptionSet: The resulting OptionSet
         """
-        options: List['FilterOptions'] = []
+        options: List['TargetPlaceholder'] = []
         allow_any_in = section.get('any-combination', 'false')
         if isinstance(allow_any_in, str):
             allow_any_combinations = allow_any_in.lower() == 'true'
@@ -220,7 +220,7 @@ class OptionSet(BaseModel):
                 onlyprefnames = part['prefname-only'].lower() == 'true'
             else:
                 onlyprefnames = False
-            option = FilterOptions(placeholder=placeholder, target_cuis=target_cuis,
+            option = TargetPlaceholder(placeholder=placeholder, target_cuis=target_cuis,
                                    onlyprefnames=onlyprefnames)
             options.append(option)
         if not allow_any_combinations:
@@ -232,7 +232,7 @@ class OptionSet(BaseModel):
         return OptionSet(options=options, allow_any_combinations=allow_any_combinations)
 
     def to_dict(self) -> dict:
-        """Convert the FilterOptions to a dict.
+        """Convert the OptionSet to a dict.
 
         Returns:
             dict: The dict representation
@@ -247,7 +247,7 @@ class OptionSet(BaseModel):
         ]
         return {'placeholders': placeholders, 'any-combination': str(self.allow_any_combinations)}
 
-    def _get_all_combinations(self, other_opts: List[FilterOptions],
+    def _get_all_combinations(self, other_opts: List[TargetPlaceholder],
                               translation: TranslationLayer) -> Iterator[PhraseChanger]:
         per_ph_nr_of_opts = [len(opt.target_cuis) for opt in other_opts]
         if self.allow_any_combinations:

@@ -140,10 +140,6 @@ class RegressionCase(BaseModel):
             'phrases': ['phrase %s'] # possible multiple
         }
 
-        Parsing the different parts of are delegated to
-        other methods within the relevant classes.
-        Delegators include: FilterOptions, TypedFilter
-
         Args:
             name (str): The name of the case
             in_dict (dict): The dict describing the case
