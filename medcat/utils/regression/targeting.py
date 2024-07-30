@@ -165,8 +165,11 @@ class PhraseChanger(BaseModel):
 
     def __call__(self, phrase: str) -> str:
         for placeholder, replacement in self.preprocess_placeholders:
-            if phrase.count(placeholder) != 1:
-                raise # TODO - more specific error
+            num_of_ph_found = phrase.count(placeholder)
+            if num_of_ph_found != 1:
+                raise ProblematicOptionSetException(
+                    f"More than 1 placeholder: {placeholder}: "
+                    f"{num_of_ph_found} in {phrase}")
             phrase = phrase.replace(placeholder, replacement)
         return phrase
 
@@ -214,17 +217,18 @@ class OptionSet(BaseModel):
         elif isinstance(allow_any_in, bool):
             allow_any_combinations = allow_any_in
         else:
-            raise ValueError(f"Unkown 'any-combination' value: {allow_any_in}")
+            raise ProblematicOptionSetException(f"Unkown 'any-combination' value: {allow_any_in}")
         if 'placeholders' not in section:
-            raise ValueError("Misconfigured - no placeholders")  # TODO - specific exception
+            raise ProblematicOptionSetException("Misconfigured - no placeholders")
         section_placeholders = section['placeholders']
         if not isinstance(section_placeholders, list):
-            raise ValueError("Misconfigured - placehodlers not a list")  # TODO - specific exception
+            raise ProblematicOptionSetException("Misconfigured - placehodlers not a list "
+                                                f"({section_placeholders})")
         used_ph = set()
         for part in section_placeholders:
             placeholder = part['placeholder']
             if placeholder in used_ph:
-                raise ValueError("Misconfigured - multiple identical placeholders")  # TODO - specific exception
+                raise ProblematicOptionSetException("Misconfigured - multiple identical placeholders")
             used_ph.add(placeholder)
             target_cuis: List[str] = part['cuis']
             if not isinstance(target_cuis, list):
@@ -237,13 +241,16 @@ class OptionSet(BaseModel):
                                    onlyprefnames=onlyprefnames)
             options.append(option)
         if not options:
-            raise ValueError("Misconfigured - no placeholders")
+            raise ProblematicOptionSetException("Misconfigured - 0 placeholders found (empty list)")
         if not allow_any_combinations:
             # NOTE: need to have same number of target_cuis for each placeholder
             # NOTE: there needs to be at least on option / placeholder anyway
             nr_of_cuis = [len(opt.target_cuis) for opt in options]
             if not all(nr == nr_of_cuis[0] for nr in nr_of_cuis):
-                raise ValueError(f"NOT EQUAL NUMBER OF CUIS: {nr_of_cuis}")
+                raise ProblematicOptionSetException(
+                    f"Unequal number of cuis when any-combination: false: {nr_of_cuis}. "
+                    "When any-combination: false the number of CUIs for each placeholder "
+                    "should be equal.")
         return OptionSet(options=options, allow_any_combinations=allow_any_combinations)
 
     def to_dict(self) -> dict:
@@ -314,3 +321,9 @@ class OptionSet(BaseModel):
         for changer, placeholder, target_cui in self.get_preprocessors_and_targets(translation):
             for name in translation.cui2names.get(target_cui, []):
                 yield changer, placeholder, target_cui, name
+
+
+class ProblematicOptionSetException(ValueError):
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
