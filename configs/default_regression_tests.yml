@@ -49,31 +49,47 @@
 # # the included SNOMED models
 test-case-1:
   targeting:
-    strategy: "ALL"
-    filters:
-      type_id: "2680757"
+    placeholders:
+      - placeholder: '[DISORDER]'
+        cuis: ['4473006',  # Intracerebral hemorrhage
+               '85189001',  # Acute appendicitis
+               '186738001',  # vestibular neuritis
+               '186738001',  # vestibular neuritis
+              ]
+      - placeholder: '[FINDING1]'
+        cuis: ['162300006',  # unilateral headache
+               '21522001',  # abdominal pain
+               '103298005',  # severe vertigo
+               '103298005',  # severe vertigo
+              ]
+      - placeholder: '[FINDING2]'
+        cuis: ['409668002',  # photophobia
+               '422587007',  # nausea
+               '422587007',  # nausea
+               '422587007',  # nausea
+              ]
+      - placeholder: '[FINDING3]'
+        cuis: ['2228002',  # scintillating scotoma
+               '386661006',  # fever
+               '81756001',  # horizontal nystagmus
+               '81756001',  # horizontal nystagmus
+              ]
+      - placeholder: '[NEGFINDING]'
+        cuis: ['386661006',  # fever
+               '62315008',  # diarrhea
+               '15188001',  # hearing loss
+               '60862001',  # tinnitus
+              ]
+    any-combination: false  # if set to false, same length of CUIs is expected
+                            # for each placeholder and only a combination is used
   phrases:
-  - "The %s was measured"
-test-case-2:
-  targeting:
-    filters:
-      type_id: "9090192"
-  phrases:
-  - "Patient presented with %s"
-  - "No %s was present"
-test-case-3:
-  targeting:
-    filters:
-      type_id: "67667581"
-  phrases:
-  - "The patient has been diagnosed with %s"
-  - "There are no signs of %s"
-test-case-4:
-  targeting:
-    strategy: "ALL"
-    filters:
-      cui_and_children:
-       cui: "364075005" # 'heart rate'
-       depth: 4         # and children 4 deep
-  phrases:
-  - "The patient's %s was 82 bps"
+  - >
+      Description: [DISORDER]
+
+      CC: [FINDING1] on presentation; then developed [FINDING3]
+
+      HX: On the day of presentation, this 32 y/o RHM suddenly developed [FINDING1] and [FINDING2].
+      Four hours later he experienced sudden [FINDING3] lasting two hours.
+      There were no other associated symptoms except for the [FINDING1] and [FINDING2].
+      He denied [NEGFINDING].
+

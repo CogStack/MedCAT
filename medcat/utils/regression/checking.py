@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple, cast
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 import yaml
 import logging
 import tqdm
@@ -7,7 +7,7 @@ import datetime
 from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
-from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TranslationLayer, FilterStrategy
+from medcat.utils.regression.targeting import TranslationLayer, OptionSet, PhraseChanger
 
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
@@ -15,35 +15,24 @@ logger = logging.getLogger(__name__)
 
 
 class RegressionCase(BaseModel):
-    """A regression case that has a name, defines options, filters and phrases.s
+    """A regression case that has a name, defines options, filters and phrases.
     """
     name: str
-    options: FilterOptions
-    filters: List[TypedFilter]
+    options: OptionSet
     phrases: List[str]
     report: ResultDescriptor
 
-    def get_all_targets(self, in_set: Iterator[Tuple[str, str]], translation: TranslationLayer) -> Iterator[Tuple[str, str]]:
+    def get_all_targets(self, translation: TranslationLayer
+                        ) -> Iterator[Tuple[PhraseChanger, str, str, str]]:
         """Get all applicable targets for this regression case
 
         Args:
-            in_set (Iterator[Tuple[str, str]]): The input generator / iterator
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[Tuple[str, str]]: The output generator
+            Iterator[Tuple[PhraseChanger, str, str, str]]: The output generator
         """
-        if len(self.filters) == 1:
-            yield from self.filters[0].get_applicable_targets(translation, in_set)
-            return
-        if self.options.strategy == FilterStrategy.ANY:
-            for filter in self.filters:
-                yield from filter.get_applicable_targets(translation, in_set)
-        elif self.options.strategy == FilterStrategy.ALL:
-            cur_gen = in_set
-            for filter in self.filters:
-                cur_gen = filter.get_applicable_targets(translation, cur_gen)
-            yield from cur_gen
+        yield from self.options.get_applicable_targets(translation)
 
     def check_specific_for_phrase(self, cat: CAT, cui: str, name: str, phrase: str,
                                   translation: TranslationLayer,
@@ -89,22 +78,7 @@ class RegressionCase(BaseModel):
         self.report.report(cui, name, phrase, finding)
         return finding
 
-    def _get_all_cuis_names_types(self) -> Tuple[Set[str], Set[str], Set[str]]:
-        cuis = set()
-        names = set()
-        types = set()
-        for filt in self.filters:
-            if filt.type == FilterType.CUI:
-                cuis.update(filt.values)
-            elif filt.type == FilterType.CUI_AND_CHILDREN:
-                cuis.update(cast(CUIWithChildFilter, filt).delegate.values)
-            if filt.type == FilterType.NAME:
-                names.update(filt.values)
-            if filt.type == FilterType.TYPE_ID:
-                types.update(filt.values)
-        return cuis, names, types
-
-    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[str, str, str]]:
+    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[str, str, str, str]]:
         """Get all subcases for this case.
         That is, all combinations of targets with their appropriate phrases.
 
@@ -112,35 +86,12 @@ class RegressionCase(BaseModel):
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[Tuple[str, str, str]]: The generator for the target info and the phrase
+            Iterator[Tuple[str, str, str, str]]: The generator for the target info and the phrase
         """
-        cntr = 0
-        for cui, name in self.get_all_targets(translation.all_targets(*self._get_all_cuis_names_types()), translation):
+        for changer, placeholder, cui, name in self.get_all_targets(translation):
             for phrase in self.phrases:
-                cntr += 1
-                yield cui, name, phrase
-        if not cntr:
-            for cui, name in self._get_specific_cui_and_name():
-                for phrase in self.phrases:
-                    yield cui, name, phrase
-
-    def _get_specific_cui_and_name(self) -> Iterator[Tuple[str, str]]:
-        if len(self.filters) != 2:
-            return
-        if self.options.strategy != FilterStrategy.ALL:
-            return
-        f1, f2 = self.filters
-        if f1.type == FilterType.NAME and f2.type == FilterType.CUI:
-            name_filter, cui_filter = f1, f2
-        elif f2.type == FilterType.NAME and f1.type == FilterType.CUI:
-            name_filter, cui_filter = f2, f1
-        else:
-            return
-        # There should only ever be one for the ALL strategty
-        # because otherwise a match is impossible
-        for name in name_filter.values:
-            for cui in cui_filter.values:
-                yield cui, name
+                # NOTE: yielding the prhase as changed by the additional / other placeholders
+                yield placeholder, cui, name, changer(phrase)
 
     def check_case(self, cat: CAT, translation: TranslationLayer) -> Dict[Finding, int]:
         """Check the regression case against a model.
@@ -154,8 +105,9 @@ class RegressionCase(BaseModel):
             Dict[Finding, int]: The total findings.
         """
         findings: Dict[Finding, int] = {}
-        for cui, name, phrase in self.get_all_subcases(translation):
-            finding = self.check_specific_for_phrase(cat, cui, name, phrase, translation)
+        for placeholder, cui, name, phrase in self.get_all_subcases(translation):
+            finding = self.check_specific_for_phrase(cat, cui, name, phrase, translation,
+                                                     placeholder=placeholder)
             if finding not in findings:
                 findings[finding] = 0
             findings[finding] += 1
@@ -169,9 +121,6 @@ class RegressionCase(BaseModel):
         """
         d: Dict[str, Any] = {'phrases': list(self.phrases)}
         targeting = self.options.to_dict()
-        targeting['filters'] = {}
-        for filt in self.filters:
-            targeting['filters'].update(filt.to_dict())
         d['targeting'] = targeting
         return d
 
@@ -182,11 +131,11 @@ class RegressionCase(BaseModel):
         The expected stucture:
         {
             'targeting': {
-                'strategy': 'ALL', # optional
-                'prefname-only': 'false', # optional
-                'filters': {
-                    <filter type>: <filter values>, # possibly multiple
-                }
+                [
+                    'placeholder': '[DIAGNOSIS]'  # the placeholder to be repalced
+                    'cuis': ['cui1', 'cui2']
+                    'prefname-only': 'false', # optional
+                ]
             },
             'phrases': ['phrase %s'] # possible multiple
         }
@@ -201,25 +150,20 @@ class RegressionCase(BaseModel):
 
         Raises:
             ValueError: If the input dict does not have the 'targeting' section
-            ValueError: If the 'targeting' section does not have a 'filters' section
             ValueError: If there are no phrases defined
 
         Returns:
-            RegressionCase: The constructed regression case
+            RegressionCase: The constructed regression cases.
         """
         # set up targeting
         if 'targeting' not in in_dict:
             raise ValueError('Input dict should define targeting')
         targeting_section = in_dict['targeting']
         # set up options
-        options = FilterOptions.from_dict(targeting_section)
-        if 'filters' not in targeting_section:
-            raise ValueError(
-                'Input dict should have define targets section under targeting')
-        # set up targets
-        parsed_filters: List[TypedFilter] = TypedFilter.from_dict(
-            targeting_section['filters'])
-        # set up test phrases
+        options = OptionSet.from_dict(targeting_section)
+        # all_cases: List['RegressionCase'] = []
+        # for option in options:
+        #     # set up test phrases
         if 'phrases' not in in_dict:
             raise ValueError('Input dict should defined phrases')
         phrases = in_dict['phrases']
@@ -227,7 +171,7 @@ class RegressionCase(BaseModel):
             phrases = [phrases]  # just one defined
         if not phrases:
             raise ValueError('Need at least one target phrase')
-        return RegressionCase(name=name, options=options, filters=parsed_filters,
+        return RegressionCase(name=name, options=options,
                               phrases=phrases, report=ResultDescriptor(name=name))
 
     def __hash__(self) -> int:
@@ -363,7 +307,7 @@ class RegressionChecker:
         for case in self.cases:
             self.report.parts.append(case.report)
 
-    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, str, str, str]]:
+    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[RegressionCase, str, str, str, str]]:
         """Get all subcases (i.e regssion case, target info and phrase) for this checker.
 
         Args:
@@ -373,8 +317,8 @@ class RegressionChecker:
             Iterator[Tuple[RegressionCase, str, str, str]]: The generator for all the cases
         """
         for case in self.cases:
-            for cui, name, phrase in case.get_all_subcases(translation):
-                yield case, cui, name, phrase
+            for placeholder, cui, name, phrase in case.get_all_subcases(translation):
+                yield case, placeholder, cui, name, phrase
 
     def check_model(self, cat: CAT, translation: TranslationLayer,
                     total: Optional[int] = None) -> MultiDescriptor:
@@ -389,14 +333,14 @@ class RegressionChecker:
             MultiDescriptor: A report description
         """
         if total is not None:
-            for regr_case, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
+            for regr_case, placeholder, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
                 # NOTE: the finding is reported in the per-case report
-                regr_case.check_specific_for_phrase(cat, ti, phrase, translation)
+                regr_case.check_specific_for_phrase(cat, ti, phrase, translation, placeholder)
         else:
             for regr_case in tqdm.tqdm(self.cases):
-                for cui, name, phrase in regr_case.get_all_subcases(translation):
+                for placeholder, cui, name, phrase in regr_case.get_all_subcases(translation):
                     # NOTE: the finding is reported in the per-case report
-                    regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation)
+                    regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
         return self.report
 
     def __str__(self) -> str:
@@ -447,12 +391,12 @@ class RegressionChecker:
         Returns:
             RegressionChecker: The built regression checker
         """
-        cases = []
+        cases: List[RegressionCase] = []
         for case_name, details in in_dict.items():
             if case_name == 'meta':
                 continue  # ignore metadata
-            case = RegressionCase.from_dict(case_name, details)
-            cases.append(case)
+            add_case = RegressionCase.from_dict(case_name, details)
+            cases.append(add_case)
         if 'meta' not in in_dict:
             logger.warn("Loading regression suite without any meta data")
             metadata = MetaData.unknown()
