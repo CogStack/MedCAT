@@ -165,11 +165,6 @@ class PhraseChanger(BaseModel):
 
     def __call__(self, phrase: str) -> str:
         for placeholder, replacement in self.preprocess_placeholders:
-            num_of_ph_found = phrase.count(placeholder)
-            if num_of_ph_found != 1:
-                raise ProblematicOptionSetException(
-                    f"More than 1 placeholder: {placeholder}: "
-                    f"{num_of_ph_found} in {phrase}")
             phrase = phrase.replace(placeholder, replacement)
         return phrase
 
