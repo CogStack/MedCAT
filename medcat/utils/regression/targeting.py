@@ -170,6 +170,10 @@ class PhraseChanger(BaseModel):
             phrase = phrase.replace(placeholder, replacement)
         return phrase
 
+    @classmethod
+    def empty(cls) -> 'PhraseChanger':
+        return cls(preprocess_placeholders=[])
+
 
 class OptionSet(BaseModel):
     options: List[TargetPlaceholder]
@@ -283,7 +287,14 @@ class OptionSet(BaseModel):
                                       ) -> Iterator[Tuple[PhraseChanger, str, List[str]]]:
         # TODO: based on allow_any_combination, yield ALL combinations
         #       or else yield the specified combinations
-        for opt_nr in range(len(self.options)):
+        num_of_opts = len(self.options)
+        if num_of_opts == 1:
+            # NOTE: when there's only 1 option, the other option doesn't work
+            #       since it has nothing to iterate over regarding 'other' options
+            opt = self.options[0]
+            yield PhraseChanger.empty(), opt.placeholder, opt.target_cuis
+            return
+        for opt_nr in range(num_of_opts):
             other_opts = list(self.options)
             cur_opt = other_opts.pop(opt_nr)
             for changer in self._get_all_combinations(other_opts, translation):
