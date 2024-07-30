@@ -95,7 +95,7 @@ class RegressionCase(BaseModel):
                 num_of_phs = changed_phrase.count(placeholder)
                 if num_of_phs == 1:
                     yield placeholder, cui, name, changed_phrase
-                    return
+                    continue
                 for cntr in range(num_of_phs):
                     final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
                     yield placeholder, cui, name, final_phrase
@@ -336,6 +336,7 @@ class RegressionChecker:
             MultiDescriptor: A report description
         """
         if total is not None:
+            print("NO total")
             for regr_case, placeholder, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
                 # NOTE: the finding is reported in the per-case report
                 regr_case.check_specific_for_phrase(cat, ti, phrase, translation, placeholder)
