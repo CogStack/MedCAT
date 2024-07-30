@@ -262,8 +262,8 @@ class OptionSet(BaseModel):
         ]
         return {'placeholders': placeholders, 'any-combination': str(self.allow_any_combinations)}
 
-    def _get_all_combinations(self, other_opts: List[TargetPlaceholder],
-                              translation: TranslationLayer) -> Iterator[PhraseChanger]:
+    def _get_all_combinations(self, cur_opts: TargetPlaceholder, other_opts: List[TargetPlaceholder],
+                              translation: TranslationLayer) -> Iterator[Tuple[PhraseChanger, str]]:
         per_ph_nr_of_opts = [len(opt.target_cuis) for opt in other_opts]
         if self.allow_any_combinations:
             # for each option with N target CUIs use 0, ..., N-1
@@ -271,20 +271,20 @@ class OptionSet(BaseModel):
                 # NOTE: using the 0th name for target CUI
                 placeholders = [(opt.placeholder, translation.get_first_name(opt.target_cuis[cui_nr]))
                                 for opt, cui_nr in zip(other_opts, choosers)]
-                yield PhraseChanger(preprocess_placeholders=placeholders)
+                for target_cui in cur_opts.target_cuis:
+                    yield PhraseChanger(preprocess_placeholders=placeholders), target_cui
         else:
-            # NOTE: using original options because there may not be other palceholders
-            nr_of_opts = len(self.options[0].target_cuis)
+            nr_of_opts = len(cur_opts.target_cuis)
             for cui_nr in range(nr_of_opts):
                 placeholders = [
                     # NOTE: using the 0th name for the target CUI
                     (opt.placeholder, translation.get_first_name(opt.target_cuis[cui_nr]))
                     for opt in other_opts
                 ]
-                yield PhraseChanger(preprocess_placeholders=placeholders)
+                yield PhraseChanger(preprocess_placeholders=placeholders), cur_opts.target_cuis[cui_nr]
 
     def get_preprocessors_and_targets(self, translation: TranslationLayer
-                                      ) -> Iterator[Tuple[PhraseChanger, str, List[str]]]:
+                                      ) -> Iterator[Tuple[PhraseChanger, str, str]]:
         # TODO: based on allow_any_combination, yield ALL combinations
         #       or else yield the specified combinations
         num_of_opts = len(self.options)
@@ -292,13 +292,14 @@ class OptionSet(BaseModel):
             # NOTE: when there's only 1 option, the other option doesn't work
             #       since it has nothing to iterate over regarding 'other' options
             opt = self.options[0]
-            yield PhraseChanger.empty(), opt.placeholder, opt.target_cuis
+            for target_cui in opt.target_cuis:
+                yield PhraseChanger.empty(), opt.placeholder, target_cui
             return
         for opt_nr in range(num_of_opts):
             other_opts = list(self.options)
             cur_opt = other_opts.pop(opt_nr)
-            for changer in self._get_all_combinations(other_opts, translation):
-                yield changer, cur_opt.placeholder, cur_opt.target_cuis
+            for changer, target_cui in self._get_all_combinations(cur_opt, other_opts, translation):
+                yield changer, cur_opt.placeholder, target_cui
 
     def get_applicable_targets(self, translation: TranslationLayer
                                ) -> Iterator[Tuple[PhraseChanger, str, str, str]]:
@@ -310,6 +311,6 @@ class OptionSet(BaseModel):
         Yields:
             Iterator[Tuple[PhraseChanger, str, str, str]]: The output generator
         """
-        for changer, placeholder, target_cuis in self.get_preprocessors_and_targets(translation):
-            for cui, name in translation.all_targets(target_cuis):
-                yield changer, placeholder, cui, name
+        for changer, placeholder, target_cui in self.get_preprocessors_and_targets(translation):
+            for name in translation.cui2names.get(target_cui, []):
+                yield changer, placeholder, target_cui, name
