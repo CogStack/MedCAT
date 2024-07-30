@@ -94,15 +94,15 @@ class OptionSetTests(TestCase):
         self.assertIsInstance(os, targeting.OptionSet)
 
     def test_creation_fails_with_same_placeholders(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(targeting.ProblematicOptionSetException):
             targeting.OptionSet.from_dict(self.OPTIONSET_MULTI_SAMES)
 
     def test_creation_fails_no_placeholders(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(targeting.ProblematicOptionSetException):
             targeting.OptionSet.from_dict(self.OPTIONSET_NO_PH)
 
     def test_creation_fails_0_placeholders(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(targeting.ProblematicOptionSetException):
             targeting.OptionSet.from_dict(self.OPTIONSET_0_PH)
 
     def test_get_placeholders(self):
@@ -171,7 +171,7 @@ class OnePerNameOptionSetTests(TestCase):
         self.assertEqual(len(targets), self.total_names_simple)
 
     def test_uneven_multi_fails(self):
-        with self.assertRaises(ValueError):
+        with self.assertRaises(targeting.ProblematicOptionSetException):
             targeting.OptionSet.from_dict(self.MULTI_PLACEHOLDER_MULTI_CUI_ONLY_ORDERED_BROKEN)
 
     def test_even_builds(self):
