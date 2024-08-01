@@ -64,7 +64,7 @@ class RelData(Dataset):
 
         return output_relations
 
-    def create_base_relations_from_csv(self, csv_path: str):
+    def create_base_relations_from_csv(self, csv_path: str, keep_source_text: bool = False):
         """
             Assumes the columns are as follows ["relation_token_span_ids", "ent1_ent2_start", "ent1", "ent2", "label",
             "label_id", "ent1_type", "ent2_type", "ent1_id", "ent2_id", "ent1_cui", "ent2_cui", "doc_id", "sents"],
@@ -77,6 +77,8 @@ class RelData(Dataset):
 
         Args:
             csv_path (str): path to csv file, must have specific columns, tab separated,
+            keep_source_text (bool): if the text clumn should be retained in the 'sents' df column,
+                                    used for debugging or creating custom datasets.
 
         Returns:
             Dict : {  
@@ -134,7 +136,10 @@ class RelData(Dataset):
                 df["ent1_ent2_start"] = out_ent1_ent2_starts
 
                 df = df.drop(index=rows_to_remove)
-                df = df.drop(columns=col)
+                text_col = df.pop(col)
+                df = df.assign(col=text_col)
+                if keep_source_text:
+                    df = df.assign(col=text_col)
                 break
 
         nclasses, labels2idx, idx2label = RelData.get_labels(
@@ -173,7 +178,7 @@ class RelData(Dataset):
                                     ent1_token_end_pos: int = -1,
                                     ent2_token_end_pos: int = -1,
                                     is_spacy_doc: bool = False,
-                                    is_mct_export: bool = False
+                                    is_mct_export: bool = False,
                                     ) -> Dict:
 
 
