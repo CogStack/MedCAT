@@ -5,6 +5,7 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
+    """Device to used by the module"""
     disable_component_lock: bool = False
     seed: int = 13
     description: str = "No description"
@@ -28,7 +29,7 @@ class General(MixingConfig, BaseModel):
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
     tokenizer_name: str = 'bbpe'
-    """Tokenizer name used with of MetaCAT"""
+    """Tokenizer name used with of MetaCAT. Choose from: bbpe, bert-tokenizer"""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
     context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
@@ -48,12 +49,22 @@ class General(MixingConfig, BaseModel):
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
-    """NOTE: When changing model, make sure to change the tokenizer as well"""
+    """Model to be used for training/predicting. Choose from: bert, lstm.
+    Note: When changing model, make sure to change the tokenizer as well"""
     model_variant: str = 'bert-base-uncased'
+    """Applicable for BERT: specify the model variant to be used"""
     model_freeze_layers: bool = True
+    """Applicable for BERT:
+    If set to True, BERT is frozen and FC layer(s) on top are trained
+    If set to False, parameter-efficient fine-tuning will be used (LoRA) to train the model
+    """
     num_layers: int = 2
+    """Number of layers in the model (both LSTM and BERT)"""
     input_size: int = 300
+    """Applicable for LSTM: Size of embedding layer
+    Note: Since BERT's embedding size is pre-defined, this will be ignored"""
     hidden_size: int = 300
+    """Number of neurons in the hidden layer"""
     dropout: float = 0.5
     phase_number: int = 0
     """Indicates whether or not two phase learning is being performed.
@@ -61,14 +72,17 @@ class Model(MixingConfig, BaseModel):
     2: Phase 2 - Continue training on full data
     0: None - 2 phase learning is not performed"""
     category_undersample: str = ''
+    """When using 2 phase learning, this category is used to undersample the data"""
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
-    """2 - bidirectional model, 1 - unidirectional"""
+    """Applicable for LSTM:
+    2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2
     """Number of classes that this model will output"""
     padding_idx: int = -1
     emb_grad: bool = True
-    """If True the embeddings will also be trained"""
+    """Applicable for LSTM:
+    If True, the embeddings will also be trained"""
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating representation"""
 
@@ -102,7 +116,7 @@ class Train(MixingConfig, BaseModel):
     loss_funct: str = 'cross_entropy'
     """Loss function for the model"""
     gamma: int = 2
-    """Focal Loss - how much the loss focuses on hard-to-classify examples."""
+    """Focal Loss hyperparameter - determines importance the loss gives to hard-to-classify examples"""
 
     class Config:
         extra = Extra.allow
