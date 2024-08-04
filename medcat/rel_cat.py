@@ -349,7 +349,10 @@ class RelCAT(PipeRunner):
                                      num_workers=0, collate_fn=self.padding_seq,
                                      pin_memory=self.config.general.pin_memory)
 
-        criterion = nn.CrossEntropyLoss(ignore_index=-1)
+        if self.config.train.class_weights is not None:
+            criterion = nn.CrossEntropyLoss(ignore_index=-1, weight=self.config.train.class_weights)
+        else:
+            criterion = nn.CrossEntropyLoss(ignore_index=-1)
 
         if self.optimizer is None:
             parameters = filter(lambda p: p.requires_grad, self.model.parameters())
