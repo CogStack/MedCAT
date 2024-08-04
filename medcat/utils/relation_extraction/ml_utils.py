@@ -34,7 +34,7 @@ def split_list_train_test_by_class(data: List, sample_limit: int = -1, test_size
     test_data = []
 
     row_id_labels = {row_idx: data[row_idx][5] for row_idx in range(len(data))}
-    lbl_id_to_name = {data[row_idx][5] : data[row_idx][4] for row_idx in range((len(data)))}
+    lbl_id_to_name = {data[row_idx][5]: data[row_idx][4] for row_idx in range((len(data)))}
 
     count_per_label = {lbl: list(row_id_labels.values()).count(
         lbl) for lbl in set(row_id_labels.values())}

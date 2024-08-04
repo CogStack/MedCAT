@@ -574,7 +574,8 @@ class RelData(Dataset):
                         ent2_token_end_pos = [i for i in range(0, doc_token_length) if ann_end_end_pos
                                                         in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
-                        if start_entity_id != end_entity_id and relation.get('validated', True) and start_entity_value not in self.tokenizer.all_special_tokens and end_entity_value not in self.tokenizer.all_special_tokens :
+                        if start_entity_id != end_entity_id and relation.get('validated', True) and start_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens \
+                            and end_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens:
                             final_relation = self._create_relation_validation(text=doc_text,
                                     doc_id=doc_id,
                                     tokenized_text_data=tokenizer_text_data,
