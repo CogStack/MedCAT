@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import random
 import torch.optim
 import torch
 import torch.nn as nn
@@ -17,7 +18,7 @@ from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 from spacy.tokens import Doc, Span
 from typing import Dict, Iterable, Iterator, List, cast
 from transformers import AutoTokenizer
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Sampler
 from torch.optim import Adam
 from torch.optim.lr_scheduler import MultiStepLR
 from medcat.utils.meta_cat.ml_utils import set_all_seeds
@@ -25,6 +26,43 @@ from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
 from medcat.utils.relation_extraction.ml_utils import create_tokenizer_pretrain, load_results, load_state, save_results, save_state, split_list_train_test_by_class
 from medcat.utils.relation_extraction.rel_dataset import RelData
+
+
+class BalancedBatchSampler(Sampler):
+    def __init__(self, dataset, classes, batch_size, max_samples, max_minority):
+        self.dataset = dataset
+        self.classes = classes
+        self.batch_size = batch_size
+        self.num_classes = len(classes)
+        self.indices = list(range(len(dataset)))
+
+        self.max_minority = max_minority
+
+        self.max_samples_per_class = max_samples
+
+    def __len__(self):
+        return (len(self.indices) + self.batch_size - 1) // self.batch_size
+
+    def __iter__(self):
+        batch_counter = 0
+        indices = self.indices.copy()
+        while batch_counter != self.__len__():
+            batch = []
+
+            class_counts = {c: 0 for c in self.classes}
+            while len(batch) < self.batch_size:
+
+                index = random.choice(indices)
+                label = self.dataset[index][2].numpy().tolist()[0]  # Assuming label is at index 1
+                if class_counts[label] < self.max_samples_per_class[label]:
+                    batch.append(index)
+                    class_counts[label] += 1
+                    if self.max_samples_per_class[label] > self.max_minority:
+                        indices.remove(index)
+
+                print("class_counts:", class_counts)
+            yield batch
+            batch_counter += 1
 
 
 class RelCAT(PipeRunner):
@@ -293,9 +331,18 @@ class RelCAT(PipeRunner):
 
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.config.train.batch_size else self.config.train.batch_size
-        train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
-                                      num_workers=0, collate_fn=self.padding_seq,
-                                      pin_memory=self.config.general.pin_memory)
+
+        # to use stratified batching
+        if self.config.train['stratified_batching']:
+            sampler = BalancedBatchSampler(train_rel_data, [i for i in range(self.config.train.nclasses)],
+                                           batch_size, self.config.train['batching_samples_per_class'],self.config.train['batching_minority_limit'])
+
+            train_dataloader = DataLoader(train_rel_data,num_workers=0, collate_fn=self.padding_seq,
+                                          batch_sampler=sampler,pin_memory=self.config.general.pin_memory)
+        else:
+            train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
+                                          num_workers=0, collate_fn=self.padding_seq,
+                                          pin_memory=self.config.general.pin_memory)
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.config.train.batch_size else self.config.train.batch_size
         test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,

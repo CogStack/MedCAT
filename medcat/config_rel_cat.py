@@ -75,6 +75,17 @@ class Train(MixingConfig, BaseModel):
     batch_size: int = 25
     nepochs: int = 1
     lr: float = 1e-4
+    stratified_batching = False
+    """Train the model with stratified batching"""
+    batching_samples_per_class = []
+    """Number of samples per class in each batch
+    example for batch size 64: [6,6,6,8,8,8,6,8,8]"""
+    batching_minority_limit = 0
+    """Maximum number of samples the minority class can have.
+    Since the minority class elements need to be repeated, this is used to facilitate that
+    example: batching_samples_per_class - [6,6,6,8,8,8,6,8,8]
+             batching_minority_limit - 6"""
+
     adam_epsilon: float = 1e-4
     test_size: float = 0.2
     gradient_acc_steps: int = 1
