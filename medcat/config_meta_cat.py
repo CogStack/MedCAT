@@ -62,8 +62,8 @@ class Model(MixingConfig, BaseModel):
     Model to be used for training or predicting.
 
     Choose from:
-        - 'bert': BERT model
-        - 'lstm': LSTM model
+        - 'bert'
+        - 'lstm'
 
     Note:
         When changing the model, make sure to change the tokenizer accordingly.
@@ -76,9 +76,9 @@ class Model(MixingConfig, BaseModel):
     """
     model_freeze_layers: bool = True
     """
-    Determines the training approach for BERT.
-
     Applicable only when using BERT:
+    
+    Determines the training approach for BERT.
 
     - If True: BERT layers are frozen and only the fully connected (FC) layer(s) on top are trained.
     - If False: Parameter-efficient fine-tuning will be applied using Low-Rank Adaptation (LoRA).
@@ -89,9 +89,7 @@ class Model(MixingConfig, BaseModel):
     """
     Specifies the size of the embedding layer.
 
-    Applicable only for LSTM models.
-
-    Note: This setting is ignored for BERT models as BERT's embedding size is predefined.
+    Applicable only for LSTM model and ignored for BERT as BERT's embedding size is predefined.
     """
     hidden_size: int = 300
     """Number of neurons in the hidden layer"""
@@ -110,13 +108,15 @@ class Model(MixingConfig, BaseModel):
     """When using 2 phase learning, this category is used to undersample the data"""
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
-    """Applicable for LSTM:
+    """Applicable only for LSTM:
+    
     2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2
     """Number of classes that this model will output"""
     padding_idx: int = -1
     emb_grad: bool = True
-    """Applicable for LSTM:
+    """Applicable only for LSTM:
+    
     If True, the embeddings will also be trained"""
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating representation"""
