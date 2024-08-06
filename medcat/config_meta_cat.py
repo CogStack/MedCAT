@@ -30,7 +30,7 @@ class General(MixingConfig, BaseModel):
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
     tokenizer_name: str = 'bbpe'
-    """Tokenizer name used with of MetaCAT. Choose from - bbpe, bert-tokenizer"""
+    """Tokenizer name used with of MetaCAT; Choose from: bbpe, bert-tokenizer"""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
     context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
