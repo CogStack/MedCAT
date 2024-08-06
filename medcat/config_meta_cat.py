@@ -6,7 +6,9 @@ class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
     """Device to used by the module to perform predicting/training.
-    Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device"""
+    
+    Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device
+    """
     disable_component_lock: bool = False
     seed: int = 13
     description: str = "No description"
@@ -57,26 +59,36 @@ class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
     """Model to be used for training/predicting. Choose from: bert, lstm.
-    Note: When changing model, make sure to change the tokenizer as well"""
+    
+    Note: When changing model, make sure to change the tokenizer as well
+    """
     model_variant: str = 'bert-base-uncased'
-    """Applicable for BERT: specify the model variant to be used"""
+    """Applicable for BERT: specify the model variant to be used
+    """
     model_freeze_layers: bool = True
     """Applicable for BERT:
+    
     If set to True, BERT is frozen and FC layer(s) on top are trained
+    
     If set to False, parameter-efficient fine-tuning will be used (LoRA) to train the model
     """
     num_layers: int = 2
     """Number of layers in the model (both LSTM and BERT)"""
     input_size: int = 300
     """Applicable for LSTM: Size of embedding layer
-    Note: Since BERT's embedding size is pre-defined, this will be ignored"""
+    
+    Note: Since BERT's embedding size is pre-defined, this will be ignored
+    """
     hidden_size: int = 300
     """Number of neurons in the hidden layer"""
     dropout: float = 0.5
     phase_number: int = 0
     """Indicates whether or not two phase learning is being performed.
+    
     1: Phase 1 - Train model on undersampled data
+    
     2: Phase 2 - Continue training on full data
+    
     0: None - 2 phase learning is not performed
     
     Paper reference - https://ieeexplore.ieee.org/document/7533053"""
@@ -123,7 +135,12 @@ class Train(MixingConfig, BaseModel):
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
     loss_funct: str = 'cross_entropy'
-    """Loss function for the model. Choose from: cross_entropy, focal_loss"""
+    """Loss function for the model. 
+    
+    Choose from:
+        - 'cross_entropy'
+        - 'bert-focal_loss'
+    """
     gamma: int = 2
     """Focal Loss hyperparameter - determines importance the loss gives to hard-to-classify examples"""
 
