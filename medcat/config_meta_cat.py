@@ -58,32 +58,46 @@ class General(MixingConfig, BaseModel):
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
-    """Model to be used for training/predicting. Choose from: bert, lstm.
-    
-    Note: When changing model, make sure to change the tokenizer as well
+    """
+    Model to be used for training or predicting.
+
+    Choose from:
+        - 'bert': BERT model
+        - 'lstm': LSTM model
+
+    Note:
+        When changing the model, make sure to change the tokenizer accordingly.
     """
     model_variant: str = 'bert-base-uncased'
-    """Applicable for BERT: specify the model variant to be used
+    """
+    Specifies the model variant to be used when the model is BERT.
+
+    Note: This is applicable only if the model_name is set to 'bert'.
     """
     model_freeze_layers: bool = True
-    """Applicable for BERT:
-    
-    If set to True, BERT is frozen and FC layer(s) on top are trained
-    
-    If set to False, parameter-efficient fine-tuning will be used (LoRA) to train the model
+    """
+    Determines the training approach for BERT.
+
+    Applicable only when using BERT:
+
+    - If True: BERT layers are frozen and only the fully connected (FC) layer(s) on top are trained.
+    - If False: Parameter-efficient fine-tuning will be applied using Low-Rank Adaptation (LoRA).
     """
     num_layers: int = 2
     """Number of layers in the model (both LSTM and BERT)"""
     input_size: int = 300
-    """Applicable for LSTM: Size of embedding layer
-    
-    Note: Since BERT's embedding size is pre-defined, this will be ignored
+    """
+    Specifies the size of the embedding layer.
+
+    Applicable only for LSTM models.
+
+    Note: This setting is ignored for BERT models as BERT's embedding size is predefined.
     """
     hidden_size: int = 300
     """Number of neurons in the hidden layer"""
     dropout: float = 0.5
     phase_number: int = 0
-    """Indicates whether or not two phase learning is being performed.
+    """Indicates whether two phase learning is to be used for training.
     
     1: Phase 1 - Train model on undersampled data
     
