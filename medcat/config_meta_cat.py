@@ -70,9 +70,9 @@ class Model(MixingConfig, BaseModel):
     """
     model_variant: str = 'bert-base-uncased'
     """
-    Specifies the model variant to be used when the model is BERT.
-
-    Note: This is applicable only if the model_name is set to 'bert'.
+    Applicable only when using BERT:
+    
+    Specifies the model variant to be used.
     """
     model_freeze_layers: bool = True
     """
@@ -136,7 +136,7 @@ class Train(MixingConfig, BaseModel):
     """Used only during training, if set the dataset will be shuffled before train/test split"""
     class_weights: Optional[Any] = None
     compute_class_weights: bool = False
-    """If true and if class weights are not provided, the class weights will be calculated based on the data"""
+    """If true and class weights not provided, the class weights will be calculated based on the data"""
     score_average: str = 'weighted'
     """What to use for averaging F1/P/R across labels"""
     prerequisites: dict = {}
