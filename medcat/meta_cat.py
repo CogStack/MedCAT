@@ -166,6 +166,8 @@ class MetaCAT(PipeRunner):
 
         The raw data is expected in the following format:
 
+        ::
+
         {
 
             'projects': [  # list of projects
