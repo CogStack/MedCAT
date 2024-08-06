@@ -153,7 +153,7 @@ class Train(MixingConfig, BaseModel):
     
     Choose from:
         - 'cross_entropy'
-        - 'bert-focal_loss'
+        - 'focal_loss'
     """
     gamma: int = 2
     """Focal Loss hyperparameter - determines importance the loss gives to hard-to-classify examples"""
