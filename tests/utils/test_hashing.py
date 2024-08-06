@@ -56,6 +56,7 @@ class CDBHashingWithConfigTests(unittest.TestCase):
         # reset config hash
         self.cdb._config_hash = self._config_hash
         self.cdb.config.hash = self._config_hash
+        self.cdb.get_hash()  # resync hash
 
     def test_CDB_same_hash_no_need_recalc(self):
         self.assertFalse(self.cdb._should_recalc_hash(force_recalc=False))
@@ -77,7 +78,7 @@ class BaseCATHashingTests(unittest.TestCase):
             os.path.realpath(__file__)), "..", "..", "examples", "cdb.dat"))
         cls.vocab = Vocab.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..",  "examples", "vocab.dat"))
-        cls.cdb.config.general.spacy_model = "en_core_web_md"
+        cls.cdb.config.pre_load.spacy_model = "en_core_web_md"
         cls.cdb.config.ner.min_name_len = 2
         cls.cdb.config.ner.upper_case_limit_len = 3
         cls.cdb.config.general.spell_check = True

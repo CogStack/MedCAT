@@ -113,7 +113,7 @@ class CAT(object):
 
     def _create_pipeline(self, config: Config):
         # Set log level
-        logger.setLevel(config.general.log_level)
+        logger.setLevel(config.pre_load.log_level)
 
         # Build the pipeline
         self.pipe = Pipe(tokenizer=spacy_split_all, config=config)
@@ -135,17 +135,17 @@ class CAT(object):
 
         # Add addl_ner if they exist
         for ner in self._addl_ner:
-            self.pipe.add_addl_ner(ner, ner.config.general.name)
+            self.pipe.add_addl_ner(ner, ner.config.pre_load.name)
 
         # Add meta_annotation classes if they exist
         for meta_cat in self._meta_cats:
-            self.pipe.add_meta_cat(meta_cat, meta_cat.config.general.category_name)
+            self.pipe.add_meta_cat(meta_cat, meta_cat.config.pre_load.category_name)
 
         for rel_cat in self._rel_cats:
             self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))
 
         # Set max document length
-        self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
+        self.pipe.spacy_nlp.max_length = config.pre_load.max_document_length
 
     def get_hash(self, force_recalc: bool = False) -> str:
         """Will not be a deep hash but will try to catch all the changing parts during training.
@@ -251,7 +251,7 @@ class CAT(object):
                 Model pack name
         """
         # Spacy model always should be just the name, but during loading it can be reset to path
-        self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
+        self.config.pre_load.spacy_model = os.path.basename(self.config.pre_load.spacy_model)
         # Versioning
         self._versioning(force_rehash)
         model_pack_name += "_{}".format(self.config.version.id)
@@ -271,7 +271,7 @@ class CAT(object):
         os.makedirs(os.path.expanduser(save_dir_path), exist_ok=True)
 
         # Save the used spacy model
-        spacy_path = os.path.join(save_dir_path, self.config.general.spacy_model)
+        spacy_path = os.path.join(save_dir_path, self.config.pre_load.spacy_model)
         if str(self.pipe.spacy_nlp._path) != spacy_path:
             # First remove if something is there
             shutil.rmtree(spacy_path, ignore_errors=True)
@@ -294,7 +294,7 @@ class CAT(object):
         # Save addl_ner
         for comp in self.pipe.spacy_nlp.components:
             if isinstance(comp[1], TransformersNER):
-                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.general.name)
+                trf_path = os.path.join(save_dir_path, "trf_" + comp[1].config.pre_load.name)
                 comp[1].save(trf_path)
 
         # Save all meta_cats
@@ -400,7 +400,7 @@ class CAT(object):
         # TODO load addl_ner
 
         # Modify the config to contain full path to spacy model
-        cdb.config.general.spacy_model = os.path.join(model_pack_path, os.path.basename(cdb.config.general.spacy_model))
+        cdb.config.pre_load.spacy_model = os.path.join(model_pack_path, os.path.basename(cdb.config.pre_load.spacy_model))
 
         # Load Vocab
         vocab_path = os.path.join(model_pack_path, "vocab.dat")
@@ -1330,7 +1330,7 @@ class CAT(object):
             min_free_memory_size_mr = None
 
         # Set max document length
-        self.pipe.spacy_nlp.max_length = self.config.preprocessing.max_document_length
+        self.pipe.spacy_nlp.max_length = self.config.pre_load.max_document_length
 
         if self._meta_cats and not separate_nn_components:
             # Hack for torch using multithreading, which is not good if not 
@@ -1740,7 +1740,7 @@ class CAT(object):
         return out
 
     def _get_trimmed_text(self, text: Optional[str]) -> str:
-        return text[0:self.config.preprocessing.max_document_length] if text is not None and len(text) > 0 else ""
+        return text[0:self.config.pre_load.max_document_length] if text is not None and len(text) > 0 else ""
 
     def _generate_trimmed_texts(self, texts: Union[Iterable[str], Iterable[Tuple]]) -> Iterable[str]:
         text_: str

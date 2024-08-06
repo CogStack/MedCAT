@@ -40,16 +40,16 @@ class BertModel_RelationExtraction(nn.Module):
 
         self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
 
-        if self.relcat_config.general.task == "pretrain":
+        if self.relcat_config.pre_load.task == "pretrain":
             self.activation = nn.Tanh()
             self.cls = BertPreTrainingHeads(self.model_config)
 
         self.relu = nn.ReLU()
 
         # dense layers
-        self.fc1 = nn.Linear(self.relcat_config.model.model_size, self.relcat_config.model.hidden_size)
-        self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
-        self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), self.relcat_config.train.nclasses)
+        self.fc1 = nn.Linear(self.relcat_config.pre_load.model_size, self.relcat_config.pre_load.hidden_size)
+        self.fc2 = nn.Linear(self.relcat_config.pre_load.hidden_size, int(self.relcat_config.pre_load.hidden_size / 2))
+        self.fc3 = nn.Linear(int(self.relcat_config.pre_load.hidden_size / 2), self.relcat_config.train.nclasses)
 
         self.log.info("RelCAT BertConfig: " + str(self.model_config))
 
@@ -168,7 +168,7 @@ class BertModel_RelationExtraction(nn.Module):
         x = self.drop_out(x)
         x = self.fc2(x)
         classification_logits = self.fc3(x)
-        return classification_logits.to(self.relcat_config.general.device)
+        return classification_logits.to(self.relcat_config.pre_load.device)
 
     def forward(self,
                 input_ids: Optional[torch.Tensor] = None,
@@ -189,20 +189,20 @@ class BertModel_RelationExtraction(nn.Module):
 
         if attention_mask is None:
             attention_mask = torch.ones(
-                input_shape, device=self.relcat_config.general.device)
+                input_shape, device=self.relcat_config.pre_load.device)
         if encoder_attention_mask is None:
             encoder_attention_mask = torch.ones(
-                input_shape, device=self.relcat_config.general.device)
+                input_shape, device=self.relcat_config.pre_load.device)
         if token_type_ids is None:
             token_type_ids = torch.zeros(
-                input_shape, dtype=torch.long, device=self.relcat_config.general.device)
+                input_shape, dtype=torch.long, device=self.relcat_config.pre_load.device)
 
-        input_ids = input_ids.to(self.relcat_config.general.device)
-        attention_mask = attention_mask.to(self.relcat_config.general.device)
+        input_ids = input_ids.to(self.relcat_config.pre_load.device)
+        attention_mask = attention_mask.to(self.relcat_config.pre_load.device)
         encoder_attention_mask = encoder_attention_mask.to(
-            self.relcat_config.general.device)
+            self.relcat_config.pre_load.device)
 
-        self.bert_model = self.bert_model.to(self.relcat_config.general.device)
+        self.bert_model = self.bert_model.to(self.relcat_config.pre_load.device)
 
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
@@ -216,4 +216,4 @@ class BertModel_RelationExtraction(nn.Module):
         classification_logits = self.output2logits(
             pooled_output, sequence_output, input_ids, e1_e2_start)
 
-        return model_output, classification_logits.to(self.relcat_config.general.device)
+        return model_output, classification_logits.to(self.relcat_config.pre_load.device)

@@ -86,7 +86,7 @@ class VersionGettingFromCATTests(unittest.TestCase):
         self.cdb = CDB.load(CDB_PATH)
         self.vocab = Vocab.load(os.path.join(os.path.dirname(
             os.path.realpath(__file__)), "..", "..", "examples", "vocab.dat"))
-        self.cdb.config.general.spacy_model = "en_core_web_md"
+        self.cdb.config.pre_load.spacy_model = "en_core_web_md"
         self.cdb.config.ner.min_name_len = 2
         self.cdb.config.ner.upper_case_limit_len = 3
         self.cdb.config.general.spell_check = True

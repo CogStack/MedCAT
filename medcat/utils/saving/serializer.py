@@ -11,6 +11,7 @@ import json
 
 from medcat.config import Config
 from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook, default_postprocessing
+from medcat.utils.config_utils import legacy_remap_mct_config
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +173,10 @@ class CDBSerializer:
                            "This is an old format. Please re-save the "
                            "model in the new format to avoid potential issues",
                            os.path.dirname(self.main_path))
-            config = cast(Config, Config.from_dict(data['config']))
+            # NOTE: this is for old CDBs that save the config in them
+            #       and in that case, the remapping needs to happen here
+            conf_data = legacy_remap_mct_config(data['config'])
+            config = cast(Config, Config.from_dict(conf_data))
         else:
             # by passing None as config to constructor
             # the CDB should identify that there has been
