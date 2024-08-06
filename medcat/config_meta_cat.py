@@ -30,7 +30,7 @@ class General(MixingConfig, BaseModel):
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
     tokenizer_name: str = 'bbpe'
-    """Tokenizer name used with of MetaCAT. Choose from: bbpe, bert-tokenizer"""
+    """Tokenizer name used with of MetaCAT. Choose from - bbpe, bert-tokenizer"""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
     context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
@@ -71,7 +71,9 @@ class Model(MixingConfig, BaseModel):
     """Indicates whether or not two phase learning is being performed.
     1: Phase 1 - Train model on undersampled data
     2: Phase 2 - Continue training on full data
-    0: None - 2 phase learning is not performed"""
+    0: None - 2 phase learning is not performed
+    
+    Paper reference - https://ieeexplore.ieee.org/document/7533053"""
     category_undersample: str = ''
     """When using 2 phase learning, this category is used to undersample the data"""
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
@@ -115,7 +117,7 @@ class Train(MixingConfig, BaseModel):
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
     loss_funct: str = 'cross_entropy'
-    """Loss function for the model"""
+    """Loss function for the model. Choose from: cross_entropy, focal_loss"""
     gamma: int = 2
     """Focal Loss hyperparameter - determines importance the loss gives to hard-to-classify examples"""
 
