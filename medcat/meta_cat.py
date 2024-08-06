@@ -165,6 +165,7 @@ class MetaCAT(PipeRunner):
         Train or continue training a model given raw data. It will continue training if an existing model is loaded or start new training if the model is blank/new.
 
         The raw data is expected in the following format:
+
         {
             'projects': [  # list of projects
                 {
@@ -172,12 +173,17 @@ class MetaCAT(PipeRunner):
                     'documents': [  # list of documents
                         {
                             'name': '<document_name>',
+
                             'text': '<text_of_document>',
+
                             'annotations': [  # list of annotations
                                 {
                                     'start': -1,  # start index of the annotation
+
                                     'end': 1,    # end index of the annotation
+
                                     'cui': 'cui',
+
                                     'value': '<annotation_value>'
                                 },
                                 ...
