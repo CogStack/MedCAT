@@ -161,34 +161,34 @@ class MetaCAT(PipeRunner):
         return self.train_raw(data_loaded, save_dir_path, data_oversampled=data_oversampled)
 
     def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None, data_oversampled: Optional[list] = None) -> Dict:
-        """Train or continue training a model given raw data. It will
-        continue training if an existing model is loaded or start new training if the model is blank/new.
+        """
+        Train or continue training a model given raw data. It will continue training if an existing model is loaded or start new training if the model is blank/new.
 
         The raw data is expected in the following format:
-    {
-        'projects': [  # list of projects
-            {
-                'name': '<project_name>',
-                'documents': [  # list of documents
-                    {
-                        'name': '<document_name>',
-                        'text': '<text_of_document>',
-                        'annotations': [  # list of annotations
-                            {
-                                'start': -1,  # start index of the annotation
-                                'end': 1,    # end index of the annotation
-                                'cui': 'cui',
-                                'value': '<annotation_value>'
-                            },
-                            ...
-                        ],
-                    },
-                    ...
-                ]
-            },
-            ...
-        ]
-    }
+        {
+            'projects': [  # list of projects
+                {
+                    'name': '<project_name>',
+                    'documents': [  # list of documents
+                        {
+                            'name': '<document_name>',
+                            'text': '<text_of_document>',
+                            'annotations': [  # list of annotations
+                                {
+                                    'start': -1,  # start index of the annotation
+                                    'end': 1,    # end index of the annotation
+                                    'cui': 'cui',
+                                    'value': '<annotation_value>'
+                                },
+                                ...
+                            ],
+                        },
+                        ...
+                    ]
+                },
+                ...
+            ]
+        }
 
         Args:
             data_loaded (Dict):
