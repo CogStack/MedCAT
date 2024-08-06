@@ -167,19 +167,30 @@ class MetaCAT(PipeRunner):
         The raw data is expected in the following format:
 
         ::
+
         {
+
             'projects': [  # list of projects
+
                 {
                     'name': '<project_name>',
+
                     'documents': [  # list of documents
+
                         {
                             'name': '<document_name>',
+
                             'text': '<text_of_document>',
+
                             'annotations': [  # list of annotations
+
                                 {
                                     'start': -1,  # start index of the annotation
+
                                     'end': 1,    # end index of the annotation
+
                                     'cui': 'cui',
+
                                     'value': '<annotation_value>'
                                 },
                                 ...
