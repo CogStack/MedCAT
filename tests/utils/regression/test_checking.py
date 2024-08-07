@@ -1,6 +1,7 @@
 
 import unittest
 
+from medcat.config import Config
 from medcat.utils.regression.targeting import OptionSet
 from medcat.utils.regression.targeting import TranslationLayer
 from medcat.utils.regression.checking import RegressionChecker, RegressionCase
@@ -58,6 +59,7 @@ class FakeCDB:
             else:
                 self.name2cuis[name] = set([cui])
         pt2ch.update(dict((cui, set()) for cui in self.cui2names))
+        self.config = Config()
 
 
 class FakeCat:
