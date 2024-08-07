@@ -214,6 +214,7 @@ class TransformersNER(object):
 
 
         # Encode dataset
+        # Note: tokenizer.encode performs chunking
         encoded_dataset = dataset.map(
                 lambda examples: self.tokenizer.encode(examples, ignore_subwords=False),
                 batched=True,
@@ -261,6 +262,7 @@ class TransformersNER(object):
                                             cache_dir='/tmp/')
 
         # Encode dataset
+        # Note: tokenizer.encode performs chunking
         encoded_dataset = dataset.map(
                 lambda examples: self.tokenizer.encode(examples, ignore_subwords=False),
                 batched=True,
