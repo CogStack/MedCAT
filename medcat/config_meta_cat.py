@@ -113,6 +113,14 @@ class Model(MixingConfig, BaseModel):
     category_undersample: str = ''
     """When using 2 phase learning, this category is used to undersample the data"""
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
+    """Specifies the architecture for BERT model.
+
+    If fc2 is set to True, then the 2nd fully connected layer is used
+
+    If fc2 is True and fc3 is set to True, then the 3rd fully connected layer is used
+
+    If lr_scheduler is set to True, then the learning rate scheduler is used with the optimizer    
+    """
     num_directions: int = 2
     """Applicable only for LSTM:
 
