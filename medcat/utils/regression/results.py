@@ -300,7 +300,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
     """The name of the part that was checked"""
     findings: Dict[Finding, int] = {}
     """The description of failures"""
-    examples: List[Tuple[str, str]] = []
+    examples: List[Tuple[Finding, str, str]] = []
     """The examples of non-perfect alignment."""
     example_threshold: Strictness = Strictness.NORMAL
     """The strictness threshold at which to include examples.
@@ -326,7 +326,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
             self.findings[finding] = 0
         self.findings[finding] += 1
         if finding not in STRICTNESS_MATRIX[self.example_threshold]:
-            self.examples.append((cui, name))
+            self.examples.append((finding, cui, name))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -364,10 +364,10 @@ class ResultDescriptor(SingleResultDescriptor):
         self.per_phrase_results[phrase].report_success(
             cui, name, finding)
 
-    def iter_examples(self) -> Iterable[Tuple[str, str, str]]:
+    def iter_examples(self) -> Iterable[Tuple[str, Finding, str, str]]:
         for phrase, srd in self.per_phrase_results.items():
-            for cui, name in srd.examples:
-                yield phrase, cui, name
+            for finding, cui, name in srd.examples:
+                yield phrase, finding, cui, name
 
     def get_report(self, phrases_separately: bool = False) -> str:
         """Get the report associated with this descriptor
@@ -408,7 +408,7 @@ class MultiDescriptor(pydantic.BaseModel):
                     totals[f] += val
         return totals
 
-    def iter_examples(self) -> Iterable[Tuple[str, str, str]]:
+    def iter_examples(self) -> Iterable[Tuple[str, Finding, str, str]]:
         for descr in self.parts:
             yield from descr.iter_examples()
 
@@ -453,7 +453,7 @@ class MultiDescriptor(pydantic.BaseModel):
             if show_failures: # TODO - rename to examples
                 found_fails = False
                 latest_phrase = ''
-                for phrase, cui, name in part.iter_examples():
+                for phrase, finding, cui, name in part.iter_examples():
                     if not found_fails:
                         # add header only if there's failures to include
                         cur_add += f"\n\t\tExamples at {part.example_threshold} strictness"
@@ -464,7 +464,8 @@ class MultiDescriptor(pydantic.BaseModel):
                                                      keep_front=40, keep_rear=30)
                         cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
                         latest_phrase = phrase
-                    cur_add += (f'\n\t\t\tFailed with CUI {repr(cui)} and name {repr(name)}')
+                    cur_add += (f'\n\t\t\t{finding.name} with CUI {repr(cui)} and '
+                                f'name {repr(name)}')
             del_out.append(cur_add)
         delegated = '\n\t'.join(del_out)
         empty_text = ''
