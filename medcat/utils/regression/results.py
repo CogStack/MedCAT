@@ -302,17 +302,6 @@ class SingleResultDescriptor(pydantic.BaseModel):
     """The description of failures"""
     examples: List[Tuple[Finding, str, str]] = []
     """The examples of non-perfect alignment."""
-    example_threshold: Strictness = Strictness.NORMAL
-    """The strictness threshold at which to include examples.
-
-    Any finding that is assumed to be "correct enough" according to
-    the strictness matrix for this threshold will be withheld from
-    examples.
-
-    In simpler terms, if the finding is NOT in the strictness matrix
-    for this strictness, the example is recorded.
-
-    NOTE: To disable example keeping, set to Strictness.ANYTHING"""
 
     def report_success(self, cui: str, name: str, finding: Finding) -> None:
         """Report a test case and its successfulness
@@ -325,8 +314,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         if finding not in self.findings:
             self.findings[finding] = 0
         self.findings[finding] += 1
-        if finding not in STRICTNESS_MATRIX[self.example_threshold]:
-            self.examples.append((finding, cui, name))
+        self.examples.append((finding, cui, name))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -346,7 +334,6 @@ class SingleResultDescriptor(pydantic.BaseModel):
 
 class ResultDescriptor(SingleResultDescriptor):
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
-    example_threshold: Strictness = Strictness.NORMAL
 
     def report(self, cui: str, name: str, phrase: str, finding: Finding) -> None:
         """Report a test case and its successfulness
@@ -360,14 +347,35 @@ class ResultDescriptor(SingleResultDescriptor):
         super().report_success(cui, name, finding)
         if phrase not in self.per_phrase_results:
             self.per_phrase_results[phrase] = SingleResultDescriptor(
-                name=phrase, example_threshold=self.example_threshold)
+                name=phrase)
         self.per_phrase_results[phrase].report_success(
             cui, name, finding)
 
-    def iter_examples(self) -> Iterable[Tuple[str, Finding, str, str]]:
+    def iter_examples(self, strictness_threshold: Strictness
+                      ) -> Iterable[Tuple[str, Finding, str, str]]:
+        """Iterate suitable examples.
+
+        The strictness threshold at which to include examples.
+
+        Any finding that is assumed to be "correct enough" according to
+        the strictness matrix for this threshold will be withheld from
+        examples.
+
+        In simpler terms, if the finding is NOT in the strictness matrix
+        for this strictness, the example is recorded.
+
+        NOTE: To disable example keeping, set the threshold to Strictness.ANYTHING.
+
+        Args:
+            strictness_threshold (Strictness): The strictness threshold.
+
+        Yields:
+            Iterator[Iterable[Tuple[str, Finding, str, str]]]: The phrase, finding, CUI, and name.
+        """
         for phrase, srd in self.per_phrase_results.items():
             for finding, cui, name in srd.examples:
-                yield phrase, finding, cui, name
+                if finding not in STRICTNESS_MATRIX[strictness_threshold]:
+                    yield phrase, finding, cui, name
 
     def get_report(self, phrases_separately: bool = False) -> str:
         """Get the report associated with this descriptor
@@ -408,9 +416,10 @@ class MultiDescriptor(pydantic.BaseModel):
                     totals[f] += val
         return totals
 
-    def iter_examples(self) -> Iterable[Tuple[str, Finding, str, str]]:
+    def iter_examples(self, strictness_threshold: Strictness
+                      ) -> Iterable[Tuple[str, Finding, str, str]]:
         for descr in self.parts:
-            yield from descr.iter_examples()
+            yield from descr.iter_examples(strictness_threshold=strictness_threshold)
 
     def get_report(self, phrases_separately: bool,
                    hide_empty: bool = False, show_failures: bool = True,
@@ -453,10 +462,10 @@ class MultiDescriptor(pydantic.BaseModel):
             if show_failures: # TODO - rename to examples
                 found_fails = False
                 latest_phrase = ''
-                for phrase, finding, cui, name in part.iter_examples():
+                for phrase, finding, cui, name in part.iter_examples(strictness_threshold=strictness):
                     if not found_fails:
                         # add header only if there's failures to include
-                        cur_add += f"\n\t\tExamples at {part.example_threshold} strictness"
+                        cur_add += f"\n\t\tExamples at {strictness} strictness"
                         found_fails = True
                     if latest_phrase != phrase:
                         # TODO: Allow specifying length?
