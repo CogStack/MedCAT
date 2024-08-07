@@ -44,7 +44,7 @@ def limit_str_len(input_str: str,
                   keep_rear: int = 10) -> str:
     if len(input_str) <= max_length:
         return input_str
-    part1 = input_str[:keep_front]  # keep a few chars for the end
-    part2 = input_str[-4:]  # last few characters
+    part1 = input_str[:keep_front]
+    part2 = input_str[-keep_rear:]
     hidden_chars = len(input_str) - len(part1) - len(part2)
     return f"{part1} [{hidden_chars} chars] {part2}"
