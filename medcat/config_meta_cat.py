@@ -7,10 +7,16 @@ class General(MixingConfig, BaseModel):
     device: str = 'cpu'
     disable_component_lock: bool = False
     seed: int = 13
+    """The seed for random number generation.
+
+    NOTE: If used along RelCAT or additional NER, only one of the seeds will take effect
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     description: str = "No description"
     """Should provide a basic description of this MetaCAT model"""
     category_name: Optional[str] = None
-    """What category is this meta_cat model predicting/training"""
+    """What category is this meta_cat model predicting/training.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     category_value2id: Dict = {}
     """Map from category values to ID, if empty it will be autocalculated during training"""
     vocab_size: Optional[int] = None
@@ -28,7 +34,9 @@ class General(MixingConfig, BaseModel):
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
     tokenizer_name: str = 'bbpe'
-    """Tokenizer name used with of MetaCAT"""
+    """Tokenizer name used with of MetaCAT.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
     context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
@@ -48,13 +56,34 @@ class General(MixingConfig, BaseModel):
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
-    """NOTE: When changing model, make sure to change the tokenizer as well"""
+    """The name/type of the model.
+
+    NOTE: When changing model, make sure to change the tokenizer as well.
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     model_variant: str = 'bert-base-uncased'
+    """The model variant in case of BERT metaCAT.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     model_freeze_layers: bool = True
+    """Whether to freeze model layers.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     num_layers: int = 2
+    """The number of layers.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     input_size: int = 300
+    """The input size.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     hidden_size: int = 300
+    """The hideen size.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     dropout: float = 0.5
+    """The dropout for the model.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     phase_number: int = 0
     """Indicates whether or not two phase learning is being performed.
     1: Phase 1 - Train model on undersampled data
@@ -62,13 +91,25 @@ class Model(MixingConfig, BaseModel):
     0: None - 2 phase learning is not performed"""
     category_undersample: str = ''
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
+    """The model architecture config.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     num_directions: int = 2
-    """2 - bidirectional model, 1 - unidirectional"""
+    """2 - bidirectional model, 1 - unidirectional.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     nclasses: int = 2
-    """Number of classes that this model will output"""
+    """Number of classes that this model will output.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     padding_idx: int = -1
+    """The padding index.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     emb_grad: bool = True
-    """If True the embeddings will also be trained"""
+    """If True the embeddings will also be trained.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating representation"""
 
