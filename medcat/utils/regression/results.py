@@ -1,8 +1,9 @@
 from enum import Enum, auto
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Any, Set, Iterable, Tuple
 import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer
+from medcat.utils.regression.utils import limit_str_len
 
 
 class Finding(Enum):
@@ -299,6 +300,19 @@ class SingleResultDescriptor(pydantic.BaseModel):
     """The name of the part that was checked"""
     findings: Dict[Finding, int] = {}
     """The description of failures"""
+    examples: List[Tuple[str, str]] = []
+    """The examples of non-perfect alignment."""
+    example_threshold: Strictness = Strictness.NORMAL
+    """The strictness threshold at which to include examples.
+
+    Any finding that is assumed to be "correct enough" according to
+    the strictness matrix for this threshold will be withheld from
+    examples.
+
+    In simpler terms, if the finding is NOT in the strictness matrix
+    for this strictness, the example is recorded.
+
+    NOTE: To disable example keeping, set to Strictness.ANYTHING"""
 
     def report_success(self, cui: str, name: str, finding: Finding) -> None:
         """Report a test case and its successfulness
@@ -311,6 +325,8 @@ class SingleResultDescriptor(pydantic.BaseModel):
         if finding not in self.findings:
             self.findings[finding] = 0
         self.findings[finding] += 1
+        if finding not in STRICTNESS_MATRIX[self.example_threshold]:
+            self.examples.append((cui, name))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -330,6 +346,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
 
 class ResultDescriptor(SingleResultDescriptor):
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
+    example_threshold: Strictness = Strictness.NORMAL
 
     def report(self, cui: str, name: str, phrase: str, finding: Finding) -> None:
         """Report a test case and its successfulness
@@ -343,9 +360,14 @@ class ResultDescriptor(SingleResultDescriptor):
         super().report_success(cui, name, finding)
         if phrase not in self.per_phrase_results:
             self.per_phrase_results[phrase] = SingleResultDescriptor(
-                name=phrase)
+                name=phrase, example_threshold=self.example_threshold)
         self.per_phrase_results[phrase].report_success(
             cui, name, finding)
+
+    def iter_examples(self) -> Iterable[Tuple[str, str, str]]:
+        for phrase, srd in self.per_phrase_results.items():
+            for cui, name in srd.examples:
+                yield phrase, cui, name
 
     def get_report(self, phrases_separately: bool = False) -> str:
         """Get the report associated with this descriptor
@@ -386,6 +408,10 @@ class MultiDescriptor(pydantic.BaseModel):
                     totals[f] += val
         return totals
 
+    def iter_examples(self) -> Iterable[Tuple[str, str, str]]:
+        for descr in self.parts:
+            yield from descr.iter_examples()
+
     def get_report(self, phrases_separately: bool,
                    hide_empty: bool = False, show_failures: bool = True,
                    strictness: Strictness = Strictness.NORMAL) -> str:
@@ -424,6 +450,14 @@ class MultiDescriptor(pydantic.BaseModel):
             cur_add = '\t' + \
                 part.get_report(phrases_separately=phrases_separately).replace(
                     '\n', '\n\t\t')
+            if show_failures: # TODO - rename to examples
+                found_fails = False
+                for phrase, cui, name in part.iter_examples():
+                    if not found_fails:
+                        # add header only if there's failures to include
+                        cur_add += f"\n\t\tExamples at {part.example_threshold} strictness"
+                    cur_add += (f'\n\t\t\t{repr(limit_str_len(phrase))} failed with '
+                                f'CUI {repr(cui)} and name {repr(name)}')
             del_out.append(cur_add)
         delegated = '\n\t'.join(del_out)
         empty_text = ''
