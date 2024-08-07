@@ -456,6 +456,7 @@ class MultiDescriptor(pydantic.BaseModel):
                     if not found_fails:
                         # add header only if there's failures to include
                         cur_add += f"\n\t\tExamples at {part.example_threshold} strictness"
+                        found_fails = True
                     cur_add += (f'\n\t\t\t{repr(limit_str_len(phrase))} failed with '
                                 f'CUI {repr(cui)} and name {repr(name)}')
             del_out.append(cur_add)
