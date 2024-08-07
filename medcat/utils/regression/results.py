@@ -471,7 +471,7 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
             f"The number of total successful (sub) cases: {total_s} "
             f"({100 * total_s/total_total if total_total > 0 else 0:5.2f}%)",
             f"The number of total failing (sub) cases   : {total_f} "
-            f"({100 * total_f/total_total if total_total > 0 else 0:5.2f}%"
+            f"({100 * total_f/total_total if total_total > 0 else 0:5.2f}%)"
         ])
         ret_vals.extend([
             f"{f.name:24s}:{self.findings[f]:10d} "
