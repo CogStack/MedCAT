@@ -74,10 +74,12 @@ class Snomed:
         uk_drug_ext (bool, optional): Specifies whether the version is a SNOMED UK drug extension. Defaults to False.
         au_ext (bool, optional): Specifies wether the version is a AU release. Defaults to False.
     """
+    SNOMED_RELEASE_PATTERN = re.compile("^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}T\d{6}Z$)")
+    NO_VERSION_DETECTED = 'N/A'
 
     def __init__(self, data_path, uk_ext=False, uk_drug_ext=False, au_ext: bool = False):
         self.data_path = data_path
-        self.release = data_path[-16:-8]
+        self.release = self._determine_release(data_path, strict=False)
         self.uk_ext = uk_ext
         self.uk_drug_ext = uk_drug_ext
         self.opcs_refset_id = "1126441000000105"
@@ -94,6 +96,17 @@ class Snomed:
         if (self.uk_ext or self.uk_drug_ext) and self.au_ext:
             raise ValueError("Cannot both be a UK and and a AU version. "
                              f"Got UK={uk_ext}, UK_Drug={uk_drug_ext}, AU={au_ext}")
+
+    @classmethod
+    def _determine_release(cls, folder_path: str, strict: bool = True,
+                           _group_nr: int = 3, _keep_chars: int = 8) -> str:
+        folder_basename = os.path.basename(folder_path)
+        match = cls.SNOMED_RELEASE_PATTERN.match(folder_basename)
+        if match is None and strict:
+            raise UnkownSnomedReleaseException(f"No version found in '{folder_path}'")
+        elif match is None:
+            return cls.NO_VERSION_DETECTED
+        return match.group(_group_nr)[:_keep_chars]
 
     def to_concept_df(self):
         """
@@ -368,7 +381,8 @@ class Snomed:
             for folder in os.listdir(self.data_path):
                 if "SnomedCT" in folder:
                     paths.append(os.path.join(self.data_path, folder))
-                    snomed_releases.append(folder[-16:-8])
+                    rel = self._determine_release(folder, strict=True)
+                    snomed_releases.append(rel)
         if len(paths) == 0:
             raise FileNotFoundError('Incorrect path to SNOMED CT directory')
         return paths, snomed_releases
@@ -447,3 +461,9 @@ class Snomed:
             return icd10_df, opcs_df
         else:
             return mapping_df
+
+
+class UnkownSnomedReleaseException(ValueError):
+
+    def __init__(self, *args) -> None:
+        super().__init__(*args)
