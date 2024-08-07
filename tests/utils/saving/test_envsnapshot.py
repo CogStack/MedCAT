@@ -103,3 +103,33 @@ class EnvSnapshotInCATTests(unittest.TestCase):
     def test_zip_has_env_snapshot(self):
         filenames = list_zip_contents(self.cat_folder + ".zip")
         self.assertIn(ENV_SNAPSHOT_FILE_NAME, filenames)
+
+
+class EnvSnapshotTranistiveDepsTests(unittest.TestCase):
+    TRANSITIVE_KEY = "transitive_deps"
+    env_no_transitive = envsnapshot.get_environment_info(
+        include_transitive_deps=False)
+    env_w_transitive = envsnapshot.get_environment_info(
+        include_transitive_deps=True)
+
+    def test_can_exclude_transitive(self):
+        self.assertNotIn(self.TRANSITIVE_KEY, self.env_no_transitive)
+
+    def test_can_have_transitive(self):
+        self.assertIn(self.TRANSITIVE_KEY, self.env_w_transitive)
+
+    @property
+    def transitive_deps(self):
+        return self.env_w_transitive[self.TRANSITIVE_KEY]
+
+    def test_can_find_transitive(self):
+        self.assertTrue(self.transitive_deps) # more than one
+        self.assertIsInstance(self.transitive_deps, list)
+
+    def test_trans_deps_have_name_and_versions(self):
+        for i, td in enumerate(self.transitive_deps):
+            with self.subTest(f"Transitive dependency - {i}"):
+                self.assertIsInstance(td, list)
+                self.assertEqual(len(td), 2)
+                self.assertIsInstance(td[0], str)
+                self.assertIsInstance(td[1], str)
