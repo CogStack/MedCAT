@@ -30,10 +30,13 @@ class TranslationLayer:
     """
 
     def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, List[str]],
-                 cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]]) -> None:
+                 cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]],
+                 separator: str, whitespace: str = ' ') -> None:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
         self.cui2type_ids = cui2type_ids
+        self.separator = separator
+        self.whitespace = whitespace
         self.type_id2cuis: Dict[str, Set[str]] = {}
         for cui, type_ids in self.cui2type_ids.items():
             for type_id in type_ids:
@@ -47,11 +50,11 @@ class TranslationLayer:
 
     def targets_for(self, cui: str) -> Iterator[Tuple[str, str]]:
         for name in self.cui2names[cui]:
-            yield cui, name
+            yield cui, name.replace(self.separator, self.whitespace)
 
     def get_first_name(self, cui: str):
         for _, name in self.targets_for(cui):
-            return name
+            return name.replace(self.separator, self.whitespace)
 
     def all_targets(self, all_cuis: List[str]) -> Iterator[Tuple[str, str]]:
         """Get a generator of all target information objects.
@@ -149,7 +152,8 @@ class TranslationLayer:
             parent2child = {}
         else:
             parent2child = cdb.addl_info['pt2ch']
-        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child)
+        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child,
+                                separator=cdb.config.general.separator)
 
 
 class TargetPlaceholder(BaseModel):
@@ -315,7 +319,7 @@ class OptionSet(BaseModel):
         """
         for changer, placeholder, target_cui in self.get_preprocessors_and_targets(translation):
             for name in translation.cui2names.get(target_cui, []):
-                yield changer, placeholder, target_cui, name
+                yield changer, placeholder, target_cui, name.replace(translation.separator, translation.whitespace)
 
 
 class ProblematicOptionSetException(ValueError):
