@@ -96,6 +96,7 @@ class Train(MixingConfig, BaseModel):
     shuffle_data: bool = True
     """Used only during training, if set the dataset will be shuffled before train/test split"""
     class_weights: Optional[Any] = None
+    enable_class_weights: bool = False
     score_average: str = "weighted"
     """What to use for averaging F1/P/R across labels"""
     auto_save_model: bool = True

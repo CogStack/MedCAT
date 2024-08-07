@@ -2,6 +2,8 @@ import json
 import logging
 import os
 import random
+import numpy
+from sklearn.utils import compute_class_weight
 import torch.optim
 import torch
 import torch.nn as nn
@@ -349,10 +351,14 @@ class RelCAT(PipeRunner):
                                      num_workers=0, collate_fn=self.padding_seq,
                                      pin_memory=self.config.general.pin_memory)
 
-        if self.config.train.class_weights is not None:
-            criterion = nn.CrossEntropyLoss(ignore_index=-1, weight=self.config.train.class_weights)
+        if self.config.train.class_weights is not None and self.config.train.enable_class_weights:
+            criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(self.config.train.class_weights).to(self.device))
+        elif self.config.train.enable_class_weights:
+            all_class_lbl_ids = [rec[5] for rec in train_rel_data.dataset["output_relations"]]
+            self.config.train.class_weights = compute_class_weight(class_weight="balanced", classes=numpy.unique(all_class_lbl_ids), y=all_class_lbl_ids)
+            criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(self.config.train.class_weights).to(self.device))
         else:
-            criterion = nn.CrossEntropyLoss(ignore_index=-1)
+            criterion = nn.CrossEntropyLoss()
 
         if self.optimizer is None:
             parameters = filter(lambda p: p.requires_grad, self.model.parameters())
@@ -572,7 +578,11 @@ class RelCAT(PipeRunner):
 
     def evaluate_results(self, data_loader, pad_id):
         self.log.info("Evaluating test samples...")
-        criterion = nn.CrossEntropyLoss(ignore_index=-1)
+        if self.config.train.class_weights is not None and self.config.train.enable_class_weights:
+            criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(self.config.train.class_weights).to(self.device))
+        else:
+            criterion = nn.CrossEntropyLoss()
+
         total_loss, total_acc, total_f1, total_recall, total_precision = 0.0, 0.0, 0.0, 0.0, 0.0
         all_batch_stats_per_label = []
 
