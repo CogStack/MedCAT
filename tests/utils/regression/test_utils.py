@@ -1,3 +1,5 @@
+from functools import partial
+
 from unittest import TestCase
 
 from medcat.utils.regression import utils
@@ -59,3 +61,39 @@ class PartialSubstituationTests(TestCase):
         # and there should be the same amount for each as well
         char_counts = [{c: t.count(c) for c in char_compos[0]} for t in texts]
         self.assertTrue(all(cchars == char_counts[0] for cchars in char_counts))    
+
+
+class StringLengthLimiterTests(TestCase):
+    short_str = "short str"
+    max_len = 25
+    keep_front = max_len // 2 - 3
+    keep_rear = max_len // 2 - 3
+    long_str = " ".join([short_str] * 10)
+    limiter = partial(utils.limit_str_len, max_length=max_len,
+                      keep_front=keep_front, keep_rear=keep_rear)
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.got_short = cls.limiter(cls.short_str)
+        cls.got_long = cls.limiter(cls.long_str)
+
+    def test_leaves_short(self):
+        self.assertEqual(self.short_str, self.got_short)
+
+    def test_changes_long(self):
+        self.assertNotEqual(self.long_str, self.got_long)
+
+    def test_long_gets_shorter(self):
+        self.assertGreater(self.long_str, self.got_long)
+
+    def test_long_includes_chars(self, chars: str = 'chars'):
+        self.assertNotIn(chars, self.long_str)
+        self.assertIn(chars, self.got_long)
+
+    def test_keeps_max_length(self):
+        s = self.got_long[:self.max_len]
+        self.assertEqual(s, self.limiter(s))
+
+    def test_does_not_keep_1_longer_than_max_lenght(self):
+        s = self.got_long[:self.max_len + 1]
+        self.assertNotEqual(s, self.limiter(s))
