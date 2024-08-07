@@ -1,6 +1,7 @@
 from typing import Optional, List
 from unittest import TestCase
 
+from medcat.config import Config
 from medcat.utils.regression import targeting
 
 from collections import defaultdict
@@ -16,6 +17,7 @@ class FakeCDB:
         if pt2ch is None:
             pt2ch = {}
         self.addl_info = {'pt2ch': pt2ch}
+        self.config = Config()
 
     def copy(self) -> 'FakeCDB':
         cui2names = deepcopy(self.cui2names)
