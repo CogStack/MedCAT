@@ -267,6 +267,11 @@ class Strictness(Enum):
     """Normal strictness also allows partial overlaps on target concept and children."""
     LENIENT = auto()
     """Lenient stictness also allows parents and grandparents."""
+    ANYTHING = auto()
+    """Anything stricness allows ANY finding.
+
+    This would generally only be relevant when disabling examples
+    for results descriptors."""
 
 
 STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
@@ -284,7 +289,8 @@ STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
         Finding.BIGGER_SPAN_BOTH,
         Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP,
         Finding.FOUND_DIR_PARENT, Finding.FOUND_DIR_GRANDPARENT,
-    }
+    },
+    Strictness.ANYTHING: set(Strictness),
 }
 
 
