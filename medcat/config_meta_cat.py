@@ -5,12 +5,14 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
-    """Device to used by the module to perform predicting/training. \\
-    Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device
+    """
+    Device to used by the module to perform predicting/training.
+    | Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device
     """
     disable_component_lock: bool = False
-    """Whether to use the MetaCAT component lock. \\
-    If set to False (the default), a component lock is used that forces usage only on one thread at a time. \\
+    """ ::
+    Whether to use the MetaCAT component lock.
+    If set to False (the default), a component lock is used that forces usage only on one thread at a time.
     If set to True, the component lock is not used."""
     seed: int = 13
     description: str = "No description"
