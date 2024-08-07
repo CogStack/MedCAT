@@ -7,11 +7,14 @@ class General(MixingConfig, BaseModel):
     device: str = 'cpu'
     """
     Device to used by the module to perform predicting/training.
-    <br> Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device
+
+    Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device
     """
     disable_component_lock: bool = False
     """ Whether to use the MetaCAT component lock.
+
     If set to False (the default), a component lock is used that forces usage only on one thread at a time.
+
     If set to True, the component lock is not used."""
     seed: int = 13
     description: str = "No description"
@@ -74,13 +77,13 @@ class Model(MixingConfig, BaseModel):
     model_variant: str = 'bert-base-uncased'
     """
     Applicable only when using BERT:
-    
+
     Specifies the model variant to be used.
     """
     model_freeze_layers: bool = True
     """
     Applicable only when using BERT:
-    
+
     Determines the training approach for BERT.
 
     - If True: BERT layers are frozen and only the fully connected (FC) layer(s) on top are trained.
@@ -99,27 +102,27 @@ class Model(MixingConfig, BaseModel):
     dropout: float = 0.5
     phase_number: int = 0
     """Indicates whether two phase learning is to be used for training.
-    
+
     1: Phase 1 - Train model on undersampled data
-    
+
     2: Phase 2 - Continue training on full data
-    
+
     0: None - 2 phase learning is not performed
-    
+
     Paper reference - https://ieeexplore.ieee.org/document/7533053"""
     category_undersample: str = ''
     """When using 2 phase learning, this category is used to undersample the data"""
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     num_directions: int = 2
     """Applicable only for LSTM:
-    
+
     2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2
     """Number of classes that this model will output"""
     padding_idx: int = -1
     emb_grad: bool = True
     """Applicable only for LSTM:
-    
+
     If True, the embeddings will also be trained"""
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating representation"""
@@ -152,8 +155,8 @@ class Train(MixingConfig, BaseModel):
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
     loss_funct: str = 'cross_entropy'
-    """Loss function for the model. 
-    
+    """Loss function for the model.
+
     Choose from:
         - 'cross_entropy'
         - 'focal_loss'

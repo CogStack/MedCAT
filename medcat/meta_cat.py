@@ -185,7 +185,7 @@ class MetaCAT(PipeRunner):
                             'annotations': [  # list of annotations
 
                                 {
-                                
+
                                     'start': -1,  # start index of the annotation
 
                                     'end': 1,    # end index of the annotation
