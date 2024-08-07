@@ -452,13 +452,19 @@ class MultiDescriptor(pydantic.BaseModel):
                     '\n', '\n\t\t')
             if show_failures: # TODO - rename to examples
                 found_fails = False
+                latest_phrase = ''
                 for phrase, cui, name in part.iter_examples():
                     if not found_fails:
                         # add header only if there's failures to include
                         cur_add += f"\n\t\tExamples at {part.example_threshold} strictness"
                         found_fails = True
-                    cur_add += (f'\n\t\t\t{repr(limit_str_len(phrase))} failed with '
-                                f'CUI {repr(cui)} and name {repr(name)}')
+                    if latest_phrase != phrase:
+                        # TODO: Allow specifying length?
+                        short_phrase = limit_str_len(phrase, max_length=80,
+                                                     keep_front=40, keep_rear=30)
+                        cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
+                        latest_phrase = phrase
+                    cur_add += (f'\n\t\t\tFailed with CUI {repr(cui)} and name {repr(name)}')
             del_out.append(cur_add)
         delegated = '\n\t'.join(del_out)
         empty_text = ''
