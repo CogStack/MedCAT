@@ -17,7 +17,9 @@ def main(model_pack_dir: Path, test_suite_file: Path,
          phrases: bool = False, hide_empty: bool = False,
          hide_failures: bool = False,
          jsonpath: Optional[Path] = None, overwrite: bool = False,
-         jsonindent: Optional[int] = None) -> None:
+         jsonindent: Optional[int] = None,
+         strictness_str: str = 'NORMAL',
+         max_phrase_length: int = 80) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -30,6 +32,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         jsonpath (Optional[Path]): The json path to save the report to (if specified)
         overwrite (bool): Whether to overwrite the file if it exists. Defaults to False
         jsonindent (int): The indentation for json objects. Defaults to 0
+        strictness_str (str): The strictness name. Defaults to NORMAL.
+        max_phrase_length (int): The maximum phrase length in examples. Defualts to 80.
 
     Raises:
         ValueError: If unable to overwrite file or folder does not exist.
@@ -47,13 +51,15 @@ def main(model_pack_dir: Path, test_suite_file: Path,
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
     res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
+    strictness = Strictness[strictness_str]
     if jsonpath:
         logger.info('Writing to %s', str(jsonpath))
         jsonpath.write_text(json.dumps(res.dict(), indent=jsonindent))
     else:
         examples_strictness = None if hide_failures else Strictness.STRICTEST
         logger.info(res.get_report(phrases_separately=phrases,
-                    hide_empty=hide_empty, examples_strictness=examples_strictness))
+                    hide_empty=hide_empty, examples_strictness=examples_strictness,
+                    strictness=strictness, phrase_max_len=max_phrase_length))
 
 
 if __name__ == '__main__':
@@ -85,6 +91,10 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--jsonindent', help='The json indent',
                         type=int, default=None)
+    parser.add_argument('--strictness', help='The strictness to consider success.',
+                        choices=[strictness.name for strictness in Strictness])
+    parser.add_argument('--max-phrase-length', help='The maximum phrase length in examples.',
+                        type=int, default=80)
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -95,4 +105,5 @@ if __name__ == '__main__':
         regr_logger.addHandler(logging.StreamHandler())
     main(args.modelpack, args.test_suite, total=args.total,
          phrases=args.phrases, hide_empty=args.noempty, hide_failures=args.hidefailures,
-         jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent)
+         jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
+         strictness_str=args.strictness, max_phrase_length=args.max_phrase_length)
