@@ -48,25 +48,14 @@ class TranslationLayer:
             if cui not in cui2children:
                 self.cui2children[cui] = set()
 
+    def get_names_of(self, cui: str) -> List[str]:
+        return [name.replace(self.separator, self.whitespace)
+                   for name in self.cui2names.get(cui, [])]
+
     def get_first_name(self, cui: str) -> str:
         for name in self.cui2names.get(cui, [cui]):
             return name.replace(self.separator, self.whitespace)
-
-    def all_targets(self, all_cuis: List[str]) -> Iterator[Tuple[str, str]]:
-        """Get a generator of all target information objects.
-        This is the starting point for checking cases.
-
-        Args:
-            all_cuis (List[str]): The set of all CUIs to be queried
-
-        Yields:
-            Iterator[Tuple[str, str]]: The iterator of the target info
-        """
-        for cui in all_cuis:
-            if cui not in self.cui2names:
-                logger.warning('CUI not found in translation layer: %s', cui)
-                continue
-            yield from self.targets_for(cui)
+        return cui
 
     def get_direct_children(self, cui: str) -> List[str]:
         return list(self.cui2children.get(cui, []))
@@ -284,6 +273,16 @@ class OptionSet(BaseModel):
                     for opt in other_opts
                 ]
                 yield PhraseChanger(preprocess_placeholders=placeholders), cur_opts.target_cuis[cui_nr]
+
+    def estimate_num_of_subcases(self) -> int:
+        num_of_opts = len(self.options)
+        if self.allow_any_combinations:
+            total_cases = 1
+            for cur_opt in self.options:
+                total_cases *= len(cur_opt.target_cuis)
+        else:
+            total_cases = len(self.options[0].target_cuis)
+        return num_of_opts * total_cases
 
     def get_preprocessors_and_targets(self, translation: TranslationLayer
                                       ) -> Iterator[Tuple[PhraseChanger, str, str]]:

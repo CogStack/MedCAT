@@ -78,6 +78,30 @@ class RegressionCase(BaseModel):
         self.report.report(placeholder, cui, name, phrase, finding)
         return finding
 
+    def estimate_num_of_diff_subcases(self) -> int:
+        return len(self.phrases) * self.options.estimate_num_of_subcases()
+
+    def get_distinct_cases(self, translation: TranslationLayer) -> Iterator[Iterator[Tuple[str, str, str, str]]]:
+        # for each phrase and for each placeholder based option
+        pass
+        for changer, placeholder, cui, in self.options.get_preprocessors_and_targets(translation):
+            for phrase in self.phrases:
+                yield self._get_subcases(phrase, changer, placeholder, cui, translation)
+        pass
+
+    def _get_subcases(self, phrase: str, changer: PhraseChanger,
+                      placeholder: str, cui: str,
+                      translation: TranslationLayer) -> Iterator[Tuple[str, str, str, str]]:
+        changed_phrase = changer(phrase)
+        for name in translation.get_names_of(cui):
+            num_of_phs = changed_phrase.count(placeholder)
+            if num_of_phs == 1:
+                yield placeholder, cui, name, changed_phrase
+                continue
+            for cntr in range(num_of_phs):
+                final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
+                yield placeholder, cui, name, final_phrase
+
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[str, str, str, str]]:
         """Get all subcases for this case.
         That is, all combinations of targets with their appropriate phrases.
@@ -343,9 +367,11 @@ class RegressionChecker:
                 regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
         else:
             for regr_case in tqdm.tqdm(self.cases):
-                for placeholder, cui, name, phrase in regr_case.get_all_subcases(translation):
-                    # NOTE: the finding is reported in the per-case report
-                    regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
+                num_of_phrase_cui = regr_case.estimate_num_of_diff_subcases()
+                for subcase in tqdm.tqdm(regr_case.get_distinct_cases(translation), total=num_of_phrase_cui):
+                    for placeholder, cui, name, phrase in subcase:
+                        # NOTE: the finding is reported in the per-case report
+                        regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
         return self.report
 
     def __str__(self) -> str:

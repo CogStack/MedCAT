@@ -92,7 +92,7 @@ class TestTranslationLayer(unittest.TestCase):
     def test_gets_all_targets(self):
         fakeCDB = FakeCDB(*EXAMPLE_INFOS)
         tl = TranslationLayer.from_CDB(fakeCDB)
-        targets = list(tl.all_targets([ei[0] for ei in EXAMPLE_INFOS]))
+        targets = [name for ei in EXAMPLE_INFOS for name in tl.get_names_of(ei[0])]
         self.assertEqual(len(targets), len(EXAMPLE_INFOS))
 
 
