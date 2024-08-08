@@ -336,9 +336,11 @@ class RegressionChecker:
             MultiDescriptor: A report description
         """
         if total is not None:
-            for regr_case, placeholder, ti, phrase in tqdm.tqdm(self.get_all_subcases(translation), total=total):
+            for (regr_case, placeholder,
+                 cui, name, phrase) in tqdm.tqdm(
+                     self.get_all_subcases(translation), total=total):
                 # NOTE: the finding is reported in the per-case report
-                regr_case.check_specific_for_phrase(cat, ti, phrase, translation, placeholder)
+                regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
         else:
             for regr_case in tqdm.tqdm(self.cases):
                 for placeholder, cui, name, phrase in regr_case.get_all_subcases(translation):
