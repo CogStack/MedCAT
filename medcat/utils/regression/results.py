@@ -449,7 +449,6 @@ class MultiDescriptor(pydantic.BaseModel):
                     # add header only if there's failures to include
                     cur_add += f"\n\t\tExamples at {examples_strictness} strictness"
                 if latest_phrase != phrase:
-                    # TODO: Allow specifying length?
                     short_phrase = limit_str_len(phrase, max_length=phrase_max_len,
                                                  keep_front=phrase_max_len // 2,
                                                  keep_rear=phrase_max_len // 2 - 10)
