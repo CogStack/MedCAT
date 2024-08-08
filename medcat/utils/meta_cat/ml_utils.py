@@ -200,7 +200,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         if config.train['compute_class_weights'] is True:
             y_ = [x[2] for x in train_data]
             class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(y_), y=y_)
-            config.train['class_weights'] = class_weights
+            config.train['class_weights'] = class_weights.tolist()
             logger.info(f"Class weights computed: {class_weights}")
 
             class_weights = torch.FloatTensor(class_weights).to(device)
