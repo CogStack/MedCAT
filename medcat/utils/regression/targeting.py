@@ -316,22 +316,6 @@ class OptionSet(BaseModel):
             for changer, target_cui in self._get_all_combinations(cur_opt, other_opts, translation):
                 yield changer, cur_opt.placeholder, target_cui
 
-    def get_applicable_targets(self, translation: TranslationLayer
-                               ) -> Iterator[NamedTarget]:
-        """Get all applicable targets for this filter
-
-        Args:
-            translation (TranslationLayer): The translation layer
-
-        Yields:
-            Iterator[NamedTarget]: The output generator
-        """
-        for changer, placeholder, target_cui in self.get_preprocessors_and_targets(translation):
-            for name in translation.cui2names.get(target_cui, []):
-                yield NamedTarget(
-                    changer=changer, placeholder=placeholder, target_cui=target_cui,
-                    name=name.replace(translation.separator, translation.whitespace))
-
 
 class ProblematicOptionSetException(ValueError):
 

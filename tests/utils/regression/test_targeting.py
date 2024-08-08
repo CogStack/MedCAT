@@ -124,7 +124,7 @@ class OptionSetTests(TestCase):
         for nr, (d, num_of_targets) in enumerate(self.EXPECTED_TARGETS):
             with self.subTest(f"Part: {nr}"):
                 os = targeting.OptionSet.from_dict(d)
-                targets = list(os.get_applicable_targets(self.tl))
+                targets = list(os.get_preprocessors_and_targets(self.tl))
                 self.assertEqual(len(targets), num_of_targets)
 
 
@@ -166,11 +166,6 @@ class OnePerNameOptionSetTests(TestCase):
         cls.total_names_simple = total_names_simple
         for cui in OptionSetTests.discover_cuis_for(cls.MULTI_PLACEHOLDER_MULTI_CUI_ONLY_ORDERED):
             cdb.cui2names[cui] = {f'CUI=name-4-{cui}'}
-
-    def test_simple_gets_one_per_name(self):
-        os = targeting.OptionSet.from_dict(self.SIMPLE)
-        targets = list(os.get_applicable_targets(self.tl))
-        self.assertEqual(len(targets), self.total_names_simple)
 
     def test_uneven_multi_fails(self):
         with self.assertRaises(targeting.ProblematicOptionSetException):
