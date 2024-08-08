@@ -114,8 +114,13 @@ class BertForMetaAnnotation(nn.Module):
         self.fc3 = nn.Linear(hidden_size_2, hidden_size_2)
         # dense layer 3 (Output layer)
         model_arch_config = config.model.model_architecture_config
+
+        if model_arch_config['fc3'] is True and model_arch_config['fc2'] is False:
+            logger.warning("FC3 can only be used if FC2 is also enabled. Enabling FC2...")
+            config.model.model_architecture_config['fc2'] = True
+
         if model_arch_config is not None:
-            if model_arch_config['fc2'] is True or model_arch_config['fc3'] is True:
+            if model_arch_config['fc2'] is True:
                 self.fc4 = nn.Linear(hidden_size_2, self.num_labels)
             else:
                 self.fc4 = nn.Linear(config.model.hidden_size, self.num_labels)
@@ -190,11 +195,11 @@ class BertForMetaAnnotation(nn.Module):
                 x = self.relu(x)
                 x = self.dropout(x)
 
-            if self.config.model.model_architecture_config['fc3'] is True:
-                # fc3
-                x = self.fc3(x)
-                x = self.relu(x)
-                x = self.dropout(x)
+                if self.config.model.model_architecture_config['fc3'] is True:
+                    # fc3
+                    x = self.fc3(x)
+                    x = self.relu(x)
+                    x = self.dropout(x)
         else:
             # fc2
             x = self.fc2(x)
