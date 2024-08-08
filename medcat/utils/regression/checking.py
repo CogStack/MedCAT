@@ -75,7 +75,7 @@ class RegressionCase(BaseModel):
             logger.debug(
                 'FAILED to (fully) match (%s) test case %s in phrase "%s", '
                 'found the following CUIS/names: %s', finding, (cui, name), phrase, cuis_names)
-        self.report.report(cui, name, phrase, finding)
+        self.report.report(placeholder, cui, name, phrase, finding)
         return finding
 
     def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[str, str, str, str]]:

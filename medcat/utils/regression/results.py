@@ -300,13 +300,15 @@ class SingleResultDescriptor(pydantic.BaseModel):
     """The name of the part that was checked"""
     findings: Dict[Finding, int] = {}
     """The description of failures"""
-    examples: List[Tuple[Finding, str, str]] = []
+    examples: List[Tuple[str, Finding, str, str]] = []
     """The examples of non-perfect alignment."""
 
-    def report_success(self, cui: str, name: str, finding: Finding) -> None:
-        """Report a test case and its successfulness
+    def report_success(self, placeholder: str, cui: str,
+                       name: str, finding: Finding) -> None:
+        """Report a test case and its successfulness.
 
         Args:
+            placeholder (str): The placeholder being replaced
             cui (str): The CUI being checked
             name (str): The name being checked
             finding (Finding): Whether or not the check was successful
@@ -314,7 +316,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         if finding not in self.findings:
             self.findings[finding] = 0
         self.findings[finding] += 1
-        self.examples.append((finding, cui, name))
+        self.examples.append((placeholder, finding, cui, name))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -335,24 +337,25 @@ class SingleResultDescriptor(pydantic.BaseModel):
 class ResultDescriptor(SingleResultDescriptor):
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
 
-    def report(self, cui: str, name: str, phrase: str, finding: Finding) -> None:
+    def report(self, placeholder: str, cui: str, name: str, phrase: str, finding: Finding) -> None:
         """Report a test case and its successfulness
 
         Args:
+            placeholder (str): The placeholder being replaced
             cui (str): The CUI being checked
             name (str): The name being checked
             phrase (str): The phrase being checked
             finding (Finding): To what extent the concept was recognised
         """
-        super().report_success(cui, name, finding)
+        super().report_success(placeholder, cui, name, finding)
         if phrase not in self.per_phrase_results:
             self.per_phrase_results[phrase] = SingleResultDescriptor(
                 name=phrase)
         self.per_phrase_results[phrase].report_success(
-            cui, name, finding)
+            placeholder, cui, name, finding)
 
     def iter_examples(self, strictness_threshold: Strictness
-                      ) -> Iterable[Tuple[str, Finding, str, str]]:
+                      ) -> Iterable[Tuple[str, str, Finding, str, str]]:
         """Iterate suitable examples.
 
         The strictness threshold at which to include examples.
@@ -370,12 +373,12 @@ class ResultDescriptor(SingleResultDescriptor):
             strictness_threshold (Strictness): The strictness threshold.
 
         Yields:
-            Iterator[Iterable[Tuple[str, Finding, str, str]]]: The phrase, finding, CUI, and name.
+            Iterable[Tuple[str, str, Finding, str, str]]: The placholder, phrase, finding, CUI, and name.
         """
         for phrase, srd in self.per_phrase_results.items():
-            for finding, cui, name in srd.examples:
+            for placeholder, finding, cui, name in srd.examples:
                 if finding not in STRICTNESS_MATRIX[strictness_threshold]:
-                    yield phrase, finding, cui, name
+                    yield placeholder, phrase, finding, cui, name
 
     def get_report(self, phrases_separately: bool = False) -> str:
         """Get the report associated with this descriptor
@@ -417,7 +420,7 @@ class MultiDescriptor(pydantic.BaseModel):
         return totals
 
     def iter_examples(self, strictness_threshold: Strictness
-                      ) -> Iterable[Tuple[str, Finding, str, str]]:
+                      ) -> Iterable[Tuple[str, str, Finding, str, str]]:
         for descr in self.parts:
             yield from descr.iter_examples(strictness_threshold=strictness_threshold)
 
@@ -460,21 +463,20 @@ class MultiDescriptor(pydantic.BaseModel):
                 part.get_report(phrases_separately=phrases_separately).replace(
                     '\n', '\n\t\t')
             if show_failures: # TODO - rename to examples
-                found_fails = False
                 latest_phrase = ''
-                for phrase, finding, cui, name in part.iter_examples(strictness_threshold=strictness):
-                    if not found_fails:
+                for (placeholder, phrase,
+                     finding, cui, name) in part.iter_examples(strictness_threshold=strictness):
+                    if latest_phrase == '':
                         # add header only if there's failures to include
                         cur_add += f"\n\t\tExamples at {strictness} strictness"
-                        found_fails = True
                     if latest_phrase != phrase:
                         # TODO: Allow specifying length?
                         short_phrase = limit_str_len(phrase, max_length=80,
                                                      keep_front=40, keep_rear=30)
                         cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
                         latest_phrase = phrase
-                    cur_add += (f'\n\t\t\t{finding.name} with CUI {repr(cui)} and '
-                                f'name {repr(name)}')
+                    cur_add += (f'\n\t\t\t{finding.name} for placeholder {placeholder} '
+                                f'with CUI {repr(cui)} and name {repr(name)}')
             del_out.append(cur_add)
         delegated = '\n\t'.join(del_out)
         empty_text = ''
