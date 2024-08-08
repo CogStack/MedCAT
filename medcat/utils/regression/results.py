@@ -479,6 +479,7 @@ class MultiDescriptor(pydantic.BaseModel):
                 Set to None to disable examples. Defaults to Strictness.STRICTEST.
             strictness (Strictness): The strictness of the success / fail overview.
                 Defaults to Strictness.NORMAL.
+            phrase_max_len (int): The maximum length of the phrase in examples. Defualts to 80.
 
         Returns:
             str: The report string
