@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import TranslationLayer, OptionSet, PhraseChanger
-from medcat.utils.regression.targeting import NamedTarget, FinalTarget
+from medcat.utils.regression.targeting import FinalTarget
 from medcat.utils.regression.utils import partial_substitute
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
@@ -22,18 +22,6 @@ class RegressionCase(BaseModel):
     options: OptionSet
     phrases: List[str]
     report: ResultDescriptor
-
-    def get_all_targets(self, translation: TranslationLayer
-                        ) -> Iterator[NamedTarget]:
-        """Get all applicable targets for this regression case
-
-        Args:
-            translation (TranslationLayer): The translation layer
-
-        Yields:
-            Iterator[NamedTarget]: The output generator
-        """
-        yield from self.options.get_applicable_targets(translation)
 
     def check_specific_for_phrase(self, cat: CAT, target: FinalTarget,
                                   translation: TranslationLayer) -> Finding:
