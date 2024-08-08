@@ -2,7 +2,7 @@ from enum import Enum, auto
 from typing import Dict, List, Optional, Any, Set, Iterable, Tuple
 import pydantic
 
-from medcat.utils.regression.targeting import TranslationLayer
+from medcat.utils.regression.targeting import TranslationLayer, FinalTarget
 from medcat.utils.regression.utils import limit_str_len
 
 
@@ -303,20 +303,17 @@ class SingleResultDescriptor(pydantic.BaseModel):
     examples: List[Tuple[str, Finding, str, str]] = []
     """The examples of non-perfect alignment."""
 
-    def report_success(self, placeholder: str, cui: str,
-                       name: str, finding: Finding) -> None:
+    def report_success(self, target: FinalTarget, finding: Finding) -> None:
         """Report a test case and its successfulness.
 
         Args:
-            placeholder (str): The placeholder being replaced
-            cui (str): The CUI being checked
-            name (str): The name being checked
+            target (FinalTarget): The target configuration
             finding (Finding): Whether or not the check was successful
         """
         if finding not in self.findings:
             self.findings[finding] = 0
         self.findings[finding] += 1
-        self.examples.append((placeholder, finding, cui, name))
+        self.examples.append((target.placeholder, finding, target.cui, target.name))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -337,22 +334,19 @@ class SingleResultDescriptor(pydantic.BaseModel):
 class ResultDescriptor(SingleResultDescriptor):
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
 
-    def report(self, placeholder: str, cui: str, name: str, phrase: str, finding: Finding) -> None:
+    def report(self, target: FinalTarget, finding: Finding) -> None:
         """Report a test case and its successfulness
 
         Args:
-            placeholder (str): The placeholder being replaced
-            cui (str): The CUI being checked
-            name (str): The name being checked
-            phrase (str): The phrase being checked
+            target (FinalTarget): The final targe configuration
             finding (Finding): To what extent the concept was recognised
         """
-        super().report_success(placeholder, cui, name, finding)
+        phrase = target.final_phrase
+        super().report_success(target, finding)
         if phrase not in self.per_phrase_results:
             self.per_phrase_results[phrase] = SingleResultDescriptor(
                 name=phrase)
-        self.per_phrase_results[phrase].report_success(
-            placeholder, cui, name, finding)
+        self.per_phrase_results[phrase].report_success(target, finding)
 
     def iter_examples(self, strictness_threshold: Strictness
                       ) -> Iterable[Tuple[str, str, Finding, str, str]]:

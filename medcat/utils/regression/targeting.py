@@ -162,6 +162,20 @@ class PhraseChanger(BaseModel):
         return cls(preprocess_placeholders=[])
 
 
+class NamedTarget(BaseModel):
+    changer: PhraseChanger
+    placeholder: str
+    target_cui: str
+    name: str
+
+
+class FinalTarget(BaseModel):
+    placeholder: str
+    cui: str
+    name: str
+    final_phrase: str
+
+
 class OptionSet(BaseModel):
     options: List[TargetPlaceholder]
     allow_any_combinations: bool = False
@@ -303,18 +317,20 @@ class OptionSet(BaseModel):
                 yield changer, cur_opt.placeholder, target_cui
 
     def get_applicable_targets(self, translation: TranslationLayer
-                               ) -> Iterator[Tuple[PhraseChanger, str, str, str]]:
+                               ) -> Iterator[NamedTarget]:
         """Get all applicable targets for this filter
 
         Args:
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[Tuple[PhraseChanger, str, str, str]]: The output generator
+            Iterator[NamedTarget]: The output generator
         """
         for changer, placeholder, target_cui in self.get_preprocessors_and_targets(translation):
             for name in translation.cui2names.get(target_cui, []):
-                yield changer, placeholder, target_cui, name.replace(translation.separator, translation.whitespace)
+                yield NamedTarget(
+                    changer=changer, placeholder=placeholder, target_cui=target_cui,
+                    name=name.replace(translation.separator, translation.whitespace))
 
 
 class ProblematicOptionSetException(ValueError):

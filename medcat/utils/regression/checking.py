@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import TranslationLayer, OptionSet, PhraseChanger
+from medcat.utils.regression.targeting import NamedTarget, FinalTarget
 from medcat.utils.regression.utils import partial_substitute
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
@@ -23,30 +24,26 @@ class RegressionCase(BaseModel):
     report: ResultDescriptor
 
     def get_all_targets(self, translation: TranslationLayer
-                        ) -> Iterator[Tuple[PhraseChanger, str, str, str]]:
+                        ) -> Iterator[NamedTarget]:
         """Get all applicable targets for this regression case
 
         Args:
             translation (TranslationLayer): The translation layer
 
         Yields:
-            Iterator[Tuple[PhraseChanger, str, str, str]]: The output generator
+            Iterator[NamedTarget]: The output generator
         """
         yield from self.options.get_applicable_targets(translation)
 
-    def check_specific_for_phrase(self, cat: CAT, cui: str, name: str, phrase: str,
-                                  translation: TranslationLayer,
-                                  placeholder: str = '%s') -> Finding:
+    def check_specific_for_phrase(self, cat: CAT, target: FinalTarget,
+                                  translation: TranslationLayer) -> Finding:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
         Args:
             cat (CAT): The model
-            cui (str): The target CUI
-            name (str): The target name
-            phrase (str): The phrase to check
+            target (FinalTarget): The final target configuration
             translation (TranslationLayer): The translation layer
-            placeholder (str): The placeholder to replace. Defaults to '%s'.
 
         Raises:
             MalformedRegressionCaseException: If there are too many placeholders in phrase.
@@ -54,6 +51,7 @@ class RegressionCase(BaseModel):
         Returns:
             Finding: The nature to which the target was (or wasn't) identified
         """
+        phrase, cui, name, placeholder = target.final_phrase, target.cui, target.name, target.placeholder
         nr_of_placeholders = phrase.count(placeholder)
         if nr_of_placeholders != 1:
             raise MalformedRegressionCaseException(f"Got {nr_of_placeholders} placeholders "
@@ -75,54 +73,34 @@ class RegressionCase(BaseModel):
             logger.debug(
                 'FAILED to (fully) match (%s) test case %s in phrase "%s", '
                 'found the following CUIS/names: %s', finding, (cui, name), phrase, cuis_names)
-        self.report.report(placeholder, cui, name, phrase, finding)
+        self.report.report(target, finding)
         return finding
 
     def estimate_num_of_diff_subcases(self) -> int:
         return len(self.phrases) * self.options.estimate_num_of_subcases()
 
-    def get_distinct_cases(self, translation: TranslationLayer) -> Iterator[Iterator[Tuple[str, str, str, str]]]:
+    def get_distinct_cases(self, translation: TranslationLayer) -> Iterator[Iterator[FinalTarget]]:
         # for each phrase and for each placeholder based option
-        pass
         for changer, placeholder, cui, in self.options.get_preprocessors_and_targets(translation):
             for phrase in self.phrases:
                 yield self._get_subcases(phrase, changer, placeholder, cui, translation)
-        pass
 
     def _get_subcases(self, phrase: str, changer: PhraseChanger,
                       placeholder: str, cui: str,
-                      translation: TranslationLayer) -> Iterator[Tuple[str, str, str, str]]:
+                      translation: TranslationLayer) -> Iterator[FinalTarget]:
         changed_phrase = changer(phrase)
         for name in translation.get_names_of(cui):
             num_of_phs = changed_phrase.count(placeholder)
             if num_of_phs == 1:
-                yield placeholder, cui, name, changed_phrase
+                yield FinalTarget(placeholder=placeholder,
+                                  cui=cui, name=name,
+                                  final_phrase=changed_phrase)
                 continue
             for cntr in range(num_of_phs):
                 final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
-                yield placeholder, cui, name, final_phrase
-
-    def get_all_subcases(self, translation: TranslationLayer) -> Iterator[Tuple[str, str, str, str]]:
-        """Get all subcases for this case.
-        That is, all combinations of targets with their appropriate phrases.
-
-        Args:
-            translation (TranslationLayer): The translation layer
-
-        Yields:
-            Iterator[Tuple[str, str, str, str]]: The generator for the target info and the phrase
-        """
-        for changer, placeholder, cui, name in self.get_all_targets(translation):
-            for phrase in self.phrases:
-                # NOTE: yielding the prhase as changed by the additional / other placeholders
-                changed_phrase = changer(phrase)
-                num_of_phs = changed_phrase.count(placeholder)
-                if num_of_phs == 1:
-                    yield placeholder, cui, name, changed_phrase
-                    continue
-                for cntr in range(num_of_phs):
-                    final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
-                    yield placeholder, cui, name, final_phrase
+                yield FinalTarget(placeholder=placeholder,
+                                  cui=cui, name=name,
+                                  final_phrase=final_phrase)
 
     def to_dict(self) -> dict:
         """Converts the RegressionCase to a dict for serialisation.
@@ -315,19 +293,19 @@ class RegressionSuite:
             self.report.parts.append(case.report)
 
     def get_all_distinct_cases(self, translation: TranslationLayer
-                               ) -> Iterator[Tuple[RegressionCase, Iterator[Tuple[str, str, str, str]]]]:
+                               ) -> Iterator[Tuple[RegressionCase, Iterator[FinalTarget]]]:
         for regr_case in self.cases:
             for subcase in regr_case.get_distinct_cases(translation):
                 yield regr_case, subcase
 
     def iter_subcases(self, translation: TranslationLayer,
                       show_progress: bool = True,
-                      ) -> Iterator[Tuple[RegressionCase, str, str, str, str]]:
+                      ) -> Iterator[Tuple[RegressionCase, FinalTarget]]:
         total = sum(rc.estimate_num_of_diff_subcases() for rc in self.cases)
         for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation),
                                               total=total, disable=not show_progress):
-            for placeholder, cui, name, phrase in subcase:
-                yield regr_case, placeholder, cui, name, phrase
+            for target in subcase:
+                yield regr_case, target
 
     def check_model(self, cat: CAT, translation: TranslationLayer) -> MultiDescriptor:
         """Checks model and generates a report
@@ -339,9 +317,9 @@ class RegressionSuite:
         Returns:
             MultiDescriptor: A report description
         """
-        for regr_case, placeholder, cui, name, phrase in self.iter_subcases(translation, True):
+        for regr_case, target in self.iter_subcases(translation, True):
             # NOTE: the finding is reported in the per-case report
-            regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
+            regr_case.check_specific_for_phrase(cat, target, translation)
         return self.report
 
     def __str__(self) -> str:
