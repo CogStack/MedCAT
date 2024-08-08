@@ -457,8 +457,8 @@ class MultiDescriptor(pydantic.BaseModel):
                 if latest_phrase != phrase:
                     # TODO: Allow specifying length?
                     short_phrase = limit_str_len(phrase, max_length=phrase_max_len,
-                                                    keep_front=phrase_max_len // 2,
-                                                    keep_rear=phrase_max_len // 2 - 10)
+                                                 keep_front=phrase_max_len // 2,
+                                                 keep_rear=phrase_max_len // 2 - 10)
                     cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
                     latest_phrase = phrase
                 cur_add += (f'\n\t\t\t{finding.name} for placeholder {placeholder} '
