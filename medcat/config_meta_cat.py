@@ -5,7 +5,17 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 class General(MixingConfig, BaseModel):
     """The General part of the MetaCAT config"""
     device: str = 'cpu'
+    """
+    Device to used by the module to perform predicting/training.
+
+    Reference: https://pytorch.org/docs/stable/tensor_attributes.html#torch.device
+    """
     disable_component_lock: bool = False
+    """ Whether to use the MetaCAT component lock.
+
+    If set to False (the default), a component lock is used that forces usage only on one thread at a time.
+
+    If set to True, the component lock is not used."""
     seed: int = 13
     description: str = "No description"
     """Should provide a basic description of this MetaCAT model"""
@@ -28,7 +38,13 @@ class General(MixingConfig, BaseModel):
     annotate_overlapping: bool = False
     """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
     tokenizer_name: str = 'bbpe'
-    """Tokenizer name used with of MetaCAT"""
+    """
+    Tokenizer name used with MetaCAT.
+
+    Choose from:
+        - 'bbpe': Byte Pair Encoding Tokenizer
+        - 'bert-tokenizer': BERT Tokenizer
+    """
     save_and_reuse_tokens: bool = False
     """This is a dangerous option, if not sure ALWAYS set to False. If set, it will try to share the pre-calculated
     context tokens between MetaCAT models when serving. It will ignore differences in tokenizer and context size,
@@ -48,27 +64,74 @@ class General(MixingConfig, BaseModel):
 class Model(MixingConfig, BaseModel):
     """The model part of the metaCAT config"""
     model_name: str = 'lstm'
-    """NOTE: When changing model, make sure to change the tokenizer as well"""
+    """
+    Model to be used for training or predicting.
+
+    Choose from:
+        - 'bert'
+        - 'lstm'
+
+    Note:
+        When changing the model, make sure to change the tokenizer accordingly.
+    """
     model_variant: str = 'bert-base-uncased'
+    """
+    Applicable only when using BERT:
+
+    Specifies the model variant to be used.
+    """
     model_freeze_layers: bool = True
+    """
+    Applicable only when using BERT:
+
+    Determines the training approach for BERT.
+
+    - If True: BERT layers are frozen and only the fully connected (FC) layer(s) on top are trained.
+    - If False: Parameter-efficient fine-tuning will be applied using Low-Rank Adaptation (LoRA).
+    """
     num_layers: int = 2
+    """Number of layers in the model (both LSTM and BERT)"""
     input_size: int = 300
+    """
+    Specifies the size of the embedding layer.
+
+    Applicable only for LSTM model and ignored for BERT as BERT's embedding size is predefined.
+    """
     hidden_size: int = 300
+    """Number of neurons in the hidden layer"""
     dropout: float = 0.5
     phase_number: int = 0
-    """Indicates whether or not two phase learning is being performed.
+    """Indicates whether two phase learning is to be used for training.
+
     1: Phase 1 - Train model on undersampled data
+
     2: Phase 2 - Continue training on full data
-    0: None - 2 phase learning is not performed"""
+
+    0: None - 2 phase learning is not performed
+
+    Paper reference - https://ieeexplore.ieee.org/document/7533053"""
     category_undersample: str = ''
+    """When using 2 phase learning, this category is used to undersample the data"""
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
+    """Specifies the architecture for BERT model.
+
+    If fc2 is set to True, then the 2nd fully connected layer is used
+
+    If fc2 is True and fc3 is set to True, then the 3rd fully connected layer is used
+
+    If lr_scheduler is set to True, then the learning rate scheduler is used with the optimizer    
+    """
     num_directions: int = 2
-    """2 - bidirectional model, 1 - unidirectional"""
+    """Applicable only for LSTM:
+
+    2 - bidirectional model, 1 - unidirectional"""
     nclasses: int = 2
     """Number of classes that this model will output"""
     padding_idx: int = -1
     emb_grad: bool = True
-    """If True the embeddings will also be trained"""
+    """Applicable only for LSTM:
+
+    If True, the embeddings will also be trained"""
     ignore_cpos: bool = False
     """If set to True center positions will be ignored when calculating representation"""
 
@@ -87,7 +150,7 @@ class Train(MixingConfig, BaseModel):
     """Used only during training, if set the dataset will be shuffled before train/test split"""
     class_weights: Optional[Any] = None
     compute_class_weights: bool = False
-    """If true and if class weights are not provided, the class weights will be calculated based on the data"""
+    """If true and class weights not provided, the class weights will be calculated based on the data"""
     score_average: str = 'weighted'
     """What to use for averaging F1/P/R across labels"""
     prerequisites: dict = {}
@@ -100,9 +163,14 @@ class Train(MixingConfig, BaseModel):
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
     loss_funct: str = 'cross_entropy'
-    """Loss function for the model"""
+    """Loss function for the model.
+
+    Choose from:
+        - 'cross_entropy'
+        - 'focal_loss'
+    """
     gamma: int = 2
-    """Focal Loss - how much the loss focuses on hard-to-classify examples."""
+    """Focal Loss hyperparameter - determines importance the loss gives to hard-to-classify examples"""
 
     class Config:
         extra = Extra.allow
