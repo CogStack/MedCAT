@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def main(model_pack_dir: Path, test_suite_file: Path,
          total: Optional[int] = None,
          phrases: bool = False, hide_empty: bool = False,
-         hide_failures: bool = False,
+         examples_strictness_str: str = 'STRICTEST',
          jsonpath: Optional[Path] = None, overwrite: bool = False,
          jsonindent: Optional[int] = None,
          strictness_str: str = 'NORMAL',
@@ -28,7 +28,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         total (Optional[int]): The total number of (sub)cases to be tested (for progress bar)
         phrases (bool): Whether to show per-phrase information in a report
         hide_empty (bool): Whether to hide empty cases in a report
-        hide_failures (bool): Whether to hide failures in a report
+        examples_strictness_str (str): The example strictness string. Defaults to STRICTEST.
+            NOTE: If you set this to 'None', examples wille be omitted.
         jsonpath (Optional[Path]): The json path to save the report to (if specified)
         overwrite (bool): Whether to overwrite the file if it exists. Defaults to False
         jsonindent (int): The indentation for json objects. Defaults to 0
@@ -56,7 +57,10 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         logger.info('Writing to %s', str(jsonpath))
         jsonpath.write_text(json.dumps(res.dict(), indent=jsonindent))
     else:
-        examples_strictness = None if hide_failures else Strictness.STRICTEST
+        if examples_strictness_str in ("None", "N/A"):
+            examples_strictness = None
+        else:
+            examples_strictness = Strictness[examples_strictness_str]
         logger.info(res.get_report(phrases_separately=phrases,
                     hide_empty=hide_empty, examples_strictness=examples_strictness,
                     strictness=strictness, phrase_max_len=max_phrase_length))
@@ -83,8 +87,10 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--noempty', help='Hide empty cases in report',
                         action='store_true')
-    parser.add_argument('--hidefailures', help='Hide failed cases in report',
-                        action='store_true')
+    parser.add_argument('--example-strictness', help='The strictness of examples. Set to None to disable. '
+                        'This defaults to STRICTEST to show all non-identical examples. ',
+                        choices=[strictness.name for strictness in Strictness] + ["None"],
+                        default=Strictness.STRICTEST.name)
     parser.add_argument('--jsonfile', help='Save report to a json file',
                         type=Path)
     parser.add_argument('--overwrite', help='Whether to overwrite save file',
@@ -104,6 +110,6 @@ if __name__ == '__main__':
         regr_logger.setLevel('DEBUG')
         regr_logger.addHandler(logging.StreamHandler())
     main(args.modelpack, args.test_suite, total=args.total,
-         phrases=args.phrases, hide_empty=args.noempty, hide_failures=args.hidefailures,
+         phrases=args.phrases, hide_empty=args.noempty, examples_strictness_str=args.example_strictness,
          jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
          strictness_str=args.strictness, max_phrase_length=args.max_phrase_length)
