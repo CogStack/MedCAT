@@ -98,7 +98,8 @@ if __name__ == '__main__':
     parser.add_argument('--jsonindent', help='The json indent',
                         type=int, default=None)
     parser.add_argument('--strictness', help='The strictness to consider success.',
-                        choices=[strictness.name for strictness in Strictness])
+                        choices=[strictness.name for strictness in Strictness],
+                        default=Strictness.NORMAL.name)
     parser.add_argument('--max-phrase-length', help='The maximum phrase length in examples.',
                         type=int, default=80)
     args = parser.parse_args()
