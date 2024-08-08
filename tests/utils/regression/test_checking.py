@@ -4,7 +4,7 @@ import unittest
 from medcat.config import Config
 from medcat.utils.regression.targeting import OptionSet
 from medcat.utils.regression.targeting import TranslationLayer
-from medcat.utils.regression.checking import RegressionChecker, RegressionCase
+from medcat.utils.regression.checking import RegressionChecker, RegressionCase, MetaData
 from medcat.utils.regression.results import Finding
 
 EXAMPLE_CUI = '123'
@@ -177,7 +177,8 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        findings = rc.check_case(FakeCat(tl), tl)
+        regr_checker = RegressionChecker([rc], MetaData.unknown())
+        findings = regr_checker.check_model(FakeCat(tl), tl).findings
         fail = findings.get(Finding.FAIL, 0)
         success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
@@ -222,5 +223,5 @@ class MultiPlaceholderTests(unittest.TestCase):
         self.assertIsInstance(self.rc, RegressionChecker)
 
     def test_gets_cases(self):
-        cases = list(self.rc.get_all_subcases(self.TL))
+        cases = list(self.rc.get_all_distinct_cases(self.TL))
         self.assertEqual(len(cases), self.EXPECTED_CASES)
