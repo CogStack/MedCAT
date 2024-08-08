@@ -223,5 +223,5 @@ class MultiPlaceholderTests(unittest.TestCase):
         self.assertIsInstance(self.rc, RegressionChecker)
 
     def test_gets_cases(self):
-        cases = list(self.rc.get_all_distinct_cases(self.TL))
+        cases = list(self.rc.iter_subcases(self.TL))
         self.assertEqual(len(cases), self.EXPECTED_CASES)

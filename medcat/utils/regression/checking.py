@@ -320,6 +320,15 @@ class RegressionChecker:
             for subcase in regr_case.get_distinct_cases(translation):
                 yield regr_case, subcase
 
+    def iter_subcases(self, translation: TranslationLayer,
+                      show_progress: bool = True,
+                      ) -> Iterator[Tuple[RegressionCase, str, str, str, str]]:
+        total = sum(rc.estimate_num_of_diff_subcases() for rc in self.cases)
+        for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation),
+                                              total=total, disable=not show_progress):
+            for placeholder, cui, name, phrase in subcase:
+                yield regr_case, placeholder, cui, name, phrase
+
     def check_model(self, cat: CAT, translation: TranslationLayer) -> MultiDescriptor:
         """Checks model and generates a report
 
@@ -330,11 +339,9 @@ class RegressionChecker:
         Returns:
             MultiDescriptor: A report description
         """
-        total = sum(rc.estimate_num_of_diff_subcases() for rc in self.cases)
-        for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation), total=total):
-            for placeholder, cui, name, phrase in subcase:
-                # NOTE: the finding is reported in the per-case report
-                regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
+        for regr_case, placeholder, cui, name, phrase in self.iter_subcases(translation, True):
+            # NOTE: the finding is reported in the per-case report
+            regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
         return self.report
 
     def __str__(self) -> str:
