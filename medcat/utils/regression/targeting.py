@@ -48,12 +48,8 @@ class TranslationLayer:
             if cui not in cui2children:
                 self.cui2children[cui] = set()
 
-    def targets_for(self, cui: str) -> Iterator[Tuple[str, str]]:
-        for name in self.cui2names[cui]:
-            yield cui, name.replace(self.separator, self.whitespace)
-
-    def get_first_name(self, cui: str):
-        for _, name in self.targets_for(cui):
+    def get_first_name(self, cui: str) -> str:
+        for name in self.cui2names.get(cui, [cui]):
             return name.replace(self.separator, self.whitespace)
 
     def all_targets(self, all_cuis: List[str]) -> Iterator[Tuple[str, str]]:
