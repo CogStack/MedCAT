@@ -49,19 +49,69 @@ class TranslationLayer:
                 self.cui2children[cui] = set()
 
     def get_names_of(self, cui: str) -> List[str]:
+        """Get the preprocessed names of a CUI.
+
+        This method preporcesses the names by replacing the separator (genreally `~`)
+        with the appropriate whitespace (` `).
+
+        If the concept is not in the underlying CDB, an empty list is returned.
+
+        Args:
+            cui (str): The concept in question.
+
+        Returns:
+            List[str]: The list of names.
+        """
         return [name.replace(self.separator, self.whitespace)
                    for name in self.cui2names.get(cui, [])]
 
     def get_first_name(self, cui: str) -> str:
+        """Get the preprocessed (potentially) arbitrarily first name of the given concept.
+
+        If the concept does not exist, the CUI itself is returned.
+
+        PS: The "first" name may not be consistent across runs since it relies on set order.
+
+        Args:
+            cui (str): The concept ID.
+
+        Returns:
+            str: The first name.
+        """
         for name in self.cui2names.get(cui, [cui]):
             return name.replace(self.separator, self.whitespace)
         return cui
 
     def get_direct_children(self, cui: str) -> List[str]:
+        """Get the direct children of a concept.
+
+        This means only the children, but not grandchildren.
+
+        If the underlying CDB doesn't list children for this CUI, an empty list is returned.
+
+        Args:
+            cui (str): The concept in question.
+
+        Returns:
+            List[str]: The (potentially empty) list of direct children.
+        """
         return list(self.cui2children.get(cui, []))
 
     @lru_cache(maxsize=10_000)
     def get_direct_parents(self, cui: str) -> List[str]:
+        """Get the direct parent(s) of a concept.
+
+        PS: This method can be quite a CPU heavy one since it relies
+            on running through all the parent-children relationships
+            since the child->parent(s) relationship isn't normally
+            kept track of.
+
+        Args:
+            cui (str): _description_
+
+        Returns:
+            List[str]: _description_
+        """
         parents = []
         for pot_parent, children in self.cui2children.items():
             if cui in children:
@@ -124,6 +174,12 @@ class TargetPlaceholder(BaseModel):
 
 
 class PhraseChanger(BaseModel):
+    """The phrase changer.
+
+    This is class used as a preprocessor for phrases with multiple placeholders.
+    It allows swapping in the rest of the placeholders while leaving in the one
+    that's being tested for.
+    """
     preprocess_placeholders: List[Tuple[str, str]]
 
     def __call__(self, phrase: str) -> str:
@@ -133,16 +189,34 @@ class PhraseChanger(BaseModel):
 
     @classmethod
     def empty(cls) -> 'PhraseChanger':
+        """Gets the empty phrase changer.
+
+        That is a phrase changer that makes no changes to the phrase.
+
+        Returns:
+            PhraseChanger: The empty phrase changer.
+        """
         return cls(preprocess_placeholders=[])
 
 
 class TargetedPhraseChanger(BaseModel):
+    """The target phrase changer.
+
+    It includes the phrase changer (for preprocessing) along with
+    the relevant concept and the palceholder it will replace.
+    """
     changer: PhraseChanger
     placeholder: str
     cui: str
 
 
 class FinalTarget(BaseModel):
+    """The final target.
+
+    This involves the final phrase (which (potentially) has other
+    placeholder replaced in it), the placeholder to be replaced,
+    and the CUI and specific name being used.
+    """
     placeholder: str
     cui: str
     name: str
@@ -150,6 +224,10 @@ class FinalTarget(BaseModel):
 
 
 class OptionSet(BaseModel):
+    """The targeting option set.
+
+    This describes all the target placeholders and concepts needed.
+    """
     options: List[TargetPlaceholder]
     allow_any_combinations: bool = False
 
@@ -263,6 +341,20 @@ class OptionSet(BaseModel):
                 yield PhraseChanger(preprocess_placeholders=placeholders), cur_opts.target_cuis[cui_nr]
 
     def estimate_num_of_subcases(self) -> int:
+        """Get the number of distinct subcases.
+
+        This includes ones that can be calculated without the knowledge of the
+        underlying CDB. I.e it doesn't care for the number of names involved per CUI
+        but only takes into account what is described in the option set itself.
+
+        If any combination is allowed, then the answer is the combination of
+        the number of target concepts per option.
+        If any combination is not allowed, then the answer is simply the number
+        of target concepts for an option (they should all have the same number).
+
+        Returns:
+            int: _description_
+        """
         num_of_opts = len(self.options)
         if self.allow_any_combinations:
             total_cases = 1
@@ -274,6 +366,14 @@ class OptionSet(BaseModel):
 
     def get_preprocessors_and_targets(self, translation: TranslationLayer
                                       ) -> Iterator[TargetedPhraseChanger]:
+        """Get the targeted phrase changers.
+
+        Args:
+            translation (TranslationLayer): The translaton layer.
+
+        Yields:
+            Iterator[TargetedPhraseChanger]: Thetarget phrase changers.
+        """
         num_of_opts = len(self.options)
         if num_of_opts == 1:
             # NOTE: when there's only 1 option, the other option doesn't work

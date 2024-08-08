@@ -68,6 +68,17 @@ class RegressionCase(BaseModel):
         return len(self.phrases) * self.options.estimate_num_of_subcases()
 
     def get_distinct_cases(self, translation: TranslationLayer) -> Iterator[Iterator[FinalTarget]]:
+        """Gets the various distinct sub-case iterators.
+
+        The sub-cases are those that can be determine without the translation layer.
+        However, the translation layer is included here since it streamlines the operation.
+
+        Args:
+            translation (TranslationLayer): The translation layer.
+
+        Yields:
+            Iterator[Iterator[FinalTarget]]: The iterator of iterators of different sub cases.
+        """
         # for each phrase and for each placeholder based option
         for changer in self.options.get_preprocessors_and_targets(translation):
             for phrase in self.phrases:
@@ -282,6 +293,18 @@ class RegressionSuite:
 
     def get_all_distinct_cases(self, translation: TranslationLayer
                                ) -> Iterator[Tuple[RegressionCase, Iterator[FinalTarget]]]:
+        """Gets all the distinct cases for this regression suite.
+
+        While distinct cases can be determined without the translation layer,
+        including it here simplifies the process.
+
+        Args:
+            translation (TranslationLayer): The translation layer.
+
+        Yields:
+            Iterator[Tuple[RegressionCase, Iterator[FinalTarget]]]: The generator of the
+                regression case along with its corresponding sub-cases.
+        """
         for regr_case in self.cases:
             for subcase in regr_case.get_distinct_cases(translation):
                 yield regr_case, subcase
@@ -289,6 +312,19 @@ class RegressionSuite:
     def iter_subcases(self, translation: TranslationLayer,
                       show_progress: bool = True,
                       ) -> Iterator[Tuple[RegressionCase, FinalTarget]]:
+        """Iterate over all the sub-cases.
+
+        Each sub-case present a unique target (phrase, concept, name) on
+        the corresponding regression case.
+
+        Args:
+            translation (TranslationLayer): The translation layer.
+            show_progress (bool): Whether to show progress. Defaults to True.
+
+        Yields:
+            Iterator[Tuple[RegressionCase, FinalTarget]]: The generator of the
+                regression case along with each of the final target sub-cases.
+        """
         total = sum(rc.estimate_num_of_diff_subcases() for rc in self.cases)
         for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation),
                                               total=total, disable=not show_progress):

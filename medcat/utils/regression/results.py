@@ -68,7 +68,12 @@ class Finding(Enum):
     FAIL = auto()
     """The concept was not recognised in any meaningful way."""
 
-    def has_correct_cui(self):
+    def has_correct_cui(self) -> bool:
+        """Whether the finding found the correct concept.
+
+        Returns:
+            bool: Whether the correct concept was found.
+        """
         return self in (
             Finding.IDENTICAL, Finding.BIGGER_SPAN_RIGHT, Finding.BIGGER_SPAN_LEFT,
             Finding.BIGGER_SPAN_BOTH, Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP
@@ -296,11 +301,18 @@ STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
 
 
 class SingleResultDescriptor(pydantic.BaseModel):
+    """The result descriptor.
+
+    This class is responsible for keeping track of all the
+    findings (i.e how many were found to be identical) as
+    well as the examples of the finding on a per-target
+    basis for further analysis.
+    """
     name: str
     """The name of the part that was checked"""
     findings: Dict[Finding, int] = {}
     """The description of failures"""
-    examples: List[Tuple[str, Finding, str, str]] = []
+    examples: List[Tuple[FinalTarget, Finding]] = []
     """The examples of non-perfect alignment."""
 
     def report_success(self, target: FinalTarget, finding: Finding) -> None:
@@ -313,7 +325,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         if finding not in self.findings:
             self.findings[finding] = 0
         self.findings[finding] += 1
-        self.examples.append((target.placeholder, finding, target.cui, target.name))
+        self.examples.append((target, finding))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -332,6 +344,11 @@ class SingleResultDescriptor(pydantic.BaseModel):
 
 
 class ResultDescriptor(SingleResultDescriptor):
+    """The overarching result descriptor that handles mulitple phrases.
+
+    This class keeps track of the results on a per-phrase basis and
+    can be used to get the overall report and/or iterate over examples.
+    """
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
 
     def report(self, target: FinalTarget, finding: Finding) -> None:
@@ -349,7 +366,7 @@ class ResultDescriptor(SingleResultDescriptor):
         self.per_phrase_results[phrase].report_success(target, finding)
 
     def iter_examples(self, strictness_threshold: Strictness
-                      ) -> Iterable[Tuple[str, str, Finding, str, str]]:
+                      ) -> Iterable[Tuple[FinalTarget, Finding]]:
         """Iterate suitable examples.
 
         The strictness threshold at which to include examples.
@@ -367,12 +384,12 @@ class ResultDescriptor(SingleResultDescriptor):
             strictness_threshold (Strictness): The strictness threshold.
 
         Yields:
-            Iterable[Tuple[str, str, Finding, str, str]]: The placholder, phrase, finding, CUI, and name.
+            Iterable[Tuple[FinalTarget, Finding]]: The placholder, phrase, finding, CUI, and name.
         """
-        for phrase, srd in self.per_phrase_results.items():
-            for placeholder, finding, cui, name in srd.examples:
+        for srd in self.per_phrase_results.values():
+            for target, finding in srd.examples:
                 if finding not in STRICTNESS_MATRIX[strictness_threshold]:
-                    yield placeholder, phrase, finding, cui, name
+                    yield target, finding
 
     def get_report(self, phrases_separately: bool = False) -> str:
         """Get the report associated with this descriptor
@@ -392,6 +409,11 @@ class ResultDescriptor(SingleResultDescriptor):
 
 
 class MultiDescriptor(pydantic.BaseModel):
+    """The descriptor of results over multiple different results (parts).
+
+    The idea is that this would likely be used with a regression suite
+    and it would incorporate all the different regression cases it describes.
+    """
     name: str
     """The name of the collection being checked"""
     parts: List[ResultDescriptor] = []
@@ -414,7 +436,18 @@ class MultiDescriptor(pydantic.BaseModel):
         return totals
 
     def iter_examples(self, strictness_threshold: Strictness
-                      ) -> Iterable[Tuple[str, str, Finding, str, str]]:
+                      ) -> Iterable[Tuple[FinalTarget, Finding]]:
+        """Iterate over all relevant examples.
+
+        Only examples that are not in the strictness matric for the specified
+        threshold will be used.
+
+        Args:
+            strictness_threshold (Strictness): The threshold of avoidance.
+
+        Yields:
+            Iterable[Tuple[FinalTarget, Finding]]: The examples
+        """
         for descr in self.parts:
             yield from descr.iter_examples(strictness_threshold=strictness_threshold)
 
@@ -443,19 +476,18 @@ class MultiDescriptor(pydantic.BaseModel):
                 '\n', '\n\t\t')
         if examples_strictness is not None:
             latest_phrase = ''
-            for (placeholder, phrase,
-                    finding, cui, name) in part.iter_examples(strictness_threshold=examples_strictness):
+            for target, finding in part.iter_examples(strictness_threshold=examples_strictness):
                 if latest_phrase == '':
                     # add header only if there's failures to include
                     cur_add += f"\n\t\tExamples at {examples_strictness} strictness"
-                if latest_phrase != phrase:
-                    short_phrase = limit_str_len(phrase, max_length=phrase_max_len,
+                if latest_phrase != target.final_phrase:
+                    short_phrase = limit_str_len(target.final_phrase, max_length=phrase_max_len,
                                                  keep_front=phrase_max_len // 2,
                                                  keep_rear=phrase_max_len // 2 - 10)
                     cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
-                    latest_phrase = phrase
-                cur_add += (f'\n\t\t\t{finding.name} for placeholder {placeholder} '
-                            f'with CUI {repr(cui)} and name {repr(name)}')
+                    latest_phrase = target.final_phrase
+                cur_add += (f'\n\t\t\t{finding.name} for placeholder {target.placeholder} '
+                            f'with CUI {repr(target.cui)} and name {repr(target.name)}')
         return cur_add, total_total, total_s, total_f
 
     def get_report(self, phrases_separately: bool,
