@@ -13,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 def main(model_pack_dir: Path, test_suite_file: Path,
-         total: Optional[int] = None,
          phrases: bool = False, hide_empty: bool = False,
          examples_strictness_str: str = 'STRICTEST',
          jsonpath: Optional[Path] = None, overwrite: bool = False,
@@ -25,7 +24,6 @@ def main(model_pack_dir: Path, test_suite_file: Path,
     Args:
         model_pack_dir (Path): The path to the model pack
         test_suite_file (Path): The path to the test suite YAML
-        total (Optional[int]): The total number of (sub)cases to be tested (for progress bar)
         phrases (bool): Whether to show per-phrase information in a report
         hide_empty (bool): Whether to hide empty cases in a report
         examples_strictness_str (str): The example strictness string. Defaults to STRICTEST.
@@ -51,7 +49,7 @@ def main(model_pack_dir: Path, test_suite_file: Path,
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
-    res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb), total=total)
+    res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb))
     strictness = Strictness[strictness_str]
     if jsonpath:
         logger.info('Writing to %s', str(jsonpath))
@@ -80,9 +78,6 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--verbose', '-debug', help='Enable debug/verbose mode',
                         action='store_true')
-    parser.add_argument('--total', '-t', help='Set the total number of (sub)cases that will be tested. '
-                        'This will enable using a progress bar. '
-                        'If unknown, a large-ish number might still be beneficial to show progress.', type=int, default=None)
     parser.add_argument('--phrases', '-p', help='Include per-phrase information in report',
                         action='store_true')
     parser.add_argument('--noempty', help='Hide empty cases in report',
@@ -110,7 +105,7 @@ if __name__ == '__main__':
         from medcat.utils.regression import logger as regr_logger
         regr_logger.setLevel('DEBUG')
         regr_logger.addHandler(logging.StreamHandler())
-    main(args.modelpack, args.test_suite, total=args.total,
+    main(args.modelpack, args.test_suite,
          phrases=args.phrases, hide_empty=args.noempty, examples_strictness_str=args.example_strictness,
          jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
          strictness_str=args.strictness, max_phrase_length=args.max_phrase_length)

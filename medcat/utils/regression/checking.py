@@ -347,31 +347,22 @@ class RegressionChecker:
             for placeholder, cui, name, phrase in case.get_all_subcases(translation):
                 yield case, placeholder, cui, name, phrase
 
-    def check_model(self, cat: CAT, translation: TranslationLayer,
-                    total: Optional[int] = None) -> MultiDescriptor:
+    def check_model(self, cat: CAT, translation: TranslationLayer) -> MultiDescriptor:
         """Checks model and generates a report
 
         Args:
             cat (CAT): The model to check against
             translation (TranslationLayer): The translation layer
-            total (Optional[int]): The total number of (sub)cases expected (for a progress bar)
 
         Returns:
             MultiDescriptor: A report description
         """
-        if total is not None:
-            for (regr_case, placeholder,
-                 cui, name, phrase) in tqdm.tqdm(
-                     self.get_all_subcases(translation), total=total):
-                # NOTE: the finding is reported in the per-case report
-                regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
-        else:
-            for regr_case in tqdm.tqdm(self.cases):
-                num_of_phrase_cui = regr_case.estimate_num_of_diff_subcases()
-                for subcase in tqdm.tqdm(regr_case.get_distinct_cases(translation), total=num_of_phrase_cui):
-                    for placeholder, cui, name, phrase in subcase:
-                        # NOTE: the finding is reported in the per-case report
-                        regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
+        for regr_case in tqdm.tqdm(self.cases):
+            num_of_phrase_cui = regr_case.estimate_num_of_diff_subcases()
+            for subcase in tqdm.tqdm(regr_case.get_distinct_cases(translation), total=num_of_phrase_cui):
+                for placeholder, cui, name, phrase in subcase:
+                    # NOTE: the finding is reported in the per-case report
+                    regr_case.check_specific_for_phrase(cat, cui, name, phrase, translation, placeholder)
         return self.report
 
     def __str__(self) -> str:
