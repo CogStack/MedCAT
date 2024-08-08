@@ -426,8 +426,10 @@ class MultiDescriptor(pydantic.BaseModel):
 
     def _get_part_report(self, part: ResultDescriptor, allowed_findings: Set[Finding],
                          total_findings: Dict[Finding, int],
-                         hide_empty: bool, show_failures: bool, phrases_separately: bool,
-                         strictness: Strictness) -> Tuple[str, int, int, int]:
+                         hide_empty: bool,
+                         examples_strictness: Optional[Strictness],
+                         phrases_separately: bool,
+                         ) -> Tuple[str, int, int, int]:
         if hide_empty and len(part.findings) == 0:
             return '', 0, 0, 0
         total_total, total_s, total_f = 0, 0, 0
@@ -444,13 +446,13 @@ class MultiDescriptor(pydantic.BaseModel):
         cur_add = '\t' + \
             part.get_report(phrases_separately=phrases_separately).replace(
                 '\n', '\n\t\t')
-        if show_failures: # TODO - rename to examples
+        if examples_strictness is not None:
             latest_phrase = ''
             for (placeholder, phrase,
-                    finding, cui, name) in part.iter_examples(strictness_threshold=strictness):
+                    finding, cui, name) in part.iter_examples(strictness_threshold=examples_strictness):
                 if latest_phrase == '':
                     # add header only if there's failures to include
-                    cur_add += f"\n\t\tExamples at {strictness} strictness"
+                    cur_add += f"\n\t\tExamples at {examples_strictness} strictness"
                 if latest_phrase != phrase:
                     # TODO: Allow specifying length?
                     short_phrase = limit_str_len(phrase, max_length=80,
@@ -462,14 +464,16 @@ class MultiDescriptor(pydantic.BaseModel):
         return cur_add, total_total, total_s, total_f
 
     def get_report(self, phrases_separately: bool,
-                   hide_empty: bool = False, show_failures: bool = True,
+                   hide_empty: bool = False,
+                   examples_strictness: Optional[Strictness] = Strictness.STRICTEST,
                    strictness: Strictness = Strictness.NORMAL) -> str:
         """Get the report associated with this descriptor
 
         Args:
             phrases_separately (bool): Whether to include per-phrase information
             hide_empty (bool): Whether to hide empty cases
-            show_failures (bool): Whether to show failures
+            examples_strictness (Optional[Strictness.STRICTEST]): What level of strictness to show for examples.
+                Set to None to disable examples. Defaults to Strictness.STRICTEST.
             strictness (Strictness): The strictness of the success / fail overview.
                 Defaults to Strictness.NORMAL.
 
@@ -488,7 +492,7 @@ class MultiDescriptor(pydantic.BaseModel):
                  part, allowed_findings, total_findings, hide_empty,
                  # NOTE: using STRICTEST strictness for examples means
                  #       that all but IDENTICAL examples will be shown
-                 show_failures, phrases_separately, Strictness.STRICTEST)
+                 examples_strictness, phrases_separately)
             if hide_empty and total_total_add == 0:
                 nr_of_empty += 1
             else:

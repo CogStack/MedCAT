@@ -7,6 +7,7 @@ from typing import Optional
 
 from medcat.cat import CAT
 from medcat.utils.regression.checking import RegressionChecker, TranslationLayer
+from medcat.utils.regression.results import Strictness
 
 logger = logging.getLogger(__name__)
 
@@ -50,8 +51,9 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         logger.info('Writing to %s', str(jsonpath))
         jsonpath.write_text(json.dumps(res.dict(), indent=jsonindent))
     else:
+        examples_strictness = None if hide_failures else Strictness.STRICTEST
         logger.info(res.get_report(phrases_separately=phrases,
-                    hide_empty=hide_empty, show_failures=not hide_failures))
+                    hide_empty=hide_empty, examples_strictness=examples_strictness))
 
 
 if __name__ == '__main__':
