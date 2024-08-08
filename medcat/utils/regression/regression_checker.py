@@ -6,7 +6,7 @@ import logging
 from typing import Optional
 
 from medcat.cat import CAT
-from medcat.utils.regression.checking import RegressionChecker, TranslationLayer
+from medcat.utils.regression.checking import RegressionSuite, TranslationLayer
 from medcat.utils.regression.results import Strictness
 
 logger = logging.getLogger(__name__)
@@ -45,7 +45,7 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         raise ValueError(
             f'Need to specify a file in an existing directory, folder not found: {str(jsonpath)}')
     logger.info('Loading RegressionChecker from yaml: %s', test_suite_file)
-    rc = RegressionChecker.from_yaml(str(test_suite_file))
+    rc = RegressionSuite.from_yaml(str(test_suite_file))
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')

@@ -297,7 +297,7 @@ def fix_np_float64(d: dict) -> None:
             fix_np_float64(v)
 
 
-class RegressionChecker:
+class RegressionSuite:
     """The regression checker.
     This is used to check a bunch of regression cases at once against a model.
 
@@ -374,12 +374,12 @@ class RegressionChecker:
 
     def __eq__(self, other: object) -> bool:
         # only checks cases
-        if not isinstance(other, RegressionChecker):
+        if not isinstance(other, RegressionSuite):
             return False
         return self.cases == other.cases
 
     @classmethod
-    def from_dict(cls, in_dict: dict) -> 'RegressionChecker':
+    def from_dict(cls, in_dict: dict) -> 'RegressionSuite':
         """Construct a RegressionChecker from a dict.
 
         Most of the parsing is handled in RegressionChecker.from_dict.
@@ -403,10 +403,10 @@ class RegressionChecker:
             metadata = MetaData.unknown()
         else:
             metadata = MetaData.parse_obj(in_dict['meta'])
-        return RegressionChecker(cases=cases, metadata=metadata)
+        return RegressionSuite(cases=cases, metadata=metadata)
 
     @classmethod
-    def from_yaml(cls, file_name: str) -> 'RegressionChecker':
+    def from_yaml(cls, file_name: str) -> 'RegressionSuite':
         """Constructs a RegressionChcker from a YAML file.
 
         The from_dict method is used for the construction from the dict.
@@ -419,7 +419,7 @@ class RegressionChecker:
         """
         with open(file_name) as f:
             data = yaml.safe_load(f)
-        return RegressionChecker.from_dict(data)
+        return RegressionSuite.from_dict(data)
 
 
 class MalformedRegressionCaseException(ValueError):

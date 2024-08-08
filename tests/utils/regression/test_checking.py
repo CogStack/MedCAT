@@ -4,7 +4,7 @@ import unittest
 from medcat.config import Config
 from medcat.utils.regression.targeting import OptionSet
 from medcat.utils.regression.targeting import TranslationLayer
-from medcat.utils.regression.checking import RegressionChecker, RegressionCase, MetaData
+from medcat.utils.regression.checking import RegressionSuite, RegressionCase, MetaData
 from medcat.utils.regression.results import Finding
 
 EXAMPLE_CUI = '123'
@@ -177,7 +177,7 @@ class TestRegressionCase(unittest.TestCase):
         tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        regr_checker = RegressionChecker([rc], MetaData.unknown())
+        regr_checker = RegressionSuite([rc], MetaData.unknown())
         findings = regr_checker.check_model(FakeCat(tl), tl).findings
         fail = findings.get(Finding.FAIL, 0)
         success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
@@ -189,8 +189,8 @@ class TestRegressionCase(unittest.TestCase):
 class TestRegressionChecker(unittest.TestCase):
 
     def test_reads_default(self, yaml_file='configs/default_regression_tests.yml'):
-        rc = RegressionChecker.from_yaml(yaml_file)
-        self.assertIsInstance(rc, RegressionChecker)
+        rc = RegressionSuite.from_yaml(yaml_file)
+        self.assertIsInstance(rc, RegressionSuite)
 
 
 class MultiPlaceholderTests(unittest.TestCase):
@@ -217,10 +217,10 @@ class MultiPlaceholderTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rc = RegressionChecker.from_dict(cls.THE_DICT)
+        cls.rc = RegressionSuite.from_dict(cls.THE_DICT)
 
     def test_reads_successfully(self):
-        self.assertIsInstance(self.rc, RegressionChecker)
+        self.assertIsInstance(self.rc, RegressionSuite)
 
     def test_gets_cases(self):
         cases = list(self.rc.iter_subcases(self.TL))
