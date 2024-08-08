@@ -7,8 +7,8 @@ import datetime
 from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
-from medcat.utils.regression.targeting import TranslationLayer, OptionSet, PhraseChanger
-from medcat.utils.regression.targeting import FinalTarget
+from medcat.utils.regression.targeting import TranslationLayer, OptionSet
+from medcat.utils.regression.targeting import FinalTarget, TargetedPhraseChanger
 from medcat.utils.regression.utils import partial_substitute
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
@@ -69,14 +69,14 @@ class RegressionCase(BaseModel):
 
     def get_distinct_cases(self, translation: TranslationLayer) -> Iterator[Iterator[FinalTarget]]:
         # for each phrase and for each placeholder based option
-        for changer, placeholder, cui, in self.options.get_preprocessors_and_targets(translation):
+        for changer in self.options.get_preprocessors_and_targets(translation):
             for phrase in self.phrases:
-                yield self._get_subcases(phrase, changer, placeholder, cui, translation)
+                yield self._get_subcases(phrase, changer, translation)
 
-    def _get_subcases(self, phrase: str, changer: PhraseChanger,
-                      placeholder: str, cui: str,
+    def _get_subcases(self, phrase: str, changer: TargetedPhraseChanger,
                       translation: TranslationLayer) -> Iterator[FinalTarget]:
-        changed_phrase = changer(phrase)
+        cui, placeholder = changer.cui, changer.placeholder
+        changed_phrase = changer.changer(phrase)
         for name in translation.get_names_of(cui):
             num_of_phs = changed_phrase.count(placeholder)
             if num_of_phs == 1:

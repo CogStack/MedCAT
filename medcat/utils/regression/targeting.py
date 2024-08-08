@@ -162,6 +162,12 @@ class PhraseChanger(BaseModel):
         return cls(preprocess_placeholders=[])
 
 
+class TargetedPhraseChanger(BaseModel):
+    changer: PhraseChanger
+    placeholder: str
+    cui: str
+
+
 class FinalTarget(BaseModel):
     placeholder: str
     cui: str
@@ -292,7 +298,7 @@ class OptionSet(BaseModel):
         return num_of_opts * total_cases
 
     def get_preprocessors_and_targets(self, translation: TranslationLayer
-                                      ) -> Iterator[Tuple[PhraseChanger, str, str]]:
+                                      ) -> Iterator[TargetedPhraseChanger]:
         # TODO: based on allow_any_combination, yield ALL combinations
         #       or else yield the specified combinations
         num_of_opts = len(self.options)
@@ -301,13 +307,17 @@ class OptionSet(BaseModel):
             #       since it has nothing to iterate over regarding 'other' options
             opt = self.options[0]
             for target_cui in opt.target_cuis:
-                yield PhraseChanger.empty(), opt.placeholder, target_cui
+                yield TargetedPhraseChanger(changer=PhraseChanger.empty(),
+                                            placeholder=opt.placeholder,
+                                            cui=target_cui)
             return
         for opt_nr in range(num_of_opts):
             other_opts = list(self.options)
             cur_opt = other_opts.pop(opt_nr)
             for changer, target_cui in self._get_all_combinations(cur_opt, other_opts, translation):
-                yield changer, cur_opt.placeholder, target_cui
+                yield TargetedPhraseChanger(changer=changer,
+                                            placeholder=cur_opt.placeholder,
+                                            cui=target_cui)
 
 
 class ProblematicOptionSetException(ValueError):
