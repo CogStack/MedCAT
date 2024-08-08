@@ -424,6 +424,43 @@ class MultiDescriptor(pydantic.BaseModel):
         for descr in self.parts:
             yield from descr.iter_examples(strictness_threshold=strictness_threshold)
 
+    def _get_part_report(self, part: ResultDescriptor, allowed_findings: Set[Finding],
+                         total_findings: Dict[Finding, int],
+                         hide_empty: bool, show_failures: bool, phrases_separately: bool,
+                         strictness: Strictness) -> Tuple[str, int, int, int]:
+        if hide_empty and len(part.findings) == 0:
+            return '', 0, 0, 0
+        total_total, total_s, total_f = 0, 0, 0
+        for f, val in part.findings.items():
+            if f not in total_findings:
+                total_findings[f] = val
+            else:
+                total_findings[f] += val
+            total_total += val
+            if f in allowed_findings:
+                total_s += val
+            else:
+                total_f += val
+        cur_add = '\t' + \
+            part.get_report(phrases_separately=phrases_separately).replace(
+                '\n', '\n\t\t')
+        if show_failures: # TODO - rename to examples
+            latest_phrase = ''
+            for (placeholder, phrase,
+                    finding, cui, name) in part.iter_examples(strictness_threshold=strictness):
+                if latest_phrase == '':
+                    # add header only if there's failures to include
+                    cur_add += f"\n\t\tExamples at {strictness} strictness"
+                if latest_phrase != phrase:
+                    # TODO: Allow specifying length?
+                    short_phrase = limit_str_len(phrase, max_length=80,
+                                                    keep_front=40, keep_rear=30)
+                    cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
+                    latest_phrase = phrase
+                cur_add += (f'\n\t\t\t{finding.name} for placeholder {placeholder} '
+                            f'with CUI {repr(cui)} and name {repr(name)}')
+        return cur_add, total_total, total_s, total_f
+
     def get_report(self, phrases_separately: bool,
                    hide_empty: bool = False, show_failures: bool = True,
                    strictness: Strictness = Strictness.NORMAL) -> str:
@@ -446,38 +483,17 @@ class MultiDescriptor(pydantic.BaseModel):
         total_total = 0
         nr_of_empty = 0
         for part in self.parts:
-            for f, val in part.findings.items():
-                if f not in total_findings:
-                    total_findings[f] = val
-                else:
-                    total_findings[f] += val
-                total_total += val
-                if f in allowed_findings:
-                    total_s += val
-                else:
-                    total_f += val
-            if hide_empty and len(part.findings) == 0:
+            (cur_add, total_total_add,
+             total_s_add, total_f_add) = self._get_part_report(
+                 part, allowed_findings, total_findings, hide_empty,
+                 show_failures, phrases_separately, strictness)
+            if hide_empty and total_total_add == 0:
                 nr_of_empty += 1
-                continue
-            cur_add = '\t' + \
-                part.get_report(phrases_separately=phrases_separately).replace(
-                    '\n', '\n\t\t')
-            if show_failures: # TODO - rename to examples
-                latest_phrase = ''
-                for (placeholder, phrase,
-                     finding, cui, name) in part.iter_examples(strictness_threshold=strictness):
-                    if latest_phrase == '':
-                        # add header only if there's failures to include
-                        cur_add += f"\n\t\tExamples at {strictness} strictness"
-                    if latest_phrase != phrase:
-                        # TODO: Allow specifying length?
-                        short_phrase = limit_str_len(phrase, max_length=80,
-                                                     keep_front=40, keep_rear=30)
-                        cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
-                        latest_phrase = phrase
-                    cur_add += (f'\n\t\t\t{finding.name} for placeholder {placeholder} '
-                                f'with CUI {repr(cui)} and name {repr(name)}')
-            del_out.append(cur_add)
+            else:
+                total_total += total_total_add
+                total_s += total_s_add
+                total_f += total_f_add
+                del_out.append(cur_add)
         delegated = '\n\t'.join(del_out)
         empty_text = ''
         if hide_empty:
