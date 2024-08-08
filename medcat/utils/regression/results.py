@@ -429,6 +429,7 @@ class MultiDescriptor(pydantic.BaseModel):
                          hide_empty: bool,
                          examples_strictness: Optional[Strictness],
                          phrases_separately: bool,
+                         phrase_max_len: int,
                          ) -> Tuple[str, int, int, int]:
         if hide_empty and len(part.findings) == 0:
             return '', 0, 0, 0
@@ -455,8 +456,9 @@ class MultiDescriptor(pydantic.BaseModel):
                     cur_add += f"\n\t\tExamples at {examples_strictness} strictness"
                 if latest_phrase != phrase:
                     # TODO: Allow specifying length?
-                    short_phrase = limit_str_len(phrase, max_length=80,
-                                                    keep_front=40, keep_rear=30)
+                    short_phrase = limit_str_len(phrase, max_length=phrase_max_len,
+                                                    keep_front=phrase_max_len // 2,
+                                                    keep_rear=phrase_max_len // 2 - 10)
                     cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
                     latest_phrase = phrase
                 cur_add += (f'\n\t\t\t{finding.name} for placeholder {placeholder} '
@@ -466,7 +468,8 @@ class MultiDescriptor(pydantic.BaseModel):
     def get_report(self, phrases_separately: bool,
                    hide_empty: bool = False,
                    examples_strictness: Optional[Strictness] = Strictness.STRICTEST,
-                   strictness: Strictness = Strictness.NORMAL) -> str:
+                   strictness: Strictness = Strictness.NORMAL,
+                   phrase_max_len: int = 80) -> str:
         """Get the report associated with this descriptor
 
         Args:
@@ -492,7 +495,7 @@ class MultiDescriptor(pydantic.BaseModel):
                  part, allowed_findings, total_findings, hide_empty,
                  # NOTE: using STRICTEST strictness for examples means
                  #       that all but IDENTICAL examples will be shown
-                 examples_strictness, phrases_separately)
+                 examples_strictness, phrases_separately, phrase_max_len)
             if hide_empty and total_total_add == 0:
                 nr_of_empty += 1
             else:
