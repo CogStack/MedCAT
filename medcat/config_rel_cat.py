@@ -6,6 +6,9 @@ from medcat.config import MixingConfig, BaseModel, Optional, Extra
 class General(MixingConfig, BaseModel):
     """The General part of the RelCAT config"""
     device: str = "cpu"
+    """The device to use (CPU or GPU).
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     relation_type_filter_pairs: List = []
     """Map from category values to ID, if empty it will be autocalculated during training"""
     vocab_size: Optional[int] = None
@@ -24,10 +27,25 @@ class General(MixingConfig, BaseModel):
     """When processing relations from a MedCAT export, relations labeled as 'Other' are created from all the annotations pairs available"""
 
     tokenizer_name: str = "bert"
+    """The name of the tokenizer user.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     model_name: str = "bert-base-uncased"
+    """The name of the model used.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     log_level: int = logging.INFO
+    """The log level for RelCAT.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     max_seq_length: int = 512
+    """The maximum sequence length.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     tokenizer_special_tokens: bool = False
+    """Tokenizer.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     annotation_schema_tag_ids: List = []
     """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
     copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce"""
@@ -35,16 +53,31 @@ class General(MixingConfig, BaseModel):
     idx2labels: Dict = {}
     pin_memory: bool = True
     seed: int = 13
+    """The seed for random number generation.
+
+    NOTE: If used along MetaCAT or additional NER, only one of the seeds will take effect
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     task: str = "train"
+    """The task for RelCAT.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
 
 
 class Model(MixingConfig, BaseModel):
     """The model part of the RelCAT config"""
     input_size: int = 300
     hidden_size: int = 768
+    """The hidden size.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     hidden_layers: int = 3
-    """ hidden_size * 5, 5 being the number of tokens, default (s1,s2,e1,e2+CLS)"""
+    """ hidden_size * 5, 5 being the number of tokens, default (s1,s2,e1,e2+CLS).
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     model_size: int = 5120
+    """The size of the model.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     dropout: float = 0.2
     num_directions: int = 2
     """2 - bidirectional model, 1 - unidirectional"""

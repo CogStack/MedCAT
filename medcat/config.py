@@ -350,6 +350,9 @@ class General(MixingConfig, BaseModel):
     spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
                                        'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                        'merge_entities', 'merge_subtokens']
+    """The list of spacy components that will be disabled.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     checkpoint: CheckPoint = CheckPoint()
     usage_monitor = UsageMonitor()
     """Checkpointing config"""
@@ -412,9 +415,13 @@ class Preprocessing(MixingConfig, BaseModel):
     min_len_normalize: int = 5
     """Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case"""
     stopwords: Optional[set] = None
-    """If None the default set of stowords from spacy will be used. This must be a Set."""
+    """If None the default set of stowords from spacy will be used. This must be a Set.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     max_document_length: int = 1000000
-    """Documents longer  than this will be trimmed"""
+    """Documents longer  than this will be trimmed.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
 
     class Config:
         extra = Extra.allow
