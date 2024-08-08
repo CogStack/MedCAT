@@ -486,7 +486,9 @@ class MultiDescriptor(pydantic.BaseModel):
             (cur_add, total_total_add,
              total_s_add, total_f_add) = self._get_part_report(
                  part, allowed_findings, total_findings, hide_empty,
-                 show_failures, phrases_separately, strictness)
+                 # NOTE: using STRICTEST strictness for examples means
+                 #       that all but IDENTICAL examples will be shown
+                 show_failures, phrases_separately, Strictness.STRICTEST)
             if hide_empty and total_total_add == 0:
                 nr_of_empty += 1
             else:
