@@ -162,13 +162,6 @@ class PhraseChanger(BaseModel):
         return cls(preprocess_placeholders=[])
 
 
-class NamedTarget(BaseModel):
-    changer: PhraseChanger
-    placeholder: str
-    target_cui: str
-    name: str
-
-
 class FinalTarget(BaseModel):
     placeholder: str
     cui: str
