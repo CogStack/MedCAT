@@ -1,36 +1,97 @@
-from enum import Enum
-from typing import Type, TypeVar, cast
+
+# this placheolder will be temporarily put in the
+# phrases when dealing with one that has multiple
+# of the same placeholder in it
+_TEMP_MULTI_PLACEHOLDER = '###===PlaceHolder===###'
 
 
-ENUM = TypeVar('ENUM', bound=Enum)
+def partial_substitute(phrase: str, placeholder: str, name: str, nr: int) -> str:
+    """Substitute all but 1 of the many placeholders present in the given phrase.
 
+    First, the first `nr` placeholders are replaced.
+    Then the next (1) placeholder is replaced with a temporary one
+    After that, the rest of the placeholders are replaced.
+    And finally, the temporary placeholder is returned back to its original form.
 
-def loosely_match_enum(e_type: Type[ENUM], name: str) -> ENUM:
-    """Loosely (i.e case-insensitively) match enum names.
+    Example:
+        If we've got `phrase = "some [PH] and [PH] we [PH]"`
+        `placeholder = "[PH]"`, and `name = 'NAME'`,
+        we'd get the following based on the number `nr`:
+        0: "some [PH] and NAME we NAME"
+        1: "some NAME and [PH] we NAME"
+        2: "some NAME and NAME we [PH]"
 
     Args:
-        e_type (Type[Enum]): The type of enum to use
-        name (str): The case-insensitive name
+        phrase (str): The phrase in question.
+        placeholder (str): The placeholder to replace.
+        name (str): The name to replace the placeholder for.
+        nr (int): The number of the target to keep.
 
     Raises:
-        _key_err: KeyError if the key is unable to be loosely matched
+        IncompatiblePhraseException: If the number of placeholders in the phrase
+            is 1 or the number to be kept is too high; or the phrase has the
+            temporary placeholder.
 
     Returns:
-        ENUM: The enum constant that was found
+        str: The partially substituted phrase.
     """
-    _key_err = None
-    try:
-        return cast(ENUM, e_type[name])
-    except KeyError as key_err:
-        _key_err = key_err
-    name = name.lower()
-    try:
-        return cast(ENUM, e_type[name])
-    except KeyError:
-        pass
-    name = name.upper()
-    try:
-        return cast(ENUM, e_type[name])
-    except KeyError:
-        pass
-    raise _key_err
+    num_of_placeholder = phrase.count(placeholder)
+    if nr >= num_of_placeholder or num_of_placeholder == 1:
+        # NOTE: in cae of 1, this makes no sense
+        raise IncompatiblePhraseException(
+            f"The phrase ({repr(phrase)}) has {num_of_placeholder} "
+            f"placeholders, but the {nr}th placeholder was requested to be "
+            "swapped!")
+    # replace stuff before the specific one
+    phrase = phrase.replace(placeholder, name, nr)
+    if _TEMP_MULTI_PLACEHOLDER in phrase:
+        # if the temporary placeholder is already in text, the following would fail
+        # unexpectedly
+        raise IncompatiblePhraseException(
+            f"Regression phrase with multiple placeholders ({placeholder}) "
+            f"has the temporary placeholder: {repr(_TEMP_MULTI_PLACEHOLDER)}. "
+            f"This means that the partial substitution of all but the {nr}th "
+            "placeholder failed")
+    # replace the target with temporary placeholder
+    phrase = phrase.replace(placeholder, _TEMP_MULTI_PLACEHOLDER, 1)
+    # replace the rest of the placeholder
+    phrase = phrase.replace(placeholder, name)
+    # set back the one needed placeholder
+    phrase = phrase.replace(_TEMP_MULTI_PLACEHOLDER, placeholder)
+    return phrase
+
+
+class IncompatiblePhraseException(ValueError):
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
+
+
+def limit_str_len(input_str: str,
+                  max_length: int = 40,
+                  keep_front: int = 20,
+                  keep_rear: int = 10) -> str:
+    """Limits the length of a string.
+
+    If the lenght of the string is less than or equal to `max_length`, the same
+    string is returned.
+    If it's longer, the first `keep_front` are kept, then the number of chars
+    is included in brackets (e.g `" [123 chars] "`), and finally the last
+    `keeo_rear` characters are included.
+
+    Args:
+        input_str (str): The input (potentially) long string.
+        max_length (int): The maximum number of characters at which
+            the string will remain unchanged. Defaults to 40.
+        keep_front (int): How many starting characters to keep. Defaults to 20.
+        keep_rear (int): How many ending characters to keep. Defaults to 10.
+
+    Returns:
+        str: _description_
+    """
+    if len(input_str) <= max_length:
+        return input_str
+    part1 = input_str[:keep_front]
+    part2 = input_str[-keep_rear:]
+    hidden_chars = len(input_str) - len(part1) - len(part2)
+    return f"{part1} [{hidden_chars} chars] {part2}"
