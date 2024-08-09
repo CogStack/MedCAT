@@ -336,7 +336,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         total = sum(self.findings.values())
         ret_vals = [f"Tested '{self.name}' for a total of {total} cases:"]
         ret_vals.extend([
-            f"{f.name:24s}:{self.findings[f]:10d} ({100 * self.findings[f] / total if total > 0 else 0}%)"
+            f"{f.name:24s}:{self.findings[f]:10d} ({100 * self.findings[f] / total if total > 0 else 0:5.2f}%)"
             # NOTE iterating over Finding so the order is the same as in the enum
             for f in Finding if f in self.findings
         ])
