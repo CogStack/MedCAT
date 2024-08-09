@@ -29,6 +29,10 @@ class FakeCDB:
         copy.addl_info = addl_info
         return copy
 
+    @property
+    def cui2preferred_name(self) -> dict:
+        return {cui: list(names)[0] for cui, names in self.cui2names.items()}
+
 
 class OptionSetTests(TestCase):
     OPTIONSET_SIMPLE = {

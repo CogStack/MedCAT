@@ -59,6 +59,7 @@ class FakeCDB:
             else:
                 self.name2cuis[name] = set([cui])
         pt2ch.update(dict((cui, set()) for cui in self.cui2names))
+        self.cui2preferred_name = {c_cui: list(names)[0] for c_cui, names in self.cui2names.items()}
         self.config = Config()
 
 
