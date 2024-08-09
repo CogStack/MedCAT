@@ -10,6 +10,7 @@ import dill
 import json
 
 from medcat.cat import CAT
+from medcat.utils.decorators import deprecated
 from medcat.utils.config_utils import default_weighted_average
 
 logger = logging.getLogger(__name__)
@@ -290,6 +291,9 @@ def setup_logging(args: argparse.Namespace) -> None:
         logger.setLevel(logging.DEBUG)
 
 
+@deprecated("This is no longer needed. Since medcat 1.10 (PR #352) "
+            "this dealt with automatically upon model load.",
+            depr_version=(1, 10, 0), removal_version=(1, 14, 0))
 def fix_config(args: argparse.Namespace) -> None:
     """Perform the fix-config action based on the CLI arguments.
 
