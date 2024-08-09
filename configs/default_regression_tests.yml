@@ -77,4 +77,62 @@ test-case-1:  # The (somewhat) arbitrary name of the test case
       Four hours later he experienced sudden [FINDING3] lasting two hours.
       There were no other associated symptoms except for the [FINDING1] and [FINDING2].
       He denied [NEGFINDING].
-
+test-case-2:
+  targeting:
+    placeholders:
+      - placeholder: '[FINDING1]'
+        cuis: ['49727002',  # cough
+               '29857009',  # chest pain
+               '21522001',  # abdominal pain
+               '57676002',  # joint pain
+               '25064002',  # headache
+               '271807003',  # fever
+               '162397003',  # hematuria (blood in urine)
+               '271757001',  # fatigue
+               '386661006',  # weight loss
+               '62315008',  # dysuria (painful urination)
+              ]
+      - placeholder: '[FINDING2]'
+        cuis: ['267036007',  # shortness of breath
+               '68962001',  # palpatations
+               '422587007',  # nausea
+               '182888003',  # swelling
+               '404640003',  # dizziness
+               '422400008',  # sore throat
+               '267036007',  # shortness of breath
+               '267064002',  # night sweats
+               '162607003',  # back pain
+               '267102003',  # urinary frequency
+              ]
+      - placeholder: '[DISORDER]'
+        cuis: ['195967001',  # asthma
+               '194828000',  # angina pectoris
+               '25374005',  # gastroenteritis
+               '69896004',  # rheumatoid arthritis
+               '37796009',  # migraine
+               '186747009',  # influenza
+               '106063007',  # urinary tract infection
+               '444814009',  # chronic fatigue syndrome
+               '95281007',  # tuberculosis
+               '431855005',  # cystitis
+        ]
+    any-combination: false
+  phrases:
+  - >
+      The patient presents with [FINDING1] and [FINDING2]. These findings are suggestive of [DISORDER].
+      Further diagnostic evaluation and investigations are required to confirm the diagnosis.
+  - >
+      The patient reports [FINDING1] and has also been experiencing [FINDING2]. These symptoms are consistent with a clinical presentation of [DISORDER].
+      Further assessment and diagnostic tests are required to establish the underlying cause.
+  - >
+      Upon evaluation, the patient exhibits [FINDING1] along with [FINDING2]. This combination of findings raises suspicion for [DISORDER].
+      Comprehensive diagnostic workup is advised to confirm the diagnosis and plan appropriate management.
+  - >
+      During the consultation, the patient described [FINDING1] and noted a recent history of [FINDING2]. These clinical features are suggestive of [DISORDER].
+      Further investigation is necessary to verify the diagnosis and rule out other potential causes.
+  - >
+      The patient's symptoms include [FINDING1] and [FINDING2], which are commonly associated with [DISORDER].
+      It is recommended that additional diagnostic procedures be performed to confirm this working diagnosis.
+  - >
+      The clinical presentation of [FINDING1] and [FINDING2] is indicative of [DISORDER].
+      To ensure accurate diagnosis, further clinical evaluation and diagnostic tests are required.
