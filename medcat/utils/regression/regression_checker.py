@@ -12,6 +12,9 @@ from medcat.utils.regression.results import Strictness
 logger = logging.getLogger(__name__)
 
 
+DEFAULT_TEST_SUITE_PATH = Path('configs', 'default_regression_tests.yml')
+
+
 def main(model_pack_dir: Path, test_suite_file: Path,
          phrases: bool = False, hide_empty: bool = False,
          examples_strictness_str: str = 'STRICTEST',
@@ -69,11 +72,8 @@ if __name__ == '__main__':
     parser.add_argument('modelpack', help='The model pack against which to check',
                         type=Path)
     parser.add_argument('test_suite', help='YAML formatted file containing the regression test suite'
-                        'The default value (and exampe) is at `configs/default_regression_tests.yml`',
-                        default=Path(
-                            'configs', 'default_regression_tests.yml'),
-                        nargs='?',
-                        type=Path)
+                        f'The default value (and exampe) is at `{DEFAULT_TEST_SUITE_PATH}`',
+                        default=DEFAULT_TEST_SUITE_PATH, nargs='?', type=Path)
     parser.add_argument('--silent', '-s', help='Make the operation silent (i.e ignore console output)',
                         action='store_true')
     parser.add_argument('--verbose', '-debug', help='Enable debug/verbose mode',
