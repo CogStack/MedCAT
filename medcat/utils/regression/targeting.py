@@ -276,6 +276,11 @@ class OptionSet(BaseModel):
         used_ph = set()
         for part in section_placeholders:
             placeholder = part['placeholder']
+            if not isinstance(placeholder, str):
+                raise ProblematicOptionSetException(f"Unknown placeholder of type {type(placeholder)}. "
+                                                    "Expected a string. Perhaps you need to surrong the "
+                                                    "placeholder with single quotes (') in the yaml? "
+                                                    f"Received: {placeholder}")
             if placeholder in used_ph:
                 raise ProblematicOptionSetException("Misconfigured - multiple identical placeholders")
             used_ph.add(placeholder)
