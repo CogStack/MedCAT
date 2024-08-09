@@ -31,10 +31,12 @@ class TranslationLayer:
 
     def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, List[str]],
                  cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]],
+                 cui2preferred_names: Dict[str, str],
                  separator: str, whitespace: str = ' ') -> None:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
         self.cui2type_ids = cui2type_ids
+        self.cui2preferred_names = cui2preferred_names
         self.separator = separator
         self.whitespace = whitespace
         self.type_id2cuis: Dict[str, Set[str]] = {}
@@ -64,6 +66,24 @@ class TranslationLayer:
         """
         return [name.replace(self.separator, self.whitespace)
                    for name in self.cui2names.get(cui, [])]
+
+    def get_preferred_name(self, cui: str) -> str:
+        """Get the preferred name of a concept.
+
+        If no preferred name is found, the random 'first' name is selected.
+
+        Args:
+            cui (str): The concept ID.
+
+        Returns:
+            str: The preferrred name.
+        """
+        pref_name = self.cui2preferred_names.get(cui, None)
+        if pref_name is None:
+            logger.warning("CUI %s does not have a preferred name. "
+                           "Using a random 'first' name of all the names", cui)
+            return self.get_first_name(cui)
+        return pref_name
 
     def get_first_name(self, cui: str) -> str:
         """Get the preprocessed (potentially) arbitrarily first name of the given concept.
@@ -162,6 +182,7 @@ class TranslationLayer:
         else:
             parent2child = cdb.addl_info['pt2ch']
         return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child,
+                                cui2preferred_names=cdb.cui2preferred_name,
                                 separator=cdb.config.general.separator)
 
 
@@ -331,7 +352,7 @@ class OptionSet(BaseModel):
             # for each option with N target CUIs use 0, ..., N-1
             for choosers in product(*[range(n) for n in per_ph_nr_of_opts]):
                 # NOTE: using the 0th name for target CUI
-                placeholders = [(opt.placeholder, translation.get_first_name(opt.target_cuis[cui_nr]))
+                placeholders = [(opt.placeholder, translation.get_preferred_name(opt.target_cuis[cui_nr]))
                                 for opt, cui_nr in zip(other_opts, choosers)]
                 for target_cui in cur_opts.target_cuis:
                     yield PhraseChanger(preprocess_placeholders=placeholders), target_cui
@@ -340,7 +361,7 @@ class OptionSet(BaseModel):
             for cui_nr in range(nr_of_opts):
                 placeholders = [
                     # NOTE: using the 0th name for the target CUI
-                    (opt.placeholder, translation.get_first_name(opt.target_cuis[cui_nr]))
+                    (opt.placeholder, translation.get_preferred_name(opt.target_cuis[cui_nr]))
                     for opt in other_opts
                 ]
                 yield PhraseChanger(preprocess_placeholders=placeholders), cur_opts.target_cuis[cui_nr]
