@@ -370,6 +370,10 @@ def _fix_config_for_pre_1_12(folder: str):
     shutil.make_archive(folder, 'zip', root_dir=folder)
 
 
+@deprecated("This is only really needed for 1.12+ models "
+            "to be converted to lower versions of medcat. "
+            "It should not be needed in the long run.",
+            depr_version=(1, 13, 0), removal_version=(1, 14, 0))
 def allow_loading_with_pre_1_12(args: argparse.Namespace):
     """This method converts a model created after medcat 1.12
     such that it can be loaded in previous versions.
