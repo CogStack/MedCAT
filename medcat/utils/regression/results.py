@@ -529,7 +529,7 @@ class MultiDescriptor(pydantic.BaseModel):
                 total_s += total_s_add
                 total_f += total_f_add
                 del_out.append(cur_add)
-        delegated = '\n\t'.join(del_out)
+        delegated = '\n'.join(del_out)
         empty_text = ''
         if hide_empty:
             empty_text = f' A total of {nr_of_empty} cases did not match any CUIs and/or names.'
