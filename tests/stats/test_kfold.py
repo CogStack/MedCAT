@@ -5,7 +5,6 @@ from copy import deepcopy
 
 from medcat.stats import kfold
 from medcat.cat import CAT
-from pydantic.error_wrappers import ValidationError as PydanticValidationError
 
 import unittest
 
@@ -22,11 +21,8 @@ class MCTExportTests(unittest.TestCase):
             cls.mct_export = json.load(f)
 
     def assertIsMCTExport(self, obj):
-        try:
-            model = MCTExportPydanticModel(**obj)
-        except PydanticValidationError as e:
-            raise AssertionError("Not n MCT export") from e
-        self.assertIsInstance(model, MCTExportPydanticModel)
+        model_instance = MCTExportPydanticModel.validate_python(obj)
+        self.assertIsInstance(model_instance, dict)  # NOTE: otherwise would have raised an exception
 
 
 class KFoldCreatorTests(MCTExportTests):

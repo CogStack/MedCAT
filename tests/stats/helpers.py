@@ -1,9 +1,9 @@
-from pydantic import create_model_from_typeddict
+from pydantic import TypeAdapter
 
 from medcat.stats.mctexport import MedCATTrainerExport
 
 
-MCTExportPydanticModel = create_model_from_typeddict(MedCATTrainerExport)
+MCTExportPydanticModel = TypeAdapter(MedCATTrainerExport)
 
 
 def nullify_doc_names_proj_ids(export: MedCATTrainerExport) -> MedCATTrainerExport:

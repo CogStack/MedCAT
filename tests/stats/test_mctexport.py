@@ -22,8 +22,8 @@ class MCTExportIterationTests(unittest.TestCase):
     def test_conforms_to_template(self):
         # NOTE: This uses pydantic to make sure that the MedCATTrainerExport
         #       type matches the actual export format
-        model_instance = MCTExportPydanticModel(**self.mct_export)
-        self.assertIsInstance(model_instance, MCTExportPydanticModel)
+        model_instance = MCTExportPydanticModel.validate_python(self.mct_export)
+        self.assertIsInstance(model_instance, dict)  # NOTE: otherwise would have raised an exception
 
     def test_iterates_over_all_docs(self):
         self.assertEqual(mctexport.count_all_docs(self.mct_export), self.EXPECTED_DOCS)
