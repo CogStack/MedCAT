@@ -1,6 +1,5 @@
 from datetime import datetime
 from pydantic import BaseModel, ValidationError
-from pydantic.fields import FieldInfo
 from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type, Literal
 from multiprocessing import cpu_count
 import logging
@@ -13,6 +12,7 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import intersect_nonempty_set
 from medcat.utils.config_utils import attempt_fix_weighted_average_function
 from medcat.utils.config_utils import weighted_average, is_old_type_config_dict
+from medcat.utils.pydantic_version import get_model_dump, get_model_fields
 from medcat.utils.saving.coding import CustomDelegatingEncoder, default_hook
 
 
@@ -125,7 +125,7 @@ class MixingConfig(FakeDict):
                 attr = None # new attribute
             value = config_dict[key]
             if isinstance(value, BaseModel):
-                value = value.model_dump()
+                value = get_model_dump(value)
             if isinstance(attr, MixingConfig):
                 attr.merge_config(value)
             else:
@@ -177,7 +177,7 @@ class MixingConfig(FakeDict):
     def _calc_hash(self, hasher: Optional[Hasher] = None) -> Hasher:
         if hasher is None:
             hasher = Hasher()
-        for _, v in cast(BaseModel, self).model_dump().items():
+        for _, v in get_model_dump(cast(BaseModel, self)).items():
             if isinstance(v, MixingConfig):
                 v._calc_hash(hasher)
             else:
@@ -189,7 +189,7 @@ class MixingConfig(FakeDict):
         return hasher.hexdigest()
 
     def __str__(self) -> str:
-        return str(cast(BaseModel, self).model_dump())
+        return str(get_model_dump(cast(BaseModel, self)))
 
     @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
@@ -238,15 +238,15 @@ class MixingConfig(FakeDict):
         Returns:
             Dict[str, Any]: The dictionary associated with this config
         """
-        return cast(BaseModel, self).model_dump()
+        return get_model_dump(cast(BaseModel, self))
 
-    def fields(self) -> Dict[str, FieldInfo]:
+    def fields(self) -> dict:
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, FieldInfo]: The dictionary of the field names and fields
+            dict: The dictionary of the field names and fields
         """
-        return cast(BaseModel, self).model_fields
+        return get_model_fields(cast(BaseModel, self))
 
 
 class VersionInfo(MixingConfig, BaseModel):

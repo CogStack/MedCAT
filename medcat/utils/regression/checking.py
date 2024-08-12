@@ -10,6 +10,7 @@ from medcat.cat import CAT
 from medcat.utils.regression.targeting import CUIWithChildFilter, FilterOptions, FilterType, TypedFilter, TranslationLayer, FilterStrategy
 
 from medcat.utils.regression.results import FailDescriptor, MultiDescriptor, ResultDescriptor
+from medcat.utils.pydantic_version import get_model_dump
 
 logger = logging.getLogger(__name__)
 
@@ -413,7 +414,7 @@ class RegressionChecker:
         d = {}
         for case in self.cases:
             d[case.name] = case.to_dict()
-        d['meta'] = self.metadata.model_dump()
+        d['meta'] = get_model_dump(self.metadata)
         fix_np_float64(d['meta'])
 
         return d
