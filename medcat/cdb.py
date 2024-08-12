@@ -515,7 +515,17 @@ class CDB(object):
             }
             await f.write(dill.dumps(to_save))
 
-    def load_config(self, config_path: str) -> None:
+    def load_config(self, config_path: str, config_dict: Optional[Dict] = None) -> None:
+        """Load the config from disk.
+
+        Args:
+            config_path (str): The path to the config file.
+            config_dict (Optional[Dict]): A config to merge with.
+
+        Raises:
+            ValueError: If a config was not found in CDB nor as a separate json.
+                Or if a config was found both in CDB as well as a separate json.
+        """
         if not os.path.exists(config_path):
             if not self._config_from_file:
                 # if there's no config defined anywhere
@@ -544,6 +554,8 @@ class CDB(object):
             # new config, potentially new weighted_average_function to read
             self._init_waf_from_config()
         # mark config read from file
+        if config_dict:
+            self.config.merge_config(config_dict)
         self._config_from_file = True
 
     @classmethod
