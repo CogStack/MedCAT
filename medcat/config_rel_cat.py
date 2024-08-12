@@ -1,6 +1,6 @@
 import logging
 from typing import Dict, Any, List
-from medcat.config import MixingConfig, BaseModel, Optional, Extra
+from medcat.config import MixingConfig, BaseModel, Optional
 
 
 class General(MixingConfig, BaseModel):
@@ -56,7 +56,7 @@ class Model(MixingConfig, BaseModel):
     """If set to True center positions will be ignored when calculating represenation"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -83,7 +83,7 @@ class Train(MixingConfig, BaseModel):
     """Should the model be saved during training for best results"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -94,5 +94,5 @@ class ConfigRelCAT(MixingConfig, BaseModel):
     train: Train = Train()
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
