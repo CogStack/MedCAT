@@ -611,7 +611,7 @@ class Config(MixingConfig, BaseModel):
     # Override
     def get_hash(self):
         hasher = Hasher()
-        for k, v in self.model_dump().items():
+        for k, v in get_model_dump(self).items():
             if k in ['hash', ]:
                 # ignore hash
                 continue
