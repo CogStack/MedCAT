@@ -7,16 +7,19 @@ def _format_version(ver: Tuple[int, int, int]) -> str:
     return ".".join(str(v) for v in ver)
 
 
-def deprecated(message: str, depr_version: Tuple[int, int, int], removal_version: Tuple[int, int, int]) -> Callable:
+def deprecated(message: str, depr_version: Tuple[int, int, int],
+               removal_version: Tuple[int, int, int],
+               allow_usage: bool = False) -> Callable:
     """Deprecate a method.
 
     Args:
         message (str): The deprecation message.
         depr_version (Tuple[int, int, int]): The first version of MedCAT where this was deprecated.
         removal_version (Tuple[int, int, int]): The first version of MedCAT where this will be removed.
+        allow_usage (bool): Whether to allow usage during test time.
 
     Returns:
-        Callable: _description_
+        Callable: The wrapped method.
     """
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
