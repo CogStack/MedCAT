@@ -12,6 +12,8 @@ def deprecated(message: str, depr_version: Tuple[int, int, int],
                allow_usage: bool = False) -> Callable:
     """Deprecate a method.
 
+    NOTE: The `allow_usage` argument is only read and used during test time.
+
     Args:
         message (str): The deprecation message.
         depr_version (Tuple[int, int, int]): The first version of MedCAT where this was deprecated.
