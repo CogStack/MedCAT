@@ -8,7 +8,7 @@ from medcat.cat import CAT
 
 import unittest
 
-from .helpers import MCTExportPydanticModel, nullify_doc_names_proj_ids
+from .helpers import assert_is_mct_export, nullify_doc_names_proj_ids
 
 
 class MCTExportTests(unittest.TestCase):
@@ -21,8 +21,7 @@ class MCTExportTests(unittest.TestCase):
             cls.mct_export = json.load(f)
 
     def assertIsMCTExport(self, obj):
-        model_instance = MCTExportPydanticModel.validate_python(obj)
-        self.assertIsInstance(model_instance, dict)  # NOTE: otherwise would have raised an exception
+        assert_is_mct_export(self, obj)
 
 
 class KFoldCreatorTests(MCTExportTests):
