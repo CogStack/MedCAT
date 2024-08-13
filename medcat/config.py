@@ -667,5 +667,6 @@ def _wrapper(func, check_type: Type[FakeDict], advice: str, exp_type: Type[Excep
 # we get a nicer exceptio
 _waf_advice = "You can use `cat.cdb.weighted_average_function` to access it directly"
 Linking.__getattribute__ = _wrapper(Linking.__getattribute__, Linking, _waf_advice, AttributeError)  # type: ignore
-Linking.__getattr__ = _wrapper(Linking.__getattr__, Linking, _waf_advice, AttributeError)  # type: ignore
+if hasattr(Linking, '__getattr__'):
+    Linking.__getattr__ = _wrapper(Linking.__getattr__, Linking, _waf_advice, AttributeError)  # type: ignore
 Linking.__getitem__ = _wrapper(Linking.__getitem__, Linking, _waf_advice, KeyError)  # type: ignore
