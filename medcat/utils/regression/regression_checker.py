@@ -21,7 +21,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
          jsonpath: Optional[Path] = None, overwrite: bool = False,
          jsonindent: Optional[int] = None,
          strictness_str: str = 'NORMAL',
-         max_phrase_length: int = 80) -> None:
+         max_phrase_length: int = 80,
+         use_mct_export: bool = False) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -36,6 +37,7 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         jsonindent (int): The indentation for json objects. Defaults to 0
         strictness_str (str): The strictness name. Defaults to NORMAL.
         max_phrase_length (int): The maximum phrase length in examples. Defualts to 80.
+        use_mct_export (bool): Whether to use a MedCATtrainer export as input. Defaults to False.
 
     Raises:
         ValueError: If unable to overwrite file or folder does not exist.
@@ -48,7 +50,10 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         raise ValueError(
             f'Need to specify a file in an existing directory, folder not found: {str(jsonpath)}')
     logger.info('Loading RegressionChecker from yaml: %s', test_suite_file)
-    rc = RegressionSuite.from_yaml(str(test_suite_file))
+    if not use_mct_export:
+        rc = RegressionSuite.from_yaml(str(test_suite_file))
+    else:
+        rc = RegressionSuite.from_mct_export(str(test_suite_file))
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
@@ -97,6 +102,9 @@ if __name__ == '__main__':
                         default=Strictness.NORMAL.name)
     parser.add_argument('--max-phrase-length', help='The maximum phrase length in examples.',
                         type=int, default=80)
+    parser.add_argument('--from-mct-export', help='Whether to load the regression suite from '
+                        'a MedCATtrainer export (.json) instead of a YAML format (default).',
+                        action='store_true')
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -108,4 +116,5 @@ if __name__ == '__main__':
     main(args.modelpack, args.test_suite,
          phrases=args.phrases, hide_empty=args.noempty, examples_strictness_str=args.example_strictness,
          jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
-         strictness_str=args.strictness, max_phrase_length=args.max_phrase_length)
+         strictness_str=args.strictness, max_phrase_length=args.max_phrase_length,
+         use_mct_export=args.from_mct_export)
