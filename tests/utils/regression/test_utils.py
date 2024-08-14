@@ -1,6 +1,7 @@
 from functools import partial
 import os
 from json import load as load_json
+from enum import Enum, auto
 
 from unittest import TestCase
 
@@ -123,3 +124,42 @@ class MCTExportConverterTests(TestCase):
     def test_converted_is_nonempty(self):
         self.assertGreater(len(self.rc.cases), 0)
         self.assertGreater(self.rc.estimate_total_distinct_cases(), 0)
+
+
+class MyE1(Enum):
+    """Has class doc-string"""
+    A1 = auto()
+    """A1 doc string"""
+    A2 = auto()
+    """A2 doc string"""
+
+
+class MyE2(Enum): # no class-level doc string
+    A1 = auto()
+    """A1 doc string"""
+    A2 = auto()
+    """A2 doc string"""
+
+
+class EnumDocStringCapturingClass(TestCase):
+
+    @classmethod
+    def get_doc_string(cls, cnst: Enum) -> str:
+        # NOTE: this assumes the doc strings are built in this format
+        return cnst.name + " doc string"
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        utils.add_doc_strings_to_enum(MyE1)
+        utils.add_doc_strings_to_enum(MyE2)
+
+    def assert_has_doc_strings(self, cls):
+        for ec in cls:
+            with self.subTest(str(ec)):
+                self.assertEqual(ec.__doc__, self.get_doc_string(ec))
+
+    def test_class_w_class_docstring_gets_doc_strings(self):
+        self.assert_has_doc_strings(MyE1)
+
+    def test_class_wo_class_docstring_gets_doc_strings(self):
+        self.assert_has_doc_strings(MyE2)
