@@ -1,4 +1,8 @@
-from typing import Iterator, Tuple, List, Dict, Any
+from typing import Iterator, Tuple, List, Dict, Any, Type
+
+import ast
+import inspect
+from enum import Enum
 
 from medcat.stats.mctexport import MedCATTrainerExport, MedCATTrainerExportDocument
 
@@ -170,3 +174,52 @@ class MedCATTrainerExportConverter:
         #       starting from the end of the phrase
         for ann in doc['annotations'][::-1]:
             yield ann['start'], ann['end'], ann['cui'], ann['value']
+
+
+def get_class_level_docstrings(cls: Type) -> List[str]:
+    """This is a helper method to get all the class level doc strings.
+
+    This is designed to be used alongside and by the `add_doc_strings_to_enum` method.
+
+    Args:
+        cls (Type): The class in question.
+
+    Returns:
+        List[str]: All class-level docstrings (including the class docstring if it exists).
+    """
+    source_code = inspect.getsource(cls)
+    tree = ast.parse(source_code)
+    docstrings: List[str] = []
+    # walk the tree
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef):
+            for elem in node.body:
+                if isinstance(elem, ast.Expr) and isinstance(elem.value, ast.Constant):
+                    # If it's an expression node containing a constant, extract the string
+                    docstrings.append(elem.value.s)
+    return docstrings
+
+
+def add_doc_strings_to_enum(cls: Type[Enum]) -> None:
+    """Add doc strings to Enum as they are described in code right below each constant.
+
+    The way python works means that the doc strins defined after an Enum constant do not
+    get stored with the constant. When accessing the doc string of an Enum constant, the
+    doc string of the class is returned instead.
+
+    So what this method does is gets the doc strings by traversing the abstract syntax tree.
+
+    While there would be easier ways to accomplish this, they would require the doc strings
+    for the Enum constant to be further from the constants themselves.
+
+    If the class itself has a doc string, it is omitted. Otherwise the Enum constants are
+    given the doc strings in the order in which they appear.
+
+    Args:
+        cls (Type[Enum]): The Enum class to do this for.
+    """
+    docstrings = get_class_level_docstrings(cls)
+    if cls.__doc__ == docstrings[0]:
+        docstrings = docstrings[1:]
+    for ev, ds in zip(cls, docstrings):
+        ev.__doc__ = ds
