@@ -193,13 +193,22 @@ class TestRegressionChecker(unittest.TestCase):
     MCT_EXPORT_PATH = os.path.join(os.path.dirname(__file__), '..', '..',
                                    'resources', 'medcat_trainer_export.json')
 
-    def test_reads_default(self):
-        rc = RegressionSuite.from_yaml(self.YAML_PATH)
-        self.assertIsInstance(rc, RegressionSuite)
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.rc = RegressionSuite.from_yaml(cls.YAML_PATH)
 
-    def test_reads_mct_export(self):
-        rc = RegressionSuite.from_mct_export(self.MCT_EXPORT_PATH)
-        self.assertIsInstance(rc, RegressionSuite)
+    def test_reads_correctly(self):
+        self.assertIsInstance(self.rc, RegressionSuite)
+
+    def test_has_cases(self):
+        self.assertGreater(len(self.rc.cases), 0)
+
+
+class TestRegressionCheckerFromMCTExport(TestRegressionChecker):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.rc = RegressionSuite.from_mct_export(cls.MCT_EXPORT_PATH)
 
 
 class MultiPlaceholderTests(unittest.TestCase):
