@@ -47,6 +47,10 @@ test-case-1:  # The (somewhat) arbitrary name of the test case
                '103298005',  # severe vertigo
                '103298005',  # severe vertigo
               ]
+        prefname-only: false  # this is an optional keyword for wach placeholder
+                              # if set to true, only the preferred name will be used for
+                              # this concept. Otherwise, all names will be used as
+                              # different sub-cases
       - placeholder: '[FINDING2]'
         cuis: ['409668002',  # photophobia
                '422587007',  # nausea
