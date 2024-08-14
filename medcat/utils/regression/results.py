@@ -65,6 +65,8 @@ class Finding(Enum):
     """The recongised CUI is a child of the expected CUI but the span is an exact match."""
     FOUND_CHILD_PARTIAL = auto()
     """The recognised CUI is a child yet the match is only partial (smaller/bigger/partial)."""
+    FOUND_OTHER = auto()
+    """Found another CUI in the same span."""
     FAIL = auto()
     """The concept was not recognised in any meaningful way."""
 
@@ -85,7 +87,7 @@ class Finding(Enum):
                   strict_only: bool = False,
                   check_children: bool = True, check_parent: bool = True,
                   check_grandparent: bool = True
-                  ) -> 'Finding':
+                  ) -> Tuple['Finding', Optional[str]]:
         """Determine the finding type based on the input
 
         Args:
@@ -100,11 +102,11 @@ class Finding(Enum):
             check_grandparent (bool): Whether to check for grandparent(s). Defaults to True.
 
         Returns:
-            Finding: The type of finding determined.
+            Tuple['Finding', Optional[str]]: The type of finding determined, and the alternative.
         """
         return FindingDeterminer(exp_cui, exp_start, exp_end,
                                  tl, found_entities, strict_only,
-                                 check_parent, check_grandparent, check_children).determine()
+                                 check_children, check_parent, check_grandparent).determine()
 
 
 class FindingDeterminer:
@@ -206,39 +208,47 @@ class FindingDeterminer:
             return Finding.FAIL
         return None
 
-    def _check_parents(self) -> Optional['Finding']:
+    def _check_parents(self) -> Optional[Tuple[Finding, Optional[str]]]:
         parents = self.tl.get_direct_parents(self.exp_cui)
         for parent in parents:
-            finding = Finding.determine(parent, self.exp_start, self.exp_end,
-                                        self.tl,
-                                        self.found_entities,
-                                        check_children=False,
-                                        check_parent=self.check_grandparent,
-                                        check_grandparent=False)
+            finding, wcui = Finding.determine(parent, self.exp_start, self.exp_end,
+                                              self.tl,
+                                              self.found_entities,
+                                              check_children=False,
+                                              check_parent=self.check_grandparent,
+                                              check_grandparent=False)
             if finding is Finding.IDENTICAL:
-                return Finding.FOUND_DIR_PARENT
+                return Finding.FOUND_DIR_PARENT, parent
             if finding is Finding.FOUND_DIR_PARENT:
-                return Finding.FOUND_DIR_GRANDPARENT
+                return Finding.FOUND_DIR_GRANDPARENT, wcui
         return None
 
-    def _check_children(self) -> Optional['Finding']:
+    def _check_children(self) -> Optional[Tuple[Finding, Optional[str]]]:
         children = self.tl.get_direct_children(self.exp_cui)
         for child in children:
-            finding = Finding.determine(child, self.exp_start, self.exp_end,
-                                        self.tl,
-                                        self.found_entities,
-                                        check_children=True,
-                                        check_parent=False,
-                                        check_grandparent=False)
+            finding, wcui = Finding.determine(child, self.exp_start, self.exp_end,
+                                              self.tl,
+                                              self.found_entities,
+                                              check_children=True,
+                                              check_parent=False,
+                                              check_grandparent=False)
             if finding in (Finding.IDENTICAL, Finding.FOUND_ANY_CHILD):
-                return Finding.FOUND_ANY_CHILD
+                alt_cui = child if finding == Finding.IDENTICAL else wcui
+                return Finding.FOUND_ANY_CHILD, alt_cui
             elif finding.has_correct_cui():
                 # i.e a partial match with same CUI
-                return Finding.FOUND_CHILD_PARTIAL
+                return Finding.FOUND_CHILD_PARTIAL, child
             self._checked_children.add(child)
         return None
 
-    def determine(self) -> 'Finding':
+    def _find_diff_cui(self) -> Optional[Tuple[Finding, str]]:
+        for entity in self.found_entities.values():
+            start, end, cui = entity['start'], entity['end'], entity['cui']
+            if start == self.exp_start and end == self.exp_end:
+                return Finding.FOUND_OTHER, cui
+        return None
+
+    def determine(self) -> Tuple[Finding, Optional[str]]:
         """Determine the finding based on the given information.
 
         First, the strict check is done (either identical or not).
@@ -246,21 +256,22 @@ class FindingDeterminer:
         After that, children are checked (if required).
 
         Returns:
-            Finding: The appropriate finding.
+            Tuple[Finding, Optional[str]]: The appropriate finding, and the alternative (if applicable).
         """
         finding = self._get_strict()
         if finding is not None:
-            return finding
+            return finding, None
         if self.check_parent:
-            finding = self._check_parents()
-            if finding is not None:
-                return finding
+            fpar = self._check_parents()
+            if fpar is not None:
+                return fpar
         if self.check_children:
             self._checked_children.add(self.exp_cui)
-            finding = self._check_children()
-            if finding is not None:
-                return finding
-        return Finding.FAIL
+            fch = self._check_children()
+            if fch is not None:
+                return fch
+        fdcui = self._find_diff_cui()
+        return fdcui or (Finding.FAIL, None)
 
 
 class Strictness(Enum):
@@ -312,20 +323,21 @@ class SingleResultDescriptor(pydantic.BaseModel):
     """The name of the part that was checked"""
     findings: Dict[Finding, int] = {}
     """The description of failures"""
-    examples: List[Tuple[FinalTarget, Finding]] = []
+    examples: List[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]] = []
     """The examples of non-perfect alignment."""
 
-    def report_success(self, target: FinalTarget, finding: Finding) -> None:
+    def report_success(self, target: FinalTarget, found: Tuple[Finding, Optional[str]]) -> None:
         """Report a test case and its successfulness.
 
         Args:
             target (FinalTarget): The target configuration
-            finding (Finding): Whether or not the check was successful
+            found (Tuple[Finding, Optional[str]]): Whether or not the check was successful
         """
+        finding, _ = found
         if finding not in self.findings:
             self.findings[finding] = 0
         self.findings[finding] += 1
-        self.examples.append((target, finding))
+        self.examples.append((target, found))
 
     def get_report(self) -> str:
         """Get the report associated with this descriptor
@@ -351,12 +363,12 @@ class ResultDescriptor(SingleResultDescriptor):
     """
     per_phrase_results: Dict[str, SingleResultDescriptor] = {}
 
-    def report(self, target: FinalTarget, finding: Finding) -> None:
+    def report(self, target: FinalTarget, finding: Tuple[Finding, Optional[str]]) -> None:
         """Report a test case and its successfulness
 
         Args:
             target (FinalTarget): The final targe configuration
-            finding (Finding): To what extent the concept was recognised
+            finding (Tuple[Finding, Optional[str]]): To what extent the concept was recognised
         """
         phrase = target.final_phrase
         super().report_success(target, finding)
@@ -366,7 +378,7 @@ class ResultDescriptor(SingleResultDescriptor):
         self.per_phrase_results[phrase].report_success(target, finding)
 
     def iter_examples(self, strictness_threshold: Strictness
-                      ) -> Iterable[Tuple[FinalTarget, Finding]]:
+                      ) -> Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]:
         """Iterate suitable examples.
 
         The strictness threshold at which to include examples.
@@ -384,11 +396,11 @@ class ResultDescriptor(SingleResultDescriptor):
             strictness_threshold (Strictness): The strictness threshold.
 
         Yields:
-            Iterable[Tuple[FinalTarget, Finding]]: The placholder, phrase, finding, CUI, and name.
+            Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]: The placholder, phrase, finding, CUI, and name.
         """
         for srd in self.per_phrase_results.values():
             for target, finding in srd.examples:
-                if finding not in STRICTNESS_MATRIX[strictness_threshold]:
+                if finding[0] not in STRICTNESS_MATRIX[strictness_threshold]:
                     yield target, finding
 
     def get_report(self, phrases_separately: bool = False) -> str:
@@ -436,7 +448,7 @@ class MultiDescriptor(pydantic.BaseModel):
         return totals
 
     def iter_examples(self, strictness_threshold: Strictness
-                      ) -> Iterable[Tuple[FinalTarget, Finding]]:
+                      ) -> Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]:
         """Iterate over all relevant examples.
 
         Only examples that are not in the strictness matric for the specified
@@ -446,7 +458,7 @@ class MultiDescriptor(pydantic.BaseModel):
             strictness_threshold (Strictness): The threshold of avoidance.
 
         Yields:
-            Iterable[Tuple[FinalTarget, Finding]]: The examples
+            Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]: The examples
         """
         for descr in self.parts:
             yield from descr.iter_examples(strictness_threshold=strictness_threshold)
@@ -476,7 +488,8 @@ class MultiDescriptor(pydantic.BaseModel):
                 '\n', '\n\t\t')
         if examples_strictness is not None:
             latest_phrase = ''
-            for target, finding in part.iter_examples(strictness_threshold=examples_strictness):
+            for target, found in part.iter_examples(strictness_threshold=examples_strictness):
+                finding, ocui = found
                 if latest_phrase == '':
                     # add header only if there's failures to include
                     cur_add += f"\n\t\tExamples at {examples_strictness} strictness"
@@ -486,7 +499,9 @@ class MultiDescriptor(pydantic.BaseModel):
                                                  keep_rear=phrase_max_len // 2 - 10)
                     cur_add += f"\n\t\tWith phrase: {repr(short_phrase)}"
                     latest_phrase = target.final_phrase
-                cur_add += (f'\n\t\t\t{finding.name} for placeholder {target.placeholder} '
+                found_cui_descr = f' [{ocui}]' if ocui else ''
+                cur_add += (f'\n\t\t\t{finding.name}{found_cui_descr} for '
+                            f'placeholder {target.placeholder} '
                             f'with CUI {repr(target.cui)} and name {repr(target.name)}')
         return cur_add, total_total, total_s, total_f
 

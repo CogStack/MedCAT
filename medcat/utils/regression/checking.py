@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple, Optional
 import yaml
 import logging
 import tqdm
@@ -24,7 +24,7 @@ class RegressionCase(BaseModel):
     report: ResultDescriptor
 
     def check_specific_for_phrase(self, cat: CAT, target: FinalTarget,
-                                  translation: TranslationLayer) -> Finding:
+                                  translation: TranslationLayer) -> Tuple[Finding, Optional[str]]:
         """Checks whether the specific target along with the specified phrase
         is able to be identified using the specified model.
 
@@ -37,7 +37,7 @@ class RegressionCase(BaseModel):
             MalformedRegressionCaseException: If there are too many placeholders in phrase.
 
         Returns:
-            Finding: The nature to which the target was (or wasn't) identified
+            Tuple[Finding, Optional[str]]: The nature to which the target was (or wasn't) identified
         """
         phrase, cui, name, placeholder = target.final_phrase, target.cui, target.name, target.placeholder
         nr_of_placeholders = phrase.count(placeholder)
