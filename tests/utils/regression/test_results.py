@@ -168,6 +168,9 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
     }
     CHILD_MAPPED_EXACT_SPAN = {**_get_example_kwargs(cui=THE_PARENT),
                                "found_entities": {0: _get_example_ent(cui=THE_CHILD)}}
+    GRANDCHILD_MAPPED_EXACT_SPAN = {
+        **_get_example_kwargs(cui=THE_GRANPARENT),
+        "found_entities": {0: _get_example_ent(cui=THE_CHILD)}}
     CHILD_MAPPED_PARTIAL_SAPN1 = {**_get_example_kwargs(cui=THE_PARENT),
                                   "found_entities": {0: _get_example_ent(cui=THE_CHILD, start=5, end=14)}}
     CHILD_MAPPED_PARTIAL_SAPN2 = {**_get_example_kwargs(cui=THE_PARENT),
@@ -207,6 +210,13 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
         finding, optcui = Finding.determine(tl=self.TL, **self.CHILD_MAPPED_EXACT_SPAN)
         self.assertIs(finding, Finding.FOUND_ANY_CHILD)
         self.assertIsNotNone(optcui)
+        self.assertTrue(optcui.startswith(self.THE_CHILD))
+
+    def test_finds_grandchild_exact_span(self):
+        finding, optcui = Finding.determine(tl=self.TL, **self.GRANDCHILD_MAPPED_EXACT_SPAN)
+        self.assertIs(finding, Finding.FOUND_ANY_CHILD)
+        self.assertIsNotNone(optcui)
+        self.assertTrue(optcui.startswith(self.THE_CHILD))
 
     def test_finds_child_partial_span(self):
         for nr, ekwargs in enumerate(self.PARTIAL_CHILDREN):
@@ -214,16 +224,17 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
                 finding, optcui = Finding.determine(tl=self.TL, **ekwargs)
                 self.assertIs(finding, Finding.FOUND_CHILD_PARTIAL)
                 self.assertIsNotNone(optcui)
+                self.assertTrue(optcui.startswith(self.THE_CHILD))
 
     def test_finds_parent_exact_span(self):
         finding, parcui = Finding.determine(tl=self.TL, **self.PARENT_MAPPED_EXACT_SPAN)
         self.assertIs(finding, Finding.FOUND_DIR_PARENT)
-        self.assertEqual(parcui, self.THE_PARENT)
+        self.assertTrue(parcui.startswith(self.THE_PARENT))  # NOTE: also has the preferred name
 
     def test_finds_grandparent_exact_span(self):
         finding, parcui = Finding.determine(tl=self.TL, **self.GRANDPARENT_MAPPED_EXACT_SPAN)
         self.assertIs(finding, Finding.FOUND_DIR_GRANDPARENT)
-        self.assertEqual(parcui, self.THE_GRANPARENT)
+        self.assertTrue(parcui.startswith(self.THE_GRANPARENT))  # NOTE: also has the preferred name
 
 
 class FindingFromEntsStrictTests(FindingFromEntsTests):
