@@ -241,6 +241,11 @@ class FindingDeterminer:
             self._checked_children.add(child)
         return None
 
+    def _descr_cui(self, cui: Optional[str]) -> Optional[str]:
+        if cui is None:
+            return None
+        return f"{cui} ({self.tl.get_preferred_name(cui)})"
+
     def _find_diff_cui(self) -> Optional[Tuple[Finding, str]]:
         for entity in self.found_entities.values():
             start, end, cui = entity['start'], entity['end'], entity['cui']
@@ -258,6 +263,12 @@ class FindingDeterminer:
         Returns:
             Tuple[Finding, Optional[str]]: The appropriate finding, and the alternative (if applicable).
         """
+        finding, cui = self._determine()
+        # NOTE: the point of this wrapper method is to add the preferred name
+        #       to the CUI in one place and one place only
+        return finding, self._descr_cui(cui)
+
+    def _determine(self) -> Tuple[Finding, Optional[str]]:
         finding = self._get_strict()
         if finding is not None:
             return finding, None
