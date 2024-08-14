@@ -314,7 +314,11 @@ class OptionSet(BaseModel):
                 raise ProblematicOptionSetException(
                     f"Target CUIs not a list ({type(target_cuis)}): {repr(target_cuis)}")
             if 'prefname-only' in part:
-                onlyprefnames = part['prefname-only'].lower() == 'true'
+                opn = part['prefname-only']
+                if isinstance(opn, bool):
+                    onlyprefnames = opn
+                else:
+                    onlyprefnames = str(opn).lower() == 'true'
             else:
                 onlyprefnames = False
             option = TargetPlaceholder(placeholder=placeholder, target_cuis=target_cuis,
