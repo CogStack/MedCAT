@@ -102,6 +102,7 @@ def limit_str_len(input_str: str,
 
 
 class MedCATTrainerExportConverter:
+    """Used to convert an MCT export to the format required for regression.    """
     TEMP_PLACEHOLDER = "##[SWAPME-{}-{}]##"
 
     def __init__(self, mct_export: MedCATTrainerExport,
@@ -113,6 +114,14 @@ class MedCATTrainerExportConverter:
         return self.TEMP_PLACEHOLDER.format(cui, nr)
 
     def convert(self) -> dict:
+        """Converts the MedCATtrainer export into regression suite dict.
+
+        I.e this should producce a dict in the same format as one read
+        from a regression suite YAML.
+
+        Returns:
+            dict: The Regression-suite compatible dict.
+        """
         converted: Dict[str, dict] = {}
         for phrase, case_name, anns in self._iter_docs():
             regr_case: Dict[str, Any] = {
