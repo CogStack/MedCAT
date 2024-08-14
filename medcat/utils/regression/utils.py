@@ -102,7 +102,10 @@ def limit_str_len(input_str: str,
 
 
 class MedCATTrainerExportConverter:
-    """Used to convert an MCT export to the format required for regression.    """
+    """Used to convert an MCT export to the format required for regression."""
+    # NOTE: the first placeholder will use the CUI, the 2nd the order of
+    #       the annotation. This is required so that placeholders with the
+    #       samme concept don't have the same name
     TEMP_PLACEHOLDER = "##[SWAPME-{}-{}]##"
 
     def __init__(self, mct_export: MedCATTrainerExport,
