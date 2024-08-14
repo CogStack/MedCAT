@@ -1,5 +1,6 @@
 from typing import Any, Dict, Iterator, List, Tuple, Optional
 import yaml
+import json
 import logging
 import tqdm
 import datetime
@@ -9,7 +10,7 @@ from pydantic import BaseModel, Field
 from medcat.cat import CAT
 from medcat.utils.regression.targeting import TranslationLayer, OptionSet
 from medcat.utils.regression.targeting import FinalTarget, TargetedPhraseChanger
-from medcat.utils.regression.utils import partial_substitute
+from medcat.utils.regression.utils import partial_substitute, MedCATTrainerExportConverter
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
 
 logger = logging.getLogger(__name__)
@@ -309,6 +310,9 @@ class RegressionSuite:
             for subcase in regr_case.get_distinct_cases(translation):
                 yield regr_case, subcase
 
+    def estimate_total_distinct_cases(self) -> int:
+        return sum(rc.estimate_num_of_diff_subcases() for rc in self.cases)
+
     def iter_subcases(self, translation: TranslationLayer,
                       show_progress: bool = True,
                       ) -> Iterator[Tuple[RegressionCase, FinalTarget]]:
@@ -325,7 +329,7 @@ class RegressionSuite:
             Iterator[Tuple[RegressionCase, FinalTarget]]: The generator of the
                 regression case along with each of the final target sub-cases.
         """
-        total = sum(rc.estimate_num_of_diff_subcases() for rc in self.cases)
+        total = self.estimate_total_distinct_cases()
         for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation),
                                               total=total, disable=not show_progress):
             for target in subcase:
@@ -422,6 +426,13 @@ class RegressionSuite:
         with open(file_name) as f:
             data = yaml.safe_load(f)
         return RegressionSuite.from_dict(data)
+
+    @classmethod
+    def from_mct_export(cls, file_name: str) -> 'RegressionSuite':
+        with open(file_name) as f:
+            data = json.load(f)
+        converted = MedCATTrainerExportConverter(data).convert()
+        return RegressionSuite.from_dict(converted)
 
 
 class MalformedRegressionCaseException(ValueError):
