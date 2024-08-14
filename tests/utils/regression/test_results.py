@@ -117,15 +117,19 @@ class FindingFromEntsTests(unittest.TestCase):
                              1: _get_example_ent(),
                              2: _get_example_ent(start=20, end=25)},
          }, Finding.IDENTICAL),
+        # start from example 12
         # FAILURES
         ({**_get_example_kwargs(),
           "found_entities": {0: _get_example_ent(cui="CUI2")},
-         }, Finding.FAIL),
+         }, Finding.FOUND_OTHER),
         ({**_get_example_kwargs(),
           "found_entities": {0: _get_example_ent(start=0, end=5)},
          }, Finding.FAIL),
         ({**_get_example_kwargs(),
           "found_entities": {0: _get_example_ent(start=20, end=25)},
+         }, Finding.FAIL),
+        ({**_get_example_kwargs(),
+          "found_entities": {},
          }, Finding.FAIL),
     ]
     NR_OF_EXAMPLES = len(EXAMPLES)
@@ -135,11 +139,12 @@ class FindingFromEntsTests(unittest.TestCase):
         self.assertEqual(len(self.EXAMPLES), self.NR_OF_EXAMPLES)
         for nr, (ekwargs, expected) in enumerate(self.EXAMPLES):
             with self.subTest(f"With [{nr}] kwargs {ekwargs}"):
-                found = Finding.determine(tl=self.TL, **ekwargs)
+                found, _ = Finding.determine(tl=self.TL, **ekwargs)
                 self.assertEqual(found, expected)
 
 
 EXAMPLE_INFOS = [
+    ['CGP', 'NGP', 'T1'],  # the grandparent
     # CUI, NAME, TYPE_ID
     ['C123', 'N123', 'T1'],
     ['C124', 'N124', 'T1'],
@@ -154,9 +159,11 @@ EXAMPLE_INFOS = [
 class FindingFromEntsWithChildrenTests(unittest.TestCase):
     FAKE_CDB = FakeCDB(*EXAMPLE_INFOS)
     TL = TranslationLayer.from_CDB(FAKE_CDB)
+    THE_GRANPARENT = 'CGP'
     THE_PARENT = "C123"
     THE_CHILD = "C124"
     PT2CHILD = {
+        THE_GRANPARENT: {THE_PARENT},
         THE_PARENT: {THE_CHILD}
     }
     CHILD_MAPPED_EXACT_SPAN = {**_get_example_kwargs(cui=THE_PARENT),
@@ -182,6 +189,14 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
         CHILD_MAPPED_PARTIAL_SAPN4, CHILD_MAPPED_PARTIAL_SAPN5, CHILD_MAPPED_PARTIAL_SAPN6,
         CHILD_MAPPED_PARTIAL_SAPN7, CHILD_MAPPED_PARTIAL_SAPN8
     ]
+    PARENT_MAPPED_EXACT_SPAN = {
+        **_get_example_kwargs(cui=THE_CHILD),
+        "found_entities": {0: _get_example_ent(cui=THE_PARENT)}
+    }
+    GRANDPARENT_MAPPED_EXACT_SPAN = {
+        **_get_example_kwargs(cui=THE_CHILD),
+        "found_entities": {0: _get_example_ent(cui=THE_GRANPARENT)}
+    }
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -189,14 +204,26 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
         cls.FAKE_CDB.addl_info['pt2ch'].update(cls.PT2CHILD)
 
     def test_finds_child_exact_span(self):
-        finding = Finding.determine(tl=self.TL, **self.CHILD_MAPPED_EXACT_SPAN)
+        finding, optcui = Finding.determine(tl=self.TL, **self.CHILD_MAPPED_EXACT_SPAN)
         self.assertIs(finding, Finding.FOUND_ANY_CHILD)
+        self.assertIsNotNone(optcui)
 
     def test_finds_child_partial_span(self):
         for nr, ekwargs in enumerate(self.PARTIAL_CHILDREN):
             with self.subTest(f"{nr}: {ekwargs}"):
-                finding = Finding.determine(tl=self.TL, **ekwargs)
+                finding, optcui = Finding.determine(tl=self.TL, **ekwargs)
                 self.assertIs(finding, Finding.FOUND_CHILD_PARTIAL)
+                self.assertIsNotNone(optcui)
+
+    def test_finds_parent_exact_span(self):
+        finding, parcui = Finding.determine(tl=self.TL, **self.PARENT_MAPPED_EXACT_SPAN)
+        self.assertIs(finding, Finding.FOUND_DIR_PARENT)
+        self.assertEqual(parcui, self.THE_PARENT)
+
+    def test_finds_grandparent_exact_span(self):
+        finding, parcui = Finding.determine(tl=self.TL, **self.GRANDPARENT_MAPPED_EXACT_SPAN)
+        self.assertIs(finding, Finding.FOUND_DIR_GRANDPARENT)
+        self.assertEqual(parcui, self.THE_GRANPARENT)
 
 
 class FindingFromEntsStrictTests(FindingFromEntsTests):
@@ -217,5 +244,6 @@ class FindingFromEntsStrictTests(FindingFromEntsTests):
     def test_fails_on_non_identical_or_fail_in_strict_mode(self):
         for nr, (ekwargs, _) in enumerate(self.FAIL_EXAMPLES):
             with self.subTest(f"With [{nr}] kwargs {ekwargs}"):
-                found = Finding.determine(tl=self.TL, **ekwargs)
+                found, optcui = Finding.determine(tl=self.TL, **ekwargs)
                 self.assertEqual(found, Finding.FAIL)
+                self.assertIsNotNone(optcui)
