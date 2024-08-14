@@ -1,6 +1,7 @@
 
 from typing import Optional
 import unittest
+from copy import deepcopy
 
 from medcat.utils.regression.targeting import TranslationLayer
 from medcat.utils.regression.results import Finding, MalformedFinding
@@ -192,6 +193,8 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
         CHILD_MAPPED_PARTIAL_SAPN4, CHILD_MAPPED_PARTIAL_SAPN5, CHILD_MAPPED_PARTIAL_SAPN6,
         CHILD_MAPPED_PARTIAL_SAPN7, CHILD_MAPPED_PARTIAL_SAPN8
     ]
+    PARTIAL_GRANDCHILDREN = [
+        {**d, "exp_cui": 'CGP'} for d in deepcopy(PARTIAL_CHILDREN)]
     PARENT_MAPPED_EXACT_SPAN = {
         **_get_example_kwargs(cui=THE_CHILD),
         "found_entities": {0: _get_example_ent(cui=THE_PARENT)}
@@ -220,6 +223,14 @@ class FindingFromEntsWithChildrenTests(unittest.TestCase):
 
     def test_finds_child_partial_span(self):
         for nr, ekwargs in enumerate(self.PARTIAL_CHILDREN):
+            with self.subTest(f"{nr}: {ekwargs}"):
+                finding, optcui = Finding.determine(tl=self.TL, **ekwargs)
+                self.assertIs(finding, Finding.FOUND_CHILD_PARTIAL)
+                self.assertIsNotNone(optcui)
+                self.assertTrue(optcui.startswith(self.THE_CHILD))
+
+    def test_finds_grandchild_partial_span(self):
+        for nr, ekwargs in enumerate(self.PARTIAL_GRANDCHILDREN):
             with self.subTest(f"{nr}: {ekwargs}"):
                 finding, optcui = Finding.determine(tl=self.TL, **ekwargs)
                 self.assertIs(finding, Finding.FOUND_CHILD_PARTIAL)
