@@ -3,7 +3,7 @@ from typing import Dict, List, Optional, Any, Set, Iterable, Tuple
 import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer, FinalTarget
-from medcat.utils.regression.utils import limit_str_len
+from medcat.utils.regression.utils import limit_str_len, add_doc_strings_to_enum
 
 
 class Finding(Enum):
@@ -107,6 +107,10 @@ class Finding(Enum):
         return FindingDeterminer(exp_cui, exp_start, exp_end,
                                  tl, found_entities, strict_only,
                                  check_children, check_parent, check_grandparent).determine()
+
+
+# NOTE: add doc strings to enum constants
+add_doc_strings_to_enum(Finding)
 
 
 class FindingDeterminer:
