@@ -50,7 +50,7 @@ class TranslationLayer:
             if cui not in cui2children:
                 self.cui2children[cui] = set()
 
-    def get_names_of(self, cui: str) -> List[str]:
+    def get_names_of(self, cui: str, only_prefnames: bool) -> List[str]:
         """Get the preprocessed names of a CUI.
 
         This method preporcesses the names by replacing the separator (genreally `~`)
@@ -60,10 +60,13 @@ class TranslationLayer:
 
         Args:
             cui (str): The concept in question.
+            only_prefnames (bool): Whether to only return a preferred name.
 
         Returns:
             List[str]: The list of names.
         """
+        if only_prefnames:
+            return [self.get_preferred_name(cui).replace(self.separator, self.whitespace)]
         return [name.replace(self.separator, self.whitespace)
                    for name in self.cui2names.get(cui, [])]
 
@@ -229,6 +232,7 @@ class TargetedPhraseChanger(BaseModel):
     changer: PhraseChanger
     placeholder: str
     cui: str
+    onlyprefnames: bool
 
 
 class FinalTarget(BaseModel):
@@ -408,7 +412,8 @@ class OptionSet(BaseModel):
             for target_cui in opt.target_cuis:
                 yield TargetedPhraseChanger(changer=PhraseChanger.empty(),
                                             placeholder=opt.placeholder,
-                                            cui=target_cui)
+                                            cui=target_cui,
+                                            onlyprefnames=opt.onlyprefnames)
             return
         for opt_nr in range(num_of_opts):
             other_opts = list(self.options)
@@ -416,7 +421,8 @@ class OptionSet(BaseModel):
             for changer, target_cui in self._get_all_combinations(cur_opt, other_opts, translation):
                 yield TargetedPhraseChanger(changer=changer,
                                             placeholder=cur_opt.placeholder,
-                                            cui=target_cui)
+                                            cui=target_cui,
+                                            onlyprefnames=cur_opt.onlyprefnames)
 
 
 class ProblematicOptionSetException(ValueError):

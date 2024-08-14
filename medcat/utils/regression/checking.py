@@ -89,7 +89,7 @@ class RegressionCase(BaseModel):
                       translation: TranslationLayer) -> Iterator[FinalTarget]:
         cui, placeholder = changer.cui, changer.placeholder
         changed_phrase = changer.changer(phrase)
-        for name in translation.get_names_of(cui):
+        for name in translation.get_names_of(cui, changer.onlyprefnames):
             num_of_phs = changed_phrase.count(placeholder)
             if num_of_phs == 1:
                 yield FinalTarget(placeholder=placeholder,
