@@ -238,6 +238,8 @@ class FindingDeterminer:
             elif finding.has_correct_cui():
                 # i.e a partial match with same CUI
                 return Finding.FOUND_CHILD_PARTIAL, child
+            elif finding is Finding.FOUND_CHILD_PARTIAL:
+                return finding, wcui
             self._checked_children.add(child)
         return None
 
