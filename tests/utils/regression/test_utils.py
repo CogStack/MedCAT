@@ -141,6 +141,14 @@ class MyE2(Enum): # no class-level doc string
     """A2 doc string"""
 
 
+class MyE3(Enum):  # this will not be changed
+    """The CLASS-specific doc string"""
+    A1 = auto()
+    """A1 doc string"""
+    A2 = auto()
+    """A2 doc string"""
+
+
 class EnumDocStringCapturingClass(TestCase):
 
     @classmethod
@@ -163,3 +171,13 @@ class EnumDocStringCapturingClass(TestCase):
 
     def test_class_wo_class_docstring_gets_doc_strings(self):
         self.assert_has_doc_strings(MyE2)
+
+    def test_unchanged_does_not_have_correct_doc_strings(self):
+        for ec in MyE3:
+            with self.subTest(str(ec)):
+                self.assertNotEqual(ec.__doc__, self.get_doc_string(ec))
+
+    def test_unchanged_has_class_doc_Strings(self):
+        for ec in MyE3:
+            with self.subTest(str(ec)):
+                self.assertEqual(ec.__doc__, MyE3.__doc__)
