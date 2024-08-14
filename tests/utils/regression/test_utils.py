@@ -1,8 +1,11 @@
 from functools import partial
+import os
+from json import load as load_json
 
 from unittest import TestCase
 
 from medcat.utils.regression import utils
+from medcat.utils.regression.checking import RegressionSuite
 
 
 class PartialSubstituationTests(TestCase):
@@ -97,3 +100,26 @@ class StringLengthLimiterTests(TestCase):
     def test_does_not_keep_1_longer_than_max_lenght(self):
         s = self.got_long[:self.max_len + 1]
         self.assertNotEqual(s, self.limiter(s))
+
+
+class MCTExportConverterTests(TestCase):
+    MCT_EXPORT_PATH = os.path.join(os.path.dirname(__file__), '..', '..',
+                                   'resources', 'medcat_trainer_export.json')
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        with open(cls.MCT_EXPORT_PATH) as f:
+            cls.mct_export = load_json(f)
+        cls.converter = utils.MedCATTrainerExportConverter(cls.mct_export)
+        cls.converted = cls.converter.convert()
+        cls.rc = RegressionSuite.from_dict(cls.converted)
+
+    def test_converted_is_dict(self):
+        self.assertIsInstance(self.converted, dict)
+
+    def test_converted_can_build(self):
+        self.assertIsInstance(self.rc, RegressionSuite)
+
+    def test_converted_is_nonempty(self):
+        self.assertGreater(len(self.rc.cases), 0)
+        self.assertGreater(self.rc.estimate_total_distinct_cases(), 0)
