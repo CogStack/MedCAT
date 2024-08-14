@@ -7,12 +7,25 @@ from typing import Optional
 
 from medcat.cat import CAT
 from medcat.utils.regression.checking import RegressionSuite, TranslationLayer
-from medcat.utils.regression.results import Strictness
+from medcat.utils.regression.results import Strictness, Finding
 
 logger = logging.getLogger(__name__)
 
 
 DEFAULT_TEST_SUITE_PATH = Path('configs', 'default_regression_tests.yml')
+
+
+def show_description():
+    logger.info('The various findings and their descriptions:')
+    logger.info('')
+    logger.info('Class description:')
+    logger.info('')
+    logger.info(Finding.__doc__.replace("\n    ", "\n"))
+    logger.info('')
+    for f in Finding:
+        logger.info('%s :', f.name)
+        logger.info(f.__doc__.replace("\n    ", "\n"))
+        logger.info('')
 
 
 def main(model_pack_dir: Path, test_suite_file: Path,
@@ -24,7 +37,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
          max_phrase_length: int = 80,
          use_mct_export: bool = False,
          mct_export_yaml_path: Optional[str] = None,
-         only_mct_export_conversion: bool = False) -> None:
+         only_mct_export_conversion: bool = False,
+         only_describe: bool = False) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -44,10 +58,15 @@ def main(model_pack_dir: Path, test_suite_file: Path,
             If not set (or None), the MCT export is not saved in YAML format. Defaults to None.
         only_mct_export_conversion (bool): Whether to only deal with the MCT export conversion.
             I.e exit when MCT export conversion is done. Defaults to False.
+        only_describe (bool): Whether to only describe the finding options and exit.
+            Defaults to False.
 
     Raises:
         ValueError: If unable to overwrite file or folder does not exist.
     """
+    if only_describe:
+        show_description()
+        return
     if jsonpath and jsonpath.exists() and not overwrite:
         # check before doing anything so as to not waste time on the tests
         raise ValueError(
@@ -125,6 +144,8 @@ if __name__ == '__main__':
     parser.add_argument('--only-conversion', help='Whether to load only deal with the MCT export '
                         'conversion. Only useful alongside `--from-mct-export` and `--mct-export-yaml`',
                         action='store_true')
+    parser.add_argument('--only-describe', help='Only describe the various findings and exit.',
+                        action='store_true')
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -138,4 +159,4 @@ if __name__ == '__main__':
          jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
          strictness_str=args.strictness, max_phrase_length=args.max_phrase_length,
          use_mct_export=args.from_mct_export, mct_export_yaml_path=args.mct_export_yaml,
-         only_mct_export_conversion=args.only_conversion)
+         only_mct_export_conversion=args.only_conversion, only_describe=args.only_describe)
