@@ -1,4 +1,4 @@
-
+import os
 import unittest
 
 from medcat.config import Config
@@ -188,9 +188,17 @@ class TestRegressionCase(unittest.TestCase):
 
 
 class TestRegressionChecker(unittest.TestCase):
+    YAML_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "..",
+                             "configs", "default_regression_tests.yml")
+    MCT_EXPORT_PATH = os.path.join(os.path.dirname(__file__), '..', '..',
+                                   'resources', 'medcat_trainer_export.json')
 
-    def test_reads_default(self, yaml_file='configs/default_regression_tests.yml'):
-        rc = RegressionSuite.from_yaml(yaml_file)
+    def test_reads_default(self):
+        rc = RegressionSuite.from_yaml(self.YAML_PATH)
+        self.assertIsInstance(rc, RegressionSuite)
+
+    def test_reads_mct_export(self):
+        rc = RegressionSuite.from_mct_export(self.MCT_EXPORT_PATH)
         self.assertIsInstance(rc, RegressionSuite)
 
 
