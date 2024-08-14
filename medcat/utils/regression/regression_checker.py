@@ -23,7 +23,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
          strictness_str: str = 'NORMAL',
          max_phrase_length: int = 80,
          use_mct_export: bool = False,
-         mct_export_yaml_path: Optional[str] = None) -> None:
+         mct_export_yaml_path: Optional[str] = None,
+         only_mct_export_conversion: bool = False) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -41,6 +42,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         use_mct_export (bool): Whether to use a MedCATtrainer export as input. Defaults to False.
         mct_export_yaml_path (str): The (optional) path the converted MCT export should be saved as YAML at.
             If not set (or None), the MCT export is not saved in YAML format. Defaults to None.
+        only_mct_export_conversion (bool): Whether to only deal with the MCT export conversion.
+            I.e exit when MCT export conversion is done. Defaults to False.
 
     Raises:
         ValueError: If unable to overwrite file or folder does not exist.
@@ -61,6 +64,9 @@ def main(model_pack_dir: Path, test_suite_file: Path,
             logger.info('Writing MCT export in YAML to %s', str(mct_export_yaml_path))
             with open(mct_export_yaml_path, 'w') as f:
                 f.write(rc.to_yaml())
+            if only_mct_export_conversion:
+                logger.info("Done with conversion - exiting")
+                return
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
@@ -116,6 +122,9 @@ if __name__ == '__main__':
                         'export as. Only useful alongside `--from-mct-export` option and an '
                         'MCT export passed as the test suite.',
                         type=str, default=None)
+    parser.add_argument('--only-conversion', help='Whether to load only deal with the MCT export '
+                        'conversion. Only useful alongside `--from-mct-export` and `--mct-export-yaml`',
+                        action='store_true')
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -128,4 +137,5 @@ if __name__ == '__main__':
          phrases=args.phrases, hide_empty=args.noempty, examples_strictness_str=args.example_strictness,
          jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
          strictness_str=args.strictness, max_phrase_length=args.max_phrase_length,
-         use_mct_export=args.from_mct_export, mct_export_yaml_path=args.mct_export_yaml)
+         use_mct_export=args.from_mct_export, mct_export_yaml_path=args.mct_export_yaml,
+         only_mct_export_conversion=args.only_conversion)
