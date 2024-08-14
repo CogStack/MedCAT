@@ -1,3 +1,7 @@
+from typing import Iterator, Tuple, List, Dict, Any
+
+from medcat.stats.mctexport import MedCATTrainerExport, MedCATTrainerExportDocument
+
 
 # this placheolder will be temporarily put in the
 # phrases when dealing with one that has multiple
@@ -95,3 +99,62 @@ def limit_str_len(input_str: str,
     part2 = input_str[-keep_rear:]
     hidden_chars = len(input_str) - len(part1) - len(part2)
     return f"{part1} [{hidden_chars} chars] {part2}"
+
+
+class MedCATTrainerExportConverter:
+    TEMP_PLACEHOLDER = "##[SWAPME-{}-{}]##"
+
+    def __init__(self, mct_export: MedCATTrainerExport,
+                 use_only_existing_name: bool = False) -> None:
+        self.mct_export = mct_export
+        self.use_only_existing_name = use_only_existing_name
+
+    def _get_placeholder(self, cui: str, nr: int) -> str:
+        return self.TEMP_PLACEHOLDER.format(cui, nr)
+
+    def convert(self) -> dict:
+        converted: Dict[str, dict] = {}
+        for phrase, case_name, anns in self._iter_docs():
+            regr_case: Dict[str, Any] = {
+                'targeting': {
+                    'placeholders': [
+                        {
+                            # NOTE: this is just and example.
+                            #       it will be wiped/overwritten later
+                            'placeholders': "TODO",
+                            'cuis': ['CUI1']
+                        }
+                    ],
+                    'any-combination': False,
+                },
+                'phrases': []  # will be filled later
+            }
+            placeholders: List[Dict[str, Any]] = []
+            # NOTE: the iteration is done from later annotations
+            #       so I can replace using the locations
+            for ann_nr, (start, end, cui, _) in enumerate(anns):
+                ph = self._get_placeholder(cui, ann_nr)
+                phrase = phrase[:start] + ph + phrase[end:]
+                placeholders.append({
+                    'placeholder': ph, 'cuis': [cui, ]
+                })
+            # update at the very end, when changed
+            regr_case['phrases'] = [phrase]
+            regr_case['targeting']['placeholders'] = placeholders
+            converted[case_name] = regr_case
+        return converted
+
+    def _iter_docs(self) -> Iterator[Tuple[str, str, Iterator[Tuple[int, int, str, str]]]]:
+        for project in self.mct_export['projects']:
+            project_id = project['id']
+            project_name = project['name']
+            for doc in project['documents']:
+                doc_id = doc['id']
+                text = doc['text']
+                yield text,  f"{project_id}_{project_name}_{doc_id}", self._iter_anns_backwards(doc)
+
+    def _iter_anns_backwards(self, doc: MedCATTrainerExportDocument) -> Iterator[Tuple[int, int, str, str]]:
+        # NOTE: doing so backwards so that I can replace them one by one using the start/end,
+        #       starting from the end of the phrase
+        for ann in doc['annotations'][::-1]:
+            yield ann['start'], ann['end'], ann['cui'], ann['value']
