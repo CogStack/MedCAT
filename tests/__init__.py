@@ -16,10 +16,7 @@ class DeprecatedMethodCallException(ValueError):
 def deprecation_exception_raiser(message: str, depr_version: Tuple[int, int, int],
                      removal_version: Tuple[int, int, int]):
     def decorator(func: Callable) -> Callable:
-        def wrapper(*args, **kwargs):
-            if ('allow_usage' in kwargs and kwargs['allow_usage'] or
-                    len(args) >= 4 and args[3]):
-                return func(*args, **kwargs)
+        def wrapper(*_, **__):
             raise DeprecatedMethodCallException(func, message, depr_version, removal_version)
         return wrapper
     return decorator
