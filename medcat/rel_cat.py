@@ -362,7 +362,8 @@ class RelCAT(PipeRunner):
 
         if self.optimizer is None:
             parameters = filter(lambda p: p.requires_grad, self.model.parameters())
-            self.optimizer = Adam(parameters, lr=self.config.train.lr)
+            self.optimizer = Adam(parameters, lr=self.config.train.lr, weight_decay=self.config.train.adam_weight_decay,
+                                betas=self.config.train.adam_betas, eps=self.config.train.adam_epsilon)
 
         if self.scheduler is None:
             self.scheduler = MultiStepLR(
@@ -445,7 +446,6 @@ class RelCAT(PipeRunner):
                 if (i % gradient_acc_steps) == 0:
                     self.optimizer.step()
                     self.scheduler.step()
-
                 if ((i + 1) % current_batch_size == 0):
                     self.log.debug(
                         "[Epoch: %d, loss per batch, accuracy per batch: %.3f, %.3f, average total loss %.3f , total loss %.3f]" %

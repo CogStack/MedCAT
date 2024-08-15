@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Tuple
 from medcat.config import MixingConfig, BaseModel, Optional, Extra
 
 
@@ -85,7 +85,8 @@ class Train(MixingConfig, BaseModel):
     Since the minority class elements need to be repeated, this is used to facilitate that
     example: batching_samples_per_class - [6,6,6,8,8,8,6,8,8]
              batching_minority_limit - 6"""
-
+    adam_betas: Tuple[float, float] = (0.9, 0.999)
+    adam_weight_decay: float = 1e-3
     adam_epsilon: float = 1e-4
     test_size: float = 0.2
     gradient_acc_steps: int = 1
