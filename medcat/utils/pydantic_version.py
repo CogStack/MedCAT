@@ -1,14 +1,10 @@
 from pydantic import BaseModel
 from pydantic import __version__ as pydantic_version
 
-from medcat.utils.decorators import deprecated
-
 
 HAS_PYDANTIC2 = pydantic_version.startswith("2.")
 
 
-@deprecated("At some point we will move away from supporting pydantic 1",
-            depr_version=(1, 13, 0), removal_version=(1, 15, 0))
 def get_model_dump(obj: BaseModel) -> dict:
     """Helper method to get the model dump of a pydnatic model.
 
@@ -27,8 +23,6 @@ def get_model_dump(obj: BaseModel) -> dict:
     return obj.dict()  # type: ignore
 
 
-@deprecated("At some point we will move away from supporting pydantic 1",
-            depr_version=(1, 13, 0), removal_version=(1, 15, 0))
 def get_model_fields(obj: BaseModel) -> dict:
     if HAS_PYDANTIC2:
         return obj.model_fields
