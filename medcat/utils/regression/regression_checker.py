@@ -91,14 +91,15 @@ def main(model_pack_dir: Path, test_suite_file: Path,
     logger.info('Checking the current status')
     res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb))
     strictness = Strictness[strictness_str]
+    if examples_strictness_str in ("None", "N/A"):
+        examples_strictness = None
+    else:
+        examples_strictness = Strictness[examples_strictness_str]
     if jsonpath:
         logger.info('Writing to %s', str(jsonpath))
-        jsonpath.write_text(json.dumps(res.dict(), indent=jsonindent))
+        jsonpath.write_text(json.dumps(res.dict(strictness=examples_strictness),
+                                       indent=jsonindent))
     else:
-        if examples_strictness_str in ("None", "N/A"):
-            examples_strictness = None
-        else:
-            examples_strictness = Strictness[examples_strictness_str]
         logger.info(res.get_report(phrases_separately=phrases,
                     hide_empty=hide_empty, examples_strictness=examples_strictness,
                     strictness=strictness, phrase_max_len=max_phrase_length))
