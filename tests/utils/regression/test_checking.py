@@ -1,8 +1,9 @@
 import os
+import json
 import unittest
 
 from medcat.config import Config
-from medcat.utils.regression.targeting import OptionSet
+from medcat.utils.regression.targeting import OptionSet, FinalTarget
 from medcat.utils.regression.targeting import TranslationLayer
 from medcat.utils.regression.checking import RegressionSuite, RegressionCase, MetaData
 from medcat.utils.regression.results import Finding
@@ -173,18 +174,57 @@ class TestRegressionCase(unittest.TestCase):
             'cuis': [TARGET_CUI, ]}
         ]}, 'phrases': ['%s']}  # should just find the name itself
 
-    def test_specific_case_CUI(self):
+
+class TestRegressionCaseCheckModel(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
         NAME = 'NAMESC'
-        tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
+        cls.tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
         regr_checker = RegressionSuite([rc], MetaData.unknown())
-        findings = regr_checker.check_model(FakeCat(tl), tl).findings
+        cls.res = regr_checker.check_model(FakeCat(cls.tl), cls.tl)
+
+    def test_specific_case_CUI(self):
+        findings = self.res.findings
         fail = findings.get(Finding.FAIL, 0)
         success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
         self.assertEqual(fail, 0)
         self.assertEqual(success, len(
-            tl.cui2names[TestRegressionCase.TARGET_CUI]))
+            self.tl.cui2names[TestRegressionCase.TARGET_CUI]))
+
+
+class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        super().setUpClass()
+        # add a non-perfect example to show in the below
+        cls.res.parts[0].examples.append((FinalTarget(placeholder='PH', cui='CUI_PARENT',
+                                                      name='NAME_PARENT',
+                                                      final_phrase="FINAL PHRASE"),
+                                          (Finding.FOUND_ANY_CHILD, 'CHILD')))
+
+    def test_result_is_json_serialisable(self):
+        rd = self.res.dict()
+        s = json.dumps(rd)
+        self.assertIsInstance(s, str)
+
+    def test_result_is_json_serialisable_pydantic(self):
+        s = self.res.json()
+        self.assertIsInstance(s, str)
+
+    def test_can_use_strictness(self):
+        e1 = [
+            example for part in self.res.dict(strictness='STRICTEST')['parts']
+            for example in part['examples']
+        ]
+        e2 = [
+            example for part in self.res.dict(strictness='LENIENT')['parts']
+            for example in part['examples']
+        ]
+        self.assertGreater(len(e1), len(e2))
 
 
 class TestRegressionChecker(unittest.TestCase):

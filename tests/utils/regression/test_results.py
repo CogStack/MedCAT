@@ -2,10 +2,13 @@
 from typing import Optional
 import unittest
 from copy import deepcopy
+import json
 
 from medcat.utils.regression.targeting import TranslationLayer
 from medcat.utils.regression.results import Finding, MalformedFinding
 from medcat.utils.regression.results import FindingDeterminer
+from medcat.utils.regression.results import SingleResultDescriptor
+from medcat.utils.regression.targeting import FinalTarget
 
 from .test_checking import FakeCDB
 
@@ -269,3 +272,32 @@ class FindingFromEntsStrictTests(FindingFromEntsTests):
                 found, optcui = Finding.determine(tl=self.TL, **ekwargs)
                 self.assertEqual(found, Finding.FAIL)
                 self.assertIsNotNone(optcui)
+
+
+class SingleResultDescriptorSerialisationTests(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        e1 = (FinalTarget(placeholder='$', cui='CUI1', name='NAME1', final_phrase='FINAL PHRASE'),
+              (Finding.FOUND_OTHER, 'OTHER CUI'))
+        e2 = (FinalTarget(placeholder='$', cui='CUIP', name='PARENT', final_phrase='FINAL PHRASE'),
+              (Finding.FOUND_ANY_CHILD, 'CUI_C (CHILD)'))
+        findings = {Finding.FOUND_OTHER: 1, Finding.FOUND_ANY_CHILD: 1}
+        cls.rd = SingleResultDescriptor(name="RANDOM_NAME", findings=findings,
+                                        examples=[e1, e2])
+
+    def test_can_json_dump_pydantic(self):
+        s = self.rd.json()
+        self.assertIsInstance(s, str)
+
+    def test_can_json_dump_json(self):
+        s = json.dumps(self.rd.dict())
+        self.assertIsInstance(s, str)
+
+    def test_can_use_strictness_for_dump(self):
+        d_strictest = self.rd.dict(strictness='STRICTEST')
+        e_strictest = d_strictest['examples']
+        # this should have more examples
+        d_lenient = self.rd.dict(strictness='NORMAL')
+        e_normal = d_lenient['examples']
+        self.assertGreater(len(e_strictest), len(e_normal))
