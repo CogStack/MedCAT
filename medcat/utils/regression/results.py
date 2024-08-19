@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from typing import Dict, List, Optional, Any, Set, Iterable, Tuple
+import json
 import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer, FinalTarget
@@ -371,6 +372,34 @@ class SingleResultDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals)
 
+    def dict(self, **kwargs) -> dict:
+        if 'strictness' in kwargs:
+            strict_raw = kwargs.pop('strictness')
+            if isinstance(strict_raw, Strictness):
+                strictness = strict_raw
+            elif isinstance(strict_raw, str):
+                strictness = Strictness[strict_raw]
+            else:
+                raise ValueError(f"Unknown stircntess specified: {strict_raw}")
+        else:
+            strictness = Strictness.NORMAL
+        serialized_dict = {
+            key.name: value for key, value in self.findings.items()
+        }
+        serialized_examples = [
+            (ft.dict(), (f[0].name, f[1])) for ft, f in self.examples
+            # only count if NOT in strictness matrix (i.e 'failures')
+            if f[0] not in STRICTNESS_MATRIX[strictness]
+        ]
+        model_dict = super().dict(**kwargs)
+        model_dict['findings'] = serialized_dict
+        model_dict['examples'] = serialized_examples
+        return model_dict
+
+    def json(self, **kwargs) -> str:
+        d = self.dict(**kwargs)
+        return json.dumps(d)
+
 
 class ResultDescriptor(SingleResultDescriptor):
     """The overarching result descriptor that handles mulitple phrases.
@@ -582,6 +611,21 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
             for f in Finding if f in self.findings
         ])
         return "\n".join(ret_vals) + f"\n{delegated}"
+
+    def dict(self, **kwargs) -> dict:
+        if 'strictness' in kwargs:
+            strict_raw = kwargs.pop('strictness')
+            if isinstance(strict_raw, Strictness):
+                strictness = strict_raw
+            elif isinstance(strict_raw, str):
+                strictness = Strictness[strict_raw]
+            else:
+                raise ValueError(f"Unknown stircntess specified: {strict_raw}")
+        else:
+            strictness = Strictness.NORMAL
+        out_dict = super().dict(exclude={'parts'})
+        out_dict['parts'] = [part.dict(strictness=strictness) for part in self.parts]
+        return out_dict
 
 
 class MalformedFinding(ValueError):
