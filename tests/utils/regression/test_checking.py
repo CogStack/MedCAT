@@ -185,7 +185,7 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
         cls.tl = TranslationLayer.from_CDB(FakeCDB(*EXAMPLE_INFOS))
         D = TestRegressionCase.D_SPECIFIC_CASE
         rc: RegressionCase = RegressionCase.from_dict(NAME, D)
-        regr_checker = RegressionSuite([rc], MetaData.unknown())
+        regr_checker = RegressionSuite([rc], MetaData.unknown(), name="TEST SUITE 2")
         cls.res = regr_checker.check_model(FakeCat(cls.tl), cls.tl)
 
     def test_specific_case_CUI(self):
@@ -293,7 +293,7 @@ class MultiPlaceholderTests(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.rc = RegressionSuite.from_dict(cls.THE_DICT)
+        cls.rc = RegressionSuite.from_dict(cls.THE_DICT, name="TEST SUITE 1")
 
     def test_reads_successfully(self):
         self.assertIsInstance(self.rc, RegressionSuite)

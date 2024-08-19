@@ -113,7 +113,7 @@ class MCTExportConverterTests(TestCase):
             cls.mct_export = load_json(f)
         cls.converter = utils.MedCATTrainerExportConverter(cls.mct_export)
         cls.converted = cls.converter.convert()
-        cls.rc = RegressionSuite.from_dict(cls.converted)
+        cls.rc = RegressionSuite.from_dict(cls.converted, name="TEST SUITE 3")
 
     def test_converted_is_dict(self):
         self.assertIsInstance(self.converted, dict)
