@@ -383,6 +383,13 @@ class SingleResultDescriptor(pydantic.BaseModel):
                 raise ValueError(f"Unknown stircntess specified: {strict_raw}")
         else:
             strictness = Strictness.NORMAL
+        # avoid serialising multiple times
+        if 'exclude' in kwargs and kwargs['exclude'] is not None:
+            exclude: set = kwargs['exclude']
+        else:
+            exclude = set()
+            kwargs['exclude'] = exclude
+        exclude.update(('findings', 'examples'))
         serialized_dict = {
             key.name: value for key, value in self.findings.items()
         }
@@ -464,6 +471,22 @@ class ResultDescriptor(SingleResultDescriptor):
         children = '\n'.join([srd.get_report()
                              for srd in self.per_phrase_results.values()])
         return sr + '\n\t\t' + children.replace('\n', '\n\t\t')
+
+    def dict(self, **kwargs) -> dict:
+        if 'exclude' in kwargs and kwargs['exclude'] is not None:
+            exclude: set = kwargs['exclude']
+        else:
+            exclude = set()
+            kwargs['exclude'] = exclude
+        # NOTE: ignoring here so that examples are only present in the per phrase part
+        exclude.add('examples')
+        d = super().dict(**kwargs)
+        if 'examples' in d:
+            # NOTE: I don't really know why, but the examples still
+            #       seem to be a part of the resulting dict, so I need
+            #       to explicitly remove them
+            del d['examples']
+        return d
 
 
 class MultiDescriptor(pydantic.BaseModel):
