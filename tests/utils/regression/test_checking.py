@@ -6,7 +6,7 @@ from medcat.config import Config
 from medcat.utils.regression.targeting import OptionSet, FinalTarget
 from medcat.utils.regression.targeting import TranslationLayer
 from medcat.utils.regression.checking import RegressionSuite, RegressionCase, MetaData
-from medcat.utils.regression.results import Finding
+from medcat.utils.regression.results import Finding, ResultDescriptor
 
 EXAMPLE_CUI = '123'
 COMPLEX_PLACEHOLDERS = [
@@ -176,6 +176,8 @@ class TestRegressionCase(unittest.TestCase):
 
 
 class TestRegressionCaseCheckModel(unittest.TestCase):
+    EXPECT_MANUAL_SUCCESS = 0
+    EXPECT_FAIL = 0
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -190,12 +192,15 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
         findings = self.res.findings
         fail = findings.get(Finding.FAIL, 0)
         success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
-        self.assertEqual(fail, 0)
+        self.assertEqual(fail, self.EXPECT_FAIL)
         self.assertEqual(success, len(
-            self.tl.cui2names[TestRegressionCase.TARGET_CUI]))
+            self.tl.cui2names[TestRegressionCase.TARGET_CUI])
+            + self.EXPECT_MANUAL_SUCCESS  # NOTE: manually added parts / success
+            )
 
 
 class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
+    EXPECT_MANUAL_SUCCESS = 2
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -205,6 +210,15 @@ class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
                                                       name='NAME_PARENT',
                                                       final_phrase="FINAL PHRASE"),
                                           (Finding.FOUND_ANY_CHILD, 'CHILD')))
+        # add another part
+        cls.res.parts.append(ResultDescriptor(
+            name='NAME2', findings={Finding.IDENTICAL: 1, Finding.FOUND_DIR_PARENT: 1},
+            examples=[
+                (FinalTarget(placeholder='PH1', cui='CUI-CORRECT', name='NAME-correct',
+                            final_phrase='FINAL PHRASE'), (Finding.IDENTICAL, None)),
+                (FinalTarget(placeholder='PH2', cui='CUI-PARENT', name='CHILD NAME',
+                            final_phrase='FINAL PHRASE'), (Finding.FOUND_ANY_CHILD, 'CUI=child')),
+                ]))
 
     def test_result_is_json_serialisable(self):
         rd = self.res.dict()
@@ -225,6 +239,10 @@ class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
             for example in part['examples']
         ]
         self.assertGreater(len(e1), len(e2))
+
+    def test_dict_includes_all_parts(self):
+        d_parts = self.res.dict()['parts']
+        self.assertEqual(len(self.res.parts), len(d_parts))
 
 
 class TestRegressionChecker(unittest.TestCase):
