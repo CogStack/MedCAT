@@ -54,6 +54,9 @@ class Model(MixingConfig, BaseModel):
     num_directions: int = 2
     """2 - bidirectional model, 1 - unidirectional"""
 
+    freeze_layers: bool = True
+    """If we update the weights during training"""
+
     padding_idx: int = -1
     emb_grad: bool = True
     """If True the embeddings will also be trained"""

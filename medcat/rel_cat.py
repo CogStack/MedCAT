@@ -21,7 +21,7 @@ from spacy.tokens import Doc, Span
 from typing import Dict, Iterable, Iterator, List, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader, Sampler
-from torch.optim import Adam
+from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
 from medcat.utils.meta_cat.ml_utils import set_all_seeds
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction, LlamaModel_RelationExtraction
@@ -107,7 +107,7 @@ class RelCAT(PipeRunner):
         self.model: BertModel_RelationExtraction | LlamaModel_RelationExtraction
         self.task: str = task
         self.checkpoint_path: str = "./"
-        self.optimizer: Adam = None # type: ignore
+        self.optimizer: AdamW = None # type: ignore
         self.scheduler: MultiStepLR = None # type: ignore
         self.best_f1: float = 0.0
         self.epoch: int = 0
@@ -362,7 +362,7 @@ class RelCAT(PipeRunner):
 
         if self.optimizer is None:
             parameters = filter(lambda p: p.requires_grad, self.model.parameters())
-            self.optimizer = Adam(parameters, lr=self.config.train.lr, weight_decay=self.config.train.adam_weight_decay,
+            self.optimizer = AdamW(parameters, lr=self.config.train.lr, weight_decay=self.config.train.adam_weight_decay,
                                 betas=self.config.train.adam_betas, eps=self.config.train.adam_epsilon)
 
         if self.scheduler is None:
