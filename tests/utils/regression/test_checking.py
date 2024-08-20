@@ -6,7 +6,7 @@ from medcat.config import Config
 from medcat.utils.regression.targeting import OptionSet, FinalTarget
 from medcat.utils.regression.targeting import TranslationLayer
 from medcat.utils.regression.checking import RegressionSuite, RegressionCase, MetaData
-from medcat.utils.regression.results import Finding, ResultDescriptor
+from medcat.utils.regression.results import Finding, ResultDescriptor, Strictness
 
 EXAMPLE_CUI = '123'
 COMPLEX_PLACEHOLDERS = [
@@ -198,6 +198,16 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
             + self.EXPECT_MANUAL_SUCCESS  # NOTE: manually added parts / success
             )
 
+    def test_success_correct(self):
+        manual = self.get_manual_success()
+        report = self.res.calculate_report(strictness=Strictness.LENIENT)
+        self.assertEqual(report[1], manual)
+
+    def test_fail_correct(self):
+        manual = self.get_manual_fail()
+        report = self.res.calculate_report(strictness=Strictness.LENIENT)
+        self.assertEqual(report[2], manual)
+
     def get_manual_success(self) -> int:
         return sum(v for f, v in self.res.findings.items() if f not in self.FAIL_FINDINGS)
 
@@ -239,12 +249,12 @@ class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
 
     def test_can_use_strictness(self):
         e1 = [
-            example for part in self.res.dict(strictness='STRICTEST')['parts']
+            example for part in self.res.dict(strictness=Strictness.STRICTEST)['parts']
             for per_phrase in part['per_phrase_results'].values()
             for example in per_phrase['examples']
         ]
         e2 = [
-            example for part in self.res.dict(strictness='LENIENT')['parts']
+            example for part in self.res.dict(strictness=Strictness.LENIENT)['parts']
             for per_phrase in part['per_phrase_results'].values()
             for example in per_phrase['examples']
         ]
