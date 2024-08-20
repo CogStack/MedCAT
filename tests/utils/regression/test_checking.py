@@ -200,25 +200,25 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
 
 
 class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
-    EXPECT_MANUAL_SUCCESS = 2
+    EXPECT_MANUAL_SUCCESS = 3
 
     @classmethod
     def setUpClass(cls) -> None:
         super().setUpClass()
         # add a non-perfect example to show in the below
-        cls.res.parts[0].examples.append((FinalTarget(placeholder='PH', cui='CUI_PARENT',
-                                                      name='NAME_PARENT',
-                                                      final_phrase="FINAL PHRASE"),
-                                          (Finding.FOUND_ANY_CHILD, 'CHILD')))
+        cls.res.parts[0].report(FinalTarget(placeholder='PH', cui='CUI_PARENT',
+                                            name='NAME_PARENT',
+                                            final_phrase="FINAL PHRASE"),
+                                (Finding.FOUND_ANY_CHILD, 'CHILD'))
         # add another part
-        cls.res.parts.append(ResultDescriptor(
-            name='NAME2', findings={Finding.IDENTICAL: 1, Finding.FOUND_DIR_PARENT: 1},
-            examples=[
-                (FinalTarget(placeholder='PH1', cui='CUI-CORRECT', name='NAME-correct',
-                            final_phrase='FINAL PHRASE'), (Finding.IDENTICAL, None)),
-                (FinalTarget(placeholder='PH2', cui='CUI-PARENT', name='CHILD NAME',
-                            final_phrase='FINAL PHRASE'), (Finding.FOUND_ANY_CHILD, 'CUI=child')),
-                ]))
+        added_part = ResultDescriptor(name="NAME#2")
+        cls.res.parts.append(added_part)
+        added_part.report(target=FinalTarget(placeholder='PH1', cui='CUI-CORRECT', name='NAME-correct',
+                            final_phrase='FINAL PHRASE'), finding=(Finding.IDENTICAL, None))
+        added_part.report(target=FinalTarget(placeholder='PH2', cui='CUI-PARENT', name='CHILD NAME',
+                            final_phrase='FINAL PHRASE'), finding=(Finding.FOUND_ANY_CHILD, 'CUI=child'))
+        added_part.report(target=FinalTarget(placeholder='PH5', cui='CUI-PARENT', name='OTHER NAME',
+                            final_phrase='FINAL PHRASE'), finding=(Finding.FOUND_OTHER, 'CUI=OTHER'))
 
     def test_result_is_json_serialisable(self):
         rd = self.res.dict()
@@ -232,11 +232,13 @@ class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
     def test_can_use_strictness(self):
         e1 = [
             example for part in self.res.dict(strictness='STRICTEST')['parts']
-            for example in part['examples']
+            for per_phrase in part['per_phrase_results'].values()
+            for example in per_phrase['examples']
         ]
         e2 = [
             example for part in self.res.dict(strictness='LENIENT')['parts']
-            for example in part['examples']
+            for per_phrase in part['per_phrase_results'].values()
+            for example in per_phrase['examples']
         ]
         self.assertGreater(len(e1), len(e2))
 
