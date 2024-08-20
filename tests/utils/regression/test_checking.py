@@ -191,7 +191,7 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
     def test_specific_case_CUI(self):
         findings = self.res.findings
         fail = findings.get(Finding.FAIL, 0)
-        success = sum(v for f, v in findings.items() if f is not Finding.FAIL)
+        success = sum(v for f, v in findings.items() if f not in (Finding.FAIL, Finding.FOUND_OTHER))
         self.assertEqual(fail, self.EXPECT_FAIL)
         self.assertEqual(success, len(
             self.tl.cui2names[TestRegressionCase.TARGET_CUI])
@@ -200,6 +200,7 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
 
 
 class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
+    # that is, anything but fail or FIND_OTHER
     EXPECT_MANUAL_SUCCESS = 3
 
     @classmethod
