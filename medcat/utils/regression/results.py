@@ -581,12 +581,12 @@ class MultiDescriptor(pydantic.BaseModel):
                             f'with CUI {repr(target.cui)} and name {repr(target.name)}')
         return cur_add, total_total, total_s, total_f
 
-    def get_report(self, phrases_separately: bool,
-                   hide_empty: bool = False,
-                   examples_strictness: Optional[Strictness] = Strictness.STRICTEST,
-                   strictness: Strictness = Strictness.NORMAL,
-                   phrase_max_len: int = 80) -> str:
-        """Get the report associated with this descriptor
+    def calculate_report(self, phrases_separately: bool = False,
+                         hide_empty: bool = False,
+                         examples_strictness: Optional[Strictness] = Strictness.STRICTEST,
+                         strictness: Strictness = Strictness.NORMAL,
+                         phrase_max_len: int = 80) -> Tuple[int, int, int, str, int]:
+        """Calculate some of the major parts of the report.
 
         Args:
             phrases_separately (bool): Whether to include per-phrase information
@@ -598,7 +598,8 @@ class MultiDescriptor(pydantic.BaseModel):
             phrase_max_len (int): The maximum length of the phrase in examples. Defualts to 80.
 
         Returns:
-            str: The report string
+            Tuple[int, int, int, int, str]: The total number of examples, the total successes, the total failures,
+                the delegated part, and the number of empty
         """
         del_out = []  # delegation
         total_findings: Dict[Finding, int] = {}
@@ -621,7 +622,35 @@ class MultiDescriptor(pydantic.BaseModel):
                 total_f += total_f_add
                 del_out.append(cur_add)
         delegated = '\n'.join(del_out)
+        return total_total, total_s, total_f, delegated, nr_of_empty
+
+    def get_report(self, phrases_separately: bool,
+                   hide_empty: bool = False,
+                   examples_strictness: Optional[Strictness] = Strictness.STRICTEST,
+                   strictness: Strictness = Strictness.NORMAL,
+                   phrase_max_len: int = 80) -> str:
+        """Get the report associated with this descriptor
+
+        Args:
+            phrases_separately (bool): Whether to include per-phrase information
+            hide_empty (bool): Whether to hide empty cases
+            examples_strictness (Optional[Strictness.STRICTEST]): What level of strictness to show for examples.
+                Set to None to disable examples. Defaults to Strictness.STRICTEST.
+            strictness (Strictness): The strictness of the success / fail overview.
+                Defaults to Strictness.NORMAL.
+            phrase_max_len (int): The maximum length of the phrase in examples. Defualts to 80.
+
+        Returns:
+            str: The report string
+        """
+        (total_total, total_s, total_f,
+         delegated, nr_of_empty) = self.calculate_report(phrases_separately=phrases_separately,
+                                                         hide_empty=hide_empty,
+                                                         examples_strictness=examples_strictness,
+                                                         strictness=strictness,
+                                                         phrase_max_len=phrase_max_len)
         empty_text = ''
+        allowed_findings = STRICTNESS_MATRIX[strictness]
         if hide_empty:
             empty_text = f' A total of {nr_of_empty} cases did not match any CUIs and/or names.'
         ret_vals = [f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
