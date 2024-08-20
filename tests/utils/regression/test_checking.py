@@ -178,6 +178,7 @@ class TestRegressionCase(unittest.TestCase):
 class TestRegressionCaseCheckModel(unittest.TestCase):
     EXPECT_MANUAL_SUCCESS = 0
     EXPECT_FAIL = 0
+    FAIL_FINDINGS = (Finding.FAIL, Finding.FOUND_OTHER)
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -189,19 +190,25 @@ class TestRegressionCaseCheckModel(unittest.TestCase):
         cls.res = regr_checker.check_model(FakeCat(cls.tl), cls.tl)
 
     def test_specific_case_CUI(self):
-        findings = self.res.findings
-        fail = findings.get(Finding.FAIL, 0)
-        success = sum(v for f, v in findings.items() if f not in (Finding.FAIL, Finding.FOUND_OTHER))
+        fail = self.get_manual_fail()
+        success = self.get_manual_success()
         self.assertEqual(fail, self.EXPECT_FAIL)
         self.assertEqual(success, len(
             self.tl.cui2names[TestRegressionCase.TARGET_CUI])
             + self.EXPECT_MANUAL_SUCCESS  # NOTE: manually added parts / success
             )
 
+    def get_manual_success(self) -> int:
+        return sum(v for f, v in self.res.findings.items() if f not in self.FAIL_FINDINGS)
+
+    def get_manual_fail(self) -> int:
+        return sum(v for f, v in self.res.findings.items() if f in self.FAIL_FINDINGS)
+
 
 class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
     # that is, anything but fail or FIND_OTHER
     EXPECT_MANUAL_SUCCESS = 3
+    EXPECT_FAIL = 1
 
     @classmethod
     def setUpClass(cls) -> None:
