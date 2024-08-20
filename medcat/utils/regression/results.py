@@ -374,6 +374,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
 
     def dict(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
+            kwargs = kwargs.copy() # so if used elsewhere, keeps the kwarg
             strict_raw = kwargs.pop('strictness')
             if isinstance(strict_raw, Strictness):
                 strictness = strict_raw
@@ -394,7 +395,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
             key.name: value for key, value in self.findings.items()
         }
         serialized_examples = [
-            (ft.dict(), (f[0].name, f[1])) for ft, f in self.examples
+            (ft.dict(**kwargs), (f[0].name, f[1])) for ft, f in self.examples
             # only count if NOT in strictness matrix (i.e 'failures')
             if f[0] not in STRICTNESS_MATRIX[strictness]
         ]
@@ -479,13 +480,19 @@ class ResultDescriptor(SingleResultDescriptor):
             exclude = set()
             kwargs['exclude'] = exclude
         # NOTE: ignoring here so that examples are only present in the per phrase part
-        exclude.add('examples')
+        exclude.update(('examples', 'per_phrase_results'))
         d = super().dict(**kwargs)
         if 'examples' in d:
             # NOTE: I don't really know why, but the examples still
             #       seem to be a part of the resulting dict, so I need
             #       to explicitly remove them
             del d['examples']
+        # NOTE: need to propagate here manually so the strictness keyword
+        #       makes sense and doesn't cause issues due being to unexpected keyword
+        per_phrase_results = {
+            phrase: res.dict(**kwargs) for phrase, res in self.per_phrase_results.items()
+        }
+        d['per_phrase_results'] = per_phrase_results
         return d
 
 
@@ -646,7 +653,7 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
                 raise ValueError(f"Unknown stircntess specified: {strict_raw}")
         else:
             strictness = Strictness.NORMAL
-        out_dict = super().dict(exclude={'parts'})
+        out_dict = super().dict(exclude={'parts'}, **kwargs)
         out_dict['parts'] = [part.dict(strictness=strictness) for part in self.parts]
         return out_dict
 
