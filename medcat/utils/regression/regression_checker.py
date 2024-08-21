@@ -169,6 +169,8 @@ if __name__ == '__main__':
                         'If set, a non-zero exit status is returned unless all cases are successfull (100%). '
                         'This can be useful for (e.g) CI workflow integration.',
                         action='store_true')
+    import sys
+    print("ARGS", sys.argv[1:])
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
