@@ -1,4 +1,5 @@
 import os
+import sys
 import pandas as pd
 
 from medcat.vocab import Vocab
@@ -6,6 +7,10 @@ from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 from medcat.cdb import CDB
 from medcat.cat import CAT
+
+
+vi = sys.version_info
+PY_VER = f"{vi.major}.{vi.minor}"
 
 
 # paths
@@ -23,7 +28,7 @@ SUPERVISED_DATA_PATH = os.path.join(
     os.path.dirname(__file__), 'supervised_mct_export.json'
 )
 SAVE_PATH = os.path.dirname(__file__)
-SAVE_NAME = "simple_model4test"
+SAVE_NAME = f"simple_model4test-{PY_VER}"
 
 # vocab
 
