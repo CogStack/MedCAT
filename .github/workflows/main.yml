@@ -48,7 +48,7 @@ jobs:
         #       When done, the newly created model is cleaned up
         run: |
           python tests/resources/regression/creation/cat_creation.py
-          python -m medcat.utils.regression.regression_checker tests/resources/regression/creation/simple_model4test*.zip tests/resources/regression/testing/test_model_regresssion.yml --require-fully-correct
+          python -m medcat.utils.regression.regression_checker tests/resources/regression/creation/simple_model4test*.zip tests/resources/regression/testing/test_model_regresssion.yml --strictness STRICTEST --require-fully-correct
           rm -rf tests/resources/regression/creation/simple_model4test_*
       - name: Get the latest release version
         id: get_latest_release
