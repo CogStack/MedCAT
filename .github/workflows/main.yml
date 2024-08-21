@@ -40,7 +40,16 @@ jobs:
           second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
           timeout 25m python -m unittest ${first_half_nl[@]}
           timeout 25m python -m unittest ${second_half_nl[@]}
-
+      - name: Regression
+        # NOTE: This will create a model pack based on some data included within the tests/resources/regression/creation/ folder
+        #       it will then train on some self-supervised as well as supervised training data and save the model.
+        #       Once we've got the model, it will run the model against the regression suite that is included.
+        #       If any of the regression cases fail, this will return a non-0 exit status.
+        #       When done, the newly created model is cleaned up
+        run: |
+          python tests/resources/regression/creation/cat_creation.py
+          python -m medcat.utils.regression.regression_checker tests/resources/regression/creation/simple_model4test*.zip tests/resources/regression/testing/test_model_regresssion.yml --require-fully-correct
+          rm -rf tests/resources/regression/creation/simple_model4test_*
       - name: Get the latest release version
         id: get_latest_release
         uses: actions/github-script@v6
