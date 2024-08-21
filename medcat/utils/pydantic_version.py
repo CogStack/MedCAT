@@ -20,10 +20,10 @@ def get_model_dump(obj: BaseModel) -> dict:
     if HAS_PYDANTIC2:
         return obj.model_dump()
     # for before pydantic 2
-    return obj.dict()  # type: ignore
+    return obj.dict()  # type: ignore # 4pydantic1 - backwards compatibility
 
 
 def get_model_fields(obj: BaseModel) -> dict:
     if HAS_PYDANTIC2:
         return obj.model_fields
-    return obj.__fields__  # type: ignore
+    return obj.__fields__  # type: ignore # 4pydantic1 - backwards compatibility
