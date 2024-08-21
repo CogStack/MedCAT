@@ -61,4 +61,5 @@ print("[sup] cui2count_train", cat.cdb.cui2count_train)
 # save
 mpn = cat.create_model_pack(SAVE_PATH, model_pack_name=SAVE_NAME)
 full_path = os.path.join(SAVE_PATH, mpn)
-print("Saved to", full_path)
+print("Saved to")
+print(full_path)
