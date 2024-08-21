@@ -23,4 +23,4 @@ python -m medcat.utils.regression.regression_checker \
   --require-fully-correct
 
 # Step 4: Clean up the generated file
-rm -f "$model_path"
+rm -rf "$model_path"*
