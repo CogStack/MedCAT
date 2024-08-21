@@ -38,7 +38,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
          use_mct_export: bool = False,
          mct_export_yaml_path: Optional[str] = None,
          only_mct_export_conversion: bool = False,
-         only_describe: bool = False) -> None:
+         only_describe: bool = False,
+         require_fully_correct: bool = False) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -59,6 +60,9 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         only_mct_export_conversion (bool): Whether to only deal with the MCT export conversion.
             I.e exit when MCT export conversion is done. Defaults to False.
         only_describe (bool): Whether to only describe the finding options and exit.
+            Defaults to False.
+        require_fully_correct (bool): Whether all cases are required to be correct.
+            If set to True, an exit-status of 1 is returned unless all (sub)cases are correct.
             Defaults to False.
 
     Raises:
@@ -103,6 +107,12 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         logger.info(res.get_report(phrases_separately=phrases,
                     hide_empty=hide_empty, examples_strictness=examples_strictness,
                     strictness=strictness, phrase_max_len=max_phrase_length))
+    if require_fully_correct:
+        total, success = res.calculate_report(phrases_separately=phrases,
+                                              hide_empty=hide_empty, examples_strictness=examples_strictness,
+                                              strictness=strictness, phrase_max_len=max_phrase_length)[:2]
+        if total != success:
+            exit(1)
 
 
 if __name__ == '__main__':
@@ -147,6 +157,10 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--only-describe', help='Only describe the various findings and exit.',
                         action='store_true')
+    parser.add_argument('--require-fully-correct', help='Require the regression test to be fully correct. '
+                        'If set, a non-zero exit status is returned unless all cases are successfull (100%). '
+                        'This can be useful for (e.g) CI workflow integration.',
+                        action='store_true')
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -160,4 +174,5 @@ if __name__ == '__main__':
          jsonpath=args.jsonfile, overwrite=args.overwrite, jsonindent=args.jsonindent,
          strictness_str=args.strictness, max_phrase_length=args.max_phrase_length,
          use_mct_export=args.from_mct_export, mct_export_yaml_path=args.mct_export_yaml,
-         only_mct_export_conversion=args.only_conversion, only_describe=args.only_describe)
+         only_mct_export_conversion=args.only_conversion, only_describe=args.only_describe,
+         require_fully_correct=args.require_fully_correct)
