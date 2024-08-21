@@ -1,0 +1,136 @@
+{
+    "projects": [
+        {
+            "cuis": "",
+            "documents": [
+                {
+                    "annotations": [
+                        {
+                            "cui": "C01",
+                            "start": 38,
+                            "end": 52,
+                            "value": "kidney failure"
+                        },
+                        {
+                            "cui": "C01",
+                            "start": 122,
+                            "end": 145,
+                            "value": "loss of kidney function"
+                        },
+                        {
+                            "cui": "C02",
+                            "start": 192,
+                            "end": 200,
+                            "value": "diabetes"
+                        },
+                        {
+                            "cui": "C02",
+                            "start": 279,
+                            "end": 296,
+                            "value": "diabetes mellitus"
+                        },
+                        {
+                            "cui": "C03",
+                            "start": 390,
+                            "end": 395,
+                            "value": "fever"
+                        },
+                        {
+                            "cui": "C03",
+                            "start": 454,
+                            "end": 470,
+                            "value": "high temperature"
+                        }
+                    ],
+                    "id": "ID-0",
+                    "last_modified": "2024-08-21",
+                    "name": "Doc#0",
+                    "text": "Patient had been diagnosed with acute kidney failure the week before. The current complaint was related to the same acute loss of kidney function as the diagnosis. The patient also has severe diabetes even though they have never consumed any sugar. The prior diagnosis of severe diabetes mellitus was confirmed by doctor. Due to the previous issues, patient had been suffering from a light fever all day. They took some paracetamol but still had a light high temperature afterwards."
+                },
+                {
+                    "annotations": [
+                        {
+                            "cui": "C04",
+                            "start": 20,
+                            "end": 27,
+                            "value": "seizure"
+                        },
+                        {
+                            "cui": "C04",
+                            "start": 81,
+                            "end": 87,
+                            "value": "fittest"
+                        }
+                    ],
+                    "id": "ID-1",
+                    "last_modified": "2024-08-21",
+                    "name": "Doc#1",
+                    "text": "Patient had a acute seizure during visit with GP. This is the first time a minor fittest was observed for this patient. "
+                },
+                {
+                    "annotations": [
+                        {
+                            "cui": "C05",
+                            "start": 26,
+                            "end": 33,
+                            "value": "healthy"
+                        },
+                        {
+                            "cui": "C05",
+                            "start": 84,
+                            "end": 91,
+                            "value": "fittest"
+                        }
+                    ],
+                    "id": "ID-2",
+                    "last_modified": "2024-08-21",
+                    "name": "Doc#2",
+                    "text": "The patient is considered healthy as per tests run. The patient would be considered fittest according to any standard known."
+                },
+                {
+                    "annotations": [
+                        {
+                            "cui": "C04",
+                            "start": 24,
+                            "end": 31,
+                            "value": "seizure"
+                        },
+                        {
+                            "cui": "C04",
+                            "start": 65,
+                            "end": 72,
+                            "value": "fittest"
+                        }
+                    ],
+                    "id": "ID-3",
+                    "last_modified": "2024-08-21",
+                    "name": "Doc#3",
+                    "text": "The patient has a minor seizure every day. The presence of daily fittest is extremely problematic."
+                },
+                {
+                    "annotations": [
+                        {
+                            "cui": "C05",
+                            "start": 16,
+                            "end": 23,
+                            "value": "healthy"
+                        },
+                        {
+                            "cui": "C05",
+                            "start": 111,
+                            "end": 118,
+                            "value": "fittest"
+                        }
+                    ],
+                    "id": "ID-3",
+                    "last_modified": "2024-08-21",
+                    "name": "Doc#4",
+                    "text": "The RHS male is healthy as considered by all available tests. There are no indications that the patient is not fittest."
+                }
+            ],
+            "id": "Project#0",
+            "name": "Project-0",
+            "tuis": ""
+        }
+    ]
+}
