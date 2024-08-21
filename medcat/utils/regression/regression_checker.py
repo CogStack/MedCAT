@@ -7,7 +7,7 @@ from typing import Optional
 
 from medcat.cat import CAT
 from medcat.utils.regression.checking import RegressionSuite, TranslationLayer
-from medcat.utils.regression.results import Strictness, Finding
+from medcat.utils.regression.results import Strictness, Finding, STRICTNESS_MATRIX
 
 logger = logging.getLogger(__name__)
 
@@ -26,6 +26,14 @@ def show_description():
         logger.info('%s :', f.name)
         logger.info(f.__doc__.replace("\n    ", "\n"))
         logger.info('')
+    logger.info('The strictnesses we have available:')
+    logger.info('')
+    for strictness in Strictness:
+        allows = [s.name for s in STRICTNESS_MATRIX[strictness]]
+        logger.info('%s: allows %s', strictness.name, allows)
+        logger.info('')
+    logger.info('NOTE: When using --example-strictness, anything described above '
+                'will be omitted from examples (since the are considered correct)')
 
 
 def main(model_pack_dir: Path, test_suite_file: Path,
