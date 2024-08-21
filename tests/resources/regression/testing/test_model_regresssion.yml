@@ -57,7 +57,7 @@ ambiguous-works-trained-2: # Uses AMBIGUOUS concepts in the trained context
     placeholders:
       - placeholder: '[CONCEPT]'
         cuis: [
-                'C05',  # seizure/fit
+                'C05',  # healthy/fit
               ]
   phrases:  # The list of phrases
   - Patient is a 50yo RHM considered [CONCEPT].
