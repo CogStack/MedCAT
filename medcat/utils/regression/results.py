@@ -325,7 +325,7 @@ STRICTNESS_MATRIX: Dict[Strictness, Set[Finding]] = {
         Finding.SMALLER_SPAN, Finding.PARTIAL_OVERLAP,
         Finding.FOUND_DIR_PARENT, Finding.FOUND_DIR_GRANDPARENT,
     },
-    Strictness.ANYTHING: set(Strictness),
+    Strictness.ANYTHING: set(Finding),
 }
 
 
