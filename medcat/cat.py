@@ -109,7 +109,7 @@ class CAT(object):
         self._rel_cats = rel_cats
         self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
-        self.usage_monitor = UsageMonitor(self.get_hash(), self.config.general.usage_monitor)
+        self.usage_monitor = UsageMonitor(self.config.version.id, self.config.general.usage_monitor)
 
     def _create_pipeline(self, config: Config):
         # Set log level
