@@ -43,7 +43,7 @@ def load_data(data_path: str, require_annotations: bool = True, order_by_num_ann
         require_annotations (bool):
             This will require anns but on project level, any doc in a project needs anns.
         order_by_num_ann (bool):
-            Whether to order by number of annoations. Defaults to True.
+            Whether to order by number of annotations. Defaults to True.
 
     Returns:
         Dict: The loaded data.
@@ -415,7 +415,7 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
 
     Args:
         data_path (str):
-            Output from MedCATtrainer - projects containig the same documents must have the same name.
+            Output from MedCATtrainer - projects containing the same documents must have the same name.
         out_path (str):
             The consolidated data will be saved here - usually only annotations where both annotators agree
         require_double (bool):
@@ -430,7 +430,7 @@ def consolidate_double_annotations(data_path: str, out_path: str, require_double
                 level will be checked.
 
     Returns:
-        Dict: The consolidated annoation.
+        Dict: The consolidated annotation.
     """
     d_stats_proj: Dict = {}
     data: Dict = load_data(data_path, require_annotations=True)

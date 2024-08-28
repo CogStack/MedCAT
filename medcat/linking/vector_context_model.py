@@ -102,7 +102,7 @@ class ContextModel(object):
             doc (Doc): The document to look in.
 
         Returns:
-            float: The simularity.
+            float: The similarity.
         """
         vectors = self.get_context_vectors(entity, doc)
         sim = self._similarity(cui, vectors)

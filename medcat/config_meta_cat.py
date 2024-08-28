@@ -42,7 +42,7 @@ class General(MixingConfig, BaseModel):
     batch_size_eval: int = 5000
     """Number of annotations to be meta-annotated at once in eval"""
     annotate_overlapping: bool = False
-    """If set meta_anns will be calcualted for doc._.ents, otherwise for doc.ents"""
+    """If set meta_anns will be calculated for doc._.ents, otherwise for doc.ents"""
     tokenizer_name: str = 'bbpe'
     """
     Tokenizer name used with MetaCAT.

@@ -86,7 +86,7 @@ class Model(MixingConfig, BaseModel):
     emb_grad: bool = True
     """If True the embeddings will also be trained"""
     ignore_cpos: bool = False
-    """If set to True center positions will be ignored when calculating represenation"""
+    """If set to True center positions will be ignored when calculating representation"""
 
     class Config:
         extra = Extra.allow

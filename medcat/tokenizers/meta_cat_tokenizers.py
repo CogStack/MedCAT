@@ -102,7 +102,7 @@ class TokenizerWrapperBPE(TokenizerWrapperBase):
 
             return output
         else:
-            raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
+            raise Exception("Unsupported input type, supported: text/list, but got: {}".format(type(text)))
 
     def save(self, dir_path: str) -> None:
         self.hf_tokenizers = self.ensure_tokenizer()
@@ -179,7 +179,7 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
                     })
             return output
         else:
-            raise Exception("Unsuported input type, supported: text/list, but got: {}".format(type(text)))
+            raise Exception("Unsupported input type, supported: text/list, but got: {}".format(type(text)))
 
     def save(self, dir_path: str) -> None:
         self.hf_tokenizers = self.ensure_tokenizer()

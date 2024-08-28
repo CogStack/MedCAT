@@ -23,7 +23,7 @@ class MakeVocab(object):
         vocab (medcat.vocab.Vocab, optional):
             Vocabulary to be extended, leave as None if you want to make a new Vocab. Default: None
         word_tokenizer (<function>):
-            A custom tokenizer for word spliting - used if embeddings are BERT or similar.
+            A custom tokenizer for word splitting - used if embeddings are BERT or similar.
             Default: None
     Examples:
         To make a vocab and train word embeddings.
