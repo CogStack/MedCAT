@@ -59,7 +59,7 @@ class Pipe(object):
                            "packaging and using your model pack with "
                            "the spacy model it was designed for",
                            config.general.spacy_model, exc_info=e)
-            # we're changing the config value so that this propages
+            # we're changing the config value so that this propagates
             # to other places that try to load the model. E.g:
             # medcat.utils.normalizers.TokenNormalizer.__init__
             ensure_spacy_model(DEFAULT_SPACY_MODEL)
@@ -128,7 +128,7 @@ class Pipe(object):
         Span.set_extension('confidence', default=-1, force=True)
         Span.set_extension('id', default=0, force=True)
 
-        # Do not set this property if a vocabulary apporach is not used, this name must
+        # Do not set this property if a vocabulary approach is not used, this name must
         #refer to a name2cuis in the cdb.
         Span.set_extension('detected_name', default=None, force=True)
         Span.set_extension('link_candidates', default=None, force=True)

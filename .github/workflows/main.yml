@@ -40,7 +40,8 @@ jobs:
           second_half_nl=$(echo "$all_files" | tail -n +$(($midpoint + 1)))
           timeout 25m python -m unittest ${first_half_nl[@]}
           timeout 25m python -m unittest ${second_half_nl[@]}
-
+      - name: Regression
+        run: source tests/resources/regression/run_regression.sh
       - name: Get the latest release version
         id: get_latest_release
         uses: actions/github-script@v6

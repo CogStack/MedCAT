@@ -92,7 +92,7 @@ class PatternEncoder(PartEncoder):
 class PatternDecoder(PartDecoder):
 
     def try_decode(self, dct: dict) -> Union[dict, re.Pattern]:
-        """Decode re.Patttern from input dicts.
+        """Decode re.Pattern from input dicts.
 
         Args:
             dct (dict): The input dict

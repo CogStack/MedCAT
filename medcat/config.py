@@ -1,7 +1,7 @@
 from datetime import datetime
 from pydantic import BaseModel, Extra, ValidationError
 from pydantic.fields import ModelField
-from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type
+from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type, Literal
 from multiprocessing import cpu_count
 import logging
 import jsonpickle
@@ -132,7 +132,7 @@ class MixingConfig(FakeDict):
                 try:
                     setattr(self, key, value)
                 except AttributeError as err:
-                    logger.warning('Issue with setting attribtue "%s":', key, exc_info=err)
+                    logger.warning('Issue with setting attribute "%s":', key, exc_info=err)
         self.rebuild_re()
 
     def parse_config_file(self, path: str, extractor: ValueExtractor = _DEFAULT_EXTRACTOR) -> None:
@@ -281,7 +281,7 @@ class CDBMaker(MixingConfig, BaseModel):
     name_versions: list = ['LOWER', 'CLEAN']
     """Name versions to be generated."""
     multi_separator: str = '|'
-    """If multiple names or type_ids for a concept present in one row of a CSV, they are separted
+    """If multiple names or type_ids for a concept present in one row of a CSV, they are separated
     by the character below."""
     remove_parenthesis: int = 5
     """Should preferred names with parenthesis be cleaned 0 means no, else it means if longer than or equal
@@ -321,12 +321,40 @@ class CheckPoint(MixingConfig, BaseModel):
         validate_assignment = True
 
 
+class UsageMonitor(MixingConfig, BaseModel):
+    enabled: Literal[True, False, 'auto'] = False
+    r"""Whether usage monitoring is enabled (True), disabled (False), or automatic ('auto').
+
+    If set to False, no logging is performed.
+    If set to True, logs are saved in the location specified by `log_folder`.
+    If set to 'auto', logs will be automatically enabled or disabled based on
+    environmenta variable (`MEDCAT_LOGS` - setting it to False or 0 disabled logging)
+    and distributed according to the OS preferred logs location (`MEDCAT_LOGS_LOCATION`).
+    The defaults for the location are:
+     - For Linux: ~/.local/share/medcat/logs/
+     - For Windows: C:\Users\%USERNAME%\.cache\medcat\logs\
+    """
+    batch_size: int = 100
+    """Number of logged events to write at once."""
+    file_prefix: str = "usage_"
+    """The prefix for logged files. The suffix will be the model hash."""
+    log_folder: str = "."
+    """The folder which contains the usage logs. In certain situations,
+    it may make sense to keep this separate from the overall logs.
+
+    NOTE: Does not take affect if `enabled` is set to 'auto'"""
+
+
 class General(MixingConfig, BaseModel):
     """The general part of the config"""
     spacy_disabled_components: list = ['ner', 'parser', 'vectors', 'textcat',
                                        'entity_linker', 'sentencizer', 'entity_ruler', 'merge_noun_chunks',
                                        'merge_entities', 'merge_subtokens']
+    """The list of spacy components that will be disabled.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     checkpoint: CheckPoint = CheckPoint()
+    usage_monitor = UsageMonitor()
     """Checkpointing config"""
     log_level: int = logging.INFO
     """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
@@ -359,7 +387,12 @@ class General(MixingConfig, BaseModel):
     should not be used when annotating millions of documents. If `None` it will be the string "concept", if `short` it will be CUI,
     if `long` it will be CUI | Name | Confidence"""
     map_cui_to_group: bool = False
-    """If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be maped to the group"""
+    """If the cdb.addl_info['cui2group'] is provided and this option enabled, each CUI will be mapped to the group"""
+    simple_hash: bool = False
+    """Whether to use a simple hash.
+
+    NOTE: While using a simple hash is faster at save time, it is less
+    reliable due to not taking into account all the details of the changes."""
 
     class Config:
         extra = Extra.allow
@@ -369,7 +402,7 @@ class General(MixingConfig, BaseModel):
 class Preprocessing(MixingConfig, BaseModel):
     """The preprocessing part of the config"""
     words_to_skip: set = {'nos'}
-    """This words will be completly ignored from concepts and from the text (must be a Set)"""
+    """This words will be completely ignored from concepts and from the text (must be a Set)"""
     keep_punct: set = {'.', ':'}
     """All punct will be skipped by default, here you can set what will be kept"""
     do_not_normalize: set = {'VBD', 'VBG', 'VBN', 'VBP', 'JJS', 'JJR'}
@@ -378,13 +411,17 @@ class Preprocessing(MixingConfig, BaseModel):
     - https://spacy.io/usage/linguistic-features#pos-tagging
     - Label scheme section per model at https://spacy.io/models/en"""
     skip_stopwords: bool = False
-    """Should stopwords be skipped/ingored when processing input"""
+    """Should stopwords be skipped/ignored when processing input"""
     min_len_normalize: int = 5
     """Nothing below this length will ever be normalized (input tokens or concept names), normalized means lemmatized in this case"""
     stopwords: Optional[set] = None
-    """If None the default set of stowords from spacy will be used. This must be a Set."""
+    """If None the default set of stowords from spacy will be used. This must be a Set.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     max_document_length: int = 1000000
-    """Documents longer  than this will be trimmed"""
+    """Documents longer  than this will be trimmed.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
 
     class Config:
         extra = Extra.allow
@@ -396,7 +433,7 @@ class Ner(MixingConfig, BaseModel):
     min_name_len: int = 3
     """Do not detect names below this limit, skip them"""
     max_skip_tokens: int = 2
-    """When checkng tokens for concepts you can have skipped tokens inbetween
+    """When checking tokens for concepts you can have skipped tokens between
     used ones (usually spaces, new lines etc). This number tells you how many skipped can you have."""
     check_upper_case_names: bool = False
     """Check uppercase to distinguish uppercase and lowercase words that have a different meaning."""
@@ -430,13 +467,13 @@ _DEFAULT_PARTIAL = _DefPartial()
 class LinkingFilters(MixingConfig, BaseModel):
     """These describe the linking filters used alongside the model.
 
-    When no CUIs nor exlcuded CUIs are specified (the sets are empty),
+    When no CUIs nor excluded CUIs are specified (the sets are empty),
     all CUIs are accepted.
     If there are CUIs specified then only those will be accepted.
     If there are excluded CUIs specified, they are excluded.
 
     In some cases, there are extra filters as well as MedCATtrainer (MCT) export filters.
-    These are expcted to follow the following:
+    These are expected to follow the following:
     extra_cui_filter ⊆ MCT filter ⊆ Model/config filter
 
     While any other CUIs can be included in the the extra CUI filter or the MCT filter,
@@ -518,10 +555,10 @@ class Linking(MixingConfig, BaseModel):
     """Concepts that have seen less training examples than this will not be used for
     similarity calculation and will have a similarity of -1."""
     always_calculate_similarity: bool = False
-    """Do we want to calculate context similarity even for concepts that are not ambigous."""
+    """Do we want to calculate context similarity even for concepts that are not ambiguous."""
     calculate_dynamic_threshold: bool = False
     """Concepts below this similarity will be ignored. Type can be static/dynamic - if dynamic each CUI has a different TH
-    and it is calcualted as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
+    and it is calculated as the average confidence for that CUI * similarity_threshold. Take care that dynamic works only
     if the cdb was trained with calculate_dynamic_threshold = True."""
     similarity_threshold_type: str = 'static'
     similarity_threshold: float = 0.25
@@ -532,14 +569,14 @@ class Linking(MixingConfig, BaseModel):
     prefer_primary_name: float = 0.35
     """If >0 concepts for which a detection is its primary name will be preferred by that amount (0 to 1)"""
     prefer_frequent_concepts: float = 0.35
-    """If >0 concepts that are more frequent will be prefered by a multiply of this amount"""
+    """If >0 concepts that are more frequent will be preferred by a multiply of this amount"""
     subsample_after: int = 30000
     """DISABLED in code permanetly: Subsample during unsupervised training if a concept has received more than"""
     devalue_linked_concepts: bool = False
     """When adding a positive example, should it also be treated as Negative for concepts
-    which link to the postive one via names (ambigous names)."""
+    which link to the positive one via names (ambiguous names)."""
     context_ignore_center_tokens: bool = False
-    """If true when the context of a concept is calculated (embedding) the words making that concept are not taken into accout"""
+    """If true when the context of a concept is calculated (embedding) the words making that concept are not taken into account"""
 
     class Config:
         extra = Extra.allow
@@ -575,7 +612,7 @@ class Config(MixingConfig, BaseModel):
         # Some regex that we will need
         self.word_skipper = re.compile('^({})$'.format(
             '|'.join(self.preprocessing.words_to_skip)))
-        # Very agressive punct checker, input will be lowercased
+        # Very aggressive punct checker, input will be lowercased
         self.punct_checker = re.compile(r'[^a-z0-9]+')
 
     # Override

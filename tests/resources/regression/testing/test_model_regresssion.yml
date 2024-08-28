@@ -1,0 +1,63 @@
+# this is only mean for the test "model pack" in the examples folder
+unambiguous-works: # this uses the exact same context that was used during training
+  targeting:
+    placeholders:
+      - placeholder: '[CONCEPT1]'
+        cuis: [
+                'CO1',  # kidney failure
+              ]
+      - placeholder: '[CONCEPT2]'
+        cuis: [
+                'C02',  # diabetes
+              ]
+      - placeholder: '[CONCEPT3]'
+        cuis: [
+                'C03',  # fever
+              ]
+  phrases:  # The list of phrases
+  - Man was diagnosed with severe [CONCEPT1] and acute [CONCEPT2] and presented with a light [CONCEPT3]
+unambiguous-works-rnd: # these use the random word that one of the concepts WAS trained for
+  targeting:
+    placeholders:
+      - placeholder: '[CONCEPT]'
+        cuis: [
+                'CO1',  # kidney failure
+                'C02',  # diabetes
+                'C03',  # fever
+              ]
+  phrases:  # The list of phrases
+  - Patient was diagnosed with severe [CONCEPT].
+  - Patient was diagnosed with acute [CONCEPT].
+  - Patient presented with light [CONCEPT].
+unambiguous-works-rnd-reverse: # these use the OPPOSITE random word that one of the concepts WAS trained for
+  targeting:
+    placeholders:
+      - placeholder: '[CONCEPT]'
+        cuis: [
+                'CO1',  # kidney failure
+                'C02',  # diabetes
+                'C03',  # fever
+              ]
+  phrases:  # The list of phrases
+  - Patient was diagnosed with minor [CONCEPT].
+  - Patient was diagnosed with chronic [CONCEPT].
+  - Patient presented with heavy [CONCEPT].
+ambiguous-works-trained-1: # Uses AMBIGUOUS concepts in the trained context
+  targeting:
+    placeholders:
+      - placeholder: '[CONCEPT]'
+        cuis: [
+                'C04',  # seizure/fit
+              ]
+  phrases:  # The list of phrases
+  - Patient presented with acute [CONCEPT].
+  - Patient had a minor [CONCEPT] during visit.
+ambiguous-works-trained-2: # Uses AMBIGUOUS concepts in the trained context
+  targeting:
+    placeholders:
+      - placeholder: '[CONCEPT]'
+        cuis: [
+                'C05',  # healthy/fit
+              ]
+  phrases:  # The list of phrases
+  - Patient is a 50yo RHM considered [CONCEPT].

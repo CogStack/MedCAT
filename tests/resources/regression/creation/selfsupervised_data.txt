@@ -1,0 +1,10 @@
+id,text
+FD0,"Patient presented with severe diabetes and had also been diagnosed with acute kidney failure.
+Prior to visit the patient had also complained about a light fever"
+FD1,"50yo RHM with light fever admitted to hospital.
+Tests conducted and acute kidney failure discovered.
+Tests also show signes of severe diabetes, though there are no other symptoms."
+FD2,"102yo LHF presented with acute seizure after long day of work.
+No further complications"
+FD3,"Patient is a healthy male in their 20s.
+No health complications were noted."

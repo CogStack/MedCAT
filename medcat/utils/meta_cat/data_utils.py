@@ -29,7 +29,7 @@ def prepare_from_json(data: Dict,
         replace_center (Optional[str]):
             If not None the center word (concept) will be replaced with whatever this is.
         prerequisites (Dict):
-            A map of prerequisities, for example our data has two meta-annotations (experiencer, negation). Assume I want to create
+            A map of prerequisites, for example our data has two meta-annotations (experiencer, negation). Assume I want to create
             a dataset for `negation` but only in those cases where `experiencer=patient`, my prerequisites would be:
                 {'Experiencer': 'Patient'} - Take care that the CASE has to match whatever is in the data. Defaults to `{}`.
         lowercase (bool):
@@ -53,7 +53,7 @@ def prepare_from_json(data: Dict,
                 doc_text = tokenizer(text)
 
                 for ann in document.get('annotations', document.get('entities',
-                                                                    {}).values()):  # A hack to suport entities and annotations
+                                                                    {}).values()):  # A hack to support entities and annotations
                     cui = ann['cui']
                     skip = False
                     if 'meta_anns' in ann and prerequisites:
@@ -154,8 +154,8 @@ def prepare_for_oversampled_data(data: List,
 
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None,
                            category_undersample=None) -> Tuple:
-    """Converts the category values in the data outputed by `prepare_from_json`
-    into integere values.
+    """Converts the category values in the data outputted by `prepare_from_json`
+    into integer values.
 
     Args:
         data (Dict):
@@ -243,7 +243,7 @@ def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:
 
     Args:
         data(Dict):
-            Output from cat formated as: {<id>: <output of get_entities, ...}.
+            Output from cat formatted as: {<id>: <output of get_entities, ...}.
         id2text(Dict):
             Map from document id to text of that document.
 

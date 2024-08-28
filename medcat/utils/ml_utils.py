@@ -3,7 +3,7 @@ def get_lr_linking(config, cui_count):
         return config.linking['optim']['lr']
     elif config.linking['optim']['type'] == 'linear':
         lr = config.linking['optim']['base_lr']
-        cui_count += 1 # Just in case incrase by 1
+        cui_count += 1 # Just in case increase by 1
         return max(lr / cui_count, config.linking['optim']['min_lr'])
     else:
         raise Exception("Optimizer not implemented")
@@ -63,7 +63,7 @@ def build_vocab_from_hf(model_name, hf_tokenizer, vocab):
                 vec = embs[i]
                 vocab.add_word(word=tkn, vec=vec, replace=True)
 
-            # Crate the new unigram table
+            # Create the new unigram table
             vocab.reset_counts()
             vocab.make_unigram_table()
         except Exception:

@@ -108,9 +108,9 @@ class UMLS:
 
         df = df.rename(columns=medcat_csv_mapper)
 
-        # pop all unneccessary columns
+        # pop all unnecessary columns
 
-        # all initial collumns should have been renamed
+        # all initial columns should have been renamed
         for col_name in self.main_columns + self.sem_types_columns:
             if col_name in df.columns:
                 df.pop(col_name)
