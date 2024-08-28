@@ -85,7 +85,7 @@ def limit_str_len(input_str: str,
     string is returned.
     If it's longer, the first `keep_front` are kept, then the number of chars
     is included in brackets (e.g `" [123 chars] "`), and finally the last
-    `keeo_rear` characters are included.
+    `keep_rear` characters are included.
 
     Args:
         input_str (str): The input (potentially) long string.
@@ -203,7 +203,7 @@ def get_class_level_docstrings(cls: Type) -> List[str]:
 def add_doc_strings_to_enum(cls: Type[Enum]) -> None:
     """Add doc strings to Enum as they are described in code right below each constant.
 
-    The way python works means that the doc strins defined after an Enum constant do not
+    The way python works means that the doc strings defined after an Enum constant do not
     get stored with the constant. When accessing the doc string of an Enum constant, the
     doc string of the class is returned instead.
 
