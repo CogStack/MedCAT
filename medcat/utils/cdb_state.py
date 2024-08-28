@@ -95,7 +95,7 @@ def apply_cdb_state(cdb, state: CDBState) -> None:
 def load_and_apply_cdb_state(cdb, file_path: str) -> None:
     """Delete current CDB state and apply CDB state from file.
 
-    This first delets the current state of the CDB.
+    This first deletes the current state of the CDB.
     This is to save memory. The idea is that saving the staet
     on disk will save on RAM usage. But it wouldn't really
     work too well if upon load, two instances were still in

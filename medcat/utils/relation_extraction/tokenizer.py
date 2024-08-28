@@ -46,7 +46,7 @@ class TokenizerWrapperBERT(BertTokenizerFast):
             return output
         else:
             raise Exception(
-                "Unsuported input type, supported: text/list, but got: {}".format(type(text)))
+                "Unsupported input type, supported: text/list, but got: {}".format(type(text)))
 
     def save(self, dir_path):
         path = os.path.join(dir_path, self.name)

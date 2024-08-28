@@ -23,7 +23,7 @@ class NER(PipeRunner):
     # Override
     def __call__(self, doc: Doc) -> Doc:
         """Detect candidates for concepts - linker will then be able to do the rest. It adds `entities` to the
-        doc._.ents and each entity can have the entitiy._.link_candidates - that the linker will resolve.
+        doc._.ents and each entity can have the entity._.link_candidates - that the linker will resolve.
 
         Args:
             doc (Doc):

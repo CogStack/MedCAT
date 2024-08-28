@@ -72,7 +72,7 @@ class Snomed:
         release (str): Release of SNOMED CT folder.
         uk_ext (bool, optional): Specifies whether the version is a SNOMED UK extension released after 2021. Defaults to False.
         uk_drug_ext (bool, optional): Specifies whether the version is a SNOMED UK drug extension. Defaults to False.
-        au_ext (bool, optional): Specifies wether the version is a AU release. Defaults to False.
+        au_ext (bool, optional): Specifies whether the version is a AU release. Defaults to False.
     """
 
     def __init__(self, data_path, uk_ext=False, uk_drug_ext=False, au_ext: bool = False):
@@ -84,7 +84,7 @@ class Snomed:
         if ((self.uk_ext or self.uk_drug_ext) and
                 # using lexicographical comparison below
                 # e.g "20240101" > "20231122" results in True
-                # yet "20231121" > "20231122" reults in False
+                # yet "20231121" > "20231122" results in False
                 len(self.release) == len("20231122") and self.release >= "20231122"):
             # NOTE for UK extensions starting from 20231122 the
             #      OPCS4 refset ID seems to be different

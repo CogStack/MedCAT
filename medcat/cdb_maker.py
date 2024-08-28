@@ -20,13 +20,13 @@ logger = logging.getLogger(__name__)
 
 class CDBMaker(object):
     """Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
-    updates an exisitng one.
+    updates an existing one.
 
     Args:
         config (medcat.config.Config):
             Global config for MedCAT.
         cdb (medcat.cdb.CDB):
-            If set the `CDBMaker` will updat the existing `CDB` with
+            If set the `CDBMaker` will update the existing `CDB` with
             new concepts in the CSV (Default value `None`).
     """
 
