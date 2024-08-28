@@ -12,7 +12,7 @@ An example patient record with placeholders (the simple one from the default reg
 The patient presents with [FINDING1] and [FINDING2]. These findings are suggestive of [DISORDER].
 Further diagnostic evaluation and investigations are required to confirm the diagnosis.
 ```
-As we can see, there are three different palceholders in here: `[FINDING1]`, `[FINDING2]`, and `[DISORDER]`.
+As we can see, there are three different placeholders in here: `[FINDING1]`, `[FINDING2]`, and `[DISORDER]`.
 Each can be replaced with a specific name of a specific concept.
 For instance, we've specified the following:
  - `[FINDING1]` -> '49727002' (cough)

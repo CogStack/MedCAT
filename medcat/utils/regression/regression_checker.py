@@ -56,12 +56,12 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         phrases (bool): Whether to show per-phrase information in a report
         hide_empty (bool): Whether to hide empty cases in a report
         examples_strictness_str (str): The example strictness string. Defaults to STRICTEST.
-            NOTE: If you set this to 'None', examples wille be omitted.
+            NOTE: If you set this to 'None', examples will be omitted.
         jsonpath (Optional[Path]): The json path to save the report to (if specified)
         overwrite (bool): Whether to overwrite the file if it exists. Defaults to False
         jsonindent (int): The indentation for json objects. Defaults to 0
         strictness_str (str): The strictness name. Defaults to NORMAL.
-        max_phrase_length (int): The maximum phrase length in examples. Defualts to 80.
+        max_phrase_length (int): The maximum phrase length in examples. Defaults to 80.
         use_mct_export (bool): Whether to use a MedCATtrainer export as input. Defaults to False.
         mct_export_yaml_path (str): The (optional) path the converted MCT export should be saved as YAML at.
             If not set (or None), the MCT export is not saved in YAML format. Defaults to None.
@@ -128,7 +128,7 @@ if __name__ == '__main__':
     parser.add_argument('modelpack', help='The model pack against which to check',
                         type=Path)
     parser.add_argument('test_suite', help='YAML formatted file containing the regression test suite'
-                        f'The default value (and exampe) is at `{DEFAULT_TEST_SUITE_PATH}`',
+                        f'The default value (and example) is at `{DEFAULT_TEST_SUITE_PATH}`',
                         default=DEFAULT_TEST_SUITE_PATH, nargs='?', type=Path)
     parser.add_argument('--silent', '-s', help='Make the operation silent (i.e ignore console output)',
                         action='store_true')
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('--only-describe', help='Only describe the various findings and exit.',
                         action='store_true')
     parser.add_argument('--require-fully-correct', help='Require the regression test to be fully correct. '
-                        'If set, a non-zero exit status is returned unless all cases are successfull (100%). '
+                        'If set, a non-zero exit status is returned unless all cases are successful (100%). '
                         'This can be useful for (e.g) CI workflow integration.',
                         action='store_true')
     args = parser.parse_args()

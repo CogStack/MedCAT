@@ -118,11 +118,11 @@ class RegressionCase(BaseModel):
     def from_dict(cls, name: str, in_dict: dict) -> 'RegressionCase':
         """Construct the regression case from a dict.
 
-        The expected stucture:
+        The expected structure:
         {
             'targeting': {
                 [
-                    'placeholder': '[DIAGNOSIS]'  # the placeholder to be repalced
+                    'placeholder': '[DIAGNOSIS]'  # the placeholder to be replaced
                     'cuis': ['cui1', 'cui2']
                     'prefname-only': 'false', # optional
                 ]
@@ -180,7 +180,7 @@ def get_ontology_and_version(model_card: dict) -> Tuple[str, str]:
     That is, unless the specified location does not exist in the model card,
     in which case 'Unknown' is returned.
 
-    The ontology is assumed to be descibed at:
+    The ontology is assumed to be described at:
         model_card['Source Ontology'][0] (or model_card['Source Ontology'] if it's a string instead of a list)
 
     The ontology version is read from:
@@ -218,7 +218,7 @@ def get_ontology_and_version(model_card: dict) -> Tuple[str, str]:
 
 
 class MetaData(BaseModel):
-    """The metadat for the regression suite.
+    """The metadata for the regression suite.
 
     This should define which ontology (e.g UMLS or SNOMED) as well as
     which version was used when generating the regression suite.
@@ -257,10 +257,10 @@ class MetaData(BaseModel):
 
 
 def fix_np_float64(d: dict) -> None:
-    """Fix numpy.float64 in dictrionary for yaml saving purposes.
+    """Fix numpy.float64 in dictionary for yaml saving purposes.
 
     These types of objects are unable to be cleanly serialized using yaml.
-    So we need to conver them to the corresponding floats.
+    So we need to convert them to the corresponding floats.
 
     The changes will be made within the dictionary itself
     as well as dictionaries within, recursively.

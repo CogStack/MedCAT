@@ -20,7 +20,7 @@ class Finding(Enum):
     - Recognised Start, Recognised End
 
     We can model this as 4 numbers on the number line. And we want to know
-    their position relative to eachother.
+    their position relative to each other.
     For example, if the expected positions are marked with * and recognised
     positions with #, we may have something like:
     ___*__#_______#*______________
@@ -59,11 +59,11 @@ class Finding(Enum):
     _#_*_#_*__ (start before expected start, but ends between expected start and end)"""
     # slightly different CUIs
     FOUND_DIR_PARENT = auto()
-    """The recongised CUI is a parent of the expected CUI but the span is an exact match."""
+    """The recognised CUI is a parent of the expected CUI but the span is an exact match."""
     FOUND_DIR_GRANDPARENT = auto()
-    """The recongised CUI is a grandparent of the expected CUI but the span is an exact match."""
+    """The recognised CUI is a grandparent of the expected CUI but the span is an exact match."""
     FOUND_ANY_CHILD = auto()
-    """The recongised CUI is a child of the expected CUI but the span is an exact match."""
+    """The recognised CUI is a child of the expected CUI but the span is an exact match."""
     FOUND_CHILD_PARTIAL = auto()
     """The recognised CUI is a child yet the match is only partial (smaller/bigger/partial)."""
     FOUND_OTHER = auto()
@@ -129,7 +129,7 @@ class FindingDeterminer:
         tl (TranslationLayer): The translation layer.
         found_entities (Dict[str, Dict[str, Any]]): The entities found by the model.
         strict_only (bool): Whether to use strict-only mode (either identical or fail). Defaults to False.
-        check_children (bool): Whether ot check the children. Defaults to True.
+        check_children (bool): Whether or not to check the children. Defaults to True.
         check_parent (bool): Whether to check for parent(s). Defaults to True.
         check_grandparent (bool): Whether to check for granparent(s). Defaults to True.
     """
@@ -264,7 +264,7 @@ class FindingDeterminer:
         """Determine the finding based on the given information.
 
         First, the strict check is done (either identical or not).
-        Then, parents are checked (if requried).
+        Then, parents are checked (if required).
         After that, children are checked (if required).
 
         Returns:
@@ -410,7 +410,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
 
 
 class ResultDescriptor(SingleResultDescriptor):
-    """The overarching result descriptor that handles mulitple phrases.
+    """The overarching result descriptor that handles multiple phrases.
 
     This class keeps track of the results on a per-phrase basis and
     can be used to get the overall report and/or iterate over examples.
@@ -450,7 +450,7 @@ class ResultDescriptor(SingleResultDescriptor):
             strictness_threshold (Strictness): The strictness threshold.
 
         Yields:
-            Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]: The placholder, phrase, finding, CUI, and name.
+            Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]: The placeholder, phrase, finding, CUI, and name.
         """
         for srd in self.per_phrase_results.values():
             for target, finding in srd.examples:
@@ -512,7 +512,7 @@ class MultiDescriptor(pydantic.BaseModel):
         """The total findings.
 
         Returns:
-            Dict[Finding, int]: The total number of sucesses.
+            Dict[Finding, int]: The total number of successes.
         """
         totals: Dict[Finding, int] = {}
         for part in self.parts:
@@ -527,7 +527,7 @@ class MultiDescriptor(pydantic.BaseModel):
                       ) -> Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]:
         """Iterate over all relevant examples.
 
-        Only examples that are not in the strictness matric for the specified
+        Only examples that are not in the strictness matrix for the specified
         threshold will be used.
 
         Args:
@@ -595,7 +595,7 @@ class MultiDescriptor(pydantic.BaseModel):
                 Set to None to disable examples. Defaults to Strictness.STRICTEST.
             strictness (Strictness): The strictness of the success / fail overview.
                 Defaults to Strictness.NORMAL.
-            phrase_max_len (int): The maximum length of the phrase in examples. Defualts to 80.
+            phrase_max_len (int): The maximum length of the phrase in examples. Defaults to 80.
 
         Returns:
             Tuple[int, int, int, int, str]: The total number of examples, the total successes, the total failures,
@@ -638,7 +638,7 @@ class MultiDescriptor(pydantic.BaseModel):
                 Set to None to disable examples. Defaults to Strictness.STRICTEST.
             strictness (Strictness): The strictness of the success / fail overview.
                 Defaults to Strictness.NORMAL.
-            phrase_max_len (int): The maximum length of the phrase in examples. Defualts to 80.
+            phrase_max_len (int): The maximum length of the phrase in examples. Defaults to 80.
 
         Returns:
             str: The report string

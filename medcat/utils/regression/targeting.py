@@ -53,7 +53,7 @@ class TranslationLayer:
     def get_names_of(self, cui: str, only_prefnames: bool) -> List[str]:
         """Get the preprocessed names of a CUI.
 
-        This method preporcesses the names by replacing the separator (genreally `~`)
+        This method preporcesses the names by replacing the separator (generally `~`)
         with the appropriate whitespace (` `).
 
         If the concept is not in the underlying CDB, an empty list is returned.
@@ -79,7 +79,7 @@ class TranslationLayer:
             cui (str): The concept ID.
 
         Returns:
-            str: The preferrred name.
+            str: The preferred name.
         """
         pref_name = self.cui2preferred_names.get(cui, None)
         if pref_name is None:
@@ -190,7 +190,7 @@ class TranslationLayer:
 
 
 class TargetPlaceholder(BaseModel):
-    """A class describing the options for a specific palceholder.
+    """A class describing the options for a specific placeholder.
     """
     placeholder: str
     target_cuis: List[str]
@@ -227,7 +227,7 @@ class TargetedPhraseChanger(BaseModel):
     """The target phrase changer.
 
     It includes the phrase changer (for preprocessing) along with
-    the relevant concept and the palceholder it will replace.
+    the relevant concept and the placeholder it will replace.
     """
     changer: PhraseChanger
     placeholder: str
@@ -291,7 +291,7 @@ class OptionSet(BaseModel):
         elif isinstance(allow_any_in, bool):
             allow_any_combinations = allow_any_in
         else:
-            raise ProblematicOptionSetException(f"Unkown 'any-combination' value: {allow_any_in}")
+            raise ProblematicOptionSetException(f"Unknown 'any-combination' value: {allow_any_in}")
         if 'placeholders' not in section:
             raise ProblematicOptionSetException("Misconfigured - no placeholders")
         section_placeholders = section['placeholders']

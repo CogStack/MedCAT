@@ -81,7 +81,7 @@ def limit_str_len(input_str: str,
                   keep_rear: int = 10) -> str:
     """Limits the length of a string.
 
-    If the lenght of the string is less than or equal to `max_length`, the same
+    If the length of the string is less than or equal to `max_length`, the same
     string is returned.
     If it's longer, the first `keep_front` are kept, then the number of chars
     is included in brackets (e.g `" [123 chars] "`), and finally the last
