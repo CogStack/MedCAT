@@ -7,7 +7,7 @@ REGRESSION_OPTIONS="--strictness STRICTEST --require-fully-correct"
 DL_LINK="https://cogstack-medcat-example-models.s3.eu-west-2.amazonaws.com/medcat-example-models/all_fake_medcat_models.zip"
 ZIP_FILE_NAME="all_fake_medcat_models.zip"
 # target regression set
-REGRESSION_TEST_SET="../../../tests/resources/regression/testing/test_model_regresssion.yml"
+REGRESSION_TEST_SET="tests/resources/regression/testing/test_model_regresssion.yml"
 # folder to house models under test
 MODEL_FOLDER="fake_models"
 
