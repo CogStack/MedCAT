@@ -13,7 +13,6 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, workers
-from medcat.utils.decorators import deprecated
 from medcat.utils.saving.serializer import CDBSerializer
 from medcat.utils.config_utils import get_and_del_weighted_average_from_config
 from medcat.utils.config_utils import default_weighted_average
@@ -147,11 +146,6 @@ class CDB(object):
         self.cui2average_confidence[cui] = (self.cui2average_confidence.get(cui, 0) * self.cui2count_train.get(cui, 0) + new_sim) / \
                                             (self.cui2count_train.get(cui, 0) + 1)
         self.is_dirty = True
-
-    @deprecated("Deprecated. For internal use only. Use CAT.unlink_concept_name instead",
-                depr_version=(1, 12, 0), removal_version=(1, 13, 0))
-    def remove_names(self, cui: str, names: Iterable[str]) -> None:
-        self._remove_names(cui, names)
 
     def _remove_names(self, cui: str, names: Iterable[str]) -> None:
         """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
