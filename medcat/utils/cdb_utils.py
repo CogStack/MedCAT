@@ -52,7 +52,7 @@ def merge_cdb(cdb1: CDB,
         names = dict()
         for name in cdb2.cui2names[cui]:
             names[name] = {'snames': cdb2.cui2snames.get(cui, set()), 'is_upper': cdb2.name_isupper.get(name, False), 'tokens': {}, 'raw_name': cdb2.get_name(cui)}
-            name_status = cdb2.name2cuis2status.get(name, 'A').get(cui, 'A') # get the name status if it exists, default to 'A'
+            name_status = cdb2.name2cuis2status.get(name, {}).get(cui, 'A') # get the name status if it exists, default to 'A'
         # For addl_info check cui2original_names as they MUST be added
         ontologies = set()
         description = ''
