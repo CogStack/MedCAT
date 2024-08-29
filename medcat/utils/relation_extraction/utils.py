@@ -208,7 +208,7 @@ def put_blanks(relation_data: List, blanking_threshold: float = 0.5) -> List:
 
 def create_tokenizer_pretrain(tokenizer: TokenizerWrapperBERT, tokenizer_path: str):
     """ 
-        This method simply adds special tokens that we enouncter 
+        This method simply adds special tokens that we encounter 
 
     Args:
         tokenizer (TokenizerWrapperBERT): BERT tokenizer.

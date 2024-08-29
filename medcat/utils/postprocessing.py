@@ -40,7 +40,7 @@ def create_main_ann(cdb: CDB, doc: Doc, tuis: Optional[List] = None) -> None:
     from all the annotations for this document.
 
     Args:
-        cdb (CDB): The Context Databse.
+        cdb (CDB): The Context Database.
         doc (Doc): Spacy document.
         tuis (Optional[List], optional): The type IDs. Defaults to None.
     """

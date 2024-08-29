@@ -456,7 +456,7 @@ class MetaCAT(PipeRunner):
             input_ids (List):
                 Input ids
             offset_mapping (List):
-                Offset mapings
+                Offset mappings
             lowercase (bool):
                 Whether to use lower case replace center
 
@@ -475,7 +475,7 @@ class MetaCAT(PipeRunner):
 
         samples = []
         last_ind = 0
-        ent_id2ind = {}  # Map form entitiy ID to where is it in the samples array
+        ent_id2ind = {}  # Map form entity ID to where is it in the samples array
         for ent in sorted(ents, key=lambda ent: ent.start_char):
             start = ent.start_char
             end = ent.end_char

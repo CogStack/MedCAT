@@ -24,7 +24,7 @@ class LSTM(nn.Module):
             # Disable training for the embeddings - IMPORTANT
             self.embeddings.weight.requires_grad = config.model['emb_grad']
 
-        # Create the RNN cell - devide
+        # Create the RNN cell - divide
         self.rnn = nn.LSTM(input_size=config.model['input_size'],
                            hidden_size=config.model['hidden_size'] // config.model['num_directions'],
                            num_layers=config.model['num_layers'],

@@ -55,7 +55,7 @@ MIN_GEN_LEN_FOR_WARN = 10_000
 
 class CAT(object):
     """The main MedCAT class used to annotate documents, it is built on top of spaCy
-    and works as a spaCy pipline. Creates an instance of a spaCy pipline that can
+    and works as a spaCy pipeline. Creates an instance of a spaCy pipeline that can
     be used as a spacy nlp model.
 
     Args:
@@ -110,7 +110,7 @@ class CAT(object):
         self._rel_cats = rel_cats
         self._addl_ner = addl_ner if isinstance(addl_ner, list) else [addl_ner]
         self._create_pipeline(self.config)
-        self.usage_monitor = UsageMonitor(self.get_hash(), self.config.general.usage_monitor)
+        self.usage_monitor = UsageMonitor(self.config.version.id, self.config.general.usage_monitor)
 
     def _create_pipeline(self, config: Config):
         # Set log level
@@ -265,7 +265,7 @@ class CAT(object):
         if cdb_format.lower() == 'json':
             json_path = save_dir_path # in the same folder!
         else:
-            json_path = None # use dill formating
+            json_path = None # use dill formatting
         logger.info('Saving model pack with CDB in %s format', cdb_format)
 
         # expand user path to make this work with '~'
@@ -346,7 +346,7 @@ class CAT(object):
 
         model_pack_path = os.path.join(base_dir, foldername)
         if os.path.exists(model_pack_path):
-            logger.info("Found an existing unziped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
+            logger.info("Found an existing unzipped model pack at: {}, the provided zip will not be touched.".format(model_pack_path))
         else:
             logger.info("Unziping the model pack and loading models.")
             shutil.unpack_archive(zip_path, extract_dir=model_pack_path)
@@ -357,6 +357,7 @@ class CAT(object):
                         zip_path: str,
                         meta_cat_config_dict: Optional[Dict] = None,
                         ner_config_dict: Optional[Dict] = None,
+                        medcat_config_dict: Optional[Dict] = None,
                         load_meta_models: bool = True,
                         load_addl_ner: bool = True,
                         load_rel_models: bool = True) -> "CAT":
@@ -374,6 +375,10 @@ class CAT(object):
                 A config dict that will overwrite existing configs in transformers ner.
                 e.g. ner_config_dict = {'general': {'chunking_overlap_window': 6}.
                 Defaults to None.
+            medcat_config_dict (Optional[Dict]):
+                A config dict that will overwrite existing configs in the main medcat config
+                before pipe initialisation. This can be useful if wanting to change something
+                that only takes effect at init time (e.g spacy model). Defaults to None.
             load_meta_models (bool):
                 Whether to load MetaCAT models if present (Default value True).
             load_addl_ner (bool):
@@ -396,7 +401,7 @@ class CAT(object):
 
         # load config
         config_path = os.path.join(model_pack_path, "config.json")
-        cdb.load_config(config_path)
+        cdb.load_config(config_path, medcat_config_dict)
 
         # TODO load addl_ner
 
@@ -550,7 +555,7 @@ class CAT(object):
                 Each project in MedCATtrainer can have filters, do we want to respect those filters
                 when calculating metrics.
             use_overlaps (bool):
-                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entites.
+                Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
             use_cui_doc_limit (bool):
                 If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
                 if the document was annotated for that CUI. Useful in very specific situations when during the annotation
@@ -666,7 +671,7 @@ class CAT(object):
             cui (str):
                 The concept to be added.
             group_name (str):
-                The group to whcih the concept will be added.
+                The group to which the concept will be added.
 
         Examples:
 
@@ -1218,7 +1223,7 @@ class CAT(object):
         for name, component in nn_components:
             component.config.general['disable_component_lock'] = True
 
-        # For meta_cat compoments 
+        # For meta_cat components
         for name, component in [c for c in nn_components if isinstance(c[1], MetaCAT)]:
             spacy_docs = component.pipe(spacy_docs)
         for spacy_doc in spacy_docs:
@@ -1366,7 +1371,7 @@ class CAT(object):
 
         docs = {}
         _start_time = time.time()
-        _batch_counter = 0 # Used for splitting the output, counts batches inbetween saves
+        _batch_counter = 0 # Used for splitting the output, counts batches between saves
         for batch in self._batch_generator(iterator, batch_size_chars, skip_ids=set(annotated_ids)):
             logger.info("Annotated until now: %s docs; Current BS: %s docs; Elapsed time: %.2f minutes",
                           len(annotated_ids),

@@ -70,7 +70,7 @@ class Linker(PipeRunner):
 
                     if len(name) >= cnf_l.disamb_length_limit:
                         if len(cuis) == 1:
-                            # N - means name must be disambiguated, is not the prefered
+                            # N - means name must be disambiguated, is not the preferred
                             #name of the concept, links to other concepts also.
                             if self.cdb.name2cuis2status[name][cuis[0]] != 'N':
                                 self._train(cui=cuis[0], entity=entity, doc=doc)
