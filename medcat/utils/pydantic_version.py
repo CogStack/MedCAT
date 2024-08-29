@@ -19,12 +19,12 @@ def get_model_dump(obj: BaseModel, **kwargs) -> dict:
     """
     # NOTE: The type ingores are based on pydantic 2
     if HAS_PYDANTIC2:
-        return obj.model_dump(**kwargs)
+        return obj.model_dump(**kwargs)  # type: ignore
     # for before pydantic 2
     return obj.dict(**kwargs)  # type: ignore # 4pydantic1 - backwards compatibility
 
 
 def get_model_fields(obj: BaseModel) -> dict:
     if HAS_PYDANTIC2:
-        return obj.model_fields
+        return obj.model_fields  # type: ignore
     return obj.__fields__  # type: ignore # 4pydantic1 - backwards compatibility
