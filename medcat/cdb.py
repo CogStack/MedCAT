@@ -13,7 +13,6 @@ from medcat.utils.hasher import Hasher
 from medcat.utils.matutils import unitvec
 from medcat.utils.ml_utils import get_lr_linking
 from medcat.config import Config, workers
-from medcat.utils.decorators import deprecated
 from medcat.utils.saving.serializer import CDBSerializer
 from medcat.utils.config_utils import get_and_del_weighted_average_from_config
 from medcat.utils.config_utils import default_weighted_average
@@ -29,7 +28,7 @@ class CDB(object):
 
     Properties:
         name2cuis (Dict[str, List[str]]):
-            Map fro concept name to CUIs - one name can map to multiple CUIs.
+            Map for concept name to CUIs - one name can map to multiple CUIs.
         name2cuis2status (Dict[str, Dict[str, str]]):
             What is the status for a given name and cui pair - each name can be:
                 P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
@@ -58,7 +57,7 @@ class CDB(object):
             Any additional maps that are not part of the core CDB. These are usually not needed
             for the base NER+L use-case, but can be useufl for Debugging or some special stuff.
         vocab (Dict[str, int]):
-            Stores all the words tha appear in this CDB and the count for each one.
+            Stores all the words that appear in this CDB and the count for each one.
         is_dirty (bool):
             Whether or not the CDB has been changed since it was loaded or created
     """
@@ -129,7 +128,7 @@ class CDB(object):
 
         Args:
             cui (str):
-                Concept ID or unique identifer in this database.
+                Concept ID or unique identifier in this database.
 
         Returns:
             str: The name of the concept.
@@ -148,11 +147,6 @@ class CDB(object):
                                             (self.cui2count_train.get(cui, 0) + 1)
         self.is_dirty = True
 
-    @deprecated("Deprecated. For internal use only. Use CAT.unlink_concept_name instead",
-                depr_version=(1, 12, 0), removal_version=(1, 13, 0))
-    def remove_names(self, cui: str, names: Iterable[str]) -> None:
-        self._remove_names(cui, names)
-
     def _remove_names(self, cui: str, names: Iterable[str]) -> None:
         """Remove names from an existing concept - effect is this name will never again be used to link to this concept.
         This will only remove the name from the linker (namely name2cuis and name2cuis2status), the name will still be present everywhere else.
@@ -161,7 +155,7 @@ class CDB(object):
 
         Args:
             cui (str):
-                Concept ID or unique identifer in this database.
+                Concept ID or unique identifier in this database.
             names (Iterable[str]):
                 Names to be removed (e.g list, set, or even a dict (in which case keys will be used)).
         """
@@ -194,7 +188,7 @@ class CDB(object):
 
         Args:
             cui (str):
-                Concept ID or unique identifer in this database.
+                Concept ID or unique identifier in this database.
         """
         if cui in self.cui2names:
             del self.cui2names[cui]
@@ -233,7 +227,7 @@ class CDB(object):
 
         Args:
             cui (str):
-                Concept ID or unique identifer in this database, all concepts that have
+                Concept ID or unique identifier in this database, all concepts that have
                 the same CUI will be merged internally.
             names (Dict[str, Dict]):
                 Names for this concept, or the value that if found in free text can be linked to this concept.
@@ -318,7 +312,7 @@ class CDB(object):
             self.name_isupper[name] = names[name]['is_upper']
 
             if name in self.name2cuis:
-                # Means we have alrady seen this name
+                # Means we have already seen this name
                 if cui not in self.name2cuis[name]:
                     # If CUI is not already linked do it
                     self.name2cuis[name].append(cui)
@@ -421,7 +415,7 @@ class CDB(object):
             cui (str):
                 The concept in question.
             vectors (Dict[str, np.ndarray]):
-                Vector represenation of the context, must have the format: {'context_type': np.array(<vector>), ...}
+                Vector representation of the context, must have the format: {'context_type': np.array(<vector>), ...}
                 context_type - is usually one of: ['long', 'medium', 'short']
             negative (bool):
                 Is this negative context of positive (Default Value `False`).
@@ -601,7 +595,7 @@ class CDB(object):
 
         Examples:
 
-            >>> new_cdb.import_traininig(cdb=old_cdb, owerwrite=True)
+            >>> new_cdb.import_traininig(cdb=old_cdb, overwrite=True)
         """
         # Import vectors and counts
         for cui in cdb.cui2context_vectors:

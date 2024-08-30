@@ -168,13 +168,13 @@ class ConfigUpgrader:
         return [os.path.join(self.model_pack_path, fn)  # ignores hidden files
                 for fn in os.listdir(self.model_pack_path) if (ignore_hidden and not fn.startswith("."))]
 
-    def _check_existance(self, files_to_copy: List[str], new_path: str, overwrite: bool):
+    def _check_existence(self, files_to_copy: List[str], new_path: str, overwrite: bool):
         if overwrite:
             return  # ignore all
         if not os.path.exists(new_path):
             os.makedirs(new_path)
             return  # all good, new folder
-        # check file existance in new (existing) path
+        # check file existence in new (existing) path
         for file_to_copy in files_to_copy:
             new_file_name = os.path.join(
                 new_path, os.path.basename(file_to_copy))
@@ -216,13 +216,13 @@ class ConfigUpgrader:
             IncorrectModel: If model pack does not need an upgrade
         """
         if not self.needs_upgrade():
-            raise IncorrectModel(f"Model pack does not need ugprade: {self.model_pack_path} "
+            raise IncorrectModel(f"Model pack does not need upgrade: {self.model_pack_path} "
                                  f"since it's at version: {self.current_version}")
         logger.info("Starting to upgrade %s at (version %s)",
                     self.model_pack_path, self.current_version)
         files_to_copy = self._get_relevant_files()
         try:
-            self._check_existance(files_to_copy, new_path, overwrite)
+            self._check_existence(files_to_copy, new_path, overwrite)
         except ValueError as e:
             raise e
         logger.debug("Copying files from %s", self.model_pack_path)

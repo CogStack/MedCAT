@@ -25,18 +25,18 @@ INSTALL_REQUIRES_FILE_PATH_PIP = os.path.join(os.path.dirname(__file__),
 
 
 def get_direct_dependencies() -> Set[str]:
-    """Get the set of direct dependeny names.
+    """Get the set of direct dependency names.
 
     The current implementation reads install_requires.txt for dependenceies,
     removes comments, whitespace, quotes; removes the versions and returns
     the names as a set.
 
     Returns:
-        Set[str]: The set of direct dependeny names.
+        Set[str]: The set of direct dependency names.
     """
     req_file = INSTALL_REQUIRES_FILE_PATH
     if not os.path.exists(req_file):
-        # When pip-installed. See note above near constant definiation
+        # When pip-installed. See note above near constant definition
         req_file = INSTALL_REQUIRES_FILE_PATH_PIP
     with open(req_file) as f:
         # read every line, strip quotes and comments

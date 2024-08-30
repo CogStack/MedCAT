@@ -292,7 +292,7 @@ def get_stats(cat,
             Each project in MedCATtrainer can have filters, do we want to respect those filters
             when calculating metrics.
         use_overlaps (bool):
-            Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entites.
+            Allow overlapping entities, nearly always False as it is very difficult to annotate overlapping entities.
         use_cui_doc_limit (bool):
             If True the metrics for a CUI will be only calculated if that CUI appears in a document, in other words
             if the document was annotated for that CUI. Useful in very specific situations when during the annotation

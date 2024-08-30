@@ -137,7 +137,7 @@ class FoldCreator(ABC):
         """Create folds.
 
         Raises:
-            ValueError: If somethign went wrong.
+            ValueError: If something went wrong.
 
         Returns:
             List[MedCATTrainerExport]: The created folds.

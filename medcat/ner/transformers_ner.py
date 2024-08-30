@@ -184,7 +184,7 @@ class TransformersNER(object):
             # NOTE: The following is for backwards comppatibility
             #       in datasets==2.20.0 `trust_remote_code=True` must be explicitly
             #       specified, otherwise an error is raised.
-            #       On the other hand, the keyword argumnet was added in datasets==2.16.0
+            #       On the other hand, the keyword argument was added in datasets==2.16.0
             #       yet we support datasets>=2.2.0.
             #       So we need to use the kwarg if applicable and omit its use otherwise.
             if func_has_kwarg(datasets.load_dataset, 'trust_remote_code'):
@@ -196,7 +196,7 @@ class TransformersNER(object):
                                       split='train',
                                       cache_dir='/tmp/')
             # We split before encoding so the split is document level, as encoding
-            #does the document spliting into max_seq_len
+            #does the document splitting into max_seq_len
             dataset = dataset.train_test_split(test_size=self.config.general['test_size']) # type: ignore
 
         # Update labelmap in case the current dataset has more labels than what we had before
@@ -330,7 +330,7 @@ class TransformersNER(object):
         config = cast(ConfigTransformersNER, ConfigTransformersNER.load(os.path.join(save_dir_path, 'cat_config.json')))
         config.general['model_name'] = save_dir_path
 
-        # Overwrite loaded paramters with something new
+        # Overwrite loaded parameters with something new
         if config_dict is not None:
             config.merge_config(config_dict)
 
