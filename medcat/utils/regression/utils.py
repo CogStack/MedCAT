@@ -1,8 +1,11 @@
-from typing import Iterator, Tuple, List, Dict, Any, Type
+from typing import Iterator, Tuple, List, Dict, Any, Type, Callable, Set
 
 import ast
 import inspect
 from enum import Enum
+from functools import lru_cache
+import random
+import logging
 
 from medcat.stats.mctexport import MedCATTrainerExport, MedCATTrainerExportDocument
 
@@ -223,3 +226,62 @@ def add_doc_strings_to_enum(cls: Type[Enum]) -> None:
         docstrings = docstrings[1:]
     for ev, ds in zip(cls, docstrings):
         ev.__doc__ = ds
+
+
+@lru_cache(maxsize=10)
+def get_rng(seed: int) -> random.Random:
+    return random.Random(seed)
+
+
+# NOTE: these are 'relatively accurate' estimates
+#       that I obtained by running it on 15 different
+#       concepts with names varying from length
+#       of 5 to length of 74, a total of 316 names
+ESTIMATION_MATRIX: Dict[int, Callable[[int], int]] = {
+    1: lambda orig_len: int(52.23 * orig_len + 24.26),
+    2: lambda orig_len: 2724 * orig_len**2 + 3917 * orig_len + 1098
+}
+
+
+def estimate_num_variants(orig_len: int, edit_distance: int) -> int:
+    if edit_distance in ESTIMATION_MATRIX:
+        return ESTIMATION_MATRIX[edit_distance](orig_len)
+    logging.warning("Estimations for then umber of varinats for edit "
+                    "distance greater than 2 (%d used) can be extremely "
+                    "inaccurate.")
+    # NOTE: This is a low ball estimate - the real number could be a lot bigger
+    powers = list(range(0, edit_distance+1))[::-1]
+    estimate_coefs = [(2 * 26) ** ed for ed in powers]
+    estimated = 0
+    for coef, power in zip(estimate_coefs, powers):
+        estimated += coef * orig_len ** power
+    return estimated
+
+
+FAIL_AFTER_MULT = 10
+
+
+def pick_random_edits(edit_gen: Iterator[str], num_to_pick: int,
+                      orig_len: int, edit_distance: int, rng_seed: int) -> Iterator[str]:
+    num_vars = estimate_num_variants(orig_len, edit_distance)
+    if num_to_pick > num_vars:
+        raise ValueError(f"Unable to ick {num_to_pick} out of {num_vars} "
+                         f"(estimated from edit distance {edit_distance} "
+                         f"and word length {orig_len})")
+    rng = get_rng(rng_seed)
+    pick_avoids = num_to_pick > num_vars // 2
+    _num_to_pick = num_to_pick if not pick_avoids else num_vars - num_to_pick
+    pick_set: Set[int] = set()
+    while len(pick_set) < _num_to_pick:
+        pick_set.add(rng.randint(0, num_vars))
+    if pick_avoids:
+        # NUMBERS NOT IN
+        picks = sorted(set(range(num_vars)) - pick_set)
+    else:
+        picks = sorted(list(pick_set))
+    for enr, edit in enumerate(edit_gen):
+        if enr == picks[0]:
+            picks.pop(0)
+            yield edit
+        if not picks:
+            break
