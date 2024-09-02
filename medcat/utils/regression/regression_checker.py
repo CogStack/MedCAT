@@ -166,7 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('--only-describe', help='Only describe the various findings and exit.',
                         action='store_true')
     parser.add_argument('--require-fully-correct', help='Require the regression test to be fully correct. '
-                        'If set, a non-zero exit status is returned unless all cases are successful (100%). '
+                        'If set, a non-zero exit status is returned unless all cases are successful (100%%). '
                         'This can be useful for (e.g) CI workflow integration.',
                         action='store_true')
     args = parser.parse_args()
