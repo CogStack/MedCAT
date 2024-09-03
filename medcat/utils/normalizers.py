@@ -132,32 +132,60 @@ def get_all_edits(word: str, use_diacritics: bool) -> Set[str]:
     return set(deletes + transposes + replaces + inserts)
 
 
-def get_all_edits_2(word: str, use_diacritics: bool) -> Iterator[str]:
+def get_all_edits_2(word: str, use_diacritics: bool,
+                    return_ordered: bool = False) -> Iterator[str]:
     """Gets all the 2-distance edits of a word.
 
     Args:
         word (str): The word in question.
-        use_diacritics (bool): Whther or not to use diacritics
+        use_diacritics (bool): Whether or not to use diacritics
+        return_ordered (bool): Whether or not to use an ordered list of edits
 
     Returns:
         Iterator[Str]: Generator of all the possible words.
     """
-    return (e2 for e1 in get_all_edits(word, use_diacritics)
-            for e2 in get_all_edits(e1, use_diacritics))
+    raw_fo_edits = get_all_edits(word, use_diacritics)
+    first_order_edits = sorted(raw_fo_edits) if return_ordered else raw_fo_edits
+    return (e2 for e1 in first_order_edits
+            for e2 in (sorted(get_all_edits(e1, use_diacritics))
+                       if return_ordered else
+                        get_all_edits(e1, use_diacritics)))
 
 
-def get_all_edits_n(word: str, use_diacritics: bool, n: int) -> Iterator[str]:
+def get_all_edits_n(word: str, use_diacritics: bool, n: int,
+                    return_ordered: bool = False) -> Iterator[str]:
+    """Get all N-th order edits of a word.
+
+    The output can be ordered. This can be useful when run-to-run
+    is of concern. But by default this should be avoided where possible
+    since it adds overhead and limits the operations permitted on the
+    returned value (i.e for distance 1, in unordered case you get a set).
+
+    Args:
+        word (str): The original word.
+        use_diacritics (bool): Whether or not to use diacritics.
+        n (int): The number of edits to allow.
+        return_ordered (bool): Whether to order the output. Defaults to False.
+
+    Raises:
+        ValueError: If the number of edits is smaller than 0.
+
+    Yields:
+        Iterator[str]: The generator of the various edits.
+    """
     if n == 0:
         yield word
     elif n == 1:
-        yield from get_all_edits(word, use_diacritics)
+        edits = get_all_edits(word, use_diacritics)
+        f_edits = sorted(edits) if return_ordered else edits
+        yield from f_edits
     elif n == 2:
-        yield from get_all_edits_2(word, use_diacritics)
+        yield from get_all_edits_2(word, use_diacritics, return_ordered)
     elif n < 0:
         raise ValueError(f"Unknown edit count: {n}")
     else:
-        for edited_word in get_all_edits_2(word, use_diacritics):
-            yield from get_all_edits_n(edited_word, use_diacritics, n - 2)
+        for edited_word in get_all_edits_2(word, use_diacritics, return_ordered):
+            yield from get_all_edits_n(edited_word, use_diacritics, n - 2, return_ordered)
 
 
 class TokenNormalizer(PipeRunner):
