@@ -40,9 +40,9 @@ class BertModel_RelationExtraction(nn.Module):
 
         for param in self.bert_model.parameters():
             if self.relcat_config.model.freeze_layers:
-                param.requires_grad = True
-            else:
                 param.requires_grad = False
+            else:
+                param.requires_grad = True
 
         self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
 
