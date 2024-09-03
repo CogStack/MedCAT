@@ -104,7 +104,7 @@ class RegressionCase(BaseModel):
             name_variant = 0
             if edit_dist:# TODO: use config.ner.min_name_len or something
                 name_gen = get_all_edits_n(
-                    raw_name, use_diacritics, edit_dist)
+                    raw_name, use_diacritics, edit_dist, return_ordered=True)
                 all_names = list(pick_random_edits(name_gen, edit_pick, len(raw_name),
                                                    edit_dist, edit_rn_seed))
             else:
