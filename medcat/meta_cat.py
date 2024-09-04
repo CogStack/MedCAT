@@ -269,7 +269,7 @@ class MetaCAT(PipeRunner):
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
             logger.warning(
-                "The number of classes set in the config is not the same as the one found in the data: %d vs %d" % (self.config.model['nclasses'], len(category_value2id)))
+                "The number of classes set in the config is not the same as the one found in the data: %d vs %d",self.config.model['nclasses'], len(category_value2id))
             logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
 
