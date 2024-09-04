@@ -194,7 +194,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         for k in keys_ls:
             category_value2id_[k] = len(category_value2id_)
 
-        logger.warning("Labels found with 0 data; updates made\nFinal label encoding mapping:", category_value2id_)
+        logger.warning("Labels found with 0 data; updates made\nFinal label encoding mapping: %s" %category_value2id_)
         category_value2id = category_value2id_
 
     for c in category_values:
@@ -211,7 +211,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         if data[i][2] in category_value2id.values():
             label_data_[data[i][2]] = label_data_[data[i][2]] + 1
 
-    logger.info(f"Original label_data: {label_data_}")
+    logger.info("Original label_data: %s" %label_data_)
     # Undersampling data
     if category_undersample is None or category_undersample == '':
         min_label = min(label_data_.values())
@@ -234,7 +234,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     for i in range(len(data_undersampled)):
         if data_undersampled[i][2] in category_value2id.values():
             label_data[data_undersampled[i][2]] = label_data[data_undersampled[i][2]] + 1
-    logger.info(f"Updated label_data: {label_data}")
+    logger.info("Updated label_data: %s" %label_data)
 
     return data, data_undersampled, category_value2id
 
