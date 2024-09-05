@@ -201,7 +201,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
             y_ = [x[2] for x in train_data]
             class_weights = compute_class_weight(class_weight="balanced", classes=np.unique(y_), y=y_)
             config.train['class_weights'] = class_weights.tolist()
-            logger.info(f"Class weights computed: {class_weights}")
+            logger.info("Class weights computed: %s",class_weights)
 
             class_weights = torch.FloatTensor(class_weights).to(device)
             if config.train['loss_funct'] == 'cross_entropy':
@@ -259,7 +259,7 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
 
         # Total number of training steps
         total_steps = int((len(data_) / batch_size_) * epochs)
-        logger.info('Total steps for optimizer: {}'.format(total_steps))
+        logger.info('Total steps for optimizer: %d',total_steps)
 
         # Set up the learning rate scheduler
         scheduler_ = get_linear_schedule_with_warmup(optimizer_,
