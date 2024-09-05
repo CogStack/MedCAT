@@ -257,20 +257,19 @@ class MetaCAT(PipeRunner):
         category_value2id = g_config['category_value2id']
         if not category_value2id:
             # Encode the category values
-            data_undersampled, full_data, category_value2id = encode_category_values(data,
+            full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         else:
             # We already have everything, just get the data
-            data_undersampled, full_data, category_value2id = encode_category_values(data,
+            full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
                                                                                      category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
             logger.warning(
-                "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                    self.config.model['nclasses'], len(category_value2id)))
+                "The number of classes set in the config is not the same as the one found in the data: %d vs %d",self.config.model['nclasses'], len(category_value2id))
             logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
 

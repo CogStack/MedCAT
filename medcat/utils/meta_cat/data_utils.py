@@ -167,11 +167,11 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
 
     Returns:
         dict:
-            New underesampled data (for 2 phase learning) with integers inplace of strings for category values
-        dict:
             New data with integers inplace of strings for category values.
         dict:
-            Map rom category value to ID for all categories in the data.
+            New undersampled data (for 2 phase learning) with integers inplace of strings for category values
+        dict:
+            Map from category value to ID for all categories in the data.
     """
     data = list(data)
     if existing_category_value2id is not None:
@@ -194,7 +194,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
         for k in keys_ls:
             category_value2id_[k] = len(category_value2id_)
 
-        logger.warning("Labels found with 0 data; updates made\nFinal label encoding mapping:", category_value2id_)
+        logger.warning("Labels found with 0 data; updates made\nFinal label encoding mapping: %s",category_value2id_)
         category_value2id = category_value2id_
 
     for c in category_values:
@@ -210,6 +210,8 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     for i in range(len(data)):
         if data[i][2] in category_value2id.values():
             label_data_[data[i][2]] = label_data_[data[i][2]] + 1
+
+    logger.info("Original label_data: %s",label_data_)
     # Undersampling data
     if category_undersample is None or category_undersample == '':
         min_label = min(label_data_.values())
@@ -232,9 +234,9 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     for i in range(len(data_undersampled)):
         if data_undersampled[i][2] in category_value2id.values():
             label_data[data_undersampled[i][2]] = label_data[data_undersampled[i][2]] + 1
-    logger.info(f"Updated label_data: {label_data}")
+    logger.info("Updated label_data: %s",label_data)
 
-    return data_undersampled, data, category_value2id
+    return data, data_undersampled, category_value2id
 
 
 def json_to_fake_spacy(data: Dict, id2text: Dict) -> Iterable:

@@ -91,7 +91,7 @@ class BertForMetaAnnotation(nn.Module):
         super(BertForMetaAnnotation, self).__init__()
         _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,num_hidden_layers=config.model['num_layers'])
         if config.model['input_size'] != _bertconfig.hidden_size:
-            logger.warning(f"\nInput size for {config.model.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.model['input_size']} Input size changed to {_bertconfig.hidden_size}")
+            logger.warning("Input size for %s model should be %d, provided input size is %d. Input size changed to %d",config.model.model_variant,_bertconfig.hidden_size,config.model['input_size'],_bertconfig.hidden_size)
 
         bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
         self.config = config
