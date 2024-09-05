@@ -100,7 +100,7 @@ def save_bin_file(file_name, data, path="./"):
         pickle.dump(data, f)
 
 
-def save_state(model: nn.Module, optimizer: torch.optim.Adam, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
+def save_state(model: nn.Module, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
     """ Used by RelCAT.save() and RelCAT.train()
         Saves the RelCAT model state.
         For checkpointing multiple files are created, best_f1, loss etc. score.
@@ -108,7 +108,7 @@ def save_state(model: nn.Module, optimizer: torch.optim.Adam, scheduler: torch.o
 
     Args:
         model (nn.Module): BertModel_RelationExtraction | LlamaModel_RelationExtraction
-        optimizer (torch.optim.Adam, optional): Defaults to None.
+        optimizer (torch.optim.AdamW, optional): Defaults to None.
         scheduler (torch.optim.lr_scheduler.MultiStepLR, optional): Defaults to None.
         epoch (int): Defaults to None.
         best_f1 (float): Defaults to None.
@@ -178,8 +178,9 @@ def load_state(model: nn.Module, optimizer, scheduler, path="./", model_name="BE
         model.to(device)
 
         if optimizer is None:
-            optimizer = torch.optim.Adam(
-                [{"params": model.module.parameters(), "lr": config.train.lr}])
+            parameters = filter(lambda p: p.requires_grad, model.parameters())
+            optimizer = torch.optim.AdamW(params=parameters, lr=config.train.lr, weight_decay=config.train.adam_weight_decay,
+                                betas=config.train.adam_betas, eps=config.train.adam_epsilon)
 
         if scheduler is None:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
