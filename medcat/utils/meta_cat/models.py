@@ -24,7 +24,7 @@ class LSTM(nn.Module):
             # Disable training for the embeddings - IMPORTANT
             self.embeddings.weight.requires_grad = config.model['emb_grad']
 
-        # Create the RNN cell - devide
+        # Create the RNN cell - divide
         self.rnn = nn.LSTM(input_size=config.model['input_size'],
                            hidden_size=config.model['hidden_size'] // config.model['num_directions'],
                            num_layers=config.model['num_layers'],
@@ -91,7 +91,7 @@ class BertForMetaAnnotation(nn.Module):
         super(BertForMetaAnnotation, self).__init__()
         _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,num_hidden_layers=config.model['num_layers'])
         if config.model['input_size'] != _bertconfig.hidden_size:
-            logger.warning(f"\nInput size for {config.model.model_variant} model should be {_bertconfig.hidden_size}, provided input size is {config.model['input_size']} Input size changed to {_bertconfig.hidden_size}")
+            logger.warning("Input size for %s model should be %d, provided input size is %d. Input size changed to %d",config.model.model_variant,_bertconfig.hidden_size,config.model['input_size'],_bertconfig.hidden_size)
 
         bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
         self.config = config
@@ -114,8 +114,13 @@ class BertForMetaAnnotation(nn.Module):
         self.fc3 = nn.Linear(hidden_size_2, hidden_size_2)
         # dense layer 3 (Output layer)
         model_arch_config = config.model.model_architecture_config
+
+        if model_arch_config['fc3'] is True and model_arch_config['fc2'] is False:
+            logger.warning("FC3 can only be used if FC2 is also enabled. Enabling FC2...")
+            config.model.model_architecture_config['fc2'] = True
+
         if model_arch_config is not None:
-            if model_arch_config['fc2'] is True or model_arch_config['fc3'] is True:
+            if model_arch_config['fc2'] is True:
                 self.fc4 = nn.Linear(hidden_size_2, self.num_labels)
             else:
                 self.fc4 = nn.Linear(config.model.hidden_size, self.num_labels)
@@ -190,11 +195,11 @@ class BertForMetaAnnotation(nn.Module):
                 x = self.relu(x)
                 x = self.dropout(x)
 
-            if self.config.model.model_architecture_config['fc3'] is True:
-                # fc3
-                x = self.fc3(x)
-                x = self.relu(x)
-                x = self.dropout(x)
+                if self.config.model.model_architecture_config['fc3'] is True:
+                    # fc3
+                    x = self.fc3(x)
+                    x = self.relu(x)
+                    x = self.dropout(x)
         else:
             # fc2
             x = self.fc2(x)

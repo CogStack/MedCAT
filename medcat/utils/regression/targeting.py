@@ -1,12 +1,11 @@
-from enum import Enum
 import logging
-from typing import Dict, Iterable, Iterator, List, Set, Any, Tuple, Union
+from typing import Dict, Iterable, Iterator, List, Set, Tuple, Any
+from functools import lru_cache
+from itertools import product
 
 from pydantic import BaseModel
 
 from medcat.cdb import CDB
-
-from medcat.utils.regression.utils import loosely_match_enum
 
 logger = logging.getLogger(__name__)
 
@@ -31,10 +30,15 @@ class TranslationLayer:
     """
 
     def __init__(self, cui2names: Dict[str, Set[str]], name2cuis: Dict[str, List[str]],
-                 cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]]) -> None:
+                 cui2type_ids: Dict[str, Set[str]], cui2children: Dict[str, Set[str]],
+                 cui2preferred_names: Dict[str, str],
+                 separator: str, whitespace: str = ' ') -> None:
         self.cui2names = cui2names
         self.name2cuis = name2cuis
         self.cui2type_ids = cui2type_ids
+        self.cui2preferred_names = cui2preferred_names
+        self.separator = separator
+        self.whitespace = whitespace
         self.type_id2cuis: Dict[str, Set[str]] = {}
         for cui, type_ids in self.cui2type_ids.items():
             for type_id in type_ids:
@@ -46,52 +50,96 @@ class TranslationLayer:
             if cui not in cui2children:
                 self.cui2children[cui] = set()
 
-    def targets_for(self, cui: str) -> Iterator[Tuple[str, str]]:
-        for name in self.cui2names[cui]:
-            yield cui, name
+    def get_names_of(self, cui: str, only_prefnames: bool) -> List[str]:
+        """Get the preprocessed names of a CUI.
 
-    def all_targets(self, all_cuis: Set[str], all_names: Set[str], all_types: Set[str]) -> Iterator[Tuple[str, str]]:
-        """Get a generator of all target information objects.
-        This is the starting point for checking cases.
+        This method preporcesses the names by replacing the separator (generally `~`)
+        with the appropriate whitespace (` `).
+
+        If the concept is not in the underlying CDB, an empty list is returned.
 
         Args:
-            all_cuis (Set[str]): The set of all CUIs to be queried
-            all_names (Set[str]): The set of all names to be queried
-            all_types (Set[str]): The set of all type IDs to be queried
+            cui (str): The concept in question.
+            only_prefnames (bool): Whether to only return a preferred name.
 
-        Yields:
-            Iterator[Tuple[str, str]]: The iterator of the target info
+        Returns:
+            List[str]: The list of names.
         """
-        for cui in all_cuis:
-            if cui not in self.cui2names:
-                logger.warning('CUI not found in translation layer: %s', cui)
-                continue
-            for name in self.cui2names[cui]:
-                yield cui, name
-        for name in all_names:
-            if name not in self.name2cuis:
-                logger.warning('Name not found in translation layer: %s', name)
-                continue
-            for cui in self.name2cuis[name]:
-                if cui in all_cuis:
-                    continue  # this cui-name pair should already have been yielded above
-                yield cui, name
-        for type_id in all_types:
-            if type_id not in self.type_id2cuis:
-                logger.warning(
-                    'Type ID not found in translation layer: %s', type_id)
-                continue
-            for cui in self.type_id2cuis[type_id]:
-                if cui in all_cuis:
-                    continue  # should have been yielded above
-                if cui not in self.cui2names:
-                    logger.warning(
-                        'CUI not found in translation layer: %s', cui)
-                    continue
-                for name in self.cui2names[cui]:
-                    if name in all_names:
-                        continue  # should have been yielded above
-                    yield cui, name
+        if only_prefnames:
+            return [self.get_preferred_name(cui).replace(self.separator, self.whitespace)]
+        return [name.replace(self.separator, self.whitespace)
+                   for name in self.cui2names.get(cui, [])]
+
+    def get_preferred_name(self, cui: str) -> str:
+        """Get the preferred name of a concept.
+
+        If no preferred name is found, the random 'first' name is selected.
+
+        Args:
+            cui (str): The concept ID.
+
+        Returns:
+            str: The preferred name.
+        """
+        pref_name = self.cui2preferred_names.get(cui, None)
+        if pref_name is None:
+            logger.warning("CUI %s does not have a preferred name. "
+                           "Using a random 'first' name of all the names", cui)
+            return self.get_first_name(cui)
+        return pref_name
+
+    def get_first_name(self, cui: str) -> str:
+        """Get the preprocessed (potentially) arbitrarily first name of the given concept.
+
+        If the concept does not exist, the CUI itself is returned.
+
+        PS: The "first" name may not be consistent across runs since it relies on set order.
+
+        Args:
+            cui (str): The concept ID.
+
+        Returns:
+            str: The first name.
+        """
+        for name in self.cui2names.get(cui, [cui]):
+            return name.replace(self.separator, self.whitespace)
+        return cui
+
+    def get_direct_children(self, cui: str) -> List[str]:
+        """Get the direct children of a concept.
+
+        This means only the children, but not grandchildren.
+
+        If the underlying CDB doesn't list children for this CUI, an empty list is returned.
+
+        Args:
+            cui (str): The concept in question.
+
+        Returns:
+            List[str]: The (potentially empty) list of direct children.
+        """
+        return list(self.cui2children.get(cui, []))
+
+    @lru_cache(maxsize=10_000)
+    def get_direct_parents(self, cui: str) -> List[str]:
+        """Get the direct parent(s) of a concept.
+
+        PS: This method can be quite a CPU heavy one since it relies
+            on running through all the parent-children relationships
+            since the child->parent(s) relationship isn't normally
+            kept track of.
+
+        Args:
+            cui (str): _description_
+
+        Returns:
+            List[str]: _description_
+        """
+        parents = []
+        for pot_parent, children in self.cui2children.items():
+            if cui in children:
+                parents.append(pot_parent)
+        return parents
 
     def get_children_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
         """Get the children of the specifeid CUI in the listed CUIs (if they exist).
@@ -117,32 +165,6 @@ class TranslationLayer:
                     found_cuis, child, depth - 1))
         return found_children
 
-    def get_parents_of(self, found_cuis: Iterable[str], cui: str, depth: int = 1) -> List[str]:
-        """Get the parents of the specifeid CUI in the listed CUIs (if they exist).
-
-        If needed, higher order parents (i.e grandparents) can be queries for.
-
-        This uses the `get_children_of` method intenrnally.
-        That is, if any of the found CUIs have the specified CUI as a child of
-        the specified depth, the found CUIs have a parent of the specified depth.
-
-        Args:
-            found_cuis (Iterable[str]): The list of CUIs to look in
-            cui (str): The target child CUI
-            depth (int): The depth to carry out the search for
-
-        Returns:
-            List[str]: The list of parents found
-        """
-        found_parents = []
-        for found_cui in found_cuis:
-            if self.get_children_of({cui}, found_cui, depth=depth):
-                # TODO - the intermediate results may get lost here
-                # i.e if found_cui is grandparent of the specified one,
-                # the direct parent is not listed
-                found_parents.append(found_cui)
-        return found_parents
-
     @classmethod
     def from_CDB(cls, cdb: CDB) -> 'TranslationLayer':
         """Construct a TranslationLayer object from a context database (CDB).
@@ -162,256 +184,252 @@ class TranslationLayer:
             parent2child = {}
         else:
             parent2child = cdb.addl_info['pt2ch']
-        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child)
+        return TranslationLayer(cdb.cui2names, cdb.name2cuis, cdb.cui2type_ids, parent2child,
+                                cui2preferred_names=cdb.cui2preferred_name,
+                                separator=cdb.config.general.separator)
 
 
-class FilterStrategy(Enum):
-    """Describes the filter strategy.
-    I.e whether to match all or any
-    of the filters specified.
+class TargetPlaceholder(BaseModel):
+    """A class describing the options for a specific placeholder.
     """
-    ALL = 1
-    """Specified that all filters must be satisfied"""
-    ANY = 2
-    """Specified that any of the filters must be satisfied"""
-
-    @classmethod
-    def match_str(cls, name: str) -> 'FilterStrategy':
-        """Find a loose string match.
-
-        Args:
-            name (str): The name of the enum
-
-        Returns:
-            FilterStrategy: The matched FilterStrategy
-        """
-        return loosely_match_enum(FilterStrategy, name)
-
-
-class FilterType(Enum):
-    """The types of targets that can be specified
-    """
-    TYPE_ID = 1
-    """Filters by specified type_ids"""
-    CUI = 2
-    """Filters by specified CUIs"""
-    NAME = 3
-    """Filters by specified names"""
-    CUI_AND_CHILDREN = 4
-    """Filter by CUI but also allow children, up to a specified distance"""
-
-    @classmethod
-    def match_str(cls, name: str) -> 'FilterType':
-        """Case insensitive matching for FilterType
-
-        Args:
-            name (str): The naeme to be matched
-
-        Returns:
-            FilterType: The matched FilterType
-        """
-        return loosely_match_enum(FilterType, name)
-
-
-class TypedFilter(BaseModel):
-    """A filter with multiple values to filter against.
-    """
-    type: FilterType
-    values: List[str]
-
-    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
-        """Get all applicable targets for this filter
-
-        Args:
-            translation (TranslationLayer): The translation layer
-            in_gen (Iterator[Tuple[str, str]]): The input generator / iterator
-
-        Yields:
-            Iterator[Tuple[str, str]]: The output generator
-        """
-        if self.type == FilterType.CUI or self.type == FilterType.CUI_AND_CHILDREN:
-            for cui, name in in_gen:
-                if cui in self.values:
-                    yield cui, name
-        if self.type == FilterType.NAME:
-            for cui, name in in_gen:
-                if name in self.values:
-                    yield cui, name
-        if self.type == FilterType.TYPE_ID:
-            for cui, name in in_gen:
-                if cui in translation.cui2type_ids:
-                    tids = translation.cui2type_ids[cui]
-                else:
-                    tids = set()
-                for tid in tids:
-                    if tid in self.values:
-                        yield cui, name
-                        break
-
-    @classmethod
-    def one_from_input(cls, target_type: str, vals: Union[str, list, dict]) -> 'TypedFilter':
-        """Get one typed filter from the input target type and values.
-        The values can either a be a string for a single target,
-        a list of strings for multiple targets, or
-        a dict in some more complicated cases (i.e CUI_AND_CHILDREN).
-
-        Args:
-            target_type (str): The target type as string
-            vals (Union[str, list, dict]): The values
-
-        Raises:
-            ValueError: If the values are malformed
-
-        Returns:
-            TypedFilter: The parsed filter
-        """
-        t_type: FilterType = FilterType.match_str(target_type)
-        filt: TypedFilter
-        if isinstance(vals, dict):
-            if t_type != FilterType.CUI_AND_CHILDREN:
-                # currently only applicable for CUI_AND_CHILDREN case
-                raise ValueError(f'Misconfigured config for {target_type}, '
-                                 'expected either a value or a list of values '
-                                 'for this type of filter')
-            depth = vals['depth']
-            delegate = cls.one_from_input(target_type, vals['cui'])
-            if t_type is FilterType.CUI_AND_CHILDREN:
-                filt = CUIWithChildFilter(
-                    type=t_type, delegate=delegate, depth=depth)
-        else:
-            if isinstance(vals, str):
-                vals = [vals, ]
-            filt = TypedFilter(type=t_type, values=vals)
-        return filt
-
-    def to_dict(self) -> dict:
-        """Convert the TypedFilter to a dict to be serialised.
-
-        Returns:
-            dict: The dict representation
-        """
-        return {self.type.name: self.values}
-
-    @staticmethod
-    def list_to_dicts(filters: List['TypedFilter']) -> List[dict]:
-        """Create a list of dicts from list of TypedFilters.
-
-        Args:
-            filters (List[TypedFilter]): The list of typed filters
-
-        Returns:
-            List[dict]: The list of dicts
-        """
-        return [filt.to_dict() for filt in filters]
-
-    @staticmethod
-    def list_to_dict(filters: List['TypedFilter']) -> dict:
-        """Create a single dict from the list of TypedFilters.
-
-        Args:
-            filters (List[TypedFilter]): The list of typed filters
-
-        Returns:
-            dict: The dict
-        """
-        d = {}
-        for filt_dict in TypedFilter.list_to_dicts(filters):
-            d.update(filt_dict)
-        return d
-
-    @classmethod
-    def from_dict(cls, input: Dict[str, Any]) -> List['TypedFilter']:
-        """Construct a list of TypedFilter from a dict.
-
-        The assumed structure is:
-        {<filter type>: <filtered value>}
-        or
-        {<filter type>: [<filtered value2>, <filtered value 2>]}
-        There can be multiple filter types defined.
-
-        Args:
-            input (Dict[str, Any]): The input dict.
-
-        Returns:
-            List[TypedFilter]: The list of constructed TypedFilter
-        """
-        parsed_targets: List[TypedFilter] = []
-        for target_type, vals in input.items():
-            filt = cls.one_from_input(target_type, vals)
-            parsed_targets.append(filt)
-        return parsed_targets
-
-
-class FilterOptions(BaseModel):
-    """A class describing the options for the filters
-    """
-    strategy: FilterStrategy
+    placeholder: str
+    target_cuis: List[str]
     onlyprefnames: bool = False
 
-    def to_dict(self) -> dict:
-        """Convert the FilterOptions to a dict.
 
-        Returns:
-            dict: The dict representation
-        """
-        return {'strategy': self.strategy.name, 'prefname-only': str(self.onlyprefnames)}
+class PhraseChanger(BaseModel):
+    """The phrase changer.
+
+    This is class used as a preprocessor for phrases with multiple placeholders.
+    It allows swapping in the rest of the placeholders while leaving in the one
+    that's being tested for.
+    """
+    preprocess_placeholders: List[Tuple[str, str]]
+
+    def __call__(self, phrase: str) -> str:
+        for placeholder, replacement in self.preprocess_placeholders:
+            phrase = phrase.replace(placeholder, replacement)
+        return phrase
 
     @classmethod
-    def from_dict(cls, section: Dict[str, str]) -> 'FilterOptions':
-        """Construct a FilterOptions instance from a dict.
+    def empty(cls) -> 'PhraseChanger':
+        """Gets the empty phrase changer.
 
-        The assumed structure is:
-        {'strategy': <'all' or 'any'>,
-        'prefname-only': 'true'}
-
-        Both strategy and prefname-only are optional.
-
-        Args:
-            section (Dict[str, str]): The dict to parse
+        That is a phrase changer that makes no changes to the phrase.
 
         Returns:
-            FilterOptions: The resulting FilterOptions
+            PhraseChanger: The empty phrase changer.
         """
-        if 'strategy' in section:
-            strategy = FilterStrategy.match_str(section['strategy'])
-        else:
-            strategy = FilterStrategy.ALL  # default
-        if 'prefname-only' in section:
-            onlyprefnames = section['prefname-only'].lower() == 'true'
-        else:
-            onlyprefnames = False
-        return FilterOptions(strategy=strategy, onlyprefnames=onlyprefnames)
+        return cls(preprocess_placeholders=[])
 
 
-class CUIWithChildFilter(TypedFilter):
-    delegate: TypedFilter
-    depth: int
-    values: List[str] = []  # overwrite TypedFilter
+class TargetedPhraseChanger(BaseModel):
+    """The target phrase changer.
 
-    def get_applicable_targets(self, translation: TranslationLayer, in_gen: Iterator[Tuple[str, str]]) -> Iterator[Tuple[str, str]]:
-        """Get all applicable targets for this filter
+    It includes the phrase changer (for preprocessing) along with
+    the relevant concept and the placeholder it will replace.
+    """
+    changer: PhraseChanger
+    placeholder: str
+    cui: str
+    onlyprefnames: bool
+
+
+class FinalTarget(BaseModel):
+    """The final target.
+
+    This involves the final phrase (which (potentially) has other
+    placeholder replaced in it), the placeholder to be replaced,
+    and the CUI and specific name being used.
+    """
+    placeholder: str
+    cui: str
+    name: str
+    final_phrase: str
+
+
+class OptionSet(BaseModel):
+    """The targeting option set.
+
+    This describes all the target placeholders and concepts needed.
+    """
+    options: List[TargetPlaceholder]
+    allow_any_combinations: bool = False
+
+    @classmethod
+    def from_dict(cls, section: Dict[str, Any]) -> 'OptionSet':
+        """Construct a OptionSet instance from a dict.
+
+        The assumed structure is:
+        {
+            'placeholders': [
+                {
+                'placeholder': <e.g {DIAGNOSIS}'>,
+                'cuis': <the CUI>,
+                'prefname-only': 'true'
+                }, <potentially more>],
+            'any-combination': <True or False>
+        }
+
+        The prefname-only key is optional.
 
         Args:
-            translation (TranslationLayer): The translation layer
-            in_gen (Iterator[Tuple[str, str]]): The input generator / iterator
+            section (Dict[str, Any]): The dict to parse
 
-        Yields:
-            Iterator[Tuple[str, str]]: The output generator
+        Raises:
+            ProblematicOptionSetException: If incorrect number of CUIs when not allowing any combination
+            ProblematicOptionSetException: If placeholders not a list
+            ProblematicOptionSetException: If multiple placehodlers with same place holder
+
+        Returns:
+            OptionSet: The resulting OptionSet
         """
-        for cui, name in self.delegate.get_applicable_targets(translation, in_gen):
-            yield cui, name
-            yield from self.get_children_of(translation, cui, cur_depth=1)
-
-    def get_children_of(self, translation: TranslationLayer, cui: str, cur_depth: int) -> Iterator[Tuple[str, str]]:
-        for child in translation.cui2children[cui]:
-            yield from translation.targets_for(child)
-            if cur_depth < self.depth:
-                yield from self.get_children_of(translation, child, cur_depth=cur_depth + 1)
+        options: List['TargetPlaceholder'] = []
+        allow_any_in = section.get('any-combination', 'false')
+        if isinstance(allow_any_in, str):
+            allow_any_combinations = allow_any_in.lower() == 'true'
+        elif isinstance(allow_any_in, bool):
+            allow_any_combinations = allow_any_in
+        else:
+            raise ProblematicOptionSetException(f"Unknown 'any-combination' value: {allow_any_in}")
+        if 'placeholders' not in section:
+            raise ProblematicOptionSetException("Misconfigured - no placeholders")
+        section_placeholders = section['placeholders']
+        if not isinstance(section_placeholders, list):
+            raise ProblematicOptionSetException("Misconfigured - placehodlers not a list "
+                                                f"({section_placeholders})")
+        used_ph = set()
+        for part in section_placeholders:
+            placeholder = part['placeholder']
+            if not isinstance(placeholder, str):
+                raise ProblematicOptionSetException(f"Unknown placeholder of type {type(placeholder)}. "
+                                                    "Expected a string. Perhaps you need to surrong the "
+                                                    "placeholder with single quotes (') in the yaml? "
+                                                    f"Received: {placeholder}")
+            if placeholder in used_ph:
+                raise ProblematicOptionSetException("Misconfigured - multiple identical placeholders")
+            used_ph.add(placeholder)
+            target_cuis: List[str] = part['cuis']
+            if not isinstance(target_cuis, list):
+                raise ProblematicOptionSetException(
+                    f"Target CUIs not a list ({type(target_cuis)}): {repr(target_cuis)}")
+            if 'prefname-only' in part:
+                opn = part['prefname-only']
+                if isinstance(opn, bool):
+                    onlyprefnames = opn
+                else:
+                    onlyprefnames = str(opn).lower() == 'true'
+            else:
+                onlyprefnames = False
+            option = TargetPlaceholder(placeholder=placeholder, target_cuis=target_cuis,
+                                   onlyprefnames=onlyprefnames)
+            options.append(option)
+        if not options:
+            raise ProblematicOptionSetException("Misconfigured - 0 placeholders found (empty list)")
+        if not allow_any_combinations:
+            # NOTE: need to have same number of target_cuis for each placeholder
+            # NOTE: there needs to be at least on option / placeholder anyway
+            nr_of_cuis = [len(opt.target_cuis) for opt in options]
+            if not all(nr == nr_of_cuis[0] for nr in nr_of_cuis):
+                raise ProblematicOptionSetException(
+                    f"Unequal number of cuis when any-combination: false: {nr_of_cuis}. "
+                    "When any-combination: false the number of CUIs for each placeholder "
+                    "should be equal.")
+        return OptionSet(options=options, allow_any_combinations=allow_any_combinations)
 
     def to_dict(self) -> dict:
-        """Convert this CUIWithChildFilter to a dict.
+        """Convert the OptionSet to a dict.
 
         Returns:
             dict: The dict representation
         """
-        return {self.type.name: {'depth': self.depth, 'cui': self.delegate.values}}
+        placeholders = [
+            {
+                'placeholder': opt.placeholder,
+                'cuis': opt.target_cuis,
+                'prefname-only': str(opt.onlyprefnames),
+            }
+            for opt in self.options
+        ]
+        return {'placeholders': placeholders, 'any-combination': str(self.allow_any_combinations)}
+
+    def _get_all_combinations(self, cur_opts: TargetPlaceholder, other_opts: List[TargetPlaceholder],
+                              translation: TranslationLayer) -> Iterator[Tuple[PhraseChanger, str]]:
+        per_ph_nr_of_opts = [len(opt.target_cuis) for opt in other_opts]
+        if self.allow_any_combinations:
+            # for each option with N target CUIs use 0, ..., N-1
+            for choosers in product(*[range(n) for n in per_ph_nr_of_opts]):
+                # NOTE: using the 0th name for target CUI
+                placeholders = [(opt.placeholder, translation.get_preferred_name(opt.target_cuis[cui_nr]))
+                                for opt, cui_nr in zip(other_opts, choosers)]
+                for target_cui in cur_opts.target_cuis:
+                    yield PhraseChanger(preprocess_placeholders=placeholders), target_cui
+        else:
+            nr_of_opts = len(cur_opts.target_cuis)
+            for cui_nr in range(nr_of_opts):
+                placeholders = [
+                    # NOTE: using the 0th name for the target CUI
+                    (opt.placeholder, translation.get_preferred_name(opt.target_cuis[cui_nr]))
+                    for opt in other_opts
+                ]
+                yield PhraseChanger(preprocess_placeholders=placeholders), cur_opts.target_cuis[cui_nr]
+
+    def estimate_num_of_subcases(self) -> int:
+        """Get the number of distinct subcases.
+
+        This includes ones that can be calculated without the knowledge of the
+        underlying CDB. I.e it doesn't care for the number of names involved per CUI
+        but only takes into account what is described in the option set itself.
+
+        If any combination is allowed, then the answer is the combination of
+        the number of target concepts per option.
+        If any combination is not allowed, then the answer is simply the number
+        of target concepts for an option (they should all have the same number).
+
+        Returns:
+            int: _description_
+        """
+        num_of_opts = len(self.options)
+        if self.allow_any_combinations:
+            total_cases = 1
+            for cur_opt in self.options:
+                total_cases *= len(cur_opt.target_cuis)
+        else:
+            total_cases = len(self.options[0].target_cuis)
+        return num_of_opts * total_cases
+
+    def get_preprocessors_and_targets(self, translation: TranslationLayer
+                                      ) -> Iterator[TargetedPhraseChanger]:
+        """Get the targeted phrase changers.
+
+        Args:
+            translation (TranslationLayer): The translaton layer.
+
+        Yields:
+            Iterator[TargetedPhraseChanger]: Thetarget phrase changers.
+        """
+        num_of_opts = len(self.options)
+        if num_of_opts == 1:
+            # NOTE: when there's only 1 option, the other option doesn't work
+            #       since it has nothing to iterate over regarding 'other' options
+            opt = self.options[0]
+            for target_cui in opt.target_cuis:
+                yield TargetedPhraseChanger(changer=PhraseChanger.empty(),
+                                            placeholder=opt.placeholder,
+                                            cui=target_cui,
+                                            onlyprefnames=opt.onlyprefnames)
+            return
+        for opt_nr in range(num_of_opts):
+            other_opts = list(self.options)
+            cur_opt = other_opts.pop(opt_nr)
+            for changer, target_cui in self._get_all_combinations(cur_opt, other_opts, translation):
+                yield TargetedPhraseChanger(changer=changer,
+                                            placeholder=cur_opt.placeholder,
+                                            cui=target_cui,
+                                            onlyprefnames=cur_opt.onlyprefnames)
+
+
+class ProblematicOptionSetException(ValueError):
+
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)

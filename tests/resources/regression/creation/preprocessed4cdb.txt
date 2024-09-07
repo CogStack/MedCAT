@@ -1,0 +1,11 @@
+cui,name
+C01,kidney failure
+C01,loss of kidney function
+C02,diabetes
+C02,diabetes mellitus
+C03,fever
+C03,high temperature
+C04,seizure
+C04,fittest
+C05,healthy
+C05,fittest

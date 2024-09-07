@@ -132,7 +132,8 @@ class MetaCAT(PipeRunner):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
             data_oversampled (Optional[list]):
-                In case of oversampling being performed, the data will be passed in the parameter
+                In case of oversampling being performed, the data will be passed in the parameter allowing the
+                model to be trained on original + synthetic data.
 
         Returns:
             Dict: The resulting report.
@@ -160,24 +161,46 @@ class MetaCAT(PipeRunner):
         return self.train_raw(data_loaded, save_dir_path, data_oversampled=data_oversampled)
 
     def train_raw(self, data_loaded: Dict, save_dir_path: Optional[str] = None, data_oversampled: Optional[list] = None) -> Dict:
-        """Train or continue training a model given raw data. It will
-        continue training if an existing model is loaded or start new training if the model is blank/new.
+        """
+        Train or continue training a model given raw data. It will continue training if an existing model is loaded or start new training if the model is blank/new.
 
         The raw data is expected in the following format:
-        {'projects':
-            [ # list of projects
-                { # project 1
-                    'name': '<some name>',
-                    # list of documents
-                    'documents': [{'name': '<some name>',  # document 1
-                                    'text': '<text of the document>',
-                                    # list of annotations
-                                    'annotations': [{'start': -1,  # annotation 1
-                                                    'end': 1,
-                                                    'cui': 'cui',
-                                                    'value': '<text value>'}, ...],
-                                    }, ...]
-                }, ...
+
+        {
+
+            'projects': [  # list of projects
+
+                {
+
+                    'name': '<project_name>',
+
+                    'documents': [  # list of documents
+
+                        {
+
+                            'name': '<document_name>',
+
+                            'text': '<text_of_document>',
+
+                            'annotations': [  # list of annotations
+
+                                {
+
+                                    'start': -1,  # start index of the annotation
+
+                                    'end': 1,    # end index of the annotation
+
+                                    'cui': 'cui',
+
+                                    'value': '<annotation_value>'
+                                },
+                                ...
+                            ],
+                        },
+                        ...
+                    ]
+                },
+                ...
             ]
         }
 
@@ -188,7 +211,8 @@ class MetaCAT(PipeRunner):
                 In case we have aut_save_model (meaning during the training the best model will be saved)
                 we need to set a save path. Defaults to `None`.
             data_oversampled (Optional[list]):
-                In case of oversampling being performed, the data will be passed in the parameter
+                In case of oversampling being performed, the data will be passed in the parameter allowing the
+                model to be trained on original + synthetic data.
                 The format of which is expected: [[['text','of','the','document'], [index of medical entity], "label" ],
                 ['text','of','the','document'], [index of medical entity], "label" ]]
 
@@ -233,20 +257,19 @@ class MetaCAT(PipeRunner):
         category_value2id = g_config['category_value2id']
         if not category_value2id:
             # Encode the category values
-            data_undersampled, full_data, category_value2id = encode_category_values(data,
+            full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         else:
             # We already have everything, just get the data
-            data_undersampled, full_data, category_value2id = encode_category_values(data,
+            full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
                                                                                      category_undersample=self.config.model.category_undersample)
             g_config['category_value2id'] = category_value2id
         # Make sure the config number of classes is the same as the one found in the data
         if len(category_value2id) != self.config.model['nclasses']:
             logger.warning(
-                "The number of classes set in the config is not the same as the one found in the data: {} vs {}".format(
-                    self.config.model['nclasses'], len(category_value2id)))
+                "The number of classes set in the config is not the same as the one found in the data: %d vs %d",self.config.model['nclasses'], len(category_value2id))
             logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
             self.config.model['nclasses'] = len(category_value2id)
 
@@ -432,7 +455,7 @@ class MetaCAT(PipeRunner):
             input_ids (List):
                 Input ids
             offset_mapping (List):
-                Offset mapings
+                Offset mappings
             lowercase (bool):
                 Whether to use lower case replace center
 
@@ -451,7 +474,7 @@ class MetaCAT(PipeRunner):
 
         samples = []
         last_ind = 0
-        ent_id2ind = {}  # Map form entitiy ID to where is it in the samples array
+        ent_id2ind = {}  # Map form entity ID to where is it in the samples array
         for ent in sorted(ents, key=lambda ent: ent.start_char):
             start = ent.start_char
             end = ent.end_char

@@ -13,7 +13,7 @@ def prepare_name(raw_name: str, nlp: Language, names: Dict, config: Config) -> D
 
     Args:
         raw_name (str):
-            Thre raw name to prepare.
+            The raw name to prepare.
         nlp (Language):
             Spacy nlp model.
         names (Dict):

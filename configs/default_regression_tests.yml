@@ -1,79 +1,142 @@
-# # Example of some test cases
-# # They will try to cover as many possible use cases as possible
-# # The idea is that the CUI corresponding to the name is expected to be
-# # obtained by MedCAT
-# # Only the 'filters' under 'targeting' and the 'phrases' under
-# # the test case are the two required sections, the rest is optional 
-#
-# test-case-name-1: # name of this test case
-#   targeting: # info regarding targets of this test case
-#     strategy: "ALL" # the strategy for dealing with the filters below
-#                     # so "ALL" means the targets need to match all the below filters
-#                     # and "ANY" means that the targets need to match at least one of the filters
-#                     # if only one type of target it specified, this is irrelevant
-#                     # the default value is "ALL" if not specified
-#     prefname-only: False # set to True if only prefered names should be checked (defaults to False)
-#     targfiltersets: # the filters for this specific test case
-#                     # there has to be one type of target, but multiple can be specified
-#                     # if multiple types are target, the strategy defined above is taken into affect
-#                     # each type can specify one or multiple values
-#                     #  this example shows has one values 
-#                     #  the next example (below) will have multiple values
-#       type_id: "0123" # type_id or type_ids
-#       cui: "01230" # the target CUI (or list of CUIS)
-#       name: "name0" # the target names
-#                      # all specified names need to exist within the CDB
-#   phrases: "The quick brown %s jumped over the lazy cat" # the phrases to go through
-#                                                          # for each phrases, '%s' is replaced
-#                                                          # by each name that is to be tested
-# test-case-name-2: # name of this test case
-#   targeting:
-#     filters:
-#       type_id: # multiple target type IDs
-#       - "123"
-#       - "223"
-#       cui: # multiple target CUI
-#       - "1234"
-#       - "2234"
-#       name: # multiple names
-#       - "name1"
-#       - "name2"
-#       cui_and_children: # an example with CUI and children
-#         cui: '111' # the CUI (or CUIs)
-#         depth: 2   # and the depth of children
-#   phrases:
-#   - "The %s was measured"
-#   - "The %s was not measured"
-#
-# # The following example was (rather arbitrarily) created and should work for
-# # the included SNOMED models
-test-case-1:
-  targeting:
-    strategy: "ALL"
-    filters:
-      type_id: "2680757"
-  phrases:
-  - "The %s was measured"
+# this is an example test case
+# it is based on SNOMED-CT
+test-case-1:  # The (somewhat) arbitrary name of the test case
+  targeting:  # the description of the replacement targets in the phrase(s)
+    placeholders:  # the placeholders to replace in the phrase(s)
+                   # Note that only 1 concept will be tested for at one time.
+                   # So if the prhase(s) has/have more than 1 placeholder, the
+                   # rest of them will be substitued in without care for whether
+                   # or how accurately the model is able to recognise them.
+                   # For the concepts that are not under test at a given time
+                   # the "first" name is used (because the implementation has
+                   # names in a set, there is possibility for run-to-run variance
+                   # because of different names being used).
+                   #
+                   # There are 2 modes for the placeholders:
+                   # 1. any-combination: false
+                   #   In this mode, only the concepts in the same position
+                   #   in the various lists are used in conjunction to oneanother.
+                   #   Though this also means that it is expected that all of the
+                   #   placeholders have the same number of CUIs to use.
+                   #   Assuming each of the N placeholders defines M replacement
+                   #   cuis, this approach produces M*N cases.
+                   # 2. any-combination: true
+                   #   In this mode, any combination of the replacement CUIs is
+                   #   allowed. This means that quite a few different combinations
+                   #   will be generated and used. It also means that different
+                   #   placeholders can have different number of concepts suitbale
+                   #   for them.
+                   #   Assuming eacho of the N placeholders defines M repalcement
+                   #   cuis, this approach produces N * N^M (where `^` is power)
+                   #   cases. But for a more complicated set up (i.e where different
+                   #   placeholders have a different number of swappable CUIs)
+                   #   this calculation is not as straight forward.
+                   #
+                   # NOTE: The above description does not take into account different
+                   #       number of names associated with different concepts. For each
+                   #       of the "primary" concepts, each possible name is attempted.
+      - placeholder: '[DISORDER]'  # the palceholder that will be substituted in the phrase(s)
+        cuis: ['4473006',  # Intracerebral hemorrhage
+               '85189001',  # Acute appendicitis
+               '186738001',  # vestibular neuritis
+               '186738001',  # vestibular neuritis
+              ]
+      - placeholder: '[FINDING1]'
+        cuis: ['162300006',  # unilateral headache
+               '21522001',  # abdominal pain
+               '103298005',  # severe vertigo
+               '103298005',  # severe vertigo
+              ]
+        prefname-only: false  # this is an optional keyword for wach placeholder
+                              # if set to true, only the preferred name will be used for
+                              # this concept. Otherwise, all names will be used as
+                              # different sub-cases
+      - placeholder: '[FINDING2]'
+        cuis: ['409668002',  # photophobia
+               '422587007',  # nausea
+               '422587007',  # nausea
+               '422587007',  # nausea
+              ]
+      - placeholder: '[FINDING3]'
+        cuis: ['2228002',  # scintillating scotoma
+               '386661006',  # fever
+               '81756001',  # horizontal nystagmus
+               '81756001',  # horizontal nystagmus
+              ]
+      - placeholder: '[NEGFINDING]'
+        cuis: ['386661006',  # fever
+               '62315008',  # diarrhea
+               '15188001',  # hearing loss
+               '60862001',  # tinnitus
+              ]
+    any-combination: false  # if set to false, same length of CUIs is expected
+                            # for each placeholder and only a combination is used
+  phrases:  # The list of phrases
+  - >
+      Description: [DISORDER]
+
+      CC: [FINDING1] on presentation; then developed [FINDING3]
+
+      HX: On the day of presentation, this 32 y/o RHM suddenly developed [FINDING1] and [FINDING2].
+      Four hours later he experienced sudden [FINDING3] lasting two hours.
+      There were no other associated symptoms except for the [FINDING1] and [FINDING2].
+      He denied [NEGFINDING].
 test-case-2:
   targeting:
-    filters:
-      type_id: "9090192"
+    placeholders:
+      - placeholder: '[FINDING1]'
+        cuis: ['49727002',  # cough
+               '29857009',  # chest pain
+               '21522001',  # abdominal pain
+               '57676002',  # joint pain
+               '25064002',  # headache
+               '271807003',  # fever
+               '162397003',  # hematuria (blood in urine)
+               '271757001',  # fatigue
+               '386661006',  # weight loss
+               '62315008',  # dysuria (painful urination)
+              ]
+      - placeholder: '[FINDING2]'
+        cuis: ['267036007',  # shortness of breath
+               '68962001',  # palpatations
+               '422587007',  # nausea
+               '182888003',  # swelling
+               '404640003',  # dizziness
+               '422400008',  # sore throat
+               '267036007',  # shortness of breath
+               '267064002',  # night sweats
+               '162607003',  # back pain
+               '267102003',  # urinary frequency
+              ]
+      - placeholder: '[DISORDER]'
+        cuis: ['195967001',  # asthma
+               '194828000',  # angina pectoris
+               '25374005',  # gastroenteritis
+               '69896004',  # rheumatoid arthritis
+               '37796009',  # migraine
+               '186747009',  # influenza
+               '106063007',  # urinary tract infection
+               '444814009',  # chronic fatigue syndrome
+               '95281007',  # tuberculosis
+               '431855005',  # cystitis
+        ]
+    any-combination: false
   phrases:
-  - "Patient presented with %s"
-  - "No %s was present"
-test-case-3:
-  targeting:
-    filters:
-      type_id: "67667581"
-  phrases:
-  - "The patient has been diagnosed with %s"
-  - "There are no signs of %s"
-test-case-4:
-  targeting:
-    strategy: "ALL"
-    filters:
-      cui_and_children:
-       cui: "364075005" # 'heart rate'
-       depth: 4         # and children 4 deep
-  phrases:
-  - "The patient's %s was 82 bps"
+  - >
+      The patient presents with [FINDING1] and [FINDING2]. These findings are suggestive of [DISORDER].
+      Further diagnostic evaluation and investigations are required to confirm the diagnosis.
+  - >
+      The patient reports [FINDING1] and has also been experiencing [FINDING2]. These symptoms are consistent with a clinical presentation of [DISORDER].
+      Further assessment and diagnostic tests are required to establish the underlying cause.
+  - >
+      Upon evaluation, the patient exhibits [FINDING1] along with [FINDING2]. This combination of findings raises suspicion for [DISORDER].
+      Comprehensive diagnostic workup is advised to confirm the diagnosis and plan appropriate management.
+  - >
+      During the consultation, the patient described [FINDING1] and noted a recent history of [FINDING2]. These clinical features are suggestive of [DISORDER].
+      Further investigation is necessary to verify the diagnosis and rule out other potential causes.
+  - >
+      The patient's symptoms include [FINDING1] and [FINDING2], which are commonly associated with [DISORDER].
+      It is recommended that additional diagnostic procedures be performed to confirm this working diagnosis.
+  - >
+      The clinical presentation of [FINDING1] and [FINDING2] is indicative of [DISORDER].
+      To ensure accurate diagnosis, further clinical evaluation and diagnostic tests are required.

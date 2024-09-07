@@ -15,7 +15,7 @@ class NerModel:
     This wraps a CAT instance and simplifies its use as a
     NER model.
 
-    It provies methods for creating one from a TransformersNER
+    It provides methods for creating one from a TransformersNER
     as well as loading from a model pack (along with some validation).
 
     It also exposes some useful parts of the CAT it wraps such as
