@@ -1,4 +1,4 @@
-"""This module attempts to read the spacy compatibilty of
+"""This module attempts to read the spacy compatibility of
 a model pack and (if necessary) compare it to the installed
 spacy version.
 """
@@ -65,7 +65,7 @@ def get_installed_spacy_version() -> str:
     """Get the spacy version installed currently.
 
     Returns:
-        str: The currently installed spacy verison.
+        str: The currently installed spacy version.
     """
     return spacy.__version__
 

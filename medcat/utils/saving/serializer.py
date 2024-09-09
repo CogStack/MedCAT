@@ -1,4 +1,4 @@
-"""This modlue is responsible for the (new) methods of saving and loading parts of MedCAT.
+"""This module is responsible for the (new) methods of saving and loading parts of MedCAT.
 
 The idea is to move away from saving medcat files using the dill/pickle.
 And to save as well as load them in some other way.
@@ -36,7 +36,7 @@ class JsonSetSerializer:
         if not os.path.exists(folder):
             os.makedirs(folder)
         elif not os.path.isdir(folder):
-            raise ValueError(f'Folder expected, got fille: {folder}')
+            raise ValueError(f'Folder expected, got file: {folder}')
         if os.path.isdir(self.file_name):
             raise ValueError(
                 f'Expected file, found folder: {self.file_name}')
@@ -111,7 +111,7 @@ class CDBSerializer:
         If `json_path` was specified to the constructor, this will serialize
         some of the parts that take up more memory in JSON files in said directory.
         In that case, the rest of the info is saved into the `main_path` passed to
-        the consturctor
+        the constructor
         Otherwise, everything is saved to the `main_path` using `dill.dump`
         just like in previous cases.
 

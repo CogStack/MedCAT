@@ -269,7 +269,7 @@ def perform_optimisation(cdb: CDB, optimise_cuis: bool = True,
             Used for dynamic thresholding. Holds the average confidence for this CUI given the training examples.
 
         name2cuis (Dict[str, List[str]]):
-            Map fro concept name to CUIs - one name can map to multiple CUIs.
+            Map for concept name to CUIs - one name can map to multiple CUIs.
         name2cuis2status (Dict[str, Dict[str, str]]):
             What is the status for a given name and cui pair - each name can be:
                 P - Preferred, A - Automatic (e.g. let medcat decide), N - Not common.
