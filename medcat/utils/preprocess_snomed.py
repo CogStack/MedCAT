@@ -89,25 +89,24 @@ class FileFormatDescriptor:
         return cls(concept=_IGNORE_TAG, description=_IGNORE_TAG,
                    relationship=_IGNORE_TAG, refset=_IGNORE_TAG)
 
-    def get_file_per_type(self, folder: str, file_type: RefSetFileType) -> str:
+    def get_file_per_type(self, file_type: RefSetFileType) -> str:
         raw = self._get_raw(file_type)
-        name = raw if file_type == RefSetFileType.refset else self.common_prefix + raw
-        return os.path.join(folder, name)
+        return raw if file_type == RefSetFileType.refset else self.common_prefix + raw
 
     def _get_raw(self, file_type: RefSetFileType) -> str:
         return getattr(self, file_type.name)
 
-    def get_concept(self, folder: str) -> str:
-        return self.get_file_per_type(folder, RefSetFileType.concept)
+    def get_concept(self) -> str:
+        return self.get_file_per_type(RefSetFileType.concept)
 
-    def get_description(self, folder: str) -> str:
-        return self.get_file_per_type(folder, RefSetFileType.description)
+    def get_description(self) -> str:
+        return self.get_file_per_type(RefSetFileType.description)
 
-    def get_relationship(self, folder: str) -> str:
-        return self.get_file_per_type(folder, RefSetFileType.relationship)
+    def get_relationship(self) -> str:
+        return self.get_file_per_type(RefSetFileType.relationship)
 
-    def get_refset(self, folder: str) -> str:
-        return self.get_file_per_type(folder, RefSetFileType.refset)
+    def get_refset(self) -> str:
+        return self.get_file_per_type(RefSetFileType.refset)
 
 
 @dataclass
@@ -308,8 +307,8 @@ class Snomed:
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
-            concept_snapshot = self._extension.value.exp_files.get_concept(self.paths[i])
-            description_snapshot = self._extension.value.exp_files.get_description(self.paths[i])
+            concept_snapshot = self._extension.value.exp_files.get_concept()
+            description_snapshot = self._extension.value.exp_files.get_description()
             if concept_snapshot in (None, _IGNORE_TAG) or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
@@ -383,8 +382,8 @@ class Snomed:
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
-            concept_snapshot = self._extension.value.exp_files.get_concept(self.paths[i])
-            relationship_snapshot = self._extension.value.exp_files.get_relationship(self.paths[i])
+            concept_snapshot = self._extension.value.exp_files.get_concept()
+            relationship_snapshot = self._extension.value.exp_files.get_relationship()
             if concept_snapshot in (None, _IGNORE_TAG) or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
@@ -419,8 +418,8 @@ class Snomed:
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
-            concept_snapshot = self._extension.value.exp_files.get_concept(self.paths[i])
-            relationship_snapshot = self._extension.value.exp_files.get_relationship(self.paths[i])
+            concept_snapshot = self._extension.value.exp_files.get_concept()
+            relationship_snapshot = self._extension.value.exp_files.get_relationship()
             if concept_snapshot in (None, _IGNORE_TAG) or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
@@ -546,7 +545,7 @@ class Snomed:
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
             refset_terminology = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.refset])
-            icd10_ref_set = self._extension.value.exp_files.get_refset(self.paths[i])
+            icd10_ref_set = self._extension.value.exp_files.get_refset()
             if icd10_ref_set in (None, _IGNORE_TAG) or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
