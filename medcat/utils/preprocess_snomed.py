@@ -4,7 +4,7 @@ import re
 import hashlib
 import pandas as pd
 from typing import Dict, List, Optional, Tuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 
@@ -183,7 +183,7 @@ class SupportedExtension(Enum):
 @dataclass
 class BundleDescriptor:
     extensions: List[SupportedExtension]
-    ignores: Dict[RefSetFileType, List[SupportedExtension]] = {}
+    ignores: Dict[RefSetFileType, List[SupportedExtension]] = field(default_factory=dict)
 
     def has_invalid(self, ext: SupportedExtension, file_types: Tuple[RefSetFileType]) -> bool:
         for ft in file_types:
