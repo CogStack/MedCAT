@@ -3,9 +3,9 @@ import json
 import re
 import hashlib
 import pandas as pd
-from typing import Optional, Dict, List
-from collections import defaultdict
-from enum import Enum
+from typing import Dict, List, Optional, Tuple
+from dataclasses import dataclass
+from enum import Enum, auto
 
 
 def parse_file(filename, first_row_header=True, columns=None):
@@ -64,111 +64,163 @@ def get_direct_refset_mapping(in_dict: dict) -> dict:
     return ret_dict
 
 
-class SnapshotData:
-    def __init__(self,
-                 concept_snapshots: Dict[str, Optional[str]],
-                 description_snapshots: Dict[str, Optional[str]],
-                 relationship_snapshots: Dict[str, Optional[str]],
-                 refset_snapshots: Dict[str, Optional[str]],
-                 avoids: List[str] = ["UKClinicalRefsetsRF2_PRODUCTION"],
-                 common_key_prefix: str = "SnomedCT_",
-                 common_key_suffix: str = "_PRODUCTION",
-                 common_val_prefix: str = "sct2_", # NOT for refset snapshot
-                 ):
-        self.concept_snapshots = concept_snapshots
-        self.description_snapshots = description_snapshots
-        self.relationship_snapshots = relationship_snapshots
-        self.refset_snapshots = refset_snapshots
-        self.avoids = avoids
-        self.common_key_prefix = common_key_prefix
-        self.common_key_suffix = common_key_suffix
-        self.common_val_prefix = common_val_prefix
-
-    def get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str,
-                             use_val_prefix: bool = True) -> Optional[str]:
-        val_prefix = self.common_val_prefix if use_val_prefix else ''
-        try:
-            return val_prefix + part[cur_path]
-        except KeyError:
-            pass
-        for raw_avoid in self.avoids:
-            avoid = self.common_key_prefix + raw_avoid + self.common_key_suffix
-            if avoid in cur_path:
-                return None
-        for raw_k, v in part.items():
-            k = self.common_key_prefix + raw_k + self.common_key_suffix
-            if k in cur_path:
-                return val_prefix + v
-        return None
 
 
-class SupportedExtensions(Enum):
-    INTERNATIONAL = SnapshotData(
-        defaultdict(lambda: "Concept_Snapshot"),
-        defaultdict(lambda: "Description_Snapshot-en"),
-        defaultdict(lambda: "Relationship_Snapshot"),
-        defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
+_IGNORE_TAG = '##IGNORE-THIS##'
+
+
+class RefSetFileType(Enum):
+    concept = auto()
+    description = auto()
+    relationship = auto()
+    refset = auto()
+
+
+@dataclass
+class FileFormatDescriptor:
+    concept: str
+    description: str
+    relationship: str
+    refset: str
+    common_prefix: str = "sct2_"  # for concept, description, and relationship (but not refset)
+
+    @classmethod
+    def ignore_all(cls) -> 'FileFormatDescriptor':
+        return cls(concept=_IGNORE_TAG, description=_IGNORE_TAG,
+                   relationship=_IGNORE_TAG, refset=_IGNORE_TAG)
+
+    def get_file_per_type(self, folder: str, file_type: RefSetFileType) -> str:
+        raw = self._get_raw(file_type)
+        name = raw if file_type == RefSetFileType.refset else self.common_prefix + raw
+        return os.path.join(folder, name)
+
+    def _get_raw(self, file_type: RefSetFileType) -> str:
+        return getattr(self, file_type.name)
+
+    def get_concept(self, folder: str) -> str:
+        return self.get_file_per_type(folder, RefSetFileType.concept)
+
+    def get_description(self, folder: str) -> str:
+        return self.get_file_per_type(folder, RefSetFileType.description)
+
+    def get_relationship(self, folder: str) -> str:
+        return self.get_file_per_type(folder, RefSetFileType.relationship)
+
+    def get_refset(self, folder: str) -> str:
+        return self.get_file_per_type(folder, RefSetFileType.refset)
+
+
+@dataclass
+class ExtensionDescription:
+    exp_name_in_folder: str
+    exp_files: FileFormatDescriptor
+
+
+# pattern has:                                       EXTENSION      PRODUCTION     RELEASE
+SNOMED_FOLDER_NAME_PATTERN = re.compile("^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}T\d{6}Z$)")
+PER_FILE_TYPE_PATHS = {
+    RefSetFileType.concept: os.path.join("Snapshot", "Terminology"),
+    RefSetFileType.description: os.path.join("Snapshot", "Terminology"),
+    RefSetFileType.relationship: os.path.join("Snapshot", "Terminology"),
+    RefSetFileType.refset: os.path.join("Snapshot", "Refset", "Map"),
+}
+
+
+
+class SupportedExtension(Enum):
+    INTERNATIONAL = ExtensionDescription(
+        exp_name_in_folder="InternationalRF2",
+        exp_files=FileFormatDescriptor(
+            concept="Concept_Snapshot",
+            description="Description_Snapshot-en",
+            relationship="Relationship_Snapshot",
+            # NOTE: the below will be ignored for UK_CLIN bundle
+            refset="der2_iisssccRefset_ExtendedMapSnapshot"
+        ),
     )
-    UK = SnapshotData(
-        {
-            "InternationalRF2": "Concept_Snapshot",
-            "UKClinicalRF2": "Concept_UKCLSnapshot",
-            "UKEditionRF2": "Concept_UKEDSnapshot",
-        },
-        {
-            "InternationalRF2": "Description_Snapshot-en",
-            "UKClinicalRF2": "Description_UKCLSnapshot-en",
-            "UKEditionRF2": "Description_UKEDSnapshot-en",
-        },
-        {
-            "InternationalRF2": "Relationship_Snapshot",
-            "UKClinicalRF2": "Relationship_UKCLSnapshot",
-            "UKEditionRF2": "Relationship_UKEDSnapshot",
-        },
-        {
-            "InternationalRF2": None, # avoid
-            "UKClinicalRF2": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
-            "UKEditionRF2": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
-        }
+    UK_CLINICAL = ExtensionDescription(
+        exp_name_in_folder="UKClinicalRF2",
+        exp_files=FileFormatDescriptor(
+            concept="Concept_UKCLSnapshot",
+            description="Description_UKCRSnapshot-en",
+            relationship="Relationship_UKCLSnapshot",
+            refset="der2_iisssciRefset_ExtendedMapUKCLSnapshot"
+        ),
     )
-    UK_DRUG = SnapshotData(
-        {
-            "UKDrugRF2": "Concept_UKDGSnapshot",
-            "UKEditionRF2": "Concept_UKEDSnapshot",
-        },
-        {
-            "UKDrugRF2": "Description_UKDGSnapshot-en",
-            "UKEditionRF2": "Description_UKEDSnapshot-en",
-        },
-        {
-            "InternationalRF2": "Relationship_Snapshot",
-            "UKDrugRF2": "Relationship_UKDGSnapshot",
-            "UKEditionRF2": "Relationship_UKEDSnapshot",
-        },
-        {
-            "UKDrugRF2": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
-            "UKEditionRF2": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
-        }
+    UK_CLINICAL_REFSET = ExtensionDescription(
+        exp_name_in_folder="UKClinicalRefsetsRF2",
+        exp_files=FileFormatDescriptor.ignore_all()
     )
-    AU = SnapshotData(
-        defaultdict(lambda: "Concept_Snapshot"),
-        defaultdict(lambda: "Description_Snapshot-en-AU"),
-        defaultdict(lambda: "Relationship_Snapshot"),
-        defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
+    UK_EDITION = ExtensionDescription(
+        exp_name_in_folder="UKEditionRF2",
+        exp_files=FileFormatDescriptor(
+            concept="Concept_UKEDSnapshot",
+            description="Description_UKEDSnapshot-en",
+            relationship="Relationship_UKEDSnapshot",
+            refset="der2_iisssciRefset_ExtendedMapUKEDSnapshot"
+        ),
+    )
+    UK_DRUG = ExtensionDescription(
+        exp_name_in_folder="UKDrugRF2",
+        exp_files=FileFormatDescriptor(
+            concept="Concept_UKDGSnapshot",
+            description="Description_UKDGSnapshot-en",
+            relationship="Relationship_UKDGSnapshot",
+            refset="der2_iisssciRefset_ExtendedMapUKDGSnapshot",
+        ),
+    )
+    AU = ExtensionDescription(
+        exp_name_in_folder="InternationalRF2",
+        exp_files=FileFormatDescriptor(
+            concept="Concept_Snapshot",
+            description="Description_Snapshot-en-AU",
+            relationship="Relationship_Snapshot",
+            refset=_IGNORE_TAG,
+        ),
     )
 
-    def get_concept_snapshot(self, cur_path: str) -> Optional[str]:
-        return self.value.get_appropriate_name(self.value.concept_snapshots, cur_path)
 
-    def get_description_snapshot(self, cur_path: str) -> Optional[str]:
-        return self.value.get_appropriate_name(self.value.description_snapshots, cur_path)
+@dataclass
+class BundleDescriptor:
+    extensions: List[SupportedExtension]
+    ignores: Dict[RefSetFileType, List[SupportedExtension]] = {}
 
-    def get_relationship_snapshot(self, cur_path: str) -> Optional[str]:
-        return self.value.get_appropriate_name(self.value.relationship_snapshots, cur_path)
+    def has_invalid(self, ext: SupportedExtension, file_types: Tuple[RefSetFileType]) -> bool:
+        for ft in file_types:
+            if ft not in self.ignores:
+                continue
+            exts2ignore = self.ignores[ft]
+            if ext in exts2ignore:
+                return True
+        return False
 
-    def get_refset_terminology(self, cur_path: str) -> Optional[str]:
-        return self.value.get_appropriate_name(self.value.refset_snapshots, cur_path,
-                                               use_val_prefix=False)
+
+class SupportedBundles(Enum):
+    UK_CLIN = BundleDescriptor(
+        extensions=[SupportedExtension.INTERNATIONAL, SupportedExtension.UK_CLINICAL,
+                    SupportedExtension.UK_CLINICAL_REFSET, SupportedExtension.UK_EDITION],
+        ignores={RefSetFileType.refset: [SupportedExtension.INTERNATIONAL]}
+        )
+    UK_DRUG_EXT = BundleDescriptor(
+        extensions=[SupportedExtension.UK_DRUG, SupportedExtension.UK_EDITION],
+        )
+
+
+def match_partials_with_folders(exp_names: List[str], folder_names: List[str]) -> bool:
+    if len(exp_names) > len(folder_names):
+        return False
+    available_folders = folder_names.copy()
+    for exp_name in exp_names:
+        found_cur_name = False
+        for fi, folder in enumerate(available_folders):
+            if exp_name in folder:
+                found_cur_name = True
+                break
+        if found_cur_name:
+            available_folders.pop(fi)
+        else:
+            return False
+    return True
 
 
 class Snomed:
@@ -184,16 +236,24 @@ class Snomed:
         uk_drug_ext (bool, optional): Specifies whether the version is a SNOMED UK drug extension. Defaults to False.
         au_ext (bool, optional): Specifies whether the version is a AU release. Defaults to False.
     """
-    SNOMED_RELEASE_PATTERN = re.compile("^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}T\d{6}Z$)")
     NO_VERSION_DETECTED = 'N/A'
 
     def __init__(self, data_path):
         self.data_path = data_path
+        self.bundle = self._determine_bundle()
         self.paths, self.snomed_releases, self.exts = self._check_path_and_release()
 
-    def _set_extension(self, release: str, extension: SupportedExtensions) -> None:
+    def _determine_bundle(self) -> Optional[SupportedBundles]:
+        for bundle in SupportedBundles:
+            folder_names = list(os.listdir(self.data_path))
+            exp_names = [ext.value.exp_name_in_folder for ext in bundle.value.extensions]
+            if match_partials_with_folders(exp_names, folder_names):
+                return bundle
+        return None
+
+    def _set_extension(self, release: str, extension: SupportedExtension) -> None:
         self.opcs_refset_id = "1126441000000105"
-        if (extension in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG) and
+        if (extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG) and
                 # using lexicographical comparison below
                 # e.g "20240101" > "20231122" results in True
                 # yet "20231121" > "20231122" results in False
@@ -204,28 +264,28 @@ class Snomed:
         self._extension = extension
 
     @classmethod
-    def _determine_extension(cls, folder_path: str) -> SupportedExtensions:
-        uk_ext = "SnomedCT_UK" in folder_path
-        uk_drug_ext = uk_ext and "Drug" in folder_path
-        au_ext = "_AU" in folder_path
-        # validate
-        if (uk_ext or uk_drug_ext) and au_ext:
+    def _determine_extension(cls, folder_path: str, _group_nr: int = 1) -> SupportedExtension:
+        folder_basename = os.path.basename(folder_path)
+        m = SNOMED_FOLDER_NAME_PATTERN.match(folder_basename)
+        if not m:
             raise UnkownSnomedReleaseException(
-                "Cannot both be a UK and and a AU version. "
-                f"Got UK={uk_ext}, UK_Drug={uk_drug_ext}, AU={au_ext}")
-        if uk_drug_ext:
-            return SupportedExtensions.UK_DRUG
-        elif uk_ext:
-            return SupportedExtensions.UK
-        elif au_ext:
-            return SupportedExtensions.AU
-        return SupportedExtensions.INTERNATIONAL
+                f"Unable to determine extension for path {repr(folder_path)}. "
+                f"Checking against pattern {SNOMED_FOLDER_NAME_PATTERN}")
+        ext_str = m.group(_group_nr)
+        for extension in SupportedExtension:
+            if extension.value.exp_name_in_folder == ext_str:
+                return extension
+        ext_names_folders = ",".join([f"{ext.name} ({ext.value.exp_name_in_folder})"
+                                      for ext in SupportedExtension])
+        raise UnkownSnomedReleaseException(
+            f"Cannot Find the extension for {folder_path}. "
+            f"Tried the following extensions: {ext_names_folders}")
 
     @classmethod
     def _determine_release(cls, folder_path: str, strict: bool = True,
                            _group_nr: int = 3, _keep_chars: int = 8) -> str:
         folder_basename = os.path.basename(folder_path)
-        match = cls.SNOMED_RELEASE_PATTERN.match(folder_basename)
+        match = SNOMED_FOLDER_NAME_PATTERN.match(folder_basename)
         if match is None and strict:
             raise UnkownSnomedReleaseException(f"No version found in '{folder_path}'")
         elif match is None:
@@ -247,10 +307,12 @@ class Snomed:
         df2merge = []
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
-            contents_path = os.path.join(self.paths[i], "Snapshot", "Terminology")
-            concept_snapshot = self._extension.get_concept_snapshot(self.paths[i])
-            description_snapshot = self._extension.get_description_snapshot(self.paths[i])
-            if concept_snapshot is None:
+            contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
+            concept_snapshot = self._extension.value.exp_files.get_concept(self.paths[i])
+            description_snapshot = self._extension.value.exp_files.get_description(self.paths[i])
+            if concept_snapshot in (None, _IGNORE_TAG) or (
+                    self.bundle and self.bundle.value.has_invalid(
+                        self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
 
             for f in os.listdir(contents_path):
@@ -320,10 +382,12 @@ class Snomed:
         all_rela = []
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
-            contents_path = os.path.join(self.paths[i], "Snapshot", "Terminology")
-            concept_snapshot = self._extension.get_concept_snapshot(self.paths[i])
-            relationship_snapshot = self._extension.get_relationship_snapshot(self.paths[i])
-            if concept_snapshot is None:
+            contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
+            concept_snapshot = self._extension.value.exp_files.get_concept(self.paths[i])
+            relationship_snapshot = self._extension.value.exp_files.get_relationship(self.paths[i])
+            if concept_snapshot in (None, _IGNORE_TAG) or (
+                    self.bundle and self.bundle.value.has_invalid(
+                        self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
 
             for f in os.listdir(contents_path):
@@ -354,10 +418,12 @@ class Snomed:
         output_dict = {}
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
-            contents_path = os.path.join(self.paths[i], "Snapshot", "Terminology")
-            concept_snapshot = self._extension.get_concept_snapshot(self.paths[i])
-            relationship_snapshot = self._extension.get_relationship_snapshot(self.paths[i])
-            if concept_snapshot is None:
+            contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
+            concept_snapshot = self._extension.value.exp_files.get_concept(self.paths[i])
+            relationship_snapshot = self._extension.value.exp_files.get_relationship(self.paths[i])
+            if concept_snapshot in (None, _IGNORE_TAG) or (
+                    self.bundle and self.bundle.value.has_invalid(
+                        self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
 
             for f in os.listdir(contents_path):
@@ -391,7 +457,7 @@ class Snomed:
             dict: A dictionary containing the SNOMED CT to ICD-10 mappings including metadata.
         """
         snomed2icd10df = self._map_snomed2refset()
-        if self._extension in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG):
+        if self._extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
             return self._refset_df2dict(snomed2icd10df[0])
         else:
             return self._refset_df2dict(snomed2icd10df)
@@ -409,7 +475,7 @@ class Snomed:
         Returns:
             dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
         """
-        if self._extension not in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG):
+        if self._extension not in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
             raise AttributeError(
                 "OPCS-4 mapping does not exist in this edition")
         snomed2opcs4df = self._map_snomed2refset()[1]
@@ -479,9 +545,11 @@ class Snomed:
         dfs2merge = []
         for i, snomed_release in enumerate(self.snomed_releases):
             self._set_extension(snomed_release, self.exts[i])
-            refset_terminology = f'{self.paths[i]}/Snapshot/Refset/Map'
-            icd10_ref_set = self._extension.get_refset_terminology(self.paths[i])
-            if icd10_ref_set is None:
+            refset_terminology = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.refset])
+            icd10_ref_set = self._extension.value.exp_files.get_refset(self.paths[i])
+            if icd10_ref_set in (None, _IGNORE_TAG) or (
+                    self.bundle and self.bundle.value.has_invalid(
+                        self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
             for f in os.listdir(refset_terminology):
                 m = re.search(f'{icd10_ref_set}'+r'_(.*)_\d*.txt', f)
@@ -495,7 +563,7 @@ class Snomed:
             dfs2merge.append(icd_mappings)
         mapping_df = pd.concat(dfs2merge)
         del dfs2merge
-        if self._extension in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG):
+        if self._extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
             opcs_df = mapping_df[mapping_df['refsetId'] == self.opcs_refset_id]
             icd10_df = mapping_df[mapping_df['refsetId']
                                   == '999002271000000101']
