@@ -3,7 +3,7 @@ import json
 import re
 import hashlib
 import pandas as pd
-from typing import Optional, Dict
+from typing import Optional, Dict, List
 from collections import defaultdict
 from enum import Enum
 
@@ -69,11 +69,27 @@ class SnapshotData:
                  concept_snapshots: Dict[str, Optional[str]],
                  description_snapshots: Dict[str, Optional[str]],
                  relationship_snapshots: Dict[str, Optional[str]],
-                 refset_snapshots: Dict[str, Optional[str]]):
+                 refset_snapshots: Dict[str, Optional[str]],
+                 avoids: List[str] = ["SnomedCT_UKClinicalRefsetsRF2_PRODUCTION"]):
         self.concept_snapshots = concept_snapshots
         self.description_snapshots = description_snapshots
         self.relationship_snapshots = relationship_snapshots
         self.refset_snapshots = refset_snapshots
+        self.avoids = avoids
+
+    def get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str
+                             ) -> Optional[str]:
+        try:
+            return part[cur_path]
+        except KeyError:
+            pass
+        for avoid in self.avoids:
+            if avoid in cur_path:
+                return None
+        for k, v in part.items():
+            if k in cur_path:
+                return v
+        return None
 
 
 class SupportedExtensions(Enum):
@@ -88,48 +104,40 @@ class SupportedExtensions(Enum):
             "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Concept_Snapshot",
             "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Concept_UKCLSnapshot",
             "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Concept_UKEDSnapshot",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         },
         {
             "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Description_Snapshot-en",
             "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Description_UKCLSnapshot-en",
             "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         },
         {
             "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Relationship_Snapshot",
             "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Relationship_UKCLSnapshot",
             "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Relationship_UKEDSnapshot",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         },
         {
             "SnomedCT_InternationalRF2_PRODUCTION": None, # avoid
             "SnomedCT_UKClinicalRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
             "SnomedCT_UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         }
     )
     UK_DRUG = SnapshotData(
         {
             "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Concept_UKDGSnapshot",
             "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Concept_UKEDSnapshot",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         },
         {
             "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Description_UKDGSnapshot-en",
             "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         },
         {
             "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Relationship_Snapshot",
             "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Relationship_UKDGSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Relationship_UKEDSnapshot",
         },
         {
             "SnomedCT_UKDrugRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
             "SnomedCT_UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
-            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
         }
     )
     AU = SnapshotData(
@@ -139,28 +147,17 @@ class SupportedExtensions(Enum):
         defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
     )
 
-    def _get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str
-                              ) -> Optional[str]:
-        try:
-            return part[cur_path]
-        except KeyError:
-            pass
-        for k, v in part.items():
-            if k in cur_path:
-                return v
-        return None
-
     def get_concept_snapshot(self, cur_path: str) -> Optional[str]:
-        return self._get_appropriate_name(self.value.concept_snapshots, cur_path)
+        return self.value.get_appropriate_name(self.value.concept_snapshots, cur_path)
 
     def get_description_snapshot(self, cur_path: str) -> Optional[str]:
-        return self._get_appropriate_name(self.value.description_snapshots, cur_path)
+        return self.value.get_appropriate_name(self.value.description_snapshots, cur_path)
 
     def get_relationship_snapshot(self, cur_path: str) -> Optional[str]:
-        return self._get_appropriate_name(self.value.relationship_snapshots, cur_path)
+        return self.value.get_appropriate_name(self.value.relationship_snapshots, cur_path)
 
     def get_refset_terminology(self, cur_path: str) -> Optional[str]:
-        return self._get_appropriate_name(self.value.refset_snapshots, cur_path)
+        return self.value.get_appropriate_name(self.value.refset_snapshots, cur_path)
 
 
 class Snomed:
