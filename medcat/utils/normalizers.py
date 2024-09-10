@@ -82,15 +82,30 @@ class BasicSpellChecker(object):
         return set(w for w in words if w in self.vocab)
 
     def edits1(self, word: str) -> Set[str]:
+        return self.get_edits1(word, self.config.general.diacritics)
+
+    @classmethod
+    def get_edits1(cls, word: str, use_diacritics: bool) -> Set[str]:
         """All edits that are one edit away from `word`.
 
         Args:
             word (str): The word.
+            use_diacritics (bool): Whether to use diacritics or not.
 
         Returns:
             Set[str]: The set of all edits
         """
-        return get_all_edits(word, self.config.general.diacritics)
+        letters    = 'abcdefghijklmnopqrstuvwxyz'
+
+        if use_diacritics:
+            letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
+
+        splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
+        deletes    = [L + R[1:]               for L, R in splits if R]
+        transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
+        replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
+        inserts    = [L + c + R               for L, R in splits for c in letters]
+        return set(deletes + transposes + replaces + inserts)
 
     def edits2(self, word: str) -> Iterator[str]:
         """All edits that are two edits away from `word`.
@@ -101,55 +116,12 @@ class BasicSpellChecker(object):
         Returns:
             Iterator[str]: All 2-away edits.
         """
-        return get_all_edits_2(word, self.config.general.diacritics)
+        return (e2 for e1 in self.edits1(word) for e2 in self.edits1(e1))
 
     def edits3(self, word):
         """All edits that are two edits away from `word`."""  # noqa
         # Do d3 edits
         pass
-
-
-def get_all_edits(word: str, use_diacritics: bool) -> Set[str]:
-    """Gets all the 1-distances edits of a word.
-
-    Args:
-        word (str): The word in question.
-        use_diacritics (bool): Whether or not to use diacritics.
-
-    Returns:
-        Set[str]: All the possibile edits.
-    """
-    letters    = 'abcdefghijklmnopqrstuvwxyz'
-
-    if use_diacritics:
-        letters += 'àáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ'
-
-    splits     = [(word[:i], word[i:])    for i in range(len(word) + 1)]
-    deletes    = [L + R[1:]               for L, R in splits if R]
-    transposes = [L + R[1] + R[0] + R[2:] for L, R in splits if len(R)>1]
-    replaces   = [L + c + R[1:]           for L, R in splits if R for c in letters]
-    inserts    = [L + c + R               for L, R in splits for c in letters]
-    return set(deletes + transposes + replaces + inserts)
-
-
-def get_all_edits_2(word: str, use_diacritics: bool,
-                    return_ordered: bool = False) -> Iterator[str]:
-    """Gets all the 2-distance edits of a word.
-
-    Args:
-        word (str): The word in question.
-        use_diacritics (bool): Whether or not to use diacritics
-        return_ordered (bool): Whether or not to use an ordered list of edits
-
-    Returns:
-        Iterator[Str]: Generator of all the possible words.
-    """
-    raw_fo_edits = get_all_edits(word, use_diacritics)
-    first_order_edits = sorted(raw_fo_edits) if return_ordered else raw_fo_edits
-    return (e2 for e1 in first_order_edits
-            for e2 in (sorted(get_all_edits(e1, use_diacritics))
-                       if return_ordered else
-                        get_all_edits(e1, use_diacritics)))
 
 
 def get_all_edits_n(word: str, use_diacritics: bool, n: int,
@@ -176,16 +148,16 @@ def get_all_edits_n(word: str, use_diacritics: bool, n: int,
     if n == 0:
         yield word
     elif n == 1:
-        edits = get_all_edits(word, use_diacritics)
+        edits = BasicSpellChecker.get_edits1(word, use_diacritics)
         f_edits = sorted(edits) if return_ordered else edits
         yield from f_edits
-    elif n == 2:
-        yield from get_all_edits_2(word, use_diacritics, return_ordered)
     elif n < 0:
         raise ValueError(f"Unknown edit count: {n}")
     else:
-        for edited_word in get_all_edits_2(word, use_diacritics, return_ordered):
-            yield from get_all_edits_n(edited_word, use_diacritics, n - 2, return_ordered)
+        edits1 = BasicSpellChecker.get_edits1(word, use_diacritics)
+        f_edits = sorted(edits1) if return_ordered else edits1
+        for edited_word in f_edits:
+            yield from get_all_edits_n(edited_word, use_diacritics, n - 1, return_ordered)
 
 
 class TokenNormalizer(PipeRunner):
