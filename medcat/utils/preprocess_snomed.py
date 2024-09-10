@@ -70,80 +70,88 @@ class SnapshotData:
                  description_snapshots: Dict[str, Optional[str]],
                  relationship_snapshots: Dict[str, Optional[str]],
                  refset_snapshots: Dict[str, Optional[str]],
-                 avoids: List[str] = ["SnomedCT_UKClinicalRefsetsRF2_PRODUCTION"]):
+                 avoids: List[str] = ["UKClinicalRefsetsRF2_PRODUCTION"],
+                 common_key_prefix: str = "SnomedCT_",
+                 common_val_prefix: str = "sct2_", # NOT for refset snapshot
+                 ):
         self.concept_snapshots = concept_snapshots
         self.description_snapshots = description_snapshots
         self.relationship_snapshots = relationship_snapshots
         self.refset_snapshots = refset_snapshots
         self.avoids = avoids
+        self.common_key_prefix = common_key_prefix
+        self.common_val_prefix = common_val_prefix
 
-    def get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str
-                             ) -> Optional[str]:
+    def get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str,
+                             use_val_prefix: bool = True) -> Optional[str]:
+        val_prefix = self.common_val_prefix if use_val_prefix else ''
         try:
-            return part[cur_path]
+            return val_prefix + part[cur_path]
         except KeyError:
             pass
-        for avoid in self.avoids:
+        for raw_avoid in self.avoids:
+            avoid = self.common_key_prefix + raw_avoid
             if avoid in cur_path:
                 return None
-        for k, v in part.items():
+        for raw_k, v in part.items():
+            k = self.common_key_prefix + raw_k
             if k in cur_path:
-                return v
+                return val_prefix + v
         return None
 
 
 class SupportedExtensions(Enum):
     INTERNATIONAL = SnapshotData(
-        defaultdict(lambda: "sct2_Concept_Snapshot"),
-        defaultdict(lambda: "sct2_Description_Snapshot-en"),
-        defaultdict(lambda: "sct2_Relationship_Snapshot"),
+        defaultdict(lambda: "Concept_Snapshot"),
+        defaultdict(lambda: "Description_Snapshot-en"),
+        defaultdict(lambda: "Relationship_Snapshot"),
         defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
     )
     UK = SnapshotData(
         {
-            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Concept_Snapshot",
-            "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Concept_UKCLSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Concept_UKEDSnapshot",
+            "InternationalRF2_PRODUCTION": "Concept_Snapshot",
+            "UKClinicalRF2_PRODUCTION": "Concept_UKCLSnapshot",
+            "UKEditionRF2_PRODUCTION": "Concept_UKEDSnapshot",
         },
         {
-            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Description_Snapshot-en",
-            "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Description_UKCLSnapshot-en",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
+            "InternationalRF2_PRODUCTION": "Description_Snapshot-en",
+            "UKClinicalRF2_PRODUCTION": "Description_UKCLSnapshot-en",
+            "UKEditionRF2_PRODUCTION": "Description_UKEDSnapshot-en",
         },
         {
-            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Relationship_Snapshot",
-            "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Relationship_UKCLSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Relationship_UKEDSnapshot",
+            "InternationalRF2_PRODUCTION": "Relationship_Snapshot",
+            "UKClinicalRF2_PRODUCTION": "Relationship_UKCLSnapshot",
+            "UKEditionRF2_PRODUCTION": "Relationship_UKEDSnapshot",
         },
         {
-            "SnomedCT_InternationalRF2_PRODUCTION": None, # avoid
-            "SnomedCT_UKClinicalRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
+            "InternationalRF2_PRODUCTION": None, # avoid
+            "UKClinicalRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
+            "UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
         }
     )
     UK_DRUG = SnapshotData(
         {
-            "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Concept_UKDGSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Concept_UKEDSnapshot",
+            "UKDrugRF2_PRODUCTION": "Concept_UKDGSnapshot",
+            "UKEditionRF2_PRODUCTION": "Concept_UKEDSnapshot",
         },
         {
-            "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Description_UKDGSnapshot-en",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
+            "UKDrugRF2_PRODUCTION": "Description_UKDGSnapshot-en",
+            "UKEditionRF2_PRODUCTION": "Description_UKEDSnapshot-en",
         },
         {
-            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Relationship_Snapshot",
-            "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Relationship_UKDGSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Relationship_UKEDSnapshot",
+            "InternationalRF2_PRODUCTION": "Relationship_Snapshot",
+            "UKDrugRF2_PRODUCTION": "Relationship_UKDGSnapshot",
+            "UKEditionRF2_PRODUCTION": "Relationship_UKEDSnapshot",
         },
         {
-            "SnomedCT_UKDrugRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
-            "SnomedCT_UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
+            "UKDrugRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
+            "UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
         }
     )
     AU = SnapshotData(
-        defaultdict(lambda: "sct2_Concept_Snapshot"),
-        defaultdict(lambda: "sct2_Description_Snapshot-en-AU"),
-        defaultdict(lambda: "sct2_Relationship_Snapshot"),
+        defaultdict(lambda: "Concept_Snapshot"),
+        defaultdict(lambda: "Description_Snapshot-en-AU"),
+        defaultdict(lambda: "Relationship_Snapshot"),
         defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
     )
 
@@ -157,7 +165,8 @@ class SupportedExtensions(Enum):
         return self.value.get_appropriate_name(self.value.relationship_snapshots, cur_path)
 
     def get_refset_terminology(self, cur_path: str) -> Optional[str]:
-        return self.value.get_appropriate_name(self.value.refset_snapshots, cur_path)
+        return self.value.get_appropriate_name(self.value.refset_snapshots, cur_path,
+                                               use_val_prefix=False)
 
 
 class Snomed:
