@@ -3,6 +3,9 @@ import json
 import re
 import hashlib
 import pandas as pd
+from typing import Optional, Dict
+from collections import defaultdict
+from enum import Enum
 
 
 def parse_file(filename, first_row_header=True, columns=None):
@@ -61,6 +64,105 @@ def get_direct_refset_mapping(in_dict: dict) -> dict:
     return ret_dict
 
 
+class SnapshotData:
+    def __init__(self,
+                 concept_snapshots: Dict[str, Optional[str]],
+                 description_snapshots: Dict[str, Optional[str]],
+                 relationship_snapshots: Dict[str, Optional[str]],
+                 refset_snapshots: Dict[str, Optional[str]]):
+        self.concept_snapshots = concept_snapshots
+        self.description_snapshots = description_snapshots
+        self.relationship_snapshots = relationship_snapshots
+        self.refset_snapshots = refset_snapshots
+
+
+class SupportedExtensions(Enum):
+    INTERNATIONAL = SnapshotData(
+        defaultdict(lambda: "sct2_Concept_Snapshot"),
+        defaultdict(lambda: "sct2_Description_Snapshot-en"),
+        defaultdict(lambda: "sct2_Relationship_Snapshot"),
+        defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
+    )
+    UK = SnapshotData(
+        {
+            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Concept_Snapshot",
+            "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Concept_UKCLSnapshot",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Concept_UKEDSnapshot",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        },
+        {
+            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Description_Snapshot-en",
+            "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Description_UKCLSnapshot-en",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        },
+        {
+            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Relationship_Snapshot",
+            "SnomedCT_UKClinicalRF2_PRODUCTION": "sct2_Relationship_UKCLSnapshot",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Relationship_UKEDSnapshot",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        },
+        {
+            "SnomedCT_InternationalRF2_PRODUCTION": None, # avoid
+            "SnomedCT_UKClinicalRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        }
+    )
+    UK_DRUG = SnapshotData(
+        {
+            "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Concept_UKDGSnapshot",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Concept_UKEDSnapshot",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        },
+        {
+            "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Description_UKDGSnapshot-en",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        },
+        {
+            "SnomedCT_InternationalRF2_PRODUCTION": "sct2_Relationship_Snapshot",
+            "SnomedCT_UKDrugRF2_PRODUCTION": "sct2_Relationship_UKDGSnapshot",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "sct2_Description_UKEDSnapshot-en",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        },
+        {
+            "SnomedCT_UKDrugRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
+            "SnomedCT_UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
+            "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION": None, # avoid
+        }
+    )
+    AU = SnapshotData(
+        defaultdict(lambda: "sct2_Concept_Snapshot"),
+        defaultdict(lambda: "sct2_Description_Snapshot-en-AU"),
+        defaultdict(lambda: "sct2_Relationship_Snapshot"),
+        defaultdict(lambda: "der2_iisssccRefset_ExtendedMapSnapshot")
+    )
+
+    def _get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str
+                              ) -> Optional[str]:
+        try:
+            return part[cur_path]
+        except KeyError:
+            pass
+        for k, v in part.items():
+            if k in cur_path:
+                return v
+        return None
+
+    def get_concept_snapshot(self, cur_path: str) -> Optional[str]:
+        return self._get_appropriate_name(self.value.concept_snapshots, cur_path)
+
+    def get_description_snapshot(self, cur_path: str) -> Optional[str]:
+        return self._get_appropriate_name(self.value.description_snapshots, cur_path)
+
+    def get_relationship_snapshot(self, cur_path: str) -> Optional[str]:
+        return self._get_appropriate_name(self.value.relationship_snapshots, cur_path)
+
+    def get_refset_terminology(self, cur_path: str) -> Optional[str]:
+        return self._get_appropriate_name(self.value.refset_snapshots, cur_path)
+
+
 class Snomed:
     """
     Pre-process SNOMED CT release files.
@@ -77,25 +179,39 @@ class Snomed:
     SNOMED_RELEASE_PATTERN = re.compile("^SnomedCT_([A-Za-z0-9]+)_([A-Za-z0-9]+)_(\d{8}T\d{6}Z$)")
     NO_VERSION_DETECTED = 'N/A'
 
-    def __init__(self, data_path, uk_ext=False, uk_drug_ext=False, au_ext: bool = False):
+    def __init__(self, data_path):
         self.data_path = data_path
-        self.release = self._determine_release(data_path, strict=False)
-        self.uk_ext = uk_ext
-        self.uk_drug_ext = uk_drug_ext
+        self.paths, self.snomed_releases, self.exts = self._check_path_and_release()
+
+    def _set_extension(self, release: str, extension: SupportedExtensions) -> None:
         self.opcs_refset_id = "1126441000000105"
-        if ((self.uk_ext or self.uk_drug_ext) and
+        if (extension in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG) and
                 # using lexicographical comparison below
                 # e.g "20240101" > "20231122" results in True
                 # yet "20231121" > "20231122" results in False
-                len(self.release) == len("20231122") and self.release >= "20231122"):
+                len(release) == len("20231122") and release >= "20231122"):
             # NOTE for UK extensions starting from 20231122 the
             #      OPCS4 refset ID seems to be different
             self.opcs_refset_id = '1382401000000109'
-        self.au_ext = au_ext
+        self._extension = extension
+
+    @classmethod
+    def _determine_extension(cls, folder_path: str) -> SupportedExtensions:
+        uk_ext = "SnomedCT_UK" in folder_path
+        uk_drug_ext = uk_ext and "Drug" in folder_path
+        au_ext = "_AU" in folder_path
         # validate
-        if (self.uk_ext or self.uk_drug_ext) and self.au_ext:
-            raise ValueError("Cannot both be a UK and and a AU version. "
-                             f"Got UK={uk_ext}, UK_Drug={uk_drug_ext}, AU={au_ext}")
+        if (uk_ext or uk_drug_ext) and au_ext:
+            raise UnkownSnomedReleaseException(
+                "Cannot both be a UK and and a AU version. "
+                f"Got UK={uk_ext}, UK_Drug={uk_drug_ext}, AU={au_ext}")
+        if uk_drug_ext:
+            return SupportedExtensions.UK_DRUG
+        elif uk_ext:
+            return SupportedExtensions.UK
+        elif au_ext:
+            return SupportedExtensions.AU
+        return SupportedExtensions.INTERNATIONAL
 
     @classmethod
     def _determine_release(cls, folder_path: str, strict: bool = True,
@@ -119,37 +235,15 @@ class Snomed:
         Returns:
             pandas.DataFrame: SNOMED CT concept DataFrame.
         """
-        paths, snomed_releases = self._check_path_and_release()
 
         df2merge = []
-        for i, snomed_release in enumerate(snomed_releases):
-            contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
-            concept_snapshot = "sct2_Concept_Snapshot"
-            description_snapshot = "sct2_Description_Snapshot-en"
-            if self.au_ext:
-                description_snapshot += "-AU"
-            if self.uk_ext:
-                if "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
-                    description_snapshot = "sct2_Description_UKCLSnapshot-en"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    description_snapshot = "sct2_Description_UKEDSnapshot-en"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
-            if self.uk_drug_ext:
-                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
-                    description_snapshot = "sct2_Description_UKDGSnapshot-en"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    description_snapshot = "sct2_Description_UKEDSnapshot-en"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
+        for i, snomed_release in enumerate(self.snomed_releases):
+            self._set_extension(snomed_release, self.exts[i])
+            contents_path = os.path.join(self.paths[i], "Snapshot", "Terminology")
+            concept_snapshot = self._extension.get_concept_snapshot(self.paths[i])
+            description_snapshot = self._extension.get_description_snapshot(self.paths[i])
+            if concept_snapshot is None:
+                continue
 
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
@@ -215,37 +309,14 @@ class Snomed:
         Returns:
             list: List of all SNOMED CT relationships.
         """
-        paths, snomed_releases = self._check_path_and_release()
         all_rela = []
-        for i, snomed_release in enumerate(snomed_releases):
-            contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
-            concept_snapshot = "sct2_Concept_Snapshot"
-            relationship_snapshot = "sct2_Relationship_Snapshot"
-            if self.uk_ext:
-                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_Snapshot"
-                    relationship_snapshot = "sct2_Relationship_Snapshot"
-                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKCLSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
-            if self.uk_drug_ext:
-                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
+        for i, snomed_release in enumerate(self.snomed_releases):
+            self._set_extension(snomed_release, self.exts[i])
+            contents_path = os.path.join(self.paths[i], "Snapshot", "Terminology")
+            concept_snapshot = self._extension.get_concept_snapshot(self.paths[i])
+            relationship_snapshot = self._extension.get_relationship_snapshot(self.paths[i])
+            if concept_snapshot is None:
+                continue
 
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
@@ -272,37 +343,14 @@ class Snomed:
         Returns:
             file: JSON file of relationship mapping.
         """
-        paths, snomed_releases = self._check_path_and_release()
         output_dict = {}
-        for i, snomed_release in enumerate(snomed_releases):
-            contents_path = os.path.join(paths[i], "Snapshot", "Terminology")
-            concept_snapshot = "sct2_Concept_Snapshot"
-            relationship_snapshot = "sct2_Relationship_Snapshot"
-            if self.uk_ext:
-                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_Snapshot"
-                    relationship_snapshot = "sct2_Relationship_Snapshot"
-                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKCLSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKCLSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
-            if self.uk_drug_ext:
-                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKDGSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKDGSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    concept_snapshot = "sct2_Concept_UKEDSnapshot"
-                    relationship_snapshot = "sct2_Relationship_UKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
+        for i, snomed_release in enumerate(self.snomed_releases):
+            self._set_extension(snomed_release, self.exts[i])
+            contents_path = os.path.join(self.paths[i], "Snapshot", "Terminology")
+            concept_snapshot = self._extension.get_concept_snapshot(self.paths[i])
+            relationship_snapshot = self._extension.get_relationship_snapshot(self.paths[i])
+            if concept_snapshot is None:
+                continue
 
             for f in os.listdir(contents_path):
                 m = re.search(f'{concept_snapshot}'+r'_(.*)_\d*.txt', f)
@@ -335,7 +383,7 @@ class Snomed:
             dict: A dictionary containing the SNOMED CT to ICD-10 mappings including metadata.
         """
         snomed2icd10df = self._map_snomed2refset()
-        if self.uk_ext is True:
+        if self._extension in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG):
             return self._refset_df2dict(snomed2icd10df[0])
         else:
             return self._refset_df2dict(snomed2icd10df)
@@ -353,7 +401,7 @@ class Snomed:
         Returns:
             dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
         """
-        if self.uk_ext is not True:
+        if self._extension not in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG):
             raise AttributeError(
                 "OPCS-4 mapping does not exist in this edition")
         snomed2opcs4df = self._map_snomed2refset()[1]
@@ -374,18 +422,21 @@ class Snomed:
         """
         snomed_releases = []
         paths = []
+        exts = []
         if "Snapshot" in os.listdir(self.data_path):
             paths.append(self.data_path)
-            snomed_releases.append(self.release)
+            snomed_releases.append(self._determine_release(self.data_path, strict=True))
+            exts.append(self._determine_extension(self.data_path))
         else:
             for folder in os.listdir(self.data_path):
                 if "SnomedCT" in folder:
                     paths.append(os.path.join(self.data_path, folder))
                     rel = self._determine_release(folder, strict=True)
                     snomed_releases.append(rel)
+                    exts.append(self._determine_extension(paths[-1]))
         if len(paths) == 0:
             raise FileNotFoundError('Incorrect path to SNOMED CT directory')
-        return paths, snomed_releases
+        return paths, snomed_releases, exts
 
     def _refset_df2dict(self, refset_df: pd.DataFrame) -> dict:
         """
@@ -417,31 +468,13 @@ class Snomed:
             OR
             tuple: Tuple of dataframes containing SNOMED CT to refset mappings and metadata (ICD-10, OPCS4), if uk_ext is True.
         """
-        paths, snomed_releases = self._check_path_and_release()
         dfs2merge = []
-        for i, snomed_release in enumerate(snomed_releases):
-            refset_terminology = f'{paths[i]}/Snapshot/Refset/Map'
-            icd10_ref_set = 'der2_iisssccRefset_ExtendedMapSnapshot'
-            if self.uk_ext:
-                if "SnomedCT_InternationalRF2_PRODUCTION" in paths[i]:
-                    continue
-                elif "SnomedCT_UKClinicalRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKCLSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
-            if self.uk_drug_ext:
-                if "SnomedCT_UKDrugRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKDGSnapshot"
-                elif "SnomedCT_UKEditionRF2_PRODUCTION" in paths[i]:
-                    icd10_ref_set = "der2_iisssciRefset_ExtendedMapUKEDSnapshot"
-                elif "SnomedCT_UKClinicalRefsetsRF2_PRODUCTION" in paths[i]:
-                    continue
-                else:
-                    pass
+        for i, snomed_release in enumerate(self.snomed_releases):
+            self._set_extension(snomed_release, self.exts[i])
+            refset_terminology = f'{self.paths[i]}/Snapshot/Refset/Map'
+            icd10_ref_set = self._extension.get_refset_terminology(self.paths[i])
+            if icd10_ref_set is None:
+                continue
             for f in os.listdir(refset_terminology):
                 m = re.search(f'{icd10_ref_set}'+r'_(.*)_\d*.txt', f)
                 if m:
@@ -454,7 +487,7 @@ class Snomed:
             dfs2merge.append(icd_mappings)
         mapping_df = pd.concat(dfs2merge)
         del dfs2merge
-        if self.uk_ext or self.uk_drug_ext:
+        if self._extension in (SupportedExtensions.UK, SupportedExtensions.UK_DRUG):
             opcs_df = mapping_df[mapping_df['refsetId'] == self.opcs_refset_id]
             icd10_df = mapping_df[mapping_df['refsetId']
                                   == '999002271000000101']
