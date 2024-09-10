@@ -72,6 +72,7 @@ class SnapshotData:
                  refset_snapshots: Dict[str, Optional[str]],
                  avoids: List[str] = ["UKClinicalRefsetsRF2_PRODUCTION"],
                  common_key_prefix: str = "SnomedCT_",
+                 common_key_suffix: str = "_PRODUCTION",
                  common_val_prefix: str = "sct2_", # NOT for refset snapshot
                  ):
         self.concept_snapshots = concept_snapshots
@@ -80,6 +81,7 @@ class SnapshotData:
         self.refset_snapshots = refset_snapshots
         self.avoids = avoids
         self.common_key_prefix = common_key_prefix
+        self.common_key_suffix = common_key_suffix
         self.common_val_prefix = common_val_prefix
 
     def get_appropriate_name(self, part: Dict[str, Optional[str]], cur_path: str,
@@ -90,11 +92,11 @@ class SnapshotData:
         except KeyError:
             pass
         for raw_avoid in self.avoids:
-            avoid = self.common_key_prefix + raw_avoid
+            avoid = self.common_key_prefix + raw_avoid + self.common_key_suffix
             if avoid in cur_path:
                 return None
         for raw_k, v in part.items():
-            k = self.common_key_prefix + raw_k
+            k = self.common_key_prefix + raw_k + self.common_key_suffix
             if k in cur_path:
                 return val_prefix + v
         return None
@@ -109,43 +111,43 @@ class SupportedExtensions(Enum):
     )
     UK = SnapshotData(
         {
-            "InternationalRF2_PRODUCTION": "Concept_Snapshot",
-            "UKClinicalRF2_PRODUCTION": "Concept_UKCLSnapshot",
-            "UKEditionRF2_PRODUCTION": "Concept_UKEDSnapshot",
+            "InternationalRF2": "Concept_Snapshot",
+            "UKClinicalRF2": "Concept_UKCLSnapshot",
+            "UKEditionRF2": "Concept_UKEDSnapshot",
         },
         {
-            "InternationalRF2_PRODUCTION": "Description_Snapshot-en",
-            "UKClinicalRF2_PRODUCTION": "Description_UKCLSnapshot-en",
-            "UKEditionRF2_PRODUCTION": "Description_UKEDSnapshot-en",
+            "InternationalRF2": "Description_Snapshot-en",
+            "UKClinicalRF2": "Description_UKCLSnapshot-en",
+            "UKEditionRF2": "Description_UKEDSnapshot-en",
         },
         {
-            "InternationalRF2_PRODUCTION": "Relationship_Snapshot",
-            "UKClinicalRF2_PRODUCTION": "Relationship_UKCLSnapshot",
-            "UKEditionRF2_PRODUCTION": "Relationship_UKEDSnapshot",
+            "InternationalRF2": "Relationship_Snapshot",
+            "UKClinicalRF2": "Relationship_UKCLSnapshot",
+            "UKEditionRF2": "Relationship_UKEDSnapshot",
         },
         {
-            "InternationalRF2_PRODUCTION": None, # avoid
-            "UKClinicalRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
-            "UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
+            "InternationalRF2": None, # avoid
+            "UKClinicalRF2": "der2_iisssciRefset_ExtendedMapUKCLSnapshot",
+            "UKEditionRF2": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
         }
     )
     UK_DRUG = SnapshotData(
         {
-            "UKDrugRF2_PRODUCTION": "Concept_UKDGSnapshot",
-            "UKEditionRF2_PRODUCTION": "Concept_UKEDSnapshot",
+            "UKDrugRF2": "Concept_UKDGSnapshot",
+            "UKEditionRF2": "Concept_UKEDSnapshot",
         },
         {
-            "UKDrugRF2_PRODUCTION": "Description_UKDGSnapshot-en",
-            "UKEditionRF2_PRODUCTION": "Description_UKEDSnapshot-en",
+            "UKDrugRF2": "Description_UKDGSnapshot-en",
+            "UKEditionRF2": "Description_UKEDSnapshot-en",
         },
         {
-            "InternationalRF2_PRODUCTION": "Relationship_Snapshot",
-            "UKDrugRF2_PRODUCTION": "Relationship_UKDGSnapshot",
-            "UKEditionRF2_PRODUCTION": "Relationship_UKEDSnapshot",
+            "InternationalRF2": "Relationship_Snapshot",
+            "UKDrugRF2": "Relationship_UKDGSnapshot",
+            "UKEditionRF2": "Relationship_UKEDSnapshot",
         },
         {
-            "UKDrugRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
-            "UKEditionRF2_PRODUCTION": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
+            "UKDrugRF2": "der2_iisssciRefset_ExtendedMapUKDGSnapshot",
+            "UKEditionRF2": "der2_iisssciRefset_ExtendedMapUKEDSnapshot",
         }
     )
     AU = SnapshotData(
