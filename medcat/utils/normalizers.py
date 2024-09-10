@@ -149,15 +149,14 @@ def get_all_edits_n(word: str, use_diacritics: bool, n: int,
         raise ValueError(f"Unknown edit count: {n}")
     if n == 0:
         yield word
-    elif n == 1:
-        edits = BasicSpellChecker.get_edits1(word, use_diacritics)
-        f_edits = sorted(edits) if return_ordered else edits
+        return
+    edits = BasicSpellChecker.get_edits1(word, use_diacritics)
+    f_edits = sorted(edits) if return_ordered else edits
+    if n == 1:
         yield from f_edits
-    else:
-        edits1 = BasicSpellChecker.get_edits1(word, use_diacritics)
-        f_edits = sorted(edits1) if return_ordered else edits1
-        for edited_word in f_edits:
-            yield from get_all_edits_n(edited_word, use_diacritics, n - 1, return_ordered)
+        return
+    for edited_word in f_edits:
+        yield from get_all_edits_n(edited_word, use_diacritics, n - 1, return_ordered)
 
 
 class TokenNormalizer(PipeRunner):
