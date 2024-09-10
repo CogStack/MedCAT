@@ -141,7 +141,7 @@ class SupportedExtension(Enum):
         exp_name_in_folder="UKClinicalRF2",
         exp_files=FileFormatDescriptor(
             concept="Concept_UKCLSnapshot",
-            description="Description_UKCRSnapshot-en",
+            description="Description_UKCLSnapshot-en",
             relationship="Relationship_UKCLSnapshot",
             refset="der2_iisssciRefset_ExtendedMapUKCLSnapshot"
         ),
