@@ -145,14 +145,14 @@ def get_all_edits_n(word: str, use_diacritics: bool, n: int,
     Yields:
         Iterator[str]: The generator of the various edits.
     """
+    if n < 0:
+        raise ValueError(f"Unknown edit count: {n}")
     if n == 0:
         yield word
     elif n == 1:
         edits = BasicSpellChecker.get_edits1(word, use_diacritics)
         f_edits = sorted(edits) if return_ordered else edits
         yield from f_edits
-    elif n < 0:
-        raise ValueError(f"Unknown edit count: {n}")
     else:
         edits1 = BasicSpellChecker.get_edits1(word, use_diacritics)
         f_edits = sorted(edits1) if return_ordered else edits1
