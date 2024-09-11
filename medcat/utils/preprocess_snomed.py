@@ -113,6 +113,7 @@ class FileFormatDescriptor:
 class ExtensionDescription:
     exp_name_in_folder: str
     exp_files: FileFormatDescriptor
+    exp_2nd_part_in_folder: Optional[str] = None
 
 
 # pattern has:                                       EXTENSION      PRODUCTION     RELEASE
@@ -169,7 +170,8 @@ class SupportedExtension(Enum):
         ),
     )
     AU = ExtensionDescription(
-        exp_name_in_folder="InternationalRF2",
+        exp_name_in_folder="Release",
+        exp_2nd_part_in_folder="AU1000036",
         exp_files=FileFormatDescriptor(
             concept="Concept_Snapshot",
             description="Description_Snapshot-en-AU",
@@ -205,16 +207,24 @@ class SupportedBundles(Enum):
         )
 
 
-def match_partials_with_folders(exp_names: List[str], folder_names: List[str]) -> bool:
+def match_partials_with_folders(exp_names: List[Tuple[str, Optional[str]]],
+                                folder_names: List[str],
+                                _group_nr1: int = 1, _group_nr2: int = 2) -> bool:
     if len(exp_names) > len(folder_names):
         return False
-    available_folders = folder_names.copy()
-    for exp_name in exp_names:
+    available_folders = [os.path.basename(f) for f in folder_names]
+    for exp_name, exp_name_p2 in exp_names:
         found_cur_name = False
         for fi, folder in enumerate(available_folders):
-            if exp_name in folder:
-                found_cur_name = True
-                break
+            m = SNOMED_FOLDER_NAME_PATTERN.match(folder)
+            if not m:
+                continue
+            if m.group(_group_nr1) != exp_name:
+                continue
+            if exp_name_p2 and m.group(_group_nr2) != exp_name_p2:
+                continue
+            found_cur_name = True
+            break
         if found_cur_name:
             available_folders.pop(fi)
         else:
@@ -239,13 +249,17 @@ class Snomed:
 
     def __init__(self, data_path):
         self.data_path = data_path
-        self.bundle = self._determine_bundle()
+        self.bundle = self._determine_bundle(self.data_path)
         self.paths, self.snomed_releases, self.exts = self._check_path_and_release()
 
-    def _determine_bundle(self) -> Optional[SupportedBundles]:
+    @classmethod
+    def _determine_bundle(cls, data_path) -> Optional[SupportedBundles]:
+        if not os.path.exists(data_path) or not os.path.isdir(data_path):
+            return None
         for bundle in SupportedBundles:
-            folder_names = list(os.listdir(self.data_path))
-            exp_names = [ext.value.exp_name_in_folder for ext in bundle.value.extensions]
+            folder_names = list(os.listdir(data_path))
+            exp_names = [(ext.value.exp_name_in_folder, ext.value.exp_2nd_part_in_folder)
+                         for ext in bundle.value.extensions]
             if match_partials_with_folders(exp_names, folder_names):
                 return bundle
         return None
@@ -263,17 +277,23 @@ class Snomed:
         self._extension = extension
 
     @classmethod
-    def _determine_extension(cls, folder_path: str, _group_nr: int = 1) -> SupportedExtension:
+    def _determine_extension(cls, folder_path: str,
+                             _group_nr1: int = 1, _group_nr2: int = 2) -> SupportedExtension:
         folder_basename = os.path.basename(folder_path)
         m = SNOMED_FOLDER_NAME_PATTERN.match(folder_basename)
         if not m:
             raise UnkownSnomedReleaseException(
                 f"Unable to determine extension for path {repr(folder_path)}. "
                 f"Checking against pattern {SNOMED_FOLDER_NAME_PATTERN}")
-        ext_str = m.group(_group_nr)
+        ext_str = m.group(_group_nr1)
+        ext_str2 = m.group(_group_nr2)
         for extension in SupportedExtension:
-            if extension.value.exp_name_in_folder == ext_str:
-                return extension
+            if extension.value.exp_name_in_folder != ext_str:
+                continue
+            if (extension.value.exp_2nd_part_in_folder and
+                    extension.value.exp_2nd_part_in_folder != ext_str2):
+                continue
+            return extension
         ext_names_folders = ",".join([f"{ext.name} ({ext.value.exp_name_in_folder})"
                                       for ext in SupportedExtension])
         raise UnkownSnomedReleaseException(
