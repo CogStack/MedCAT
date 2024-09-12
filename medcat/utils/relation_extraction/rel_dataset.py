@@ -453,6 +453,7 @@ class RelData(Dataset):
         for project in data["projects"]:
             for doc_id, document in enumerate(project["documents"]):
                 doc_text = str(document["text"])
+                doc_id = str(document["id"])
 
                 if len(doc_text) > 0:
                     annotations = document["annotations"]
@@ -562,17 +563,26 @@ class RelData(Dataset):
                         ann_ids_from_relations.extend([start_entity_id, end_entity_id])
                         relation_label = relation['relation'].strip()
 
-                        ent1_token_start_pos = [i for i in range(0, doc_token_length) if ann_start_start_pos
-                                                        in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
+                        try:
 
-                        ent2_token_start_pos = [i for i in range(0, doc_token_length) if ann_end_start_pos
-                                                        in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
+                            ent1_token_start_pos = [i for i in range(0, doc_token_length) if ann_start_start_pos
+                                                            in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
-                        ent1_token_end_pos = [i for i in range(0, doc_token_length) if ann_start_end_pos
-                                                        in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
+                            ent2_token_start_pos = [i for i in range(0, doc_token_length) if ann_end_start_pos
+                                                            in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
 
-                        ent2_token_end_pos = [i for i in range(0, doc_token_length) if ann_end_end_pos
-                                                        in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
+                            ent1_token_end_pos = [i for i in range(0, doc_token_length) if ann_start_end_pos
+                                                            in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
+
+                            ent2_token_end_pos = [i for i in range(0, doc_token_length) if ann_end_end_pos
+                                                            in range(tokenizer_text_data["offset_mapping"][i][0], tokenizer_text_data["offset_mapping"][i][1] + 1)][0]
+                            assert ent1_token_start_pos
+                            assert ent2_token_start_pos
+                            assert ent1_token_end_pos
+                            assert ent2_token_end_pos 
+                        except Exception:
+                            self.log.info("document id: " + str(doc_id) + " failed to process relation")
+                            continue
 
                         if start_entity_id != end_entity_id and relation.get('validated', True) and start_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens \
                             and end_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens:

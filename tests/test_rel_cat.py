@@ -6,12 +6,9 @@ import json
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.rel_cat import RelCAT
-from medcat.utils.relation_extraction.rel_dataset import RelData
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
-from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 
 from transformers.models.auto.tokenization_auto import AutoTokenizer
-from transformers.models.bert.configuration_bert import BertConfig
 
 import spacy
 from spacy.tokens import Span, Doc
@@ -66,6 +63,8 @@ class RelCATTests(unittest.TestCase):
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
         self.rel_cat.save(self.save_model_path)
 
+
+
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path)
         self.rel_cat.config.general.create_addl_rels = True
@@ -76,6 +75,8 @@ class RelCATTests(unittest.TestCase):
         self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
+
+
 
     def test_train_predict(self) -> None:
         Span.set_extension('id', default=0, force=True)
