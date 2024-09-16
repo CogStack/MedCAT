@@ -4,7 +4,7 @@ import logging
 import datasets
 from spacy.tokens import Doc
 from datetime import datetime
-from typing import Iterable, Iterator, Optional, Dict, List, cast, Union, Tuple, Callable
+from typing import Iterable, Iterator, Optional, Dict, List, cast, Union, Tuple, Callable, Type
 from spacy.tokens import Span
 import inspect
 from functools import partial
@@ -37,7 +37,7 @@ logger = logging.getLogger(__name__)
 # an underlying issue that should be reported explicitly so that
 # it can be fixed. Otherwise we might end up running incompatible
 # models that keep raising exceptions but never explicitly failing
-RAISE_AFTER_CONSECUTIVE_FAILURES = 10
+RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES = 10
 
 
 class TransformersNER(object):
@@ -95,12 +95,13 @@ class TransformersNER(object):
             # NOTE: this will fix the DeID model(s) created before medcat 1.9.3
             #       though this fix may very well be unstable
             self.ner_pipe.tokenizer._in_target_context_manager = False
-        if not hasattr(self.ner_pipe.tokenizer, 'split_special_tokens'):
-            # NOTE: this will fix the DeID model(s) created with transformers before 4.42
-            #       and allow them to run with later transforemrs
-            self.ner_pipe.tokenizer.split_special_tokens = False
+        # if not hasattr(self.ner_pipe.tokenizer, 'split_special_tokens'):
+        #     # NOTE: this will fix the DeID model(s) created with transformers before 4.42
+        #     #       and allow them to run with later transforemrs
+        #     self.ner_pipe.tokenizer.split_special_tokens = False
         self.ner_pipe.device = self.model.device
-        self._consequtive_failures = 0
+        self._consecutive_identical_failures = 0
+        self._last_exception: Optional[Tuple[str, Type[Exception]]] = None
 
     def get_hash(self) -> str:
         """A partial hash trying to catch differences between models.
@@ -429,11 +430,18 @@ class TransformersNER(object):
                         make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
                     if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
                         map_ents_to_groups(self.cdb, doc)
-                    self._consequtive_failures = 0  # success
+                    self._consecutive_identical_failures = 0  # success
                 except Exception as e:
                     logger.warning(e, exc_info=True)
-                    self._consequtive_failures += 1
-                    if self._consequtive_failures >= RAISE_AFTER_CONSECUTIVE_FAILURES:
+                    # NOTE: exceptions are rarely 'equal' so if the message and type
+                    #       are the same, we consider them the same
+                    ex_info = (str(e), type(e))
+                    if self._last_exception == ex_info:
+                        self._consecutive_identical_failures += 1
+                    else:
+                        self._consecutive_identical_failures = 1
+                        self._last_exception = ex_info
+                    if self._consecutive_identical_failures >= RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES:
                         raise e
             yield from docs
 

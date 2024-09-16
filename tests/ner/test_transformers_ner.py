@@ -4,7 +4,7 @@ from spacy.lang.en import English
 from spacy.tokens import Doc, Span
 from transformers import TrainerCallback
 from medcat.ner.transformers_ner import TransformersNER
-from medcat.ner.transformers_ner import RAISE_AFTER_CONSECUTIVE_FAILURES
+from medcat.ner.transformers_ner import RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 
@@ -52,7 +52,7 @@ class TransformerNERTest(unittest.TestCase):
 
 
 class FailsAfterTests(unittest.TestCase):
-    SHOULD_WORK_FOR = RAISE_AFTER_CONSECUTIVE_FAILURES - 1
+    SHOULD_WORK_FOR = RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES - 1
 
     @classmethod
     def setUpClass(cls) -> None:
@@ -84,18 +84,30 @@ class FailsAfterTests(unittest.TestCase):
     def _bork_pipe(self):
         self.undertest.ner_pipe = None
 
+    def _bork_pipe2(self):
+        def _fake_call(*args, **kwargs) -> Doc:
+            raise ValueError()
+        self.undertest.ner_pipe.__call__ = _fake_call
+
     def test_runs_when_borked(self):
         self._bork_pipe()
         # the exceptions are caught and logged
         for cnr in range(self.SHOULD_WORK_FOR):
             out_doc = self.undertest(self.spacy_doc)
             self.assertIs(out_doc, self.spacy_doc)
-            self.assertEqual(self.undertest._consequtive_failures, cnr + 1)
+            self.assertEqual(self.undertest._consecutive_identical_failures, cnr + 1)
+
+    def test_no_fail_if_different_exceptions(self):
+        self._bork_pipe2()
+        self.undertest(self.spacy_doc)
+        # this shouldn't raise an exception since the failure is different
+        # even though the total number is high enough
+        self.test_runs_when_borked()
 
     def test_raises_upon_consecutive_fails(self):
         self._bork_pipe()
         # runs the ones that should work anyway (but not 1 more!)
         self.test_runs_when_borked()
-        self.assertEqual(self.undertest._consequtive_failures, self.SHOULD_WORK_FOR)
+        self.assertEqual(self.undertest._consecutive_identical_failures, self.SHOULD_WORK_FOR)
         with self.assertRaises(TypeError):
             self.undertest(self.spacy_doc)
