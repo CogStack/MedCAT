@@ -443,7 +443,8 @@ class TransformersNER(object):
                         self._consecutive_identical_failures = 1
                         self._last_exception = ex_info
                     if self._consecutive_identical_failures >= RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES:
-                        raise e
+                        cnt = self._consecutive_identical_failures
+                        raise TooManyConsecutiveFailuresException(cnt) from e
             yield from docs
 
     # Override
@@ -463,6 +464,12 @@ class TransformersNER(object):
         doc = next(self.pipe(iter([doc])))
 
         return doc
+
+
+class TooManyConsecutiveFailuresException(Exception):
+
+    def __init__(self, cnt: int = RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES) -> None:
+        super().__init__(f"Got too many ({cnt}) consecutive similar exceptions")
 
 
 # NOTE: Only needed for datasets backwards compatibility

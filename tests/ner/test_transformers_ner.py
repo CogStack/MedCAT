@@ -5,6 +5,7 @@ from spacy.tokens import Doc, Span
 from transformers import TrainerCallback
 from medcat.ner.transformers_ner import TransformersNER
 from medcat.ner.transformers_ner import RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES
+from medcat.ner.transformers_ner import TooManyConsecutiveFailuresException
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 
@@ -109,5 +110,5 @@ class FailsAfterTests(unittest.TestCase):
         # runs the ones that should work anyway (but not 1 more!)
         self.test_runs_when_borked()
         self.assertEqual(self.undertest._consecutive_identical_failures, self.SHOULD_WORK_FOR)
-        with self.assertRaises(TypeError):
+        with self.assertRaises(TooManyConsecutiveFailuresException):
             self.undertest(self.spacy_doc)
