@@ -28,7 +28,7 @@ executing==2.1.0
 filelock==3.16.0
 flake8==7.0.0
 frozenlist==1.4.1
-fsspec==2024.6.11
+fsspec==2024.6.1
 gensim==4.3.3
 huggingface-hub==0.24.7
 idna==3.10
