@@ -32,6 +32,14 @@ os.environ['WANDB_DISABLED'] = 'true'
 logger = logging.getLogger(__name__)
 
 
+# generally, the code below catches all exceptions and logs them
+# but if we have too many consecutive failures, it might indicate
+# an underlying issue that should be reported explicitly so that
+# it can be fixed. Otherwise we might end up running incompatible
+# models that keep raising exceptions but never explicitly failing
+RAISE_AFTER_CONSECUTIVE_FAILURES = 10
+
+
 class TransformersNER(object):
     """TODO: Add documentation"""
 
@@ -92,6 +100,7 @@ class TransformersNER(object):
             #       and allow them to run with later transforemrs
             self.ner_pipe.tokenizer.split_special_tokens = False
         self.ner_pipe.device = self.model.device
+        self._consequtive_failures = 0
 
     def get_hash(self) -> str:
         """A partial hash trying to catch differences between models.
@@ -420,8 +429,12 @@ class TransformersNER(object):
                         make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
                     if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
                         map_ents_to_groups(self.cdb, doc)
+                    self._consequtive_failures = 0  # success
                 except Exception as e:
                     logger.warning(e, exc_info=True)
+                    self._consequtive_failures += 1
+                    if self._consequtive_failures >= RAISE_AFTER_CONSECUTIVE_FAILURES:
+                        raise e
             yield from docs
 
     # Override
