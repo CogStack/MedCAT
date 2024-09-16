@@ -431,6 +431,7 @@ class TransformersNER(object):
                     if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
                         map_ents_to_groups(self.cdb, doc)
                     self._consecutive_identical_failures = 0  # success
+                    self._last_exception = None
                 except Exception as e:
                     logger.warning(e, exc_info=True)
                     # NOTE: exceptions are rarely 'equal' so if the message and type
