@@ -1127,11 +1127,29 @@ class CAT(object):
             self.pipe.set_error_handler(self._pipe_error_handler)
             try:
                 texts_ = self._get_trimmed_texts(texts)
+                if self.config.general.usage_monitor.enabled:
+                    input_lengths: List[Tuple[int, int]] = []
+                    for orig_text, trimmed_text in zip(texts, texts_):
+                        if orig_text is None or trimmed_text is None:
+                            l1, l2 = 0, 0
+                        else:
+                            l1 = len(orig_text)
+                            l2 = len(trimmed_text)
+                        input_lengths.append((l1, l2))
                 docs = self.pipe.batch_multi_process(texts_, n_process, batch_size)
 
-                for doc in tqdm(docs, total=len(texts_)):
+                for doc_nr, doc in tqdm(enumerate(docs), total=len(texts_)):
                     doc = None if doc.text.strip() == '' else doc
                     out.append(self._doc_to_out(doc, only_cui, addl_info, out_with_text=True))
+                    if self.config.general.usage_monitor.enabled:
+                        l1, l2 = input_lengths[doc_nr]
+                        if doc is None:
+                            nents = 0
+                        elif self.config.general.show_nested_entities:
+                            nents = len(doc._.ents)  # type: ignore
+                        else:
+                            nents = len(doc.ents)  # type: ignore
+                        self.usage_monitor.log_inference(l1, l2, nents)
 
                 # Currently spaCy cannot mark which pieces of texts failed within the pipe so be this workaround,
                 # which also assumes texts are different from each others.
@@ -1637,6 +1655,9 @@ class CAT(object):
                         logger.warning("PID: %s failed one document in _mp_cons, running will continue normally. \n" +
                                          "Document length in chars: %s, and ID: %s", pid, len(str(text)), i_text)
                         logger.warning(str(e))
+        if self.config.general.usage_monitor.enabled:
+            # NOTE: This is in another process, so need to explicitly flush
+            self.usage_monitor._flush_logs()
         sleep(2)
 
     def _add_nested_ent(self, doc: Doc, _ents: List[Span], _ent: Union[Dict, Span]) -> None:
