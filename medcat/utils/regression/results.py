@@ -452,8 +452,13 @@ class ResultDescriptor(SingleResultDescriptor):
         Yields:
             Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]: The placeholder, phrase, finding, CUI, and name.
         """
-        for srd in self.per_phrase_results.values():
-            for target, finding in srd.examples:
+        phrases = sorted(self.per_phrase_results.keys())
+        for phrase in phrases:
+            srd = self.per_phrase_results[phrase]
+            # sort by finding 1st, found CUI 2nd, and used name 3rd
+            sorted_examples = sorted(
+                srd.examples, key=lambda tf: (tf[1][0].name, str(tf[1][1]), tf[0].name))
+            for target, finding in sorted_examples:
                 if finding[0] not in STRICTNESS_MATRIX[strictness_threshold]:
                     yield target, finding
 
@@ -490,7 +495,8 @@ class ResultDescriptor(SingleResultDescriptor):
         # NOTE: need to propagate here manually so the strictness keyword
         #       makes sense and doesn't cause issues due being to unexpected keyword
         per_phrase_results = {
-            phrase: res.dict(**kwargs) for phrase, res in self.per_phrase_results.items()
+            phrase: res.dict(**kwargs) for phrase, res in
+            sorted(self.per_phrase_results.items(), key=lambda it: it[0])
         }
         d['per_phrase_results'] = per_phrase_results
         return d
@@ -654,8 +660,8 @@ class MultiDescriptor(pydantic.BaseModel):
         if hide_empty:
             empty_text = f' A total of {nr_of_empty} cases did not match any CUIs and/or names.'
         ret_vals = [f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
-And a total of {total_total} (sub)cases were checked.{empty_text}"""]
-        allowed_fingings_str = [f.name for f in allowed_findings]
+                    And a total of {total_total} (sub)cases were checked.{empty_text}"""]
+        allowed_fingings_str = sorted([f.name for f in allowed_findings])
         ret_vals.extend([
             f"At the strictness level of {strictness} (allowing {allowed_fingings_str}):",
             f"The number of total successful (sub) cases: {total_s} "

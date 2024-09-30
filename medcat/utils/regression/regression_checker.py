@@ -3,7 +3,7 @@ import json
 from pathlib import Path
 import logging
 
-from typing import Optional
+from typing import Optional, Tuple
 
 from medcat.cat import CAT
 from medcat.utils.regression.checking import RegressionSuite, TranslationLayer
@@ -47,7 +47,8 @@ def main(model_pack_dir: Path, test_suite_file: Path,
          mct_export_yaml_path: Optional[str] = None,
          only_mct_export_conversion: bool = False,
          only_describe: bool = False,
-         require_fully_correct: bool = False) -> None:
+         require_fully_correct: bool = False,
+         edit_distance: Tuple[int, int, int] = (0, 0, 0)) -> None:
     """Check test suite against the specifeid model pack.
 
     Args:
@@ -72,6 +73,11 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         require_fully_correct (bool): Whether all cases are required to be correct.
             If set to True, an exit-status of 1 is returned unless all (sub)cases are correct.
             Defaults to False.
+        edit_distance (Tuple[int, int, int]): The edit distance, the random seed, and the number
+            of edited names to pick for each of the names. If set to non-0, the specified number
+            of splits, deletes, transposes, replaces, or inserts are done to the each name. This
+            can be useful for looking at the capability of identifying typos in text. However,
+            this can make hte process a lot slower as a resullt. Defaults to (0, 0, 0).
 
     Raises:
         ValueError: If unable to overwrite file or folder does not exist.
@@ -101,7 +107,10 @@ def main(model_pack_dir: Path, test_suite_file: Path,
     logger.info('Loading model pack from file: %s', model_pack_dir)
     cat: CAT = CAT.load_model_pack(str(model_pack_dir))
     logger.info('Checking the current status')
-    res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb))
+    res = rc.check_model(cat, TranslationLayer.from_CDB(cat.cdb),
+                         edit_distance=edit_distance,
+                         use_diacritics=cat.config.general.diacritics)
+    cat.config.general
     strictness = Strictness[strictness_str]
     if examples_strictness_str in ("None", "N/A"):
         examples_strictness = None
@@ -121,6 +130,16 @@ def main(model_pack_dir: Path, test_suite_file: Path,
                                               strictness=strictness, phrase_max_len=max_phrase_length)[:2]
         if total != success:
             exit(1)
+
+
+def tuple3_parser(arg: str) -> Tuple[int, int, int]:
+    parts = arg.strip("()").split(',')
+    if len(parts) != 3:
+        raise argparse.ArgumentTypeError("Tuple must be in the form (x, y, z)")
+    try:
+        return (int(parts[0]), int(parts[1]), int(parts[2]))
+    except ValueError:
+        raise argparse.ArgumentTypeError("Tuple must be in the form (x, y, z)")
 
 
 if __name__ == '__main__':
@@ -169,6 +188,19 @@ if __name__ == '__main__':
                         'If set, a non-zero exit status is returned unless all cases are successful (100%%). '
                         'This can be useful for (e.g) CI workflow integration.',
                         action='store_true')
+    parser.add_argument('--edit-distance', help='Set the edit distance of each of the names. '
+                        'If set, each name tested will have the specified number of characters changed. '
+                        'This can be useful to determine the versatility of the model in terms of '
+                        'recognising typos. Defauts to 0 (i.e no change). You need to provide 3 numbers '
+                        'in the format `(N, R, P)` where `N` is the edit distance, `R` is the random seed, '
+                        'and `P` is the number of choices to make.',
+                        # ' NOTE: Edit distances greater '
+                        # 'than 1 will add an expenentially higher and higher number of sub-cases and thus '
+                        # 'time for the regression suite to be run. Even at edit distance 2 you can have '
+                        # '500 000 different variants for a 15 character long name and the longer the name, '
+                        # 'the more varions you get. For instance, a 76 characater long name could have '
+                        # 'upwards of 15 million varaints.',
+                        type=tuple3_parser, default=(0, 0, 0))
     args = parser.parse_args()
     if not args.silent:
         logger.addHandler(logging.StreamHandler())
@@ -183,4 +215,4 @@ if __name__ == '__main__':
          strictness_str=args.strictness, max_phrase_length=args.max_phrase_length,
          use_mct_export=args.from_mct_export, mct_export_yaml_path=args.mct_export_yaml,
          only_mct_export_conversion=args.only_conversion, only_describe=args.only_describe,
-         require_fully_correct=args.require_fully_correct)
+         require_fully_correct=args.require_fully_correct, edit_distance=args.edit_distance)

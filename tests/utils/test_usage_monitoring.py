@@ -89,7 +89,7 @@ class InterMediateUsageMonitorTests(UsageMonitorBaseTests):
         self.assertEqual(len(lines), self.expected_in_file)
 
 
-class UMT(UsageMonitorBaseTests):
+class UsageMonitoringAutoTests(UsageMonitorBaseTests):
     ENABLED_DICT = {
         "MEDCAT_USAGE_LOGS": "True",
         "MEDCAT_USAGE_LOGS_LOCATION": "."
