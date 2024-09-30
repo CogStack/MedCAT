@@ -8,6 +8,8 @@ from unittest import TestCase
 from medcat.utils.regression import utils
 from medcat.utils.regression.checking import RegressionSuite
 
+from medcat.utils.normalizers import get_all_edits_n
+
 
 class PartialSubstituationTests(TestCase):
     TEXT1 = "This [PH1] has one placeholder"
@@ -181,3 +183,47 @@ class EnumDocStringCapturingClass(TestCase):
         for ec in MyE3:
             with self.subTest(str(ec)):
                 self.assertEqual(ec.__doc__, MyE3.__doc__)
+
+
+class EditBaseTests(TestCase):
+    WORDS = ['WORDs', 'multi word', 'long-ass-word',
+             'complexsuperlongwordthatexists']
+
+
+class EditEstimationTests(EditBaseTests):
+
+    def assert_can_estimate_dist(self, edit_distance: int, tol_perc: float):
+        for word in self.WORDS:
+            with self.subTest(word):
+                got = len(list(get_all_edits_n(word, False, edit_distance)))
+                expected = utils.estimate_num_variants(len(word), edit_distance)
+                ratio = got / expected
+                self.assertTrue(1 - tol_perc < ratio < 1 + tol_perc,
+                                f"Ratio {ratio} vs TOL {tol_perc}")
+
+    def test_can_estimate_dist1(self):
+        self.assert_can_estimate_dist(1, 0.04)
+
+    def test_can_estimate_dist2(self):
+        self.assert_can_estimate_dist(2, 0.06)
+
+
+class EditTests(EditBaseTests):
+    ORIG_WORD = "WORD"
+    EDIT_DIST = 1
+    ALL_EDITS = list(get_all_edits_n(ORIG_WORD, False, EDIT_DIST))
+    LEN = len(ALL_EDITS)
+    # NOTE: can't use the full length since the estimation is lower
+    PICKS = [1, 5, 10, LEN - 20]
+    RNG_SEED = 42
+
+    def test_can_pick_correct_number(self):
+        for pick in self.PICKS:
+            with self.subTest(f"Pick {pick}"):
+                picked = list(utils.pick_random_edits(
+                    self.ALL_EDITS, edit_distance=self.EDIT_DIST,
+                    num_to_pick=pick, orig_len=len(self.ORIG_WORD),
+                    rng_seed=self.RNG_SEED))
+                self.assertEqual(len(picked), pick)
+                # make sure the names are unique
+                self.assertEqual(len(picked), len(set(picked)))
