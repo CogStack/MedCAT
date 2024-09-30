@@ -1,5 +1,5 @@
 from typing import Dict, Any
-from medcat.config import MixingConfig, BaseModel, Optional, Extra
+from medcat.config import MixingConfig, BaseModel, Optional
 
 
 class General(MixingConfig, BaseModel):
@@ -65,7 +65,7 @@ class General(MixingConfig, BaseModel):
     Otherwise defaults to doc._.ents or doc.ents per the annotate_overlapping settings"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -169,7 +169,7 @@ class Model(MixingConfig, BaseModel):
     """If set to True center positions will be ignored when calculating representation"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -191,7 +191,7 @@ class Train(MixingConfig, BaseModel):
     """If set only this CUIs will be used for training"""
     auto_save_model: bool = True
     """Should do model be saved during training for best results"""
-    last_train_on: Optional[int] = None
+    last_train_on: Optional[float] = None
     """When was the last training run"""
     metric: Dict[str, str] = {'base': 'weighted avg', 'score': 'f1-score'}
     """What metric should be used for choosing the best model"""
@@ -206,7 +206,7 @@ class Train(MixingConfig, BaseModel):
     """Focal Loss hyperparameter - determines importance the loss gives to hard-to-classify examples"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -217,5 +217,5 @@ class ConfigMetaCAT(MixingConfig, BaseModel):
     train: Train = Train()
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True

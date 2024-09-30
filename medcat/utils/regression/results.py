@@ -1,10 +1,11 @@
 from enum import Enum, auto
-from typing import Dict, List, Optional, Any, Set, Iterable, Tuple
+from typing import Dict, List, Optional, Any, Set, Iterable, Tuple, cast
 import json
 import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer, FinalTarget
 from medcat.utils.regression.utils import limit_str_len, add_doc_strings_to_enum
+from medcat.utils.pydantic_version import HAS_PYDANTIC2, get_model_dump
 
 
 class Finding(Enum):
@@ -372,7 +373,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals)
 
-    def dict(self, **kwargs) -> dict:
+    def _dict(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             kwargs = kwargs.copy() # so if used elsewhere, keeps the kwarg
             strict_raw = kwargs.pop('strictness')
@@ -395,17 +396,17 @@ class SingleResultDescriptor(pydantic.BaseModel):
             key.name: value for key, value in self.findings.items()
         }
         serialized_examples = [
-            (ft.dict(**kwargs), (f[0].name, f[1])) for ft, f in self.examples
+            (get_model_dump(ft, **kwargs), (f[0].name, f[1])) for ft, f in self.examples
             # only count if NOT in strictness matrix (i.e 'failures')
             if f[0] not in STRICTNESS_MATRIX[strictness]
         ]
-        model_dict = super().dict(**kwargs)
+        model_dict = get_model_dump(cast(pydantic.BaseModel, super()), **kwargs)
         model_dict['findings'] = serialized_dict
         model_dict['examples'] = serialized_examples
         return model_dict
 
     def json(self, **kwargs) -> str:
-        d = self.dict(**kwargs)
+        d = get_model_dump(self, **kwargs)
         return json.dumps(d)
 
 
@@ -473,7 +474,7 @@ class ResultDescriptor(SingleResultDescriptor):
                              for srd in self.per_phrase_results.values()])
         return sr + '\n\t\t' + children.replace('\n', '\n\t\t')
 
-    def dict(self, **kwargs) -> dict:
+    def _dict(self, **kwargs) -> dict:
         if 'exclude' in kwargs and kwargs['exclude'] is not None:
             exclude: set = kwargs['exclude']
         else:
@@ -481,7 +482,7 @@ class ResultDescriptor(SingleResultDescriptor):
             kwargs['exclude'] = exclude
         # NOTE: ignoring here so that examples are only present in the per phrase part
         exclude.update(('examples', 'per_phrase_results'))
-        d = super().dict(**kwargs)
+        d = get_model_dump(cast(pydantic.BaseModel, super()), **kwargs)
         if 'examples' in d:
             # NOTE: I don't really know why, but the examples still
             #       seem to be a part of the resulting dict, so I need
@@ -490,7 +491,7 @@ class ResultDescriptor(SingleResultDescriptor):
         # NOTE: need to propagate here manually so the strictness keyword
         #       makes sense and doesn't cause issues due being to unexpected keyword
         per_phrase_results = {
-            phrase: res.dict(**kwargs) for phrase, res in self.per_phrase_results.items()
+            phrase: get_model_dump(res, **kwargs) for phrase, res in self.per_phrase_results.items()
         }
         d['per_phrase_results'] = per_phrase_results
         return d
@@ -671,7 +672,7 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
         ])
         return "\n".join(ret_vals) + f"\n{delegated}"
 
-    def dict(self, **kwargs) -> dict:
+    def _dict(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             strict_raw = kwargs.pop('strictness')
             if isinstance(strict_raw, Strictness):
@@ -682,8 +683,8 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
                 raise ValueError(f"Unknown stircntess specified: {strict_raw}")
         else:
             strictness = Strictness.NORMAL
-        out_dict = super().dict(exclude={'parts'}, **kwargs)
-        out_dict['parts'] = [part.dict(strictness=strictness) for part in self.parts]
+        out_dict = get_model_dump(cast(pydantic.BaseModel, super()), exclude={'parts'}, **kwargs)
+        out_dict['parts'] = [get_model_dump(part, strictness=strictness) for part in self.parts]
         return out_dict
 
 
@@ -691,3 +692,11 @@ class MalformedFinding(ValueError):
 
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
+
+
+TO_BE_FIXED = [SingleResultDescriptor, ResultDescriptor, MultiDescriptor]
+for fixer in TO_BE_FIXED:
+    if HAS_PYDANTIC2:
+        fixer.model_dump = fixer._dict  # type: ignore
+    else:
+        fixer.dict = fixer._dict  # type: ignore

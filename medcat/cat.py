@@ -42,6 +42,7 @@ from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_F
 from medcat.stats.stats import get_stats
 from medcat.utils.filters import set_project_filters
 from medcat.utils.usage_monitoring import UsageMonitor
+from medcat.utils.pydantic_version import get_model_dump
 
 
 logger = logging.getLogger(__name__) # separate logger from the package-level one
@@ -590,7 +591,7 @@ class CAT(object):
 
     def _init_ckpts(self, is_resumed, checkpoint):
         if self.config.general.checkpoint.steps is not None or checkpoint is not None:
-            checkpoint_config = CheckpointConfig(**self.config.general.checkpoint.dict())
+            checkpoint_config = CheckpointConfig(**get_model_dump(self.config.general.checkpoint))
             checkpoint_manager = CheckpointManager('cat_train', checkpoint_config)
             if is_resumed:
                 # TODO: probably remove is_resumed mark and always resume if a checkpoint is provided,
