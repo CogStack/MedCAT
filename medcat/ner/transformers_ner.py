@@ -32,14 +32,6 @@ os.environ['WANDB_DISABLED'] = 'true'
 logger = logging.getLogger(__name__)
 
 
-# generally, the code below catches all exceptions and logs them
-# but if we have too many consecutive failures, it might indicate
-# an underlying issue that should be reported explicitly so that
-# it can be fixed. Otherwise we might end up running incompatible
-# models that keep raising exceptions but never explicitly failing
-RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES = 10
-
-
 class TransformersNER(object):
     """TODO: Add documentation"""
 
@@ -404,47 +396,33 @@ class TransformersNER(object):
             #all_text_processed = self.tokenizer.encode_eval(all_text)
             # For now we will process the documents one by one, should be improved in the future to use batching
             for doc in docs:
-                try:
-                    res = self.ner_pipe(doc.text, aggregation_strategy=self.config.general['ner_aggregation_strategy'])
-                    doc.ents = []  # type: ignore
-                    for r in res:
-                        inds = []
-                        for ind, word in enumerate(doc):
-                            end_char = word.idx + len(word.text)
-                            if end_char <= r['end'] and end_char > r['start']:
-                                inds.append(ind)
-                            # To not loop through everything
-                            if end_char > r['end']:
-                                break
-                        if inds:
-                            entity = Span(doc, min(inds), max(inds) + 1, label=r['entity_group'])
-                            entity._.cui = r['entity_group']
-                            entity._.context_similarity = r['score']
-                            entity._.detected_name = r['word']
-                            entity._.id = len(doc._.ents)
-                            entity._.confidence = r['score']
+                res = self.ner_pipe(doc.text, aggregation_strategy=self.config.general['ner_aggregation_strategy'])
+                doc.ents = []  # type: ignore
+                for r in res:
+                    inds = []
+                    for ind, word in enumerate(doc):
+                        end_char = word.idx + len(word.text)
+                        if end_char <= r['end'] and end_char > r['start']:
+                            inds.append(ind)
+                        # To not loop through everything
+                        if end_char > r['end']:
+                            break
+                    if inds:
+                        entity = Span(doc, min(inds), max(inds) + 1, label=r['entity_group'])
+                        entity._.cui = r['entity_group']
+                        entity._.context_similarity = r['score']
+                        entity._.detected_name = r['word']
+                        entity._.id = len(doc._.ents)
+                        entity._.confidence = r['score']
 
-                            doc._.ents.append(entity)
-                    create_main_ann(self.cdb, doc)
-                    if self.cdb.config.general['make_pretty_labels'] is not None:
-                        make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
-                    if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
-                        map_ents_to_groups(self.cdb, doc)
-                    self._consecutive_identical_failures = 0  # success
-                    self._last_exception = None
-                except Exception as e:
-                    logger.warning(e, exc_info=True)
-                    # NOTE: exceptions are rarely 'equal' so if the message and type
-                    #       are the same, we consider them the same
-                    ex_info = (str(e), type(e))
-                    if self._last_exception == ex_info:
-                        self._consecutive_identical_failures += 1
-                    else:
-                        self._consecutive_identical_failures = 1
-                        self._last_exception = ex_info
-                    if self._consecutive_identical_failures >= RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES:
-                        cnt = self._consecutive_identical_failures
-                        raise TooManyConsecutiveFailuresException(cnt) from e
+                        doc._.ents.append(entity)
+                create_main_ann(self.cdb, doc)
+                if self.cdb.config.general['make_pretty_labels'] is not None:
+                    make_pretty_labels(self.cdb, doc, LabelStyle[self.cdb.config.general['make_pretty_labels']])
+                if self.cdb.config.general['map_cui_to_group'] is not None and self.cdb.addl_info.get('cui2group', {}):
+                    map_ents_to_groups(self.cdb, doc)
+                self._consecutive_identical_failures = 0  # success
+                self._last_exception = None
             yield from docs
 
     # Override
@@ -464,12 +442,6 @@ class TransformersNER(object):
         doc = next(self.pipe(iter([doc])))
 
         return doc
-
-
-class TooManyConsecutiveFailuresException(Exception):
-
-    def __init__(self, cnt: int = RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES) -> None:
-        super().__init__(f"Got too many ({cnt}) consecutive similar exceptions")
 
 
 # NOTE: Only needed for datasets backwards compatibility

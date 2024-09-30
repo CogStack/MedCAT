@@ -4,8 +4,6 @@ from spacy.lang.en import English
 from spacy.tokens import Doc, Span
 from transformers import TrainerCallback
 from medcat.ner.transformers_ner import TransformersNER
-from medcat.ner.transformers_ner import RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES
-from medcat.ner.transformers_ner import TooManyConsecutiveFailuresException
 from medcat.config import Config
 from medcat.cdb_maker import CDBMaker
 
@@ -50,65 +48,3 @@ class TransformerNERTest(unittest.TestCase):
         assert dataset["train"].num_rows == 48
         assert dataset["test"].num_rows == 12
         self.assertEqual(tracker.call.call_count, 2)
-
-
-class FailsAfterTests(unittest.TestCase):
-    SHOULD_WORK_FOR = RAISE_AFTER_CONSECUTIVE_IDENTICAL_FAILURES - 1
-
-    @classmethod
-    def setUpClass(cls) -> None:
-        config = Config()
-        config.general["spacy_model"] = "en_core_web_md"
-        cdb_maker = CDBMaker(config)
-        cdb_csv = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "..", "examples", "cdb.csv")
-        cdb = cdb_maker.prepare_csvs([cdb_csv], full_build=True)
-        Doc.set_extension("ents", default=[], force=True)
-        Span.set_extension("confidence", default=-1, force=True)
-        Span.set_extension("id", default=0, force=True)
-        Span.set_extension("detected_name", default=None, force=True)
-        Span.set_extension("link_candidates", default=None, force=True)
-        Span.set_extension("cui", default=-1, force=True)
-        Span.set_extension("context_similarity", default=-1, force=True)
-        cls.undertest = TransformersNER(cdb)
-        cls.undertest.create_eval_pipeline()
-
-    def setUp(self) -> None:
-        self.undertest.create_eval_pipeline()
-        self.spacy_doc = English().make_doc(
-            "\nPatient Name: John Smith\nAddress: 15 Maple Avenue"
-            "\nCity: New York\nCC: Chronic back pain\n\nHX: Mr. Smith")
-
-    def test_runs_correctly_normal(self):
-        out_doc = self.undertest(self.spacy_doc)
-        self.assertIs(out_doc, self.spacy_doc)
-
-    def _bork_pipe(self):
-        self.undertest.ner_pipe = None
-
-    def _bork_pipe2(self):
-        def _fake_call(*args, **kwargs) -> Doc:
-            raise ValueError()
-        self.undertest.ner_pipe.__call__ = _fake_call
-
-    def test_runs_when_borked(self):
-        self._bork_pipe()
-        # the exceptions are caught and logged
-        for cnr in range(self.SHOULD_WORK_FOR):
-            out_doc = self.undertest(self.spacy_doc)
-            self.assertIs(out_doc, self.spacy_doc)
-            self.assertEqual(self.undertest._consecutive_identical_failures, cnr + 1)
-
-    def test_no_fail_if_different_exceptions(self):
-        self._bork_pipe2()
-        self.undertest(self.spacy_doc)
-        # this shouldn't raise an exception since the failure is different
-        # even though the total number is high enough
-        self.test_runs_when_borked()
-
-    def test_raises_upon_consecutive_fails(self):
-        self._bork_pipe()
-        # runs the ones that should work anyway (but not 1 more!)
-        self.test_runs_when_borked()
-        self.assertEqual(self.undertest._consecutive_identical_failures, self.SHOULD_WORK_FOR)
-        with self.assertRaises(TooManyConsecutiveFailuresException):
-            self.undertest(self.spacy_doc)
