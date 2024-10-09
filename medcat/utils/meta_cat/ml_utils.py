@@ -419,7 +419,7 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
             columns=["true " + label for label in labels],
             index=["predicted " + label for label in labels],
         )
-    except ValueError as e:
+    except ValueError:
         logger.warning("The evaluation dataset does not contain all the labels, some labels are missing. Performance displayed for labels found...")
         labels_present_: set = set(predictions)
         labels_present: List[str] = [str(x) for x in labels_present_]
