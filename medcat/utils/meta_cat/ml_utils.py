@@ -421,8 +421,8 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
         )
     except ValueError as e:
         logger.warning("The evaluation dataset does not contain all the labels, some labels are missing. Performance displayed for labels found...")
-        labels_present = set(predictions)
-        labels_present = [str(x) for x in labels_present]
+        labels_present_: set = set(predictions)
+        labels_present: list[str] = [str(x) for x in labels_present_]
 
         confusion = pd.DataFrame(
             data=confusion_matrix(y_eval, predictions, ),
