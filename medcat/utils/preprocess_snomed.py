@@ -266,6 +266,7 @@ class Snomed:
 
     def _set_extension(self, release: str, extension: SupportedExtension) -> None:
         # NOTE: now using the later refset IF by default
+        # NOTE: the OPCS4 refset ID is only relevant for UK releases
         self.opcs_refset_id = '1382401000000109'
         if (extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG) and
                 # using lexicographical comparison below
