@@ -478,10 +478,7 @@ class Snomed:
             dict: A dictionary containing the SNOMED CT to ICD-10 mappings including metadata.
         """
         snomed2icd10df = self._map_snomed2refset()
-        if self._extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
-            return self._refset_df2dict(snomed2icd10df[0])
-        else:
-            return self._refset_df2dict(snomed2icd10df)
+        return self._refset_df2dict(snomed2icd10df[0])
 
     def map_snomed2opcs4(self) -> dict:
         """
@@ -496,7 +493,8 @@ class Snomed:
         Returns:
             dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
         """
-        if self._extension not in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
+        if all(ext not in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG)
+               for ext in self.exts):
             raise AttributeError(
                 "OPCS-4 mapping does not exist in this edition")
         snomed2opcs4df = self._map_snomed2refset()[1]
@@ -584,13 +582,14 @@ class Snomed:
             dfs2merge.append(icd_mappings)
         mapping_df = pd.concat(dfs2merge)
         del dfs2merge
-        if self._extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
+        if any(ext in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG)
+               for ext in self.exts):
             opcs_df = mapping_df[mapping_df['refsetId'] == self.opcs_refset_id]
             icd10_df = mapping_df[mapping_df['refsetId']
                                   == '999002271000000101']
             return icd10_df, opcs_df
         else:
-            return mapping_df
+            return mapping_df, None
 
 
 class UnkownSnomedReleaseException(ValueError):
