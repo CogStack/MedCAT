@@ -265,15 +265,16 @@ class Snomed:
         return None
 
     def _set_extension(self, release: str, extension: SupportedExtension) -> None:
-        self.opcs_refset_id = "1126441000000105"
+        # NOTE: now using the later refset IF by default
+        self.opcs_refset_id = '1382401000000109'
         if (extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG) and
                 # using lexicographical comparison below
                 # e.g "20240101" > "20231122" results in True
                 # yet "20231121" > "20231122" results in False
-                len(release) == len("20231122") and release >= "20231122"):
+                len(release) == len("20231122") and release < "20231122"):
             # NOTE for UK extensions starting from 20231122 the
             #      OPCS4 refset ID seems to be different
-            self.opcs_refset_id = '1382401000000109'
+            self.opcs_refset_id = "1126441000000105"
         self._extension = extension
 
     @classmethod
