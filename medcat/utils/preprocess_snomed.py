@@ -329,7 +329,7 @@ class Snomed:
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
             concept_snapshot = self._extension.value.exp_files.get_concept()
             description_snapshot = self._extension.value.exp_files.get_description()
-            if concept_snapshot in (None, _IGNORE_TAG) or (
+            if concept_snapshot is None or _IGNORE_TAG in concept_snapshot or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -404,7 +404,7 @@ class Snomed:
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
             concept_snapshot = self._extension.value.exp_files.get_concept()
             relationship_snapshot = self._extension.value.exp_files.get_relationship()
-            if concept_snapshot in (None, _IGNORE_TAG) or (
+            if concept_snapshot is None or _IGNORE_TAG in concept_snapshot or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -440,7 +440,7 @@ class Snomed:
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
             concept_snapshot = self._extension.value.exp_files.get_concept()
             relationship_snapshot = self._extension.value.exp_files.get_relationship()
-            if concept_snapshot in (None, _IGNORE_TAG) or (
+            if concept_snapshot is None or _IGNORE_TAG in concept_snapshot or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -566,7 +566,7 @@ class Snomed:
             self._set_extension(snomed_release, self.exts[i])
             refset_terminology = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.refset])
             icd10_ref_set = self._extension.value.exp_files.get_refset()
-            if icd10_ref_set in (None, _IGNORE_TAG) or (
+            if icd10_ref_set is None or _IGNORE_TAG in icd10_ref_set or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
