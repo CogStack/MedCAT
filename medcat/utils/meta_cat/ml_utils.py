@@ -412,23 +412,17 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
     labels = [name for (name, _) in sorted(config.general['category_value2id'].items(), key=lambda x: x[1])]
+    labels_present_: set = set(predictions)
+    labels_present: List[str] = [str(x) for x in labels_present_]
 
-    try:
-        confusion = pd.DataFrame(
-            data=confusion_matrix(y_eval, predictions, ),
-            columns=["true " + label for label in labels],
-            index=["predicted " + label for label in labels],
-        )
-    except ValueError:
-        logger.warning("The evaluation dataset does not contain all the labels, some labels are missing. Performance displayed for labels found...")
-        labels_present_: set = set(predictions)
-        labels_present: List[str] = [str(x) for x in labels_present_]
-
-        confusion = pd.DataFrame(
-            data=confusion_matrix(y_eval, predictions, ),
-            columns=["true " + label for label in labels_present],
-            index=["predicted " + label for label in labels_present],
-        )
+    if len(labels) != len(labels_present):
+        logger.warning(
+            "The evaluation dataset does not contain all the labels, some labels are missing. Performance displayed for labels found...")
+    confusion = pd.DataFrame(
+        data=confusion_matrix(y_eval, predictions, ),
+        columns=["true " + label for label in labels_present],
+        index=["predicted " + label for label in labels_present],
+    )
 
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
     id2category_value = {v: k for k, v in config.general['category_value2id'].items()}
