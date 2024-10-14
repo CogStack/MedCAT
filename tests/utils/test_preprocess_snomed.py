@@ -51,6 +51,7 @@ class DirectMappingTest(unittest.TestCase):
 
 
 EXAMPLE_SNOMED_PATH_OLD = "SnomedCT_InternationalRF2_PRODUCTION_20220831T120000Z"
+EXAMPLE_SNOMED_PATH_OLD_UK = "SnomedCT_UKClinicalRF2_PRODUCTION_20220831T120000Z"
 EXAMPLE_SNOMED_PATH_NEW = "SnomedCT_UKClinicalRF2_PRODUCTION_20231122T000001Z"
 
 
@@ -87,6 +88,13 @@ class TestSnomedVersionsOPCS4(unittest.TestCase):
             snomed = preprocess_snomed.Snomed(EXAMPLE_SNOMED_PATH_OLD)
         snomed._set_extension(snomed._determine_release(EXAMPLE_SNOMED_PATH_OLD),
                               snomed._determine_extension(EXAMPLE_SNOMED_PATH_OLD))
+        self.assertEqual(snomed.opcs_refset_id, "1382401000000109")  # defaults to this now
+
+    def test_old_gets_old_OPCS4_mapping_UK(self):
+        with patch_fake_files(EXAMPLE_SNOMED_PATH_OLD_UK):
+            snomed = preprocess_snomed.Snomed(EXAMPLE_SNOMED_PATH_OLD_UK)
+        snomed._set_extension(snomed._determine_release(EXAMPLE_SNOMED_PATH_OLD_UK),
+                              snomed._determine_extension(EXAMPLE_SNOMED_PATH_OLD_UK))
         self.assertEqual(snomed.opcs_refset_id, "1126441000000105")
 
     def test_new_gets_new_OCPS4_mapping(self):
