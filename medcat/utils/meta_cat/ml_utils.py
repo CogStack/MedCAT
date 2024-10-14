@@ -66,7 +66,7 @@ def create_batch_piped_data(data: List[Tuple[List[int], int, Optional[int]]],
 
     x = torch.tensor(x, dtype=torch.long).to(device)
     # cpos = torch.tensor(cpos, dtype=torch.long).to(device)
-    attention_masks = (x != 0).type(torch.int)
+    attention_masks = (x != pad_id).type(torch.int)
     return x, cpos, attention_masks, y
 
 
@@ -412,10 +412,16 @@ def eval_model(model: nn.Module, data: List, config: ConfigMetaCAT, tokenizer: T
     precision, recall, f1, support = precision_recall_fscore_support(y_eval, predictions, average=score_average)
 
     labels = [name for (name, _) in sorted(config.general['category_value2id'].items(), key=lambda x: x[1])]
+    labels_present_: set = set(predictions)
+    labels_present: List[str] = [str(x) for x in labels_present_]
+
+    if len(labels) != len(labels_present):
+        logger.warning(
+            "The evaluation dataset does not contain all the labels, some labels are missing. Performance displayed for labels found...")
     confusion = pd.DataFrame(
         data=confusion_matrix(y_eval, predictions, ),
-        columns=["true " + label for label in labels],
-        index=["predicted " + label for label in labels],
+        columns=["true " + label for label in labels_present],
+        index=["predicted " + label for label in labels_present],
     )
 
     examples: Dict = {'FP': {}, 'FN': {}, 'TP': {}}
