@@ -12,7 +12,9 @@ from medcat.cat import CAT
 from medcat.utils.regression.targeting import TranslationLayer, OptionSet
 from medcat.utils.regression.targeting import FinalTarget, TargetedPhraseChanger
 from medcat.utils.regression.utils import partial_substitute, MedCATTrainerExportConverter
+from medcat.utils.regression.utils import pick_random_edits
 from medcat.utils.regression.results import MultiDescriptor, ResultDescriptor, Finding
+from medcat.utils.normalizers import get_all_edits_n
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +71,9 @@ class RegressionCase(BaseModel):
     def estimate_num_of_diff_subcases(self) -> int:
         return len(self.phrases) * self.options.estimate_num_of_subcases()
 
-    def get_distinct_cases(self, translation: TranslationLayer) -> Iterator[Iterator[FinalTarget]]:
+    def get_distinct_cases(self, translation: TranslationLayer,
+                           edit_distance: Tuple[int, int, int],
+                           use_diacritics: bool) -> Iterator[Iterator[FinalTarget]]:
         """Gets the various distinct sub-case iterators.
 
         The sub-cases are those that can be determine without the translation layer.
@@ -77,6 +81,8 @@ class RegressionCase(BaseModel):
 
         Args:
             translation (TranslationLayer): The translation layer.
+            edit_distance (Tuple[int, int, int]): The edit distance(s) to try.
+            use_diacritics (bool): Whether to use diacritics for edit distance.
 
         Yields:
             Iterator[Iterator[FinalTarget]]: The iterator of iterators of different sub cases.
@@ -84,24 +90,43 @@ class RegressionCase(BaseModel):
         # for each phrase and for each placeholder based option
         for changer in self.options.get_preprocessors_and_targets(translation):
             for phrase in self.phrases:
-                yield self._get_subcases(phrase, changer, translation)
+                yield self._get_subcases(phrase, changer, translation, edit_distance, use_diacritics)
 
     def _get_subcases(self, phrase: str, changer: TargetedPhraseChanger,
-                      translation: TranslationLayer) -> Iterator[FinalTarget]:
+                      translation: TranslationLayer,
+                      edit_distance: Tuple[int, int, int],
+                      use_diacritics: bool,
+                      ) -> Iterator[FinalTarget]:
         cui, placeholder = changer.cui, changer.placeholder
         changed_phrase = changer.changer(phrase)
-        for name in translation.get_names_of(cui, changer.onlyprefnames):
-            num_of_phs = changed_phrase.count(placeholder)
-            if num_of_phs == 1:
-                yield FinalTarget(placeholder=placeholder,
-                                  cui=cui, name=name,
-                                  final_phrase=changed_phrase)
-                continue
-            for cntr in range(num_of_phs):
-                final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
-                yield FinalTarget(placeholder=placeholder,
-                                  cui=cui, name=name,
-                                  final_phrase=final_phrase)
+        edit_dist, edit_rn_seed, edit_pick = edit_distance
+        for raw_name in translation.get_names_of(cui, changer.onlyprefnames):
+            name_variant = 0
+            if edit_dist:# TODO: use config.ner.min_name_len or something
+                name_gen = get_all_edits_n(
+                    raw_name, use_diacritics, edit_dist, return_ordered=True)
+                all_names = list(pick_random_edits(name_gen, edit_pick, len(raw_name),
+                                                   edit_dist, edit_rn_seed))
+            else:
+                all_names = [raw_name]
+            for name in all_names:
+                if edit_dist:
+                    logger.debug("Changed name from '%s' to '%s' (variant %d, edit distance %s, "
+                                 "seed %d, picking %d)",
+                                 raw_name, name, name_variant, edit_dist,
+                                 edit_rn_seed, edit_pick)
+                    name_variant += 1
+                num_of_phs = changed_phrase.count(placeholder)
+                if num_of_phs == 1:
+                    yield FinalTarget(placeholder=placeholder,
+                                    cui=cui, name=name,
+                                    final_phrase=changed_phrase)
+                    continue
+                for cntr in range(num_of_phs):
+                    final_phrase = partial_substitute(changed_phrase, placeholder, name, cntr)
+                    yield FinalTarget(placeholder=placeholder,
+                                    cui=cui, name=name,
+                                    final_phrase=final_phrase)
 
     def to_dict(self) -> dict:
         """Converts the RegressionCase to a dict for serialisation.
@@ -293,7 +318,9 @@ class RegressionSuite:
         for case in self.cases:
             self.report.parts.append(case.report)
 
-    def get_all_distinct_cases(self, translation: TranslationLayer
+    def get_all_distinct_cases(self, translation: TranslationLayer,
+                               edit_distance: Tuple[int, int, int],
+                               use_diacritics: bool
                                ) -> Iterator[Tuple[RegressionCase, Iterator[FinalTarget]]]:
         """Gets all the distinct cases for this regression suite.
 
@@ -302,13 +329,17 @@ class RegressionSuite:
 
         Args:
             translation (TranslationLayer): The translation layer.
+            edit_distance (Tuple[int, int, int]): The edit distance(s) to try.
+                Defaults to (0, 0, 0).
+            use_diacritics (bool): Whether to use diacritics for edit distance.
 
         Yields:
             Iterator[Tuple[RegressionCase, Iterator[FinalTarget]]]: The generator of the
                 regression case along with its corresponding sub-cases.
         """
         for regr_case in self.cases:
-            for subcase in regr_case.get_distinct_cases(translation):
+            for subcase in regr_case.get_distinct_cases(translation, edit_distance,
+                                                        use_diacritics):
                 yield regr_case, subcase
 
     def estimate_total_distinct_cases(self) -> int:
@@ -316,6 +347,8 @@ class RegressionSuite:
 
     def iter_subcases(self, translation: TranslationLayer,
                       show_progress: bool = True,
+                      edit_distance: Tuple[int, int, int] = (0, 0, 0),
+                      use_diacritics: bool = False,
                       ) -> Iterator[Tuple[RegressionCase, FinalTarget]]:
         """Iterate over all the sub-cases.
 
@@ -325,28 +358,40 @@ class RegressionSuite:
         Args:
             translation (TranslationLayer): The translation layer.
             show_progress (bool): Whether to show progress. Defaults to True.
+            edit_distance (Tuple[int, int, int]): The edit distance(s) to try.
+                Defaults to (0, 0, 0).
+            use_diacritics (bool): Whether to use diacritics for edit distance.
 
         Yields:
             Iterator[Tuple[RegressionCase, FinalTarget]]: The generator of the
                 regression case along with each of the final target sub-cases.
         """
         total = self.estimate_total_distinct_cases()
-        for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation),
+        for (regr_case, subcase) in tqdm.tqdm(self.get_all_distinct_cases(translation,
+                                                                          edit_distance,
+                                                                          use_diacritics),
                                               total=total, disable=not show_progress):
             for target in subcase:
                 yield regr_case, target
 
-    def check_model(self, cat: CAT, translation: TranslationLayer) -> MultiDescriptor:
+    def check_model(self, cat: CAT, translation: TranslationLayer,
+                    edit_distance: Tuple[int, int, int] = (0, 0, 0),
+                    use_diacritics: bool = False,
+                    ) -> MultiDescriptor:
         """Checks model and generates a report
 
         Args:
             cat (CAT): The model to check against
             translation (TranslationLayer): The translation layer
+            edit_distance (Tuple[int, int, int]): The edit distance of the names.
+                Defaults to (0, 0, 0).
+            use_diacritics (bool): Whether to use diacritics for edit distance.
 
         Returns:
             MultiDescriptor: A report description
         """
-        for regr_case, target in self.iter_subcases(translation, True):
+        for regr_case, target in self.iter_subcases(translation, True,
+                                                    edit_distance, use_diacritics):
             # NOTE: the finding is reported in the per-case report
             regr_case.check_specific_for_phrase(cat, target, translation)
         return self.report
