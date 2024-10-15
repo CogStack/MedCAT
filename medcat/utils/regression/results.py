@@ -372,7 +372,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals)
 
-    def _dict(self, **kwargs) -> dict:
+    def _model_dump(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             kwargs = kwargs.copy() # so if used elsewhere, keeps the kwarg
             strict_raw = kwargs.pop('strictness')
@@ -405,7 +405,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         return model_dict
 
     def json(self, **kwargs) -> str:
-        d = self.model_dump(**kwargs)
+        d = self._model_dump(**kwargs)
         return json.dumps(d)
 
 
