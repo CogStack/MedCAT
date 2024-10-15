@@ -4,7 +4,6 @@ import tempfile
 import shutil
 
 import dill
-import pydantic
 
 from medcat.utils.versioning import get_version_from_modelcard, get_semantic_version_from_model
 from medcat.utils.versioning import get_version_from_cdb_dump, get_version_from_modelpack_zip

@@ -291,13 +291,13 @@ class SingleResultDescriptorSerialisationTests(unittest.TestCase):
         self.assertIsInstance(s, str)
 
     def test_can_json_dump_json(self):
-        s = json.dumps(self.rd.dict())
+        s = json.dumps(self.rd.model_dump())
         self.assertIsInstance(s, str)
 
     def test_can_use_strictness_for_dump(self):
-        d_strictest = self.rd.dict(strictness='STRICTEST')
+        d_strictest = self.rd.model_dump(strictness='STRICTEST')
         e_strictest = d_strictest['examples']
         # this should have more examples
-        d_lenient = self.rd.dict(strictness='NORMAL')
+        d_lenient = self.rd.model_dump(strictness='NORMAL')
         e_normal = d_lenient['examples']
         self.assertGreater(len(e_strictest), len(e_normal))

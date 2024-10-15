@@ -103,8 +103,8 @@ class TransformersNER(object):
         """
         hasher = Hasher()
         # Set last_train_on if None
-        if self.config.general['last_train_on'] is None:
-            self.config.general['last_train_on'] = datetime.now().timestamp()
+        if self.config.general.last_train_on is None:
+            self.config.general.last_train_on = datetime.now().timestamp()
 
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
@@ -242,7 +242,7 @@ class TransformersNER(object):
         trainer.train() # type: ignore
 
         # Save the training time
-        self.config.general['last_train_on'] = datetime.now().timestamp() # type: ignore
+        self.config.general.last_train_on = datetime.now().timestamp() # type: ignore
 
         # Save everything
         self.save(save_dir_path=os.path.join(self.training_arguments.output_dir, 'final_model'))

@@ -239,7 +239,7 @@ class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
                             final_phrase='FINAL PHRASE'), finding=(Finding.FOUND_OTHER, 'CUI=OTHER'))
 
     def test_result_is_json_serialisable(self):
-        rd = self.res.dict()
+        rd = self.res.model_dump()
         s = json.dumps(rd)
         self.assertIsInstance(s, str)
 
@@ -249,19 +249,19 @@ class TestRegressionCaseCheckModelJson(TestRegressionCaseCheckModel):
 
     def test_can_use_strictness(self):
         e1 = [
-            example for part in self.res.dict(strictness=Strictness.STRICTEST)['parts']
+            example for part in self.res.model_dump(strictness=Strictness.STRICTEST)['parts']
             for per_phrase in part['per_phrase_results'].values()
             for example in per_phrase['examples']
         ]
         e2 = [
-            example for part in self.res.dict(strictness=Strictness.LENIENT)['parts']
+            example for part in self.res.model_dump(strictness=Strictness.LENIENT)['parts']
             for per_phrase in part['per_phrase_results'].values()
             for example in per_phrase['examples']
         ]
         self.assertGreater(len(e1), len(e2))
 
     def test_dict_includes_all_parts(self):
-        d_parts = self.res.dict()['parts']
+        d_parts = self.res.model_dump()['parts']
         self.assertEqual(len(self.res.parts), len(d_parts))
 
 

@@ -1,9 +1,13 @@
-from pydantic import create_model_from_typeddict
+import pydantic
+from unittest import TestCase
+
+import pydantic.error_wrappers
 
 from medcat.stats.mctexport import MedCATTrainerExport
 
 
-MCTExportPydanticModel = create_model_from_typeddict(MedCATTrainerExport)
+MCTExportPydanticModel = pydantic.TypeAdapter(MedCATTrainerExport)
+
 
 
 def nullify_doc_names_proj_ids(export: MedCATTrainerExport) -> MedCATTrainerExport:
@@ -15,3 +19,8 @@ def nullify_doc_names_proj_ids(export: MedCATTrainerExport) -> MedCATTrainerExpo
             ], key=lambda doc: doc['id'])
         } for project in export['projects']
     ]}
+
+
+def assert_is_mct_export(tc: TestCase, mct_export: dict):
+    model_instance = MCTExportPydanticModel.validate_python(mct_export)
+    tc.assertIsInstance(model_instance, dict)  # NOTE: otherwise would have raised an exception
