@@ -372,7 +372,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals)
 
-    def _model_dump(self, **kwargs) -> dict:
+    def model_dump(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             kwargs = kwargs.copy() # so if used elsewhere, keeps the kwarg
             strict_raw = kwargs.pop('strictness')
@@ -478,7 +478,7 @@ class ResultDescriptor(SingleResultDescriptor):
                              for srd in self.per_phrase_results.values()])
         return sr + '\n\t\t' + children.replace('\n', '\n\t\t')
 
-    def _model_dump(self, **kwargs) -> dict:
+    def model_dump(self, **kwargs) -> dict:
         if 'exclude' in kwargs and kwargs['exclude'] is not None:
             exclude: set = kwargs['exclude']
         else:
@@ -495,7 +495,7 @@ class ResultDescriptor(SingleResultDescriptor):
         # NOTE: need to propagate here manually so the strictness keyword
         #       makes sense and doesn't cause issues due being to unexpected keyword
         per_phrase_results = {
-            phrase: res._model_dump(**kwargs) for phrase, res in
+            phrase: res.model_dump(**kwargs) for phrase, res in
             sorted(self.per_phrase_results.items(), key=lambda it: it[0])
         }
         d['per_phrase_results'] = per_phrase_results
@@ -677,7 +677,7 @@ class MultiDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals) + f"\n{delegated}"
 
-    def _model_dump(self, **kwargs) -> dict:
+    def model_dump(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             strict_raw = kwargs.pop('strictness')
             if isinstance(strict_raw, Strictness):
