@@ -1,7 +1,7 @@
 'numpy>=1.22.0,<1.26.0'  # 1.22.0 is first to support python 3.11; post 1.26.0 there's issues with scipy
 'pandas>=1.4.2' # first to support 3.11
 'gensim>=4.3.0,<5.0.0'  # 5.3.0 is first to support 3.11; avoid major version bump
-'spacy>=3.6.0,<4.0.0'  # Some later model packs (e.g HPO) are made with 3.6.0 spacy model; avoid major version bump
+'spacy>=3.6.0,<3.8.0'  # 3.8 only supports numpy2 which we can't use due to other dependencies
 'scipy~=1.9.2'  # 1.9.2 is first to support 3.11
 'transformers>=4.34.0,<5.0.0'  # avoid major version bump
 'accelerate>=0.23.0' # required by Trainer class in de-id

@@ -2,6 +2,8 @@ import json
 import os
 import sys
 import time
+from typing import Callable
+from functools import partial
 import unittest
 from unittest.mock import mock_open, patch
 import tempfile
@@ -595,17 +597,54 @@ class CATTests(unittest.TestCase):
             contents = f.readline()
         self.assertTrue(contents)
 
+    def assert_gets_usage_monitored(self, data_processor: Callable[[None], None], exp_logs: int = 1):
+        # clear usage monitor buffer
+        self.undertest.usage_monitor.log_buffer.clear()
+        data_processor()
+        file = self.undertest.usage_monitor.log_file
+        if os.path.exists(file):
+            with open(file) as f:
+                content = f.readlines()
+            content += self.undertest.usage_monitor.log_buffer
+        else:
+            content = self.undertest.usage_monitor.log_buffer
+        self.assertTrue(content)
+        self.assertEqual(len(content), exp_logs)
+
     def test_get_entities_logs_usage(self,
                                      text="The dog is sitting outside the house."):
         # clear usage monitor buffer
-        self.undertest.usage_monitor.log_buffer.clear()
-        self.undertest.get_entities(text)
-        self.assertTrue(self.undertest.usage_monitor.log_buffer)
-        self.assertEqual(len(self.undertest.usage_monitor.log_buffer), 1)
+        self.assert_gets_usage_monitored(partial(self.undertest.get_entities, text), 1)
         line = self.undertest.usage_monitor.log_buffer[0]
         # the 1st element is the input text length
         input_text_length = line.split(",")[1]
         self.assertEqual(str(len(text)), input_text_length)
+
+    TEXT4MP_USAGE = [
+        ("ID1", "Text with house and dog one"),
+        ("ID2", "Text with house and dog two"),
+        ("ID3", "Text with house and dog three"),
+        ("ID4", "Text with house and dog four"),
+        ("ID5", "Text with house and dog five"),
+        ("ID6", "Text with house and dog siz"),
+        ("ID7", "Text with house and dog seven"),
+        ("ID8", "Text with house and dog eight"),
+        ]
+
+    def test_mp_batch_char_size_logs_usage(self):
+        all_text = self.TEXT4MP_USAGE
+        proc = partial(self.undertest.multiprocessing_batch_char_size, all_text, nproc=2)
+        self.assert_gets_usage_monitored(proc, len(all_text))
+
+    def test_mp_get_multi_texts_logs_usage(self):
+        all_text = self.TEXT4MP_USAGE
+        proc = partial(self.undertest.get_entities_multi_texts, all_text, n_process=2)
+        self.assert_gets_usage_monitored(proc, len(all_text))
+
+    def test_mp_batch_docs_size_logs_usage(self):
+        all_text = self.TEXT4MP_USAGE
+        proc = partial(self.undertest.multiprocessing_batch_docs_size, all_text, nproc=2)
+        self.assert_gets_usage_monitored(proc, len(all_text))
 
     def test_simple_hashing_is_faster(self):
         self.undertest.config.general.simple_hash = False
