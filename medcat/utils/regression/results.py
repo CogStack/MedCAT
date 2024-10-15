@@ -405,7 +405,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         return model_dict
 
     def json(self, **kwargs) -> str:
-        d = self._model_dump(**kwargs)
+        d = self.model_dump(**kwargs)
         return json.dumps(d)
 
 
@@ -495,7 +495,7 @@ class ResultDescriptor(SingleResultDescriptor):
         # NOTE: need to propagate here manually so the strictness keyword
         #       makes sense and doesn't cause issues due being to unexpected keyword
         per_phrase_results = {
-            phrase: res.model_dump(**kwargs) for phrase, res in
+            phrase: res._model_dump(**kwargs) for phrase, res in
             sorted(self.per_phrase_results.items(), key=lambda it: it[0])
         }
         d['per_phrase_results'] = per_phrase_results
@@ -689,7 +689,7 @@ class MultiDescriptor(pydantic.BaseModel):
         else:
             strictness = Strictness.NORMAL
         out_dict = cast(pydantic.BaseModel, super()).model_dump(exclude={'parts'}, **kwargs)
-        out_dict['parts'] = [part._model_dump(strictness=strictness) for part in self.parts]
+        out_dict['parts'] = [part.model_dump(strictness=strictness) for part in self.parts]
         return out_dict
 
 
