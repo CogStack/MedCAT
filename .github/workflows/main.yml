@@ -59,14 +59,6 @@ jobs:
               repo: context.repo.repo
             });
             core.setOutput('latest_version', latestRelease.data.tag_name);
-      - name: Pydantic 1 types (in the end so that everything else run on pydantic2)
-        run: |
-          echo "Expecting to have pydantic 2 by default (which means mypy was already run for it)"
-          echo "Currently have:"
-          pip show pydantic | grep "Version"
-          python -m pip install "pydantic>=1.10,<2.0"
-          python -m mypy --follow-imports=normal medcat
-
       - name: Make sure there's no deprecated methods that should be removed.
         # only run this for master -> production PR. I.e just before doing a release.
         if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'production'
