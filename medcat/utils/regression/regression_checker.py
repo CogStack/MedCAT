@@ -6,7 +6,6 @@ import logging
 from typing import Optional, Tuple
 
 from medcat.cat import CAT
-from medcat.utils.pydantic_version import get_model_dump
 from medcat.utils.regression.checking import RegressionSuite, TranslationLayer
 from medcat.utils.regression.results import Strictness, Finding, STRICTNESS_MATRIX
 
@@ -119,7 +118,7 @@ def main(model_pack_dir: Path, test_suite_file: Path,
         examples_strictness = Strictness[examples_strictness_str]
     if jsonpath:
         logger.info('Writing to %s', str(jsonpath))
-        dumped = get_model_dump(res, strictness=examples_strictness)
+        dumped = res._model_dump(strictness=examples_strictness)
         jsonpath.write_text(json.dumps(dumped, indent=jsonindent))
     else:
         logger.info(res.get_report(phrases_separately=phrases,

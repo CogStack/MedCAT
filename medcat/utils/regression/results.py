@@ -5,7 +5,6 @@ import pydantic
 
 from medcat.utils.regression.targeting import TranslationLayer, FinalTarget
 from medcat.utils.regression.utils import limit_str_len, add_doc_strings_to_enum
-from medcat.utils.pydantic_version import HAS_PYDANTIC2, get_model_dump
 
 
 class Finding(Enum):
@@ -396,17 +395,17 @@ class SingleResultDescriptor(pydantic.BaseModel):
             key.name: value for key, value in self.findings.items()
         }
         serialized_examples = [
-            (get_model_dump(ft, **kwargs), (f[0].name, f[1])) for ft, f in self.examples
+            (ft.model_dump(**kwargs), (f[0].name, f[1])) for ft, f in self.examples
             # only count if NOT in strictness matrix (i.e 'failures')
             if f[0] not in STRICTNESS_MATRIX[strictness]
         ]
-        model_dict = get_model_dump(cast(pydantic.BaseModel, super()), **kwargs)
+        model_dict = cast(pydantic.BaseModel, super()).model_dump(**kwargs)
         model_dict['findings'] = serialized_dict
         model_dict['examples'] = serialized_examples
         return model_dict
 
     def json(self, **kwargs) -> str:
-        d = get_model_dump(self, **kwargs)
+        d = self.model_dump(**kwargs)
         return json.dumps(d)
 
 
@@ -479,7 +478,7 @@ class ResultDescriptor(SingleResultDescriptor):
                              for srd in self.per_phrase_results.values()])
         return sr + '\n\t\t' + children.replace('\n', '\n\t\t')
 
-    def _dict(self, **kwargs) -> dict:
+    def _model_dump(self, **kwargs) -> dict:
         if 'exclude' in kwargs and kwargs['exclude'] is not None:
             exclude: set = kwargs['exclude']
         else:
@@ -487,7 +486,7 @@ class ResultDescriptor(SingleResultDescriptor):
             kwargs['exclude'] = exclude
         # NOTE: ignoring here so that examples are only present in the per phrase part
         exclude.update(('examples', 'per_phrase_results'))
-        d = get_model_dump(cast(pydantic.BaseModel, super()), **kwargs)
+        d = cast(pydantic.BaseModel, super()).model_dump(**kwargs)
         if 'examples' in d:
             # NOTE: I don't really know why, but the examples still
             #       seem to be a part of the resulting dict, so I need
@@ -496,7 +495,7 @@ class ResultDescriptor(SingleResultDescriptor):
         # NOTE: need to propagate here manually so the strictness keyword
         #       makes sense and doesn't cause issues due being to unexpected keyword
         per_phrase_results = {
-            phrase: get_model_dump(res, **kwargs) for phrase, res in
+            phrase: res.model_dump(**kwargs) for phrase, res in
             sorted(self.per_phrase_results.items(), key=lambda it: it[0])
         }
         d['per_phrase_results'] = per_phrase_results
@@ -678,7 +677,7 @@ class MultiDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals) + f"\n{delegated}"
 
-    def _dict(self, **kwargs) -> dict:
+    def _model_dump(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             strict_raw = kwargs.pop('strictness')
             if isinstance(strict_raw, Strictness):
@@ -689,8 +688,8 @@ class MultiDescriptor(pydantic.BaseModel):
                 raise ValueError(f"Unknown stircntess specified: {strict_raw}")
         else:
             strictness = Strictness.NORMAL
-        out_dict = get_model_dump(cast(pydantic.BaseModel, super()), exclude={'parts'}, **kwargs)
-        out_dict['parts'] = [get_model_dump(part, strictness=strictness) for part in self.parts]
+        out_dict = cast(pydantic.BaseModel, super()).model_dump(exclude={'parts'}, **kwargs)
+        out_dict['parts'] = [part._model_dump(strictness=strictness) for part in self.parts]
         return out_dict
 
 
@@ -698,11 +697,3 @@ class MalformedFinding(ValueError):
 
     def __init__(self, *args: object) -> None:
         super().__init__(*args)
-
-
-TO_BE_FIXED = [SingleResultDescriptor, ResultDescriptor, MultiDescriptor]
-for fixer in TO_BE_FIXED:
-    if HAS_PYDANTIC2:
-        fixer.model_dump = fixer._dict  # type: ignore
-    else:
-        fixer.dict = fixer._dict  # type: ignore

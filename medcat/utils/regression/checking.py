@@ -9,7 +9,6 @@ import os
 from pydantic import BaseModel, Field
 
 from medcat.cat import CAT
-from medcat.utils.pydantic_version import get_model_dump
 from medcat.utils.regression.targeting import TranslationLayer, OptionSet
 from medcat.utils.regression.targeting import FinalTarget, TargetedPhraseChanger
 from medcat.utils.regression.utils import partial_substitute, MedCATTrainerExportConverter
@@ -412,7 +411,7 @@ class RegressionSuite:
         d = {}
         for case in self.cases:
             d[case.name] = case.to_dict()
-        d['meta'] = get_model_dump(self.metadata)
+        d['meta'] = self.metadata.model_dump()
         fix_np_float64(d['meta'])
 
         return d
