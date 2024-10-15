@@ -245,7 +245,7 @@ class MixingConfig(FakeDict):
         Returns:
             dict: The dictionary of the field names and fields
         """
-        return cast(BaseModel, self).model_dump()
+        return cast(BaseModel, self).model_fields
 
 
 class VersionInfo(MixingConfig, BaseModel):
