@@ -27,7 +27,7 @@ setuptools.setup(
     packages=['medcat', 'medcat.utils', 'medcat.preprocessing', 'medcat.ner', 'medcat.linking', 'medcat.datasets',
               'medcat.tokenizers', 'medcat.utils.meta_cat', 'medcat.pipeline', 'medcat.utils.ner', 'medcat.utils.relation_extraction',
               'medcat.utils.saving', 'medcat.utils.regression', 'medcat.stats'],
-    python_requires='>=3.9, <3.12', # 3.8 is EoL, 3.12 support is currently waiting on spacy
+    python_requires='>=3.9', # 3.8 is EoL
     install_requires=install_requires,
     include_package_data=True,
     package_data={"medcat": ["install_requires.txt"]},
