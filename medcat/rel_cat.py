@@ -352,10 +352,10 @@ class RelCAT(PipeRunner):
                                      pin_memory=self.config.general.pin_memory)
 
         if self.config.train.class_weights is not None and self.config.train.enable_class_weights:
-            criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(self.config.train.class_weights).to(self.device))
+            criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(numpy.asarray(self.config.train.class_weights)).to(self.device))
         elif self.config.train.enable_class_weights:
             all_class_lbl_ids = [rec[5] for rec in train_rel_data.dataset["output_relations"]]
-            self.config.train.class_weights = compute_class_weight(class_weight="balanced", classes=numpy.unique(all_class_lbl_ids), y=all_class_lbl_ids)
+            self.config.train.class_weights = compute_class_weight(class_weight="balanced", classes=numpy.unique(all_class_lbl_ids), y=all_class_lbl_ids).tolist()
             criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(self.config.train.class_weights).to(self.device))
         else:
             criterion = nn.CrossEntropyLoss()
@@ -690,9 +690,9 @@ class RelCAT(PipeRunner):
                 with torch.no_grad():
                     token_ids, e1_e2_start, labels, _, _ = data
 
-                    attention_mask = (token_ids != self.pad_id).float()
+                    attention_mask = (token_ids != self.pad_id).float().to(self.device)
                     token_type_ids = torch.zeros(
-                        token_ids.shape[0], token_ids.shape[1]).long()
+                        token_ids.shape[0], token_ids.shape[1]).long().to(self.device)
 
                     model_output, pred_classification_logits = self.model(
                         token_ids, token_type_ids=token_type_ids, attention_mask=attention_mask,
@@ -703,7 +703,8 @@ class RelCAT(PipeRunner):
 
                         confidence = torch.softmax(
                             pred_rel_logits, dim=0).max(0)
-                        predicted_label_id = confidence[1].item()
+                        predicted_label_id = str(confidence[1].item())
+
 
                         doc._.relations.append({"relation": self.config.general.idx2labels[predicted_label_id],
                                                 "label_id": predicted_label_id,
