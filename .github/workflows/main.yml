@@ -17,7 +17,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      # TODO: add cache
+      - name: Cache pip packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements-dev.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v4
         with:
