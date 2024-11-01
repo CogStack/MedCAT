@@ -16,13 +16,7 @@ MODEL_FOLDER="fake_models"
 echo "Downloading models"
 wget $DL_LINK
 # Create folder if it doesn't exit
-if [ ! -d "$MODEL_FOLDER" ]; then
-    mkdir "$MODEL_FOLDER"
-    CREATED=1
-else
-    # mark to NOT remove if folder already existed
-    CREATED=0
-fi
+mkdir -p "$MODEL_FOLDER"
 echo "Uncompressing files"
 unzip $ZIP_FILE_NAME -d $MODEL_FOLDER
 echo "Cleaning up the overall zip"
@@ -45,7 +39,5 @@ for model_path in `ls $MODEL_FOLDER/*.zip`; do
     fi
 done
 
-# Remove the folder if it was created by the script
-if [ $CREATED -eq 1 ]; then
-    rm -r "$MODEL_FOLDER"
-fi
+# Remove the fake model folder
+rm -r "$MODEL_FOLDER"
