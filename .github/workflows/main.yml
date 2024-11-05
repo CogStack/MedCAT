@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.8', '3.9', '3.10', '3.11' ]
+        python-version: [ '3.9', '3.10', '3.11' ]
       max-parallel: 4
 
     steps:
@@ -49,6 +49,8 @@ jobs:
           timeout 25m python -m unittest ${second_half_nl[@]}
       - name: Regression
         run: source tests/resources/regression/run_regression.sh
+      - name: Model backwards compatibility
+        run: source tests/resources/model_compatibility/check_backwards_compatibility.sh
       - name: Get the latest release version
         id: get_latest_release
         uses: actions/github-script@v6

@@ -265,15 +265,17 @@ class Snomed:
         return None
 
     def _set_extension(self, release: str, extension: SupportedExtension) -> None:
-        self.opcs_refset_id = "1126441000000105"
+        # NOTE: now using the later refset IF by default
+        # NOTE: the OPCS4 refset ID is only relevant for UK releases
+        self.opcs_refset_id = '1382401000000109'
         if (extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG) and
                 # using lexicographical comparison below
                 # e.g "20240101" > "20231122" results in True
                 # yet "20231121" > "20231122" results in False
-                len(release) == len("20231122") and release >= "20231122"):
+                len(release) == len("20231122") and release < "20231122"):
             # NOTE for UK extensions starting from 20231122 the
             #      OPCS4 refset ID seems to be different
-            self.opcs_refset_id = '1382401000000109'
+            self.opcs_refset_id = "1126441000000105"
         self._extension = extension
 
     @classmethod
@@ -329,7 +331,7 @@ class Snomed:
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
             concept_snapshot = self._extension.value.exp_files.get_concept()
             description_snapshot = self._extension.value.exp_files.get_description()
-            if concept_snapshot in (None, _IGNORE_TAG) or (
+            if concept_snapshot is None or _IGNORE_TAG in concept_snapshot or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -404,7 +406,7 @@ class Snomed:
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
             concept_snapshot = self._extension.value.exp_files.get_concept()
             relationship_snapshot = self._extension.value.exp_files.get_relationship()
-            if concept_snapshot in (None, _IGNORE_TAG) or (
+            if concept_snapshot is None or _IGNORE_TAG in concept_snapshot or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -440,7 +442,7 @@ class Snomed:
             contents_path = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.concept])
             concept_snapshot = self._extension.value.exp_files.get_concept()
             relationship_snapshot = self._extension.value.exp_files.get_relationship()
-            if concept_snapshot in (None, _IGNORE_TAG) or (
+            if concept_snapshot is None or _IGNORE_TAG in concept_snapshot or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -476,10 +478,7 @@ class Snomed:
             dict: A dictionary containing the SNOMED CT to ICD-10 mappings including metadata.
         """
         snomed2icd10df = self._map_snomed2refset()
-        if self._extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
-            return self._refset_df2dict(snomed2icd10df[0])
-        else:
-            return self._refset_df2dict(snomed2icd10df)
+        return self._refset_df2dict(snomed2icd10df[0])
 
     def map_snomed2opcs4(self) -> dict:
         """
@@ -494,7 +493,8 @@ class Snomed:
         Returns:
             dict: A dictionary containing the SNOMED CT to OPCS-4 mappings including metadata.
         """
-        if self._extension not in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
+        if all(ext not in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG)
+               for ext in self.exts):
             raise AttributeError(
                 "OPCS-4 mapping does not exist in this edition")
         snomed2opcs4df = self._map_snomed2refset()[1]
@@ -566,7 +566,7 @@ class Snomed:
             self._set_extension(snomed_release, self.exts[i])
             refset_terminology = os.path.join(self.paths[i], PER_FILE_TYPE_PATHS[RefSetFileType.refset])
             icd10_ref_set = self._extension.value.exp_files.get_refset()
-            if icd10_ref_set in (None, _IGNORE_TAG) or (
+            if icd10_ref_set is None or _IGNORE_TAG in icd10_ref_set or (
                     self.bundle and self.bundle.value.has_invalid(
                         self._extension, [RefSetFileType.concept, RefSetFileType.description])):
                 continue
@@ -582,13 +582,14 @@ class Snomed:
             dfs2merge.append(icd_mappings)
         mapping_df = pd.concat(dfs2merge)
         del dfs2merge
-        if self._extension in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG):
+        if any(ext in (SupportedExtension.UK_CLINICAL, SupportedExtension.UK_DRUG)
+               for ext in self.exts):
             opcs_df = mapping_df[mapping_df['refsetId'] == self.opcs_refset_id]
             icd10_df = mapping_df[mapping_df['refsetId']
                                   == '999002271000000101']
             return icd10_df, opcs_df
         else:
-            return mapping_df
+            return mapping_df, None
 
 
 class UnkownSnomedReleaseException(ValueError):
