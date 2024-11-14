@@ -44,7 +44,7 @@ class VocabUnigramTableTests(unittest.TestCase):
     UNIGRAM_TABLE_SIZE = 10_000
     # found that this seed had the closest frequency at the sample size we're at
     RANDOM_SEED = 4976
-    NUM_SAMPLES = 20
+    NUM_SAMPLES = 20 # NOTE: 3, 9, 18, and 27 at a time are regular due to context vector sizes
     NUM_TIMES = 200
     # based on the counts on vocab_data.txt and the one set in setUpClass
     EXPECTED_FREQUENCIES = [0.62218692, 0.32422858, 0.0535845]
