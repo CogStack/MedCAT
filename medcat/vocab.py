@@ -209,9 +209,6 @@ class Vocab(object):
             ignore_punct_and_num (bool):
                 Whether to ignore punctuation and numbers. (Default value = False)
 
-        Raises:
-            Exception: If no unigram table is present.
-
         Returns:
             List[int]:
                 Indices for words in this vocabulary.
