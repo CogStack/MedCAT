@@ -26,7 +26,7 @@ class Vocab(object):
         self.vocab: Dict = {}
         self.index2word: Dict = {}
         self.vec_index2word: Dict = {}
-        self.cum_probs = None
+        self.cum_probs = np.array([])
 
     def inc_or_add(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None) -> None:
         """Add a word or increase its count.
@@ -216,7 +216,7 @@ class Vocab(object):
             List[int]:
                 Indices for words in this vocabulary.
         """
-        if self.cum_probs is None:
+        if len(self.cum_probs) == 0:
             self.make_unigram_table()
         random_vals = np.random.rand(n)
         inds = np.searchsorted(self.cum_probs, random_vals).tolist()
@@ -255,5 +255,7 @@ class Vocab(object):
             vocab = cls()
             vocab.__dict__ = pickle.load(f)
         if not hasattr(vocab, 'cum_probs'):
-            vocab.cum_probs = None
+            vocab.cum_probs = np.array([])
+        if hasattr(vocab, 'unigram_table'):
+            del vocab.unigram_table
         return vocab
