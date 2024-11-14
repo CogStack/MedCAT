@@ -255,7 +255,8 @@ class Vocab(object):
             vocab = cls()
             vocab.__dict__ = pickle.load(f)
         if not hasattr(vocab, 'cum_probs'):
-            vocab.cum_probs = np.array([])
+            # NOTE: this is not too expensive, only around 0.5s
+            vocab.make_unigram_table()
         if hasattr(vocab, 'unigram_table'):
             del vocab.unigram_table
         return vocab
