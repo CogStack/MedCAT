@@ -66,7 +66,7 @@ class VocabUnigramTableTests(unittest.TestCase):
         for _ in range(cls.NUM_TIMES):
             got = cls.vocab.get_negative_samples(cls.NUM_SAMPLES)
             c += Counter(got)
-        total = c.total()
+        total = sum(c[i] for i in c)
         got_freqs = [c[i]/total for i in range(len(cls.EXPECTED_FREQUENCIES))]
         return got_freqs
 
