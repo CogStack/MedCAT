@@ -79,10 +79,6 @@ class VocabUnigramTableTests(unittest.TestCase):
         got_freqs = self._get_freqs()
         self.assert_accurate_enough(got_freqs)
 
-    # def test_negative_sampling2(self):
-    #     got_freqs = self._get_freqs(self.vocab.get_negative_samples_new)
-    #     self.assert_accurate_enough(got_freqs)
-
 
 if __name__ == '__main__':
     unittest.main()
