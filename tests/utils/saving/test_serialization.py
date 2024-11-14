@@ -138,8 +138,7 @@ class ModelCreationTests(unittest.TestCase):
         self.assertEqual(cat.vocab.index2word, self.undertest.vocab.index2word)
         self.assertEqual(cat.vocab.vec_index2word,
                          self.undertest.vocab.vec_index2word)
-        self.assertEqual(cat.vocab.unigram_table,
-                         self.undertest.vocab.unigram_table)
+        self.assertTrue((cat.vocab.cum_probs == self.undertest.vocab.cum_probs).all())
         for name in SPECIALITY_NAMES:
             if name in ONE2MANY:
                 # ignore cui2many and name2many
