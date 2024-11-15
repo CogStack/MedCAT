@@ -87,10 +87,10 @@ class TransformersNER(object):
             # NOTE: this will fix the DeID model(s) created before medcat 1.9.3
             #       though this fix may very well be unstable
             self.ner_pipe.tokenizer._in_target_context_manager = False
-        # if not hasattr(self.ner_pipe.tokenizer, 'split_special_tokens'):
-        #     # NOTE: this will fix the DeID model(s) created with transformers before 4.42
-        #     #       and allow them to run with later transforemrs
-        #     self.ner_pipe.tokenizer.split_special_tokens = False
+        if not hasattr(self.ner_pipe.tokenizer, 'split_special_tokens'):
+            # NOTE: this will fix the DeID model(s) created with transformers before 4.42
+            #       and allow them to run with later transforemrs
+            self.ner_pipe.tokenizer.split_special_tokens = False
         self.ner_pipe.device = self.model.device
         self._consecutive_identical_failures = 0
         self._last_exception: Optional[Tuple[str, Type[Exception]]] = None
