@@ -6,6 +6,7 @@ import logging
 import pandas
 import random
 import torch
+import traceback
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.meta_cat.data_utils import Span
@@ -202,7 +203,7 @@ class RelData(Dataset):
                 left_context_start_char_pos = tokenized_text_data["offset_mapping"][ent1_left_ent_context_token_pos_end][0]
 
             ent2_right_ent_context_token_pos_end = ent2_token_end_pos + self.config.general.cntx_right
-            right_context_end_char_pos = text_length - 1
+            right_context_end_char_pos = text_length
 
             if ent2_right_ent_context_token_pos_end >= doc_token_length:
                 ent2_right_ent_context_token_pos_end = doc_token_length
@@ -218,8 +219,8 @@ class RelData(Dataset):
 
                 tmp_doc_text = text
                 _pre_e1 = tmp_doc_text[0: (ent1_start_char_pos)]
-                _e1_s2 = tmp_doc_text[(ent1_end_char_pos): (ent2_start_char_pos)]
-                _e2_end = tmp_doc_text[(ent2_end_char_pos): text_length]
+                _e1_s2 = tmp_doc_text[ent1_end_char_pos: ent2_start_char_pos - 1]
+                _e2_end = tmp_doc_text[ent2_end_char_pos + 1: text_length]
                 ent2_token_end_pos = (ent2_token_end_pos + 2)
 
                 annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
@@ -230,8 +231,7 @@ class RelData(Dataset):
                                                 str(ent1_token) + " " + \
                                                 annotation_token_text[1] + " " + _e1_s2 + " " + \
                                                 annotation_token_text[2] + " " + str(ent2_token) + " " + \
-                                                annotation_token_text[3] + \
-                                                " " + _e2_end
+                                                annotation_token_text[3] + " " + _e2_end
 
                 ann_tag_token_len = len(annotation_token_text[0])
 
@@ -240,7 +240,7 @@ class RelData(Dataset):
                     else _left_context_start_char_pos
 
                 _right_context_start_end_pos = right_context_end_char_pos + (ann_tag_token_len * 4) + 8  # 8 for spces
-                right_context_end_char_pos = len(tmp_doc_text) if right_context_end_char_pos >= len(tmp_doc_text) or \
+                right_context_end_char_pos = len(tmp_doc_text) + 1 if right_context_end_char_pos >= len(tmp_doc_text) or \
                     _right_context_start_end_pos >= len(tmp_doc_text) else _right_context_start_end_pos
 
                 # reassign the new text with added tags
@@ -267,7 +267,8 @@ class RelData(Dataset):
                     assert _ent1_token_end_pos
                     assert _ent2_token_end_pos 
                 except Exception:
-                    self.log.info("document id: " + str(doc_id) + " failed to process relation")
+                    self.log.error("document id: " + str(doc_id) + " failed to process relation")
+                    self.log.info(traceback.print_exc())
                     return []
 
             if not self.config.general.annotation_schema_tag_ids:
