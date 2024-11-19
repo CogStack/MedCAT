@@ -68,7 +68,11 @@ class TranslationLayer:
         if only_prefnames:
             return [self.get_preferred_name(cui).replace(self.separator, self.whitespace)]
         return [name.replace(self.separator, self.whitespace)
-                   for name in self.cui2names.get(cui, [])]
+                   # NOTE: sorting the order here in case we're using
+                   #       edirts in which case the order of the names
+                   #       needs to be the same, otherwise different
+                   #       edits will be used across runs
+                   for name in sorted(self.cui2names.get(cui, []))]
 
     def get_preferred_name(self, cui: str) -> str:
         """Get the preferred name of a concept.

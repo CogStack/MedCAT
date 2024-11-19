@@ -42,13 +42,21 @@ class NER(PipeRunner):
             name_versions = [tkn._.norm, tkn.lower_]
             name = ""
 
+            nv_in_snames = []
+            nv_in_names = []
             for name_version in name_versions:
+                # NOTE: if the entire token is an actual concept, we want to capture that
+                #       previous implementation could fail in those cases
                 if name_version in self.cdb.snames:
-                    if name:
-                        name = name + self.config.general.separator + name_version
-                    else:
-                        name = name_version
-                    break
+                    nv_in_snames.append(name_version)
+                if name_version in self.cdb.name2cuis:
+                    nv_in_names.append(name_version)
+            if nv_in_names:
+                # TODO: should we prefer 0th (i.e the normalised version) or last (the lower case version)
+                name = nv_in_names[0]
+            elif nv_in_snames:
+                # TODO: should we prefer 0th (i.e the normalised version) or last (the lower case version)
+                name = nv_in_snames[0]
             if name in self.cdb.name2cuis and not tkn.is_stop:
                 maybe_annotate_name(name, tkns, doc, self.cdb, self.config)
 
