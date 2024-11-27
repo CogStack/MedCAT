@@ -1,6 +1,5 @@
 from datetime import datetime
-from pydantic import BaseModel, Extra, ValidationError
-from pydantic.fields import ModelField
+from pydantic import BaseModel, ValidationError
 from typing import List, Set, Tuple, cast, Any, Callable, Dict, Optional, Union, Type, Literal
 from multiprocessing import cpu_count
 import logging
@@ -125,7 +124,7 @@ class MixingConfig(FakeDict):
                 attr = None # new attribute
             value = config_dict[key]
             if isinstance(value, BaseModel):
-                value = value.dict()
+                value = value.model_dump()
             if isinstance(attr, MixingConfig):
                 attr.merge_config(value)
             else:
@@ -177,7 +176,7 @@ class MixingConfig(FakeDict):
     def _calc_hash(self, hasher: Optional[Hasher] = None) -> Hasher:
         if hasher is None:
             hasher = Hasher()
-        for _, v in cast(BaseModel, self).dict().items():
+        for _, v in cast(BaseModel, self).model_dump().items():
             if isinstance(v, MixingConfig):
                 v._calc_hash(hasher)
             else:
@@ -189,7 +188,7 @@ class MixingConfig(FakeDict):
         return hasher.hexdigest()
 
     def __str__(self) -> str:
-        return str(cast(BaseModel, self).dict())
+        return str(cast(BaseModel, self).model_dump())
 
     @classmethod
     def load(cls, save_path: str) -> "MixingConfig":
@@ -238,15 +237,15 @@ class MixingConfig(FakeDict):
         Returns:
             Dict[str, Any]: The dictionary associated with this config
         """
-        return cast(BaseModel, self).dict()
+        return cast(BaseModel, self).model_dump()
 
-    def fields(self) -> Dict[str, ModelField]:
+    def fields(self) -> dict:
         """Get the fields associated with this config.
 
         Returns:
-            Dict[str, ModelField]: The dictionary of the field names and fields
+            dict: The dictionary of the field names and fields
         """
-        return cast(BaseModel, self).__fields__
+        return cast(BaseModel, self).model_fields
 
 
 class VersionInfo(MixingConfig, BaseModel):
@@ -272,7 +271,7 @@ class VersionInfo(MixingConfig, BaseModel):
     """Which version of medcat was used to build the CDB"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -290,7 +289,7 @@ class CDBMaker(MixingConfig, BaseModel):
     """Minimum number of letters required in a name to be accepted for a concept"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -303,7 +302,7 @@ class AnnotationOutput(MixingConfig, BaseModel):
     include_text_in_output: bool = False
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -317,7 +316,7 @@ class CheckPoint(MixingConfig, BaseModel):
     """When training the maximum checkpoints will be kept on the disk"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -354,7 +353,7 @@ class General(MixingConfig, BaseModel):
 
     NB! For these changes to take effect, the pipe would need to be recreated."""
     checkpoint: CheckPoint = CheckPoint()
-    usage_monitor = UsageMonitor()
+    usage_monitor: UsageMonitor = UsageMonitor()
     """Checkpointing config"""
     log_level: int = logging.INFO
     """Logging config for everything | 'tagger' can be disabled, but will cause a drop in performance"""
@@ -395,7 +394,7 @@ class General(MixingConfig, BaseModel):
     reliable due to not taking into account all the details of the changes."""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -424,7 +423,7 @@ class Preprocessing(MixingConfig, BaseModel):
     NB! For these changes to take effect, the pipe would need to be recreated."""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -444,7 +443,7 @@ class Ner(MixingConfig, BaseModel):
     """Try reverse word order for short concepts (2 words max), e.g. heart disease -> disease heart"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -579,7 +578,7 @@ class Linking(MixingConfig, BaseModel):
     """If true when the context of a concept is calculated (embedding) the words making that concept are not taken into account"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -600,7 +599,7 @@ class Config(MixingConfig, BaseModel):
         # this if for word_skipper and punct_checker which would otherwise
         # not have a validator
         arbitrary_types_allowed = True
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
     def __init__(self, *args, **kwargs):
@@ -618,7 +617,7 @@ class Config(MixingConfig, BaseModel):
     # Override
     def get_hash(self):
         hasher = Hasher()
-        for k, v in self.dict().items():
+        for k, v in self.model_dump().items():
             if k in ['hash', ]:
                 # ignore hash
                 continue
@@ -674,4 +673,6 @@ def _wrapper(func, check_type: Type[FakeDict], advice: str, exp_type: Type[Excep
 # we get a nicer exceptio
 _waf_advice = "You can use `cat.cdb.weighted_average_function` to access it directly"
 Linking.__getattribute__ = _wrapper(Linking.__getattribute__, Linking, _waf_advice, AttributeError)  # type: ignore
+if hasattr(Linking, '__getattr__'):
+    Linking.__getattr__ = _wrapper(Linking.__getattr__, Linking, _waf_advice, AttributeError)  # type: ignore
 Linking.__getitem__ = _wrapper(Linking.__getitem__, Linking, _waf_advice, KeyError)  # type: ignore

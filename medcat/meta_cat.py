@@ -114,8 +114,8 @@ class MetaCAT(PipeRunner):
         """
         hasher = Hasher()
         # Set last_train_on if None
-        if self.config.train['last_train_on'] is None:
-            self.config.train['last_train_on'] = datetime.now().timestamp()
+        if self.config.train.last_train_on is None:
+            self.config.train.last_train_on = datetime.now().timestamp()
 
         hasher.update(self.config.get_hash())
         return hasher.hexdigest()
@@ -310,7 +310,7 @@ class MetaCAT(PipeRunner):
                 # Save everything now
                 self.save(save_dir_path=save_dir_path)
 
-        self.config.train['last_train_on'] = datetime.now().timestamp()
+        self.config.train.last_train_on = datetime.now().timestamp()
         return report
 
     def eval(self, json_path: str) -> Dict:

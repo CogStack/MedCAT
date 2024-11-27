@@ -411,7 +411,7 @@ class RegressionSuite:
         d = {}
         for case in self.cases:
             d[case.name] = case.to_dict()
-        d['meta'] = self.metadata.dict()
+        d['meta'] = self.metadata.model_dump()
         fix_np_float64(d['meta'])
 
         return d
