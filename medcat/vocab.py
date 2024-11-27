@@ -1,6 +1,10 @@
 import numpy as np
 import pickle
 from typing import Optional, List, Dict
+import logging
+
+
+logger = logging.getLogger(__name__)
 
 
 class Vocab(object):
@@ -22,7 +26,7 @@ class Vocab(object):
         self.vocab: Dict = {}
         self.index2word: Dict = {}
         self.vec_index2word: Dict = {}
-        self.unigram_table: np.ndarray = np.array([])
+        self.cum_probs = np.array([])
 
     def inc_or_add(self, word: str, cnt: int = 1, vec: Optional[np.ndarray] = None) -> None:
         """Add a word or increase its count.
@@ -172,32 +176,29 @@ class Vocab(object):
 
                 self.add_word(word, cnt, vec, replace)
 
-    def make_unigram_table(self, table_size: int = 100000000) -> None:
+    def make_unigram_table(self, table_size: int = -1) -> None:
         """Make unigram table for negative sampling, look at the paper if interested
         in details.
 
         Args:
             table_size (int):
-                The size of the table (Defaults to 100 000 000)
+                The size of the table - no longer needed (Defaults to -1)
         """
+        if table_size != -1:
+            logger.warning("Unigram table size is no longer necessary since "
+                           "there is now a simpler approach that doesn't require "
+                           "the creation of a massive array. So therefore, there "
+                           "is no need to pass the `table_size` parameter anymore.")
         freqs = []
-        unigram_table = []
-
-        words = list(self.vec_index2word.values())
-        for word in words:
+        for word in self.vec_index2word.values():
             freqs.append(self[word])
 
-        freqs = np.array(freqs)
-        freqs = np.power(freqs, 3/4)
-        sm = np.sum(freqs)
+        # Power and normalize frequencies
+        freqs = np.array(freqs) ** (3/4)
+        freqs /= freqs.sum()
 
-        for ind in self.vec_index2word.keys():
-            word = self.vec_index2word[ind]
-            f_ind = words.index(word)
-            p = freqs[f_ind] / sm
-            unigram_table.extend([ind] * int(p * table_size))
-
-        self.unigram_table = np.array(unigram_table)
+        # Calculate cumulative probabilities
+        self.cum_probs = np.cumsum(freqs)
 
     def get_negative_samples(self, n: int = 6, ignore_punct_and_num: bool = False) -> List[int]:
         """Get N negative samples.
@@ -208,17 +209,14 @@ class Vocab(object):
             ignore_punct_and_num (bool):
                 Whether to ignore punctuation and numbers. (Default value = False)
 
-        Raises:
-            Exception: If no unigram table is present.
-
         Returns:
             List[int]:
                 Indices for words in this vocabulary.
         """
-        if len(self.unigram_table) == 0:
-            raise Exception("No unigram table present, please run the function vocab.make_unigram_table() first.")
-        inds = np.random.randint(0, len(self.unigram_table), n)
-        inds = self.unigram_table[inds]
+        if len(self.cum_probs) == 0:
+            self.make_unigram_table()
+        random_vals = np.random.rand(n)
+        inds = np.searchsorted(self.cum_probs, random_vals).tolist()
 
         if ignore_punct_and_num:
             # Do not return anything that does not have letters in it
@@ -253,4 +251,9 @@ class Vocab(object):
         with open(path, 'rb') as f:
             vocab = cls()
             vocab.__dict__ = pickle.load(f)
+        if not hasattr(vocab, 'cum_probs'):
+            # NOTE: this is not too expensive, only around 0.05s
+            vocab.make_unigram_table()
+        if hasattr(vocab, 'unigram_table'):
+            del vocab.unigram_table
         return vocab
