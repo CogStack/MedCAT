@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from enum import Enum, auto
 from copy import deepcopy
 from pydantic import BaseModel
+from itertools import islice
 
 import numpy as np
 
@@ -205,19 +206,20 @@ class PerAnnsFoldCreator(SimpleFoldCreator):
         cur_doc: MedCATTrainerExportDocument = self._find_or_add_doc(project, orig_doc)
         cur_doc['annotations'].append(ann)
 
-    def _targets(self) -> Iterable[Tuple[MedCATTrainerExportProjectInfo,
-                                         MedCATTrainerExportDocument,
-                                         MedCATTrainerExportAnnotation]]:
-        return iter_anns(self.mct_export)
+    def _targets(self, start_at: int) -> Iterable[Tuple[MedCATTrainerExportProjectInfo,
+                                                        MedCATTrainerExportDocument,
+                                                        MedCATTrainerExportAnnotation]]:
+        return islice(iter_anns(self.mct_export), start_at, None)
 
     def _create_fold(self, fold_nr: int) -> MedCATTrainerExport:
         per_fold = self.per_fold[fold_nr]
+        already_used = sum(self.per_fold[fn] for fn in range(fold_nr))
         cur_fold: MedCATTrainerExport = {
             'projects': []
         }
         cur_project: Optional[MedCATTrainerExportProject] = None
         included = 0
-        for target in self._targets():
+        for target in self._targets(already_used):
             proj_info, cur_doc, cur_ann = target
             proj_name = proj_info[0]
             if not cur_project or cur_project['name'] != proj_name:
