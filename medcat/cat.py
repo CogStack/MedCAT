@@ -590,7 +590,7 @@ class CAT(object):
 
     def _init_ckpts(self, is_resumed, checkpoint):
         if self.config.general.checkpoint.steps is not None or checkpoint is not None:
-            checkpoint_config = CheckpointConfig(**self.config.general.checkpoint.dict())
+            checkpoint_config = CheckpointConfig(**self.config.general.checkpoint.model_dump())
             checkpoint_manager = CheckpointManager('cat_train', checkpoint_config)
             if is_resumed:
                 # TODO: probably remove is_resumed mark and always resume if a checkpoint is provided,

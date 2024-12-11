@@ -31,6 +31,13 @@ jobs:
       - name: Lint
         run: |
           flake8 medcat
+      - name: Pydantic 1 check
+        # NOTE: the following will look for use of pydantic1-specific .dict() method and .__fields__ attribute
+        #       if there are some (that are not annotated for pydantic1 backwards compatibility) a non-zero exit
+        #       code is returned, which will hald the workflow and print out the offending parts
+        run: |
+          grep "\.__fields__" medcat -rI | grep -v "# 4pydantic1 - backwards compatibility" | tee /dev/stderr | test $(wc -l) -eq 0
+          grep "\.dict(" medcat -rI | grep -v "# 4pydantic1 - backwards compatibility" | tee /dev/stderr | test $(wc -l) -eq 0
       - name: Test
         run: |
           all_files=$(git ls-files | grep '^tests/.*\.py$' | grep -v '/__init__\.py$' | sed 's/\.py$//' | sed 's/\//./g')
@@ -54,7 +61,6 @@ jobs:
               repo: context.repo.repo
             });
             core.setOutput('latest_version', latestRelease.data.tag_name);
-
       - name: Make sure there's no deprecated methods that should be removed.
         # only run this for master -> production PR. I.e just before doing a release.
         if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'production'
