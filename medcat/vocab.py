@@ -1,6 +1,6 @@
 import numpy as np
 import pickle
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, cast
 import logging
 
 
@@ -216,7 +216,8 @@ class Vocab(object):
         if len(self.cum_probs) == 0:
             self.make_unigram_table()
         random_vals = np.random.rand(n)
-        inds = np.searchsorted(self.cum_probs, random_vals).tolist()
+        # NOTE: there's a change in numpy
+        inds = cast(List[int], np.searchsorted(self.cum_probs, random_vals).tolist())
 
         if ignore_punct_and_num:
             # Do not return anything that does not have letters in it
