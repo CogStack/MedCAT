@@ -1,5 +1,5 @@
 .
-https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.6.0/en_core_web_md-3.6.0-py3-none-any.whl
+https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.7.1/en_core_web_md-3.7.1-py3-none-any.whl
 flake8~=7.0.0
 darglint~=1.8.1
 mypy>=1.7.0,<1.12.0
