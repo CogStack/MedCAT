@@ -167,7 +167,7 @@ class RelData(Dataset):
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
     def _create_relation_validation(self, 
-                                    text,
+                                    text: str | Doc,
                                     doc_id: str,
                                     tokenized_text_data: Dict[str, Any],
                                     ent1_start_char_pos: int,
@@ -180,8 +180,30 @@ class RelData(Dataset):
                                     ent2_token_end_pos: int = -1,
                                     is_spacy_doc: bool = False,
                                     is_mct_export: bool = False,
-                                    ) -> Dict:
+                                    ) -> List:
+        """
+            This function checks if the relation is actually valid by distance criteria, TUIs and so on.
+            Has diffierent handling cases for text, spacy docs and MCT exports.
 
+        Args:
+            text (str): doc text
+            doc_id (str): doc id
+            tokenized_text_data (Dict[str, Any]): tokenized text
+            ent1_start_char_pos (int): ent1 start char pos
+            ent2_start_char_pos (int): ent2 start char pos
+            ent1_end_char_pos (int): ent1 end char pos
+            ent2_end_char_pos (int): ent2 end char pos
+            ent1_token_start_pos (int, optional): ent1_token_start_pos. Defaults to -1.
+            ent2_token_start_pos (int, optional): ent2_token_start_pos. Defaults to -1.
+            ent1_token_end_pos (int, optional): ent1_token_end_pos. Defaults to -1.
+            ent2_token_end_pos (int, optional): ent2_token_end_pos. Defaults to -1.
+            is_spacy_doc (bool, optional): checks if doc is spacy docs. Defaults to False.
+            is_mct_export (bool, optional): chekcs if doc is a mct export. Defaults to False.
+
+        Returns:
+            List: row containing rel data ["relation_token_span_ids", "ent1_ent2_start", "ent1", "ent2", "label",
+            "label_id", "ent1_type", "ent2_type", "ent1_id", "ent2_id", "ent1_cui", "ent2_cui", "doc_id", "sents"]
+        """
 
         text_length = len(text)
 
@@ -193,7 +215,6 @@ class RelData(Dataset):
         ent2_token = tmp_doc_text[ent2_start_char_pos: ent2_end_char_pos]
 
         if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size:
-
             ent1_left_ent_context_token_pos_end = ent1_token_start_pos - self.config.general.cntx_left
             left_context_start_char_pos = 0
 
@@ -205,8 +226,9 @@ class RelData(Dataset):
             ent2_right_ent_context_token_pos_end = ent2_token_end_pos + self.config.general.cntx_right
             right_context_end_char_pos = text_length
 
-            if ent2_right_ent_context_token_pos_end >= doc_token_length:
-                ent2_right_ent_context_token_pos_end = doc_token_length
+            # get correct position, don't get last token as it can be the [SEP] or [EOS] token.
+            if ent2_right_ent_context_token_pos_end >= (doc_token_length - 1):
+                ent2_right_ent_context_token_pos_end = doc_token_length - 2
             else:
                 right_context_end_char_pos = tokenized_text_data["offset_mapping"][ent2_right_ent_context_token_pos_end][1]
 
@@ -216,7 +238,6 @@ class RelData(Dataset):
                 left_context_start_char_pos = tmp
 
             if is_spacy_doc or is_mct_export:
-
                 tmp_doc_text = text
                 _pre_e1 = tmp_doc_text[0: (ent1_start_char_pos)]
                 _e1_s2 = tmp_doc_text[ent1_end_char_pos: ent2_start_char_pos - 1]
@@ -246,6 +267,9 @@ class RelData(Dataset):
                 # reassign the new text with added tags
                 text_length = len(tmp_doc_text)
 
+            # may lead to problems down the line if truncation=False, if it is True we enforce the max 512 token length sentence
+            # take care when using window_size > 300, we want to make sure both entities are included at least... otherwise the relation
+            # is considered invalid
             window_tokenizer_data = self.tokenizer(tmp_doc_text[left_context_start_char_pos:right_context_end_char_pos], truncation=True)
 
             if self.config.general.annotation_schema_tag_ids:
@@ -265,9 +289,9 @@ class RelData(Dataset):
                     assert ent1_token_start_pos
                     assert ent2_token_start_pos
                     assert _ent1_token_end_pos
-                    assert _ent2_token_end_pos 
+                    assert _ent2_token_end_pos
                 except Exception:
-                    self.log.error("document id: " + str(doc_id) + " failed to process relation")
+                    self.log.error("document id : " + str(doc_id) + " failed to process relation")
                     self.log.info(traceback.print_exc())
                     return []
 
@@ -585,7 +609,7 @@ class RelData(Dataset):
                             self.log.info("document id: " + str(doc_id) + " failed to process relation")
                             continue
 
-                        if start_entity_id != end_entity_id and relation.get('validated', True) and start_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens \
+                        if start_entity_id != end_entity_id and relation.get("validated", True) and start_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens \
                             and end_entity_value not in self.tokenizer.hf_tokenizers.all_special_tokens:
                             final_relation = self._create_relation_validation(text=doc_text,
                                     doc_id=doc_id,
