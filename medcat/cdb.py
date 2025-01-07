@@ -818,15 +818,17 @@ class CDB(object):
             sim_data['sim_vectors_cuis'] = np.array(sim_vectors_cuis)
 
         # Select appropriate concepts
-        type_id_inds = np.arange(0, len(sim_data['sim_vectors_type_ids']))
+        type_id_inds = np.arange(0, len(sim_data['sim_vectors_type_ids']), dtype=np.int32)
         if len(type_id_filter) > 0:
-            type_id_inds = np.array([], dtype=np.int32)
+            # NOTE: change in numpy 2
+            type_id_inds = np.array([], dtype=np.int32)  # type: ignore
             for type_id in type_id_filter:
                 type_id_inds = np.union1d(np.array([ind for ind, type_ids in enumerate(sim_data['sim_vectors_type_ids']) if type_id in type_ids]),
                         type_id_inds)
         cnt_inds = np.arange(0, len(sim_data['sim_vectors_counts']))
         if min_cnt > 0:
-            cnt_inds = np.where(sim_data['sim_vectors_counts'] >= min_cnt)[0]
+            # NOTE: change in numpy 2
+            cnt_inds = np.where(sim_data['sim_vectors_counts'] >= min_cnt)[0]  # type: ignore
         # Intersect cnt and type_id
         inds = np.intersect1d(type_id_inds, cnt_inds)
 

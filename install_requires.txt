@@ -1,11 +1,11 @@
-'numpy>=1.22.0,<1.26.0'  # 1.22.0 is first to support python 3.11; post 1.26.0 there's issues with scipy
+'numpy>=1.26.0,<2.0.0'  # 1.26 is first to support 3.12; cannod support numpy2 due to spacy
 'pandas>=1.4.2' # first to support 3.11
 'gensim>=4.3.0,<5.0.0'  # 5.3.0 is first to support 3.11; avoid major version bump
-'spacy>=3.6.0,<3.8.0'  # 3.8 only supports numpy2 which we can't use due to other dependencies
-'scipy~=1.9.2'  # 1.9.2 is first to support 3.11
+'spacy>=3.6.0,<4.0.0'  # avoid major bump
+'scipy>=1.9.2,<1.14.0'  # 1.9.2 is first to support 3.11; 1.14.0 does not support 3.9
 'transformers>=4.34.0,<5.0.0'  # avoid major version bump
 'accelerate>=0.23.0' # required by Trainer class in de-id
-'torch>=1.13.0,<3.0.0' # 1.13 is first to support 3.11; 2.1.2 has been compatible, but avoid major 3.0.0 for now
+'torch>=2.4.0,<3.0.0' # 2.4.0 is first to support 3.12; avoid major 3.0.0 for now
 'tqdm>=4.27'
 'scikit-learn>=1.1.3,<2.0.0'  # 1.1.3 is first to supporrt 3.11; avoid major version bump
 'dill>=0.3.6,<1.0.0' # stuff saved in 0.3.6/0.3.7 is not always compatible with 0.3.4/0.3.5; avoid major bump

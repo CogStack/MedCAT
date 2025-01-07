@@ -254,8 +254,8 @@ class MemoryUnoptimisingTests(unittest.TestCase):
             with self.subTest(f'{name}'):
                 self.assertIsInstance(before, dict)
                 self.assertIsInstance(after, dict)
-                self.assertEquals(len(before), len(after))
-                self.assertEquals(before, after)
+                self.assertEqual(len(before), len(after))
+                self.assertEqual(before, after)
 
     def test_optimisation_round_trip_snames(self):
         snames_before = self.cdb.snames
@@ -264,8 +264,8 @@ class MemoryUnoptimisingTests(unittest.TestCase):
         snames_after = self.cdb.snames
         self.assertIsInstance(snames_before, set)
         self.assertIsInstance(snames_after, set)
-        self.assertEquals(len(snames_before), len(snames_after))
-        self.assertEquals(snames_before, snames_after)
+        self.assertEqual(len(snames_before), len(snames_after))
+        self.assertEqual(snames_before, snames_after)
 
     def test_optimisation_round_trip_dirty(self):
         memory_optimiser.perform_optimisation(self.cdb)
