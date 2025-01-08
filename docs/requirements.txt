@@ -82,7 +82,7 @@ spacy-legacy==3.0.12
 spacy-loggers==1.0.5
 srsly==2.5.0
 stack-data==0.6.3
-sympy==1.13.2
+sympy==1.13.1
 thinc==8.2.5
 threadpoolctl==3.5.0
 tokenizers==0.21.0
