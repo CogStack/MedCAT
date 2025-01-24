@@ -190,6 +190,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     # If categoryvalue2id is pre-defined, then making sure it is same as the labels found in the data
     if len(category_value2id) != 0:
         if set(category_value2id.keys()) != category_values:
+            # if categoryvalue2id doesn't match the labels in the data, then 'class_name_map' has to be defined to check for variations
             if len(class_name_map) != 0:
                 updated_category_value2id = {}
                 for _class in category_value2id.keys():
@@ -201,11 +202,12 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
                             class_name_matched = [label for label in found_in if label in category_values][0]
                             updated_category_value2id[class_name_matched] = category_value2id[_class]
                             logger.warning("Class name '%s' does not exist in the data; however a variation of it '%s' is present; updating it...",_class,class_name_matched)
-
                         else:
                             raise Exception(f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}")
                 category_value2id = copy.deepcopy(updated_category_value2id)
                 logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
+
+            # Else throw an exception since the labels don't match
             else:
                 raise Exception(
                     f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}")
