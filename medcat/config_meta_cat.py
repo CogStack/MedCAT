@@ -27,20 +27,19 @@ class General(MixingConfig, BaseModel):
     """What category is this meta_cat model predicting/training.
 
     NB! For these changes to take effect, the pipe would need to be recreated."""
-    category_names_map: List = []
-    """Map that stores the variations of possible category names
+    alternative_category_names: List = []
+    """List that stores the variations of possible category names
     Example: For Experiencer, the alternate name is Subject
-    category_names_map: ['Experiencer','Subject']
+    alternative_category_names: ['Experiencer','Subject']
 
     In the case that one specified in 'category_name' parameter does not match the data, this ensures no error is raised and it is automatically mapped
     """
-
     category_value2id: Dict = {}
     """Map from category values to ID, if empty it will be autocalculated during training"""
-    class_names_map: List[List] = [[]]
+    alternative_class_names: List[List] = [[]]
     """Map that stores the variations of possible class names for the given category (task)
     Example: For Presence task, the class names vary across NHS sites.
-    To accommodate for this, class_names_map is populated as: [["Hypothetical (N/A)","Hypothetical"],["Not present (False)","False"],["Present (True)","True"]]
+    To accommodate for this, alternative_class_names is populated as: [["Hypothetical (N/A)","Hypothetical"],["Not present (False)","False"],["Present (True)","True"]]
     Each sub list contains the possible variations of the given class.
     """
     vocab_size: Optional[int] = None

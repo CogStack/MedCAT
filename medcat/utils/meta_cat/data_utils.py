@@ -154,7 +154,7 @@ def prepare_for_oversampled_data(data: List,
 
 
 def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict] = None,
-                           category_undersample=None, class_name_map: List[List] = []) -> Tuple:
+                           category_undersample=None, alternative_class_names: List[List] = []) -> Tuple:
     """Converts the category values in the data outputted by `prepare_from_json`
     into integer values.
 
@@ -165,7 +165,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
             Map from category_value to id (old/existing).
         category_undersample:
             Name of class that should be used to undersample the data (for 2 phase learning)
-        class_name_map:
+        alternative_class_names:
             Map that stores the variations of possible class names for the given category (task)
 
     Returns:
@@ -190,27 +190,31 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     # If categoryvalue2id is pre-defined, then making sure it is same as the labels found in the data
     if len(category_value2id) != 0:
         if set(category_value2id.keys()) != category_values:
-            # if categoryvalue2id doesn't match the labels in the data, then 'class_name_map' has to be defined to check for variations
-            if len(class_name_map) != 0:
+            # if categoryvalue2id doesn't match the labels in the data, then 'alternative_class_names' has to be defined to check for variations
+            if len(alternative_class_names) != 0:
                 updated_category_value2id = {}
                 for _class in category_value2id.keys():
                     if _class in category_values:
                         updated_category_value2id[_class] = category_value2id[_class]
                     else:
-                        found_in = [sub_map for sub_map in class_name_map if _class in sub_map][0]
+                        found_in = [sub_map for sub_map in alternative_class_names if _class in sub_map]
                         if len(found_in) != 0:
-                            class_name_matched = [label for label in found_in if label in category_values][0]
-                            updated_category_value2id[class_name_matched] = category_value2id[_class]
-                            logger.warning("Class name '%s' does not exist in the data; however a variation of it '%s' is present; updating it...",_class,class_name_matched)
+                            class_name_matched = [label for label in found_in[0] if label in category_values]
+                            if len(class_name_matched) != 0:
+                                updated_category_value2id[class_name_matched] = category_value2id[_class]
+                                logger.info("Class name '%s' does not exist in the data; however a variation of it '%s' is present; updating it...",_class,class_name_matched)
+                            else:
+                                raise Exception(
+                                    f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
                         else:
-                            raise Exception(f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}")
+                            raise Exception(f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
                 category_value2id = copy.deepcopy(updated_category_value2id)
                 logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
 
             # Else throw an exception since the labels don't match
             else:
                 raise Exception(
-                    f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}")
+                    f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
 
     # Else create the mapping from the labels found in the data
     else:

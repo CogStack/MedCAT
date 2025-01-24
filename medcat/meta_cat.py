@@ -244,16 +244,16 @@ class MetaCAT(PipeRunner):
 
         # Check is the name present
         category_name = g_config['category_name']
-        category_name_options = g_config['category_names_map']
+        category_name_options = g_config['alternative_category_names']
         if category_name not in data:
             category_matching = [cat for cat in category_name_options if cat in data.keys()]
             if len(category_matching) > 0:
-                logger.warning("The category name provided in the config - '%s' is not present in the data. However, the corresponding name - '%s' from the category_name_mapping has been found. Updating the category name...",category_name,*category_matching)
+                logger.info("The category name provided in the config - '%s' is not present in the data. However, the corresponding name - '%s' from the category_name_mapping has been found. Updating the category name...",category_name,*category_matching)
                 g_config['category_name'] = category_matching[0]
                 category_name = g_config['category_name']
             else:
                 raise Exception(
-                    "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
+                    "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}. Additionally, ensure the populate the 'alternative_category_names' attribute to accommodate for variations.".format(
                         category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
@@ -265,12 +265,12 @@ class MetaCAT(PipeRunner):
         if not category_value2id:
             # Encode the category values
             full_data, data_undersampled, category_value2id = encode_category_values(data,
-                                                                                     category_undersample=self.config.model.category_undersample,class_name_map=g_config['class_names_map'])
+                                                                                     category_undersample=self.config.model.category_undersample,class_name_map=g_config['alternative_class_names'])
         else:
             # We already have everything, just get the data
             full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     category_undersample=self.config.model.category_undersample,class_name_map=g_config['class_names_map'])
+                                                                                     category_undersample=self.config.model.category_undersample,class_name_map=g_config['alternative_class_names'])
         g_config['category_value2id'] = category_value2id
         self.config.model['nclasses'] = len(category_value2id)
 
@@ -286,8 +286,7 @@ class MetaCAT(PipeRunner):
             device = torch.device(g_config['device'])
             try:
                 self.model.load_state_dict(torch.load(model_save_path, map_location=device))
-                logger.info("Model state loaded from dict for 2 phase learning")
-                logger.info("Training model for Phase 2 now...")
+                logger.info("Training model for Phase 2, with model dict loaded from disk")
 
             except FileNotFoundError:
                 raise FileNotFoundError(f"\nError: Model file not found at path: {model_save_path}\nPlease run phase 1 training and then run phase 2.")
