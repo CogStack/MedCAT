@@ -274,13 +274,6 @@ class MetaCAT(PipeRunner):
         g_config['category_value2id'] = category_value2id
         self.config.model['nclasses'] = len(category_value2id)
 
-        # This is now handled in data_utils where an exception is raised when mismatch is found
-        # Make sure that the categoryvalue2id if present is same as the labels found
-        # if len(category_value2id) != self.config.model['nclasses']:
-        #     logger.warning(
-        #         "The number of classes set in the config is not the same as the one found in the data: %d vs %d",self.config.model['nclasses'], len(category_value2id))
-        #     logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
-
         if self.config.model.phase_number == 2 and save_dir_path is not None:
             model_save_path = os.path.join(save_dir_path, 'model.dat')
             device = torch.device(g_config['device'])
