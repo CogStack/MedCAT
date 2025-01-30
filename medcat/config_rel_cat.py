@@ -1,6 +1,6 @@
 import logging
-from typing import Dict, Any, List, Tuple
-from medcat.config import MixingConfig, BaseModel, Optional, Extra
+from typing import Dict, List, Tuple
+from medcat.config import MixingConfig, BaseModel, Optional
 
 
 class General(MixingConfig, BaseModel):
@@ -95,7 +95,7 @@ class Model(MixingConfig, BaseModel):
     """If set to True, used only in Llama model, it will add the extra tensor formed from selecting the max of the last hidden layer"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -104,14 +104,17 @@ class Train(MixingConfig, BaseModel):
     nclasses: int = 2
     """Number of classes that this model will output"""
     batch_size: int = 25
+    """batch size"""
     nepochs: int = 1
+    """Epochs"""
     lr: float = 1e-4
-    stratified_batching = False
+    """Learning rate"""
+    stratified_batching: bool = False
     """Train the model with stratified batching"""
-    batching_samples_per_class = []
+    batching_samples_per_class: list = []
     """Number of samples per class in each batch
     example for batch size 64: [6,6,6,8,8,8,6,8,8]"""
-    batching_minority_limit = 0
+    batching_minority_limit: List[int] | int = 0
     """Maximum number of samples the minority class can have.
     Since the minority class elements need to be repeated, this is used to facilitate that
     example: batching_samples_per_class - [6,6,6,8,8,8,6,8,8]
@@ -135,7 +138,7 @@ class Train(MixingConfig, BaseModel):
     """Should the model be saved during training for best results"""
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -146,5 +149,5 @@ class ConfigRelCAT(MixingConfig, BaseModel):
     train: Train = Train()
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True

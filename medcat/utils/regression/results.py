@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Dict, List, Optional, Any, Set, Iterable, Tuple
+from typing import Dict, List, Optional, Any, Set, Iterable, Tuple, cast
 import json
 import pydantic
 
@@ -372,7 +372,7 @@ class SingleResultDescriptor(pydantic.BaseModel):
         ])
         return "\n".join(ret_vals)
 
-    def dict(self, **kwargs) -> dict:
+    def model_dump(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             kwargs = kwargs.copy() # so if used elsewhere, keeps the kwarg
             strict_raw = kwargs.pop('strictness')
@@ -395,17 +395,17 @@ class SingleResultDescriptor(pydantic.BaseModel):
             key.name: value for key, value in self.findings.items()
         }
         serialized_examples = [
-            (ft.dict(**kwargs), (f[0].name, f[1])) for ft, f in self.examples
+            (ft.model_dump(**kwargs), (f[0].name, f[1])) for ft, f in self.examples
             # only count if NOT in strictness matrix (i.e 'failures')
             if f[0] not in STRICTNESS_MATRIX[strictness]
         ]
-        model_dict = super().dict(**kwargs)
+        model_dict = cast(pydantic.BaseModel, super()).model_dump(**kwargs)
         model_dict['findings'] = serialized_dict
         model_dict['examples'] = serialized_examples
         return model_dict
 
     def json(self, **kwargs) -> str:
-        d = self.dict(**kwargs)
+        d = self.model_dump(**kwargs)
         return json.dumps(d)
 
 
@@ -452,8 +452,13 @@ class ResultDescriptor(SingleResultDescriptor):
         Yields:
             Iterable[Tuple[FinalTarget, Tuple[Finding, Optional[str]]]]: The placeholder, phrase, finding, CUI, and name.
         """
-        for srd in self.per_phrase_results.values():
-            for target, finding in srd.examples:
+        phrases = sorted(self.per_phrase_results.keys())
+        for phrase in phrases:
+            srd = self.per_phrase_results[phrase]
+            # sort by finding 1st, found CUI 2nd, and used name 3rd
+            sorted_examples = sorted(
+                srd.examples, key=lambda tf: (tf[1][0].name, str(tf[1][1]), tf[0].name))
+            for target, finding in sorted_examples:
                 if finding[0] not in STRICTNESS_MATRIX[strictness_threshold]:
                     yield target, finding
 
@@ -473,7 +478,7 @@ class ResultDescriptor(SingleResultDescriptor):
                              for srd in self.per_phrase_results.values()])
         return sr + '\n\t\t' + children.replace('\n', '\n\t\t')
 
-    def dict(self, **kwargs) -> dict:
+    def model_dump(self, **kwargs) -> dict:
         if 'exclude' in kwargs and kwargs['exclude'] is not None:
             exclude: set = kwargs['exclude']
         else:
@@ -481,7 +486,7 @@ class ResultDescriptor(SingleResultDescriptor):
             kwargs['exclude'] = exclude
         # NOTE: ignoring here so that examples are only present in the per phrase part
         exclude.update(('examples', 'per_phrase_results'))
-        d = super().dict(**kwargs)
+        d = cast(pydantic.BaseModel, super()).model_dump(**kwargs)
         if 'examples' in d:
             # NOTE: I don't really know why, but the examples still
             #       seem to be a part of the resulting dict, so I need
@@ -490,7 +495,8 @@ class ResultDescriptor(SingleResultDescriptor):
         # NOTE: need to propagate here manually so the strictness keyword
         #       makes sense and doesn't cause issues due being to unexpected keyword
         per_phrase_results = {
-            phrase: res.dict(**kwargs) for phrase, res in self.per_phrase_results.items()
+            phrase: res.model_dump(**kwargs) for phrase, res in
+            sorted(self.per_phrase_results.items(), key=lambda it: it[0])
         }
         d['per_phrase_results'] = per_phrase_results
         return d
@@ -654,8 +660,8 @@ class MultiDescriptor(pydantic.BaseModel):
         if hide_empty:
             empty_text = f' A total of {nr_of_empty} cases did not match any CUIs and/or names.'
         ret_vals = [f"""A total of {len(self.parts)} parts were kept track of within the group "{self.name}".
-And a total of {total_total} (sub)cases were checked.{empty_text}"""]
-        allowed_fingings_str = [f.name for f in allowed_findings]
+                    And a total of {total_total} (sub)cases were checked.{empty_text}"""]
+        allowed_fingings_str = sorted([f.name for f in allowed_findings])
         ret_vals.extend([
             f"At the strictness level of {strictness} (allowing {allowed_fingings_str}):",
             f"The number of total successful (sub) cases: {total_s} "
@@ -671,7 +677,7 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
         ])
         return "\n".join(ret_vals) + f"\n{delegated}"
 
-    def dict(self, **kwargs) -> dict:
+    def model_dump(self, **kwargs) -> dict:
         if 'strictness' in kwargs:
             strict_raw = kwargs.pop('strictness')
             if isinstance(strict_raw, Strictness):
@@ -682,8 +688,8 @@ And a total of {total_total} (sub)cases were checked.{empty_text}"""]
                 raise ValueError(f"Unknown stircntess specified: {strict_raw}")
         else:
             strictness = Strictness.NORMAL
-        out_dict = super().dict(exclude={'parts'}, **kwargs)
-        out_dict['parts'] = [part.dict(strictness=strictness) for part in self.parts]
+        out_dict = cast(pydantic.BaseModel, super()).model_dump(exclude={'parts'}, **kwargs)
+        out_dict['parts'] = [part.model_dump(strictness=strictness) for part in self.parts]
         return out_dict
 
 

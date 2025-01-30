@@ -1,4 +1,4 @@
-from medcat.config import MixingConfig, BaseModel, Optional, Extra
+from medcat.config import MixingConfig, BaseModel, Optional
 
 
 class General(MixingConfig, BaseModel):
@@ -16,11 +16,11 @@ class General(MixingConfig, BaseModel):
     chunking_overlap_window: Optional[int] = 5
     """Size of the overlap window used for chunking"""
     test_size: float = 0.2
-    last_train_on: Optional[int] = None
+    last_train_on: Optional[float] = None
     verbose_metrics: bool = False
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True
 
 
@@ -29,5 +29,5 @@ class ConfigTransformersNER(MixingConfig, BaseModel):
     general: General = General()
 
     class Config:
-        extra = Extra.allow
+        extra = 'allow'
         validate_assignment = True

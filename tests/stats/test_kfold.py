@@ -2,14 +2,14 @@ import os
 import json
 from typing import Dict, Union, Optional
 from copy import deepcopy
+from collections import Counter
 
 from medcat.stats import kfold
 from medcat.cat import CAT
-from pydantic.error_wrappers import ValidationError as PydanticValidationError
 
 import unittest
 
-from .helpers import MCTExportPydanticModel, nullify_doc_names_proj_ids
+from .helpers import assert_is_mct_export, nullify_doc_names_proj_ids
 
 
 class MCTExportTests(unittest.TestCase):
@@ -22,11 +22,7 @@ class MCTExportTests(unittest.TestCase):
             cls.mct_export = json.load(f)
 
     def assertIsMCTExport(self, obj):
-        try:
-            model = MCTExportPydanticModel(**obj)
-        except PydanticValidationError as e:
-            raise AssertionError("Not n MCT export") from e
-        self.assertIsInstance(model, MCTExportPydanticModel)
+        assert_is_mct_export(self, obj)
 
 
 class KFoldCreatorTests(MCTExportTests):
@@ -84,6 +80,20 @@ class KFoldCreatorTests(MCTExportTests):
             total_anns += anns
         count_all_once = kfold.count_all_annotations(self.mct_export)
         self.assertEqual(total_anns, count_all_once)
+
+    def count_cuis(self, export: MCTExportTests) -> Counter:
+        cntr = Counter()
+        for _, _, ann in kfold.iter_anns(export):
+            cui = ann["cui"]
+            cntr[cui] += 1
+        return cntr
+
+    def test_folds_keep_ann_targets(self):
+        orig_cntr = self.count_cuis(self.mct_export)
+        fold_counter = Counter()
+        for fold in self.folds:
+            fold_counter += self.count_cuis(fold)
+        self.assertEqual(orig_cntr, fold_counter)
 
     def test_1fold_same_as_orig(self):
         folds = kfold.get_fold_creator(self.mct_export, 1, split_type=self.SPLIT_TYPE).create_folds()
