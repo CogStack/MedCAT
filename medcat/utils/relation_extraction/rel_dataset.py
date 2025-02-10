@@ -214,7 +214,9 @@ class RelData(Dataset):
         ent1_token = tmp_doc_text[ent1_start_char_pos: ent1_end_char_pos]
         ent2_token = tmp_doc_text[ent2_start_char_pos: ent2_end_char_pos]
 
-        if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size:
+        if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size and \
+             ent1_token != ent2_token:
+
             ent1_left_ent_context_token_pos_end = ent1_token_start_pos - self.config.general.cntx_left
             left_context_start_char_pos = 0
 
@@ -378,12 +380,14 @@ class RelData(Dataset):
 
         elif isinstance(doc, Doc):
             _ents = doc.ents if len(doc.ents) > 0 else doc._.ents
+
+            # last two can be a pair
             for ent1_idx in range(0, len(_ents) - 2):
                 ent1_token: Span = _ents[ent1_idx]   # type: ignore
 
-                if str(ent1_token) not in chars_to_exclude and str(ent1_token):
+                if str(ent1_token) not in chars_to_exclude and str(ent1_token) not in self.tokenizer.hf_tokenizers.all_special_tokens:
                     ent1_type_id = list(self.cdb.cui2type_ids.get(ent1_token._.cui, ''))
-                    ent1_types = [self.cdb.addl_info["type_id2name"].get(tui, '') for tui in ent1_type_id]
+                    ent1_types = [self. cdb.addl_info["type_id2name"].get(tui, '') for tui in ent1_type_id]
 
                     ent1_start_char_pos = ent1_token.start_char
                     ent1_end_char_pos = ent1_token.end_char
@@ -403,8 +407,9 @@ class RelData(Dataset):
                             ent1_token = ent2_token
                             ent2_token = tmp_ent1
 
-                        if str(ent2_token) not in chars_to_exclude and str(ent1_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and \
-                                str(ent2_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and str(ent1_token) != str(ent2_token):
+                        if str(ent2_token) not in chars_to_exclude and \
+                                str(ent2_token) not in self.tokenizer.hf_tokenizers.all_special_tokens and \
+                                        str(ent1_token).strip() != str(ent2_token).strip():
 
                             ent2_type_id = list(self.cdb.cui2type_ids.get(ent2_token._.cui, ''))
                             ent2_types = [self.cdb.addl_info['type_id2name'].get(tui, '') for tui in ent2_type_id]
@@ -452,8 +457,20 @@ class RelData(Dataset):
                         # restore ent1
                         ent1_token = tmp_ent1
 
+        # remove duplicates by using ent1_ent2_start_pos
+        dupe_ent1_ent2_start = []
+
+        _new_rel_instances = []
+        for rel in relation_instances:
+            if rel != []:
+                if rel[1] not in dupe_ent1_ent2_start:
+                    dupe_ent1_ent2_start.append(rel[1])
+                    _new_rel_instances.append(rel)
+                else:
+                    self.log.debug("removing duplicate relation" + str(rel[1]))
+
         # cleanup
-        relation_instances = [rel for rel in relation_instances if rel != []]
+        relation_instances = _new_rel_instances
 
         return {"output_relations": relation_instances, "nclasses": self.config.model.padding_idx, "labels2idx": {}, "idx2label": {}}
 
