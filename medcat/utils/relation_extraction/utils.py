@@ -146,7 +146,7 @@ def load_state(model: BertModel_RelationExtraction, optimizer, scheduler, path="
 
         if optimizer is None:
             optimizer = torch.optim.Adam(
-                [{"params": model.module.parameters(), "lr": config.train.lr}])
+                [{"params": model.module.parameters(), "lr": config.train.lr}])  # type: ignore
 
         if scheduler is None:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,

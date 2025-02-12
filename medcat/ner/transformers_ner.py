@@ -89,8 +89,22 @@ class TransformersNER(object):
             self.ner_pipe.tokenizer._in_target_context_manager = False
         if not hasattr(self.ner_pipe.tokenizer, 'split_special_tokens'):
             # NOTE: this will fix the DeID model(s) created with transformers before 4.42
-            #       and allow them to run with later transforemrs
+            #       and allow them to run with later transformers
             self.ner_pipe.tokenizer.split_special_tokens = False
+        if not hasattr(self.ner_pipe.tokenizer, 'pad_token') and hasattr(self.ner_pipe.tokenizer, '_pad_token'):
+            # NOTE: This will fix the DeID model(s) created with transformers before 4.47
+            #       and allow them to run with later transformmers versions
+            #       In 4.47 the special tokens started to be used differently, yet our saved model
+            #       is not aware of that. So we need to explicitly fix that.
+            special_tokens_map = self.ner_pipe.tokenizer.__dict__.get('_special_tokens_map', {})
+            for name in self.ner_pipe.tokenizer.SPECIAL_TOKENS_ATTRIBUTES:
+                # previously saved in (e.g) _pad_token
+                prev_val = getattr(self.ner_pipe.tokenizer, f"_{name}")
+                # now saved in the special tokens map by its name
+                special_tokens_map[name] = prev_val
+            # the map is saved in __dict__ explicitly, and it is later used in __getattr__ of the base class.
+            self.ner_pipe.tokenizer.__dict__['_special_tokens_map'] = special_tokens_map
+
         self.ner_pipe.device = self.model.device
         self._consecutive_identical_failures = 0
         self._last_exception: Optional[Tuple[str, Type[Exception]]] = None
