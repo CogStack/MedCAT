@@ -344,8 +344,10 @@ class TransformersNER(object):
         avg_weight = torch.mean(self.model.classifier.weight, dim=0, keepdim=True)
         avg_bias = torch.mean(self.model.classifier.bias, dim=0, keepdim=True)
 
+        new_cuis = set()
         for label, preferred_name in cui2preferred_name.items():
             if label in self.model.config.label2id.keys():
+                logger.warning("Concept ID '%s' already exists in the model, skipping...", label)
                 continue
 
             sname = preferred_name.lower().replace(" ", "~")
@@ -381,6 +383,10 @@ class TransformersNER(object):
                 )
             self.model.num_labels += 1
             self.model.classifier.out_features += 1
+
+            new_cuis.add(label)
+
+        logger.info("Model expanded with the new concept(s): %s and shall be retrained before use.", str(new_cuis))
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "TransformersNER":
