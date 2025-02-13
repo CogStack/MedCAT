@@ -1,4 +1,4 @@
-from typing import Dict, Any
+from typing import Dict, Any, List
 from medcat.config import MixingConfig, BaseModel, Optional
 
 
@@ -27,8 +27,22 @@ class General(MixingConfig, BaseModel):
     """What category is this meta_cat model predicting/training.
 
     NB! For these changes to take effect, the pipe would need to be recreated."""
+    alternative_category_names: List = []
+    """List that stores the variations of possible category names
+    Example: For Experiencer, the alternate name is Subject
+    alternative_category_names: ['Experiencer','Subject']
+
+    In the case that one specified in self.general.category_name parameter does not match the data, this ensures no error is raised and it is automatically mapped
+    """
     category_value2id: Dict = {}
     """Map from category values to ID, if empty it will be autocalculated during training"""
+    alternative_class_names: List[List] = [[]]
+    """List of lists that stores the variations of possible class names for each class mentioned in self.general.category_value2id
+
+    Example: For Presence task, the class names vary across NHS sites.
+    To accommodate for this, alternative_class_names is populated as: [["Hypothetical (N/A)","Hypothetical"],["Not present (False)","False"],["Present (True)","True"]]
+    Each sub list contains the possible variations of the given class.
+    """
     vocab_size: Optional[int] = None
     """Will be set automatically if the tokenizer is provided during meta_cat init"""
     lowercase: bool = True
