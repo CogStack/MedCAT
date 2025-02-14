@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import datasets
+import torch
 from spacy.tokens import Doc
 from datetime import datetime
 from typing import Iterable, Iterator, Optional, Dict, List, cast, Union, Tuple, Callable, Type
@@ -329,6 +330,63 @@ class TransformersNER(object):
 
         # This is everything we need to save from the class, we do not
         #save the class itself.
+
+    def expand_model_with_concepts(self, cui2preferred_name: Dict[str, str], use_avg_init: bool = True) -> None:
+        """Expand the model with new concepts and their preferred names, which requires subsequent retraining on the model.
+
+        Args:
+            cui2preferred_name(Dict[str, str]):
+                Dictionary where each key is the literal ID of the concept to be added and each value is its preferred name.
+            use_avg_init(bool):
+                Whether to use the average of existing weights or biases as the initial value for the new concept. Defaults to True.
+        """
+
+        avg_weight = torch.mean(self.model.classifier.weight, dim=0, keepdim=True)
+        avg_bias = torch.mean(self.model.classifier.bias, dim=0, keepdim=True)
+
+        new_cuis = set()
+        for label, preferred_name in cui2preferred_name.items():
+            if label in self.model.config.label2id.keys():
+                logger.warning("Concept ID '%s' already exists in the model, skipping...", label)
+                continue
+
+            sname = preferred_name.lower().replace(" ", "~")
+            new_names = {
+                sname: {
+                    "tokens": [],
+                    "snames": [sname],
+                    "raw_name": preferred_name,
+                    "is_upper": True
+                }
+            }
+            self.cdb.add_names(cui=label, names=new_names, name_status="P", full_build=True)
+
+            new_label_id = sorted(self.model.config.label2id.values())[-1] + 1
+            self.model.config.label2id[label] = new_label_id
+            self.model.config.id2label[new_label_id] = label
+            self.tokenizer.label_map[label] = new_label_id
+            self.tokenizer.cui2name = {k: self.cdb.get_name(k) for k in self.tokenizer.label_map.keys()}
+
+            if use_avg_init:
+                self.model.classifier.weight = torch.nn.Parameter(
+                    torch.cat((self.model.classifier.weight, avg_weight), 0)
+                )
+                self.model.classifier.bias = torch.nn.Parameter(
+                    torch.cat((self.model.classifier.bias, avg_bias), 0)
+                )
+            else:
+                self.model.classifier.weight = torch.nn.Parameter(
+                    torch.cat((self.model.classifier.weight, torch.randn(1, self.model.config.hidden_size)), 0)
+                )
+                self.model.classifier.bias = torch.nn.Parameter(
+                    torch.cat((self.model.classifier.bias, torch.randn(1)), 0)
+                )
+            self.model.num_labels += 1
+            self.model.classifier.out_features += 1
+
+            new_cuis.add(label)
+
+        logger.info("Model expanded with the new concept(s): %s and shall be retrained before use.", str(new_cuis))
 
     @classmethod
     def load(cls, save_dir_path: str, config_dict: Optional[Dict] = None) -> "TransformersNER":
