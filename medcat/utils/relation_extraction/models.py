@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
 from transformers.models.bert.configuration_bert import BertConfig
-from transformers import ModernBertModel,ModernBertConfig
+from transformers import ModernBertModel, ModernBertConfig
 from medcat.config_rel_cat import ConfigRelCAT
 from transformers.models.llama import LlamaModel, LlamaConfig
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
@@ -33,7 +33,7 @@ class BertModel_RelationExtraction(nn.Module):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: BertConfig = model_config
 
-        self.bert_model:BertModel = BertModel(config=model_config)
+        self.bert_model: BertModel = BertModel(config=model_config)
 
         if pretrained_model_name_or_path != "":
             self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
@@ -157,6 +157,7 @@ class BertModel_RelationExtraction(nn.Module):
 
         return model_output, classification_logits.to(self.relcat_config.general.device)
 
+
 class ModernBertModel_RelationExtraction(nn.Module):
     """ ModernBertModel class for RelCAT
     """
@@ -179,19 +180,18 @@ class ModernBertModel_RelationExtraction(nn.Module):
 
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: ModernBertConfig = model_config
-        self.config = model_config
 
-        self.modernbert_model:ModernBertModel = ModernBertModel.from_pretrained("answerdotai/ModernBERT-base",config=model_config)
+        self.modernbert_model: ModernBertModel = ModernBertModel(config=self.model_config)
         if pretrained_model_name_or_path != "":
             self.modernbert_model = ModernBertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
 
-        for param in self.modernbert_model.parameters():
-            param.requires_grad = True
-        # print(self.bert_model)
-        # for param in self.bert_model.encoder.layer[-1].parameters():
-        #     param.requires_grad = True
+        for param in self.bert_model.parameters():
+            if self.relcat_config.model.freeze_layers:
+                param.requires_grad = False
+            else:
+                param.requires_grad = True
 
-        self.drop_out = nn.Dropout(0.35)
+        self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
 
         if self.relcat_config.general.task == "pretrain":
             self.activation = nn.Tanh()
@@ -199,10 +199,10 @@ class ModernBertModel_RelationExtraction(nn.Module):
 
         self.relu = nn.ReLU()
 
+
         # dense layers
-        self.fc1 = nn.Linear(self.relcat_config.model.model_size, self.relcat_config.model.hidden_size)
-        self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
-        self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), self.relcat_config.train.nclasses)
+        self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
+
         self.log.info("RelCAT ModernBertConfig: " + str(self.model_config))
 
     def get_annotation_schema_tag(self, sequence_output: torch.Tensor, input_ids: torch.Tensor, special_tag: List) -> torch.Tensor:
@@ -330,7 +330,6 @@ class ModernBertModel_RelationExtraction(nn.Module):
                 encoder_hidden_states: Any = None,
                 encoder_attention_mask: Any = None,
                 Q: Any = None,
-                labels = None,
                 output_attentions: Optional[bool] = None,
                 output_hidden_states: Optional[bool] = None,
                 inputs_embeds: Optional[torch.FloatTensor] = None,

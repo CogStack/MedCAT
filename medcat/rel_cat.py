@@ -24,7 +24,7 @@ from torch.utils.data import DataLoader, Sampler
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
 from medcat.utils.meta_cat.ml_utils import set_all_seeds
-from medcat.utils.relation_extraction.models import BertModel_RelationExtraction, LlamaModel_RelationExtraction
+from medcat.utils.relation_extraction.models import BertModel_RelationExtraction, LlamaModel_RelationExtraction, ModernBertModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
 from medcat.utils.relation_extraction.ml_utils import create_tokenizer_pretrain, load_results, load_state, save_results, save_state, split_list_train_test_by_class
 from medcat.utils.relation_extraction.rel_dataset import RelData
@@ -104,7 +104,7 @@ class RelCAT(PipeRunner):
             "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
 
         self.model_config = BertConfig()
-        self.model: BertModel_RelationExtraction | LlamaModel_RelationExtraction
+        self.model: BertModel_RelationExtraction | LlamaModel_RelationExtraction | ModernBertModel_RelationExtraction | nn.Module
         self.task: str = task
         self.checkpoint_path: str = "./"
         self.optimizer: AdamW = None # type: ignore
