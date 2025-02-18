@@ -339,8 +339,8 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name there
-        category_name = g_config['category_name']
-        if category_name not in data:
+        category_name = g_config.get_applicable_category_name(data)
+        if category_name is None:
             raise Exception("The category name does not exist in this json file.")
 
         data = data[category_name]
