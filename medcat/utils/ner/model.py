@@ -76,6 +76,21 @@ class NerModel:
         """
         return self.cat.get_entities(text, *args, **kwargs)
 
+    def add_new_concepts(self,
+                         cui2preferred_name: Dict[str, str],
+                         train_nr: int = 0,
+                         with_random_init: bool = False) -> None:
+        """Add new concepts to the model and the concept database.
+
+        Invoking this requires subsequent retraining on the model.
+
+        Args:
+            cui2preferred_name(Dict[str, str]): Dictionary where each key is the literal ID of the concept to be added and each value is its preferred name.
+            train_nr (int): The number of the NER object in cat._addl_train to which new concepts will be added. Defaults to 0.
+            with_random_init (bool): Whether to use the random init strategy for the new concepts. Defaults to False.
+        """
+        self.cat._addl_ner[train_nr].expand_model_with_concepts(cui2preferred_name, use_avg_init=not with_random_init)
+
     @property
     def config(self) -> Config:
         return self.cat.config
