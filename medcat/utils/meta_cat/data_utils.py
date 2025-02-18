@@ -191,6 +191,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
     if len(category_value2id) != 0 and set(category_value2id.keys()) != category_values:
         # if categoryvalue2id doesn't match the labels in the data, then 'alternative_class_names' has to be defined to check for variations
         if len(alternative_class_names) == 0:
+            # Raise an exception since the labels don't match
             raise Exception(
                 "The classes set in the config are not the same as the one found in the data. "
                 "The classes present in the config vs the ones found in the data - "
@@ -214,8 +215,6 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
                     raise Exception(f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
         category_value2id = copy.deepcopy(updated_category_value2id)
         logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
-
-        # Else throw an exception since the labels don't match
 
     # Else create the mapping from the labels found in the data
     else:
