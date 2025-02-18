@@ -206,8 +206,9 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
                 if len(found_in) != 0:
                     class_name_matched = [label for label in found_in[0] if label in category_values]
                     if len(class_name_matched) != 0:
-                        updated_category_value2id[class_name_matched] = category_value2id[_class]
-                        logger.info("Class name '%s' does not exist in the data; however a variation of it '%s' is present; updating it...",_class,class_name_matched)
+                        updated_category_value2id[class_name_matched[0]] = category_value2id[_class]
+                        logger.info("Class name '%s' does not exist in the data; however a variation of it "
+                                    "'%s' is present; updating it...", _class, class_name_matched[0])
                     else:
                         raise Exception(
                             f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
