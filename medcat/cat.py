@@ -1087,7 +1087,7 @@ class CAT(object):
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
         if (train_meta_cats and
-                # NOTE if no annnotaitons, not point
+                # NOTE if no annnotaitons, no point
                 count_all_annotations(data) > 0):  # type: ignore
             # NOTE: if there
             logger.info("Training MetaCATs within train_supervised_raw")
