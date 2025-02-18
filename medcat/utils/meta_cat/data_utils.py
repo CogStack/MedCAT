@@ -203,6 +203,7 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
                 updated_category_value2id[_class] = category_value2id[_class]
             else:
                 found_in = [sub_map for sub_map in alternative_class_names if _class in sub_map]
+                failed_to_find = False
                 if len(found_in) != 0:
                     class_name_matched = [label for label in found_in[0] if label in category_values]
                     if len(class_name_matched) != 0:
@@ -210,10 +211,14 @@ def encode_category_values(data: Dict, existing_category_value2id: Optional[Dict
                         logger.info("Class name '%s' does not exist in the data; however a variation of it "
                                     "'%s' is present; updating it...", _class, class_name_matched[0])
                     else:
-                        raise Exception(
-                            f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
+                        failed_to_find = True
                 else:
-                    raise Exception(f"The classes set in the config are not the same as the one found in the data. The classes present in the config vs the ones found in the data - {set(category_value2id.keys())}, {category_values}. Additionally, ensure the populate the 'alternative_class_names' attribute to accommodate for variations.")
+                    failed_to_find = True
+                if failed_to_find:
+                    raise Exception("The classes set in the config are not the same as the one found in the data. "
+                                    "The classes present in the config vs the ones found in the data - "
+                                    f"{set(category_value2id.keys())}, {category_values}. Additionally, ensure the "
+                                    "populate the 'alternative_class_names' attribute to accommodate for variations.")
         category_value2id = copy.deepcopy(updated_category_value2id)
         logger.info("Updated categoryvalue2id mapping - %s", category_value2id)
 
