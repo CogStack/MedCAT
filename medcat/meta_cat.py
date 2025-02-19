@@ -83,23 +83,32 @@ class MetaCAT(PipeRunner):
                 The module
         """
         config = self.config
-        if config.model['model_name'] == 'lstm':
-            from medcat.utils.meta_cat.models import LSTM
-            model: nn.Module = LSTM(embeddings, config)
-            logger.info("LSTM model used for classification")
+        if config.model['model_name'] in ['lstm','bert','modernbert']:
+            if config.model['model_name'] == 'lstm':
+                from medcat.utils.meta_cat.models import LSTM
+                model: nn.Module = LSTM(embeddings, config)
+                logger.info("LSTM model used for classification")
 
-        elif config.model['model_name'] == 'bert':
-            from medcat.utils.meta_cat.models import BertForMetaAnnotation
-            model = BertForMetaAnnotation(config)
+            elif config.model['model_name'] == 'bert':
+                    from medcat.utils.meta_cat.models import BertForMetaAnnotation
+                    model = BertForMetaAnnotation(config)
+                    logger.info("BERT model used for classification")
 
-            if not config.model.model_freeze_layers:
-                peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
-                                         target_modules=["query", "value"], lora_dropout=0.2)
+                    if not config.model.model_freeze_layers:
+                        peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
+                                                 target_modules=["query", "value"], lora_dropout=0.2)
+
+            elif config.model['model_name'] == 'modernbert':
+                from medcat.utils.meta_cat.models import ModernBertForMetaAnnotation
+                model = ModernBertForMetaAnnotation(config)
+                logger.info("ModernBERT model used for classification")
+
+                if not config.model.model_freeze_layers:
+                    peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
+                                             target_modules = ["Wqkv", "Wo"], lora_dropout=0.2)
 
                 model = get_peft_model(model, peft_config)
-                # model.print_trainable_parameters()
-
-            logger.info("BERT model used for classification")
+                    # model.print_trainable_parameters()
 
         else:
             raise ValueError("Unknown model name %s" % config.model['model_name'])
@@ -418,6 +427,10 @@ class MetaCAT(PipeRunner):
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
             tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model['model_variant'])
+
+        elif config.general['tokenizer_name'] == 'modernbert-tokenizer':
+            from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperModernBERT
+            tokenizer = TokenizerWrapperModernBERT.load(save_dir_path, config.model['model_variant'])
 
         # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
