@@ -244,10 +244,17 @@ class MetaCAT(PipeRunner):
 
         # Check is the name present
         category_name = g_config['category_name']
+        category_name_options = g_config['alternative_category_names']
         if category_name not in data:
-            raise Exception(
-                "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
-                    category_name, " | ".join(list(data.keys()))))
+            category_matching = [cat for cat in category_name_options if cat in data.keys()]
+            if len(category_matching) > 0:
+                logger.info("The category name provided in the config - '%s' is not present in the data. However, the corresponding name - '%s' from the category_name_mapping has been found. Updating the category name...",category_name,*category_matching)
+                g_config['category_name'] = category_matching[0]
+                category_name = g_config['category_name']
+            else:
+                raise Exception(
+                    "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}. Additionally, ensure the populate the 'alternative_category_names' attribute to accommodate for variations.".format(
+                        category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
         if data_oversampled:
@@ -258,27 +265,21 @@ class MetaCAT(PipeRunner):
         if not category_value2id:
             # Encode the category values
             full_data, data_undersampled, category_value2id = encode_category_values(data,
-                                                                                     category_undersample=self.config.model.category_undersample)
-            g_config['category_value2id'] = category_value2id
+                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
         else:
             # We already have everything, just get the data
             full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     category_undersample=self.config.model.category_undersample)
-            g_config['category_value2id'] = category_value2id
-        # Make sure the config number of classes is the same as the one found in the data
-        if len(category_value2id) != self.config.model['nclasses']:
-            logger.warning(
-                "The number of classes set in the config is not the same as the one found in the data: %d vs %d",self.config.model['nclasses'], len(category_value2id))
-            logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
-            self.config.model['nclasses'] = len(category_value2id)
+                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+        g_config['category_value2id'] = category_value2id
+        self.config.model['nclasses'] = len(category_value2id)
 
         if self.config.model.phase_number == 2 and save_dir_path is not None:
             model_save_path = os.path.join(save_dir_path, 'model.dat')
             device = torch.device(g_config['device'])
             try:
                 self.model.load_state_dict(torch.load(model_save_path, map_location=device))
-                logger.info("Model state loaded from dict for 2 phase learning")
+                logger.info("Training model for Phase 2, with model dict loaded from disk")
 
             except FileNotFoundError:
                 raise FileNotFoundError(f"\nError: Model file not found at path: {model_save_path}\nPlease run phase 1 training and then run phase 2.")
@@ -295,6 +296,7 @@ class MetaCAT(PipeRunner):
             if not t_config['auto_save_model']:
                 logger.info("For phase 1, model state has to be saved. Saving model...")
                 t_config['auto_save_model'] = True
+            logger.info("Training model for Phase 1 now...")
 
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 

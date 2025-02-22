@@ -48,3 +48,20 @@ class TransformerNERTest(unittest.TestCase):
         assert dataset["train"].num_rows == 48
         assert dataset["test"].num_rows == 12
         self.assertEqual(tracker.call.call_count, 2)
+
+    def test_expand_model_with_concepts(self):
+        original_num_labels = self.undertest.model.num_labels
+        original_out_features  = self.undertest.model.classifier.out_features
+        original_label_map_size = len(self.undertest.tokenizer.label_map)
+        cui2preferred_name = {
+            "concept_1" : "Preferred Name 1",
+            "concept_2" : "Preferred Name 2",
+        }
+
+        self.undertest.expand_model_with_concepts(cui2preferred_name)
+
+        assert self.undertest.model.num_labels == original_num_labels + len(cui2preferred_name)
+        assert self.undertest.model.classifier.out_features == original_out_features + len(cui2preferred_name)
+        assert len(self.undertest.tokenizer.label_map) == original_label_map_size + len(cui2preferred_name)
+        assert self.undertest.tokenizer.cui2name.get("concept_1") == "Preferred Name 1"
+        assert self.undertest.tokenizer.cui2name.get("concept_2") == "Preferred Name 2"

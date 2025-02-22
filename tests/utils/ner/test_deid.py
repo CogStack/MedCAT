@@ -90,6 +90,13 @@ class DeIDModelTests(unittest.TestCase):
         self.assertIsNotNone(examples)
         self.assertIsNotNone(dataset)
 
+    def test_add_new_concepts(self):
+        self.deid_model.add_new_concepts({'CONCEPT': "Concept"}, with_random_init=True)
+        self.assertTrue("CONCEPT" in self.deid_model.cat.cdb.cui2names)
+        self.assertEqual(self.deid_model.cat.cdb.cui2names["CONCEPT"], {"concept"})
+        self.assertTrue("CONCEPT" in self.deid_model.cat._addl_ner[0].model.config.label2id)
+        self.assertTrue("CONCEPT" in self.deid_model.cat._addl_ner[0].tokenizer.label_map)
+        self.assertTrue("CONCEPT" in self.deid_model.cat._addl_ner[0].tokenizer.cui2name)
 
 input_text = '''
 James Joyce 
