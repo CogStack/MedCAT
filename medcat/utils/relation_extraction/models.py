@@ -44,7 +44,7 @@ class BertModel_RelationExtraction(nn.Module):
             else:
                 param.requires_grad = True
 
-        self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
+        self.drop_out = nn.Dropout(self.relcat_config.model.dropout)
 
         if self.relcat_config.general.task == "pretrain":
             self.activation = nn.Tanh()
@@ -181,24 +181,20 @@ class ModernBertModel_RelationExtraction(nn.Module):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: ModernBertConfig = model_config
 
-        self.modernbert_model: ModernBertModel = ModernBertModel(config=self.model_config)
+        self.modernbert_model: ModernBertModel = ModernBertModel(config=model_config)
+
         if pretrained_model_name_or_path != "":
             self.modernbert_model = ModernBertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
 
-        for param in self.bert_model.parameters():
+        for param in self.modernbert_model.parameters():
             if self.relcat_config.model.freeze_layers:
                 param.requires_grad = False
             else:
                 param.requires_grad = True
 
-        self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
-
-        if self.relcat_config.general.task == "pretrain":
-            self.activation = nn.Tanh()
-            self.cls = BertPreTrainingHeads(self.model_config)
+        self.drop_out = nn.Dropout(self.relcat_config.model.dropout)
 
         self.relu = nn.ReLU()
-
 
         # dense layers
         self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)

@@ -8,15 +8,17 @@ import torch.optim
 import torch
 import torch.nn as nn
 import spacy
+import traceback
 
 from tqdm import tqdm
 from datetime import date, datetime
-from transformers import BertConfig
+from transformers import BertConfig, ModernBertConfig
 from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
-from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT, TokenizerWrapperLlama, TokenizerWrapperModernBERT
+from transformers.models.llama import LlamaConfig
 from spacy.tokens import Doc, Span
 from typing import Dict, Iterable, Iterator, List, cast
 from transformers import AutoTokenizer
@@ -91,9 +93,9 @@ class RelCAT(PipeRunner):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT, config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
+    def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT | TokenizerWrapperModernBERT | TokenizerWrapperLlama, config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
         self.config = config
-        self.tokenizer: TokenizerWrapperBERT = tokenizer
+        self.tokenizer: TokenizerWrapperBERT | TokenizerWrapperModernBERT | TokenizerWrapperLlama = tokenizer
         self.cdb = cdb
 
         logging.basicConfig(level=self.config.general.log_level)
@@ -103,7 +105,7 @@ class RelCAT(PipeRunner):
         self.device = torch.device(
             "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
 
-        self.model_config = BertConfig()
+        self.model_config: BertConfig | ModernBertConfig | LlamaConfig
         self.model: BertModel_RelationExtraction | LlamaModel_RelationExtraction | ModernBertModel_RelationExtraction | nn.Module
         self.task: str = task
         self.checkpoint_path: str = "./"
@@ -132,26 +134,50 @@ class RelCAT(PipeRunner):
         assert self.config is not None
         self.config.save(os.path.join(save_path, "config.json"))
 
-        assert self.model_config is not None
-        self.model_config.vocab_size = self.tokenizer.hf_tokenizers.vocab_size
-        self.model_config.to_json_file(
-            os.path.join(save_path, "model_config.json"))
         assert self.tokenizer is not None
         self.tokenizer.save(os.path.join(save_path))
 
         assert self.model is not None
-        self.model.bert_model.resize_token_embeddings(
-            self.tokenizer.hf_tokenizers.vocab_size)
+        if type(self.model) is BertModel_RelationExtraction:
+            self.model.bert_model.resize_token_embeddings(
+                self.tokenizer.get_size())
+        elif type(self.model) is ModernBertModel_RelationExtraction:
+            self.model.modernbert_model.resize_token_embeddings(
+                self.tokenizer.get_size())
+        elif type(self.model) is LlamaModel_RelationExtraction:
+            self.model.llama_model.resize_token_embeddings(
+                self.tokenizer.get_size())
+
+        assert self.model_config is not None
+        self.model_config.vocab_size = self.tokenizer.get_size()
+        self.model_config.pad_token_id = self.pad_id
+
+        self.model_config.to_json_file(
+            os.path.join(save_path, "model_config.json"))
+
         save_state(self.model, optimizer=self.optimizer, scheduler=self.scheduler, epoch=self.epoch, best_f1=self.best_f1,
                    path=save_path, model_name=self.config.general.model_name,
                    task=self.task, is_checkpoint=False, final_export=True)
 
     def _get_model(self):
+
         """ Used only for model initialisation.
         """
-        self.model = BertModel_RelationExtraction(pretrained_model_name_or_path="bert-base-uncased",
-                                                  relcat_config=self.config,
-                                                  model_config=self.model_config)
+        if type(self.tokenizer) is TokenizerWrapperModernBERT:
+            self.model_config = ModernBertConfig.from_pretrained(pretrained_model_name_or_path="answerdotai/ModernBERT-base")
+            self.model = ModernBertModel_RelationExtraction(pretrained_model_name_or_path="answerdotai/ModernBERT-base",
+                                        relcat_config=self.config,
+                                        model_config=self.model_config)
+        elif type(self.tokenizer) is TokenizerWrapperLlama:
+            self.model_config = LlamaConfig.from_pretrained(pretrained_model_name_or_path="meta-llama/Llama-3.1-8B")
+            self.model = LlamaModel_RelationExtraction(pretrained_model_name_or_path="meta-llama/Llama-3.1-8B",
+                                        relcat_config=self.config,
+                                        model_config=self.model_config)
+        else:
+            self.model_config = BertConfig.from_pretrained(pretrained_model_name_or_path="bert-base-uncased")
+            self.model = BertModel_RelationExtraction(pretrained_model_name_or_path="bert-base-uncased",
+                                                    relcat_config=self.config,
+                                                    model_config=self.model_config)
 
     @classmethod
     def load(cls, load_path: str = "./") -> "RelCAT":
@@ -165,6 +191,7 @@ class RelCAT(PipeRunner):
 
         config_path = os.path.join(load_path, "config.json")
         config = ConfigRelCAT()
+
         if os.path.exists(config_path):
             config = cast(ConfigRelCAT, ConfigRelCAT.load(
                 os.path.join(load_path, "config.json")))
@@ -173,13 +200,17 @@ class RelCAT(PipeRunner):
         tokenizer = None
         tokenizer_path = os.path.join(load_path, config.general.tokenizer_name)
 
-        if "bert" in config.general.tokenizer_name:
+        if "bert" in config.general.tokenizer_name or "llama" in config.general.tokenizer_name:
             tokenizer_path = load_path
 
         if os.path.exists(tokenizer_path):
-            tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
-
-            cls.log.info("Tokenizer loaded from:" + tokenizer_path)
+            if "modern-bert-tokenizer" in config.general.tokenizer_name:
+                tokenizer = TokenizerWrapperModernBERT.load(tokenizer_path)
+            elif "bert" in config.general.tokenizer_name:
+                tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
+            elif "llama" in config.general.tokenizer_name:
+                tokenizer = TokenizerWrapperLlama.load(tokenizer_path)
+            cls.log.info("Tokenizer loaded " + str(tokenizer.__class__.__name__) + " from:" + tokenizer_path)
         elif config.general.model_name:
             cls.log.info("Attempted to load Tokenizer from path:" + tokenizer_path +
                   ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:" + config.general.model_name)
@@ -196,24 +227,30 @@ class RelCAT(PipeRunner):
                                              add_special_tokens=config.general.tokenizer_special_tokens
                                              )
 
-        model_config = BertConfig()
         model_config_path = os.path.join(load_path, "model_config.json")
 
         if os.path.exists(model_config_path):
+            if type(tokenizer) is TokenizerWrapperModernBERT:
+                model_config = ModernBertConfig.from_json_file(model_config_path)
+            elif type(tokenizer) is TokenizerWrapperBERT:
+                model_config = BertConfig.from_json_file(model_config_path)
+            elif type(tokenizer) is TokenizerWrapperLlama:
+                model_config = LlamaConfig.from_json_file(model_config_path)
             cls.log.info("Loaded config from : " + model_config_path)
-            model_config = BertConfig.from_json_file(model_config_path)  # type: ignore
         else:
+            cls.log.info("model_config.json not found, using default bert-base-uncased BertConfig")
             try:
                 model_config = BertConfig.from_pretrained(
-                    pretrained_model_name_or_path=config.general.model_name, num_hidden_layers=config.model.hidden_layers)  # type: ignore
-            except Exception as e:
-                cls.log.error("%s", str(e))
+                    pretrained_model_name_or_path=config.general.model_name,
+                    num_hidden_layers=config.model.hidden_layers)  # type: ignore
+            except Exception as exception:
+                cls.log.error("%s", str(exception))
                 cls.log.info("Config for HF model not found: " +
                       config.general.model_name + ". Using bert-base-uncased.")
                 model_config = BertConfig.from_pretrained(
                     pretrained_model_name_or_path="bert-base-uncased")  # type: ignore
 
-        model_config.vocab_size = tokenizer.hf_tokenizers.vocab_size
+        model_config.vocab_size = tokenizer.get_size()
 
         rel_cat = cls(cdb=cdb, config=config,
                       tokenizer=tokenizer,
@@ -228,27 +265,57 @@ class RelCAT(PipeRunner):
             model_path = os.path.join(load_path, "model.dat")
 
             if os.path.exists(os.path.join(load_path, config.general.model_name)):
-                rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.general.model_name,
+                if type(tokenizer) is TokenizerWrapperModernBERT:
+                    rel_cat.model = ModernBertModel_RelationExtraction(pretrained_model_name_or_path=config.general.model_name,
+                                                                     relcat_config=config,
+                                                                     model_config=model_config)
+                elif type(tokenizer) is TokenizerWrapperBERT:
+
+                    rel_cat.model = BertModel_RelationExtraction(pretrained_model_name_or_path=config.general.model_name,
+                                                             relcat_config=config,
+                                                             model_config=model_config)
+                elif type(tokenizer) is TokenizerWrapperLlama:
+                    rel_cat.model = LlamaModel_RelationExtraction(pretrained_model_name_or_path=config.general.model_name,
                                                              relcat_config=config,
                                                              model_config=model_config)
             else:
-                rel_cat.model = BertModel_RelationExtraction(
-                    pretrained_model_name_or_path="",
-                    relcat_config=config, 
-                    model_config=model_config)
+                if type(tokenizer) is TokenizerWrapperModernBERT:
+                    rel_cat.model = ModernBertModel_RelationExtraction(
+                        pretrained_model_name_or_path="",
+                        relcat_config=config,
+                        model_config=model_config)
+                elif type(tokenizer) is TokenizerWrapperBERT:
+                    rel_cat.model = BertModel_RelationExtraction(
+                        pretrained_model_name_or_path="",
+                        relcat_config=config,
+                        model_config=model_config)
+                elif type(tokenizer) is TokenizerWrapperLlama:
+                    rel_cat.model = LlamaModel_RelationExtraction(
+                        pretrained_model_name_or_path="",
+                        relcat_config=config,
+                        model_config=model_config)
+
                 rel_cat.model.load_state_dict(
-                    torch.load(model_path, map_location=device))
+                    torch.load(model_path,
+                                map_location=device, weights_only=False))
 
             cls.log.info("Loaded HF model : " + config.general.model_name)
-        except Exception as e:
-            cls.log.error("%s", str(e))
-            cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
-            rel_cat.model = BertModel_RelationExtraction(
-                pretrained_model_name_or_path="bert-base-uncased",
-                relcat_config=config,
-                model_config=model_config)
+        except Exception as exception:
+            cls.log.error("%s", str(exception))
+            cls.log.error("%s", traceback.format_exc())
 
-        rel_cat.model.bert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
+            #cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
+            #rel_cat.model = BertModel_RelationExtraction(
+            #    pretrained_model_name_or_path="bert-base-uncased",
+            #    relcat_config=config,
+            #    model_config=model_config)
+
+        if type(rel_cat.model) is ModernBertModel_RelationExtraction:
+            rel_cat.model.modernbert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
+        elif type(rel_cat.model) is LlamaModel_RelationExtraction:
+            rel_cat.model.llama_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
+        else:
+            rel_cat.model.bert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
 
         rel_cat.optimizer = None # type: ignore
         rel_cat.scheduler = None # type: ignore
@@ -305,7 +372,7 @@ class RelCAT(PipeRunner):
         self.model = self.model.to(self.device)
 
         # resize vocab just in case more tokens have been added
-        self.model_config.vocab_size = len(self.tokenizer.hf_tokenizers)
+        self.model_config.vocab_size = self.tokenizer.get_size()
 
         train_rel_data = RelData(
             cdb=self.cdb, config=self.config, tokenizer=self.tokenizer)

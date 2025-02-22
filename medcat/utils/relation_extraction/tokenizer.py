@@ -72,6 +72,7 @@ class TokenizerWrapperBERT(BertTokenizerFast):
     def get_pad_id(self):
         return self.hf_tokenizers.pad_token_id
 
+
 class TokenizerWrapperModernBERT(PreTrainedTokenizerFast):
     ''' Wrapper around a huggingface ModernBERT tokenizer so that it works with the
     RelCAT models.
@@ -138,6 +139,7 @@ class TokenizerWrapperModernBERT(PreTrainedTokenizerFast):
 
     def get_pad_id(self):
         return self.hf_tokenizers.pad_token_id
+
 
 class TokenizerWrapperLlama(LlamaTokenizerFast):
     ''' Wrapper around a huggingface Llama tokenizer so that it works with the
