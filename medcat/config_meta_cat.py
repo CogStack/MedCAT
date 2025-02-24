@@ -1,5 +1,10 @@
+import logging
 from typing import Dict, Any, List
+from collections.abc import Container
 from medcat.config import MixingConfig, BaseModel, Optional
+
+
+logger = logging.getLogger(__name__)
 
 
 class General(MixingConfig, BaseModel):
@@ -77,6 +82,18 @@ class General(MixingConfig, BaseModel):
     span_group: Optional[str] = None
     """If set, the spacy span group that the metacat model will assign annotations.
     Otherwise defaults to doc._.ents or doc.ents per the annotate_overlapping settings"""
+
+    def get_applicable_category_name(self, available_names: Container[str]) -> Optional[str]:
+        if self.category_name in available_names:
+            return self.category_name
+        matches = [cat for cat in self.alternative_category_names if cat in available_names]
+        if len(matches) > 0:
+            logger.info("The category name provided in the config - '%s' is not present in the data. "
+                        "However, the corresponding name - '%s' from the category_name_mapping has been found. "
+                        "Updating the category name...", self.category_name, *matches)
+            self.category_name = matches[0]
+            return self.category_name
+        return None
 
     class Config:
         extra = 'allow'
