@@ -1094,12 +1094,13 @@ class CAT(object):
             _, _, ann0 = next(iter_anns(data))  # type: ignore
             for meta_cat in self._meta_cats:
                 # only consider meta-cats that have been defined for the category
-                # NOTE: as of PR #515 this may become more complicated since it could work
-                #       without this exact match as well
-                cat_name = meta_cat.config.general.category_name
-                if 'meta_anns' in ann0 and cat_name in ann0['meta_anns']:  # type: ignore
-                    logger.debug("Training MetaCAT %s", meta_cat.config.general.category_name)
-                    meta_cat.train_raw(data)
+                if 'meta_anns' in ann0:
+                    ann_names = ann0['meta_anns'].keys()  # type: ignore
+                    # adapt to alternative names if applicable
+                    cat_name = meta_cat.config.general.get_applicable_category_name(ann_names)
+                    if cat_name in ann_names:
+                        logger.debug("Training MetaCAT %s", meta_cat.config.general.category_name)
+                        meta_cat.train_raw(data)
 
         # reset the state of filters
         self.config.linking.filters = orig_filters
