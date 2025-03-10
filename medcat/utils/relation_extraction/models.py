@@ -276,7 +276,9 @@ class ModernBertModel_RelationExtraction(nn.Module):
         Returns:
             torch.Tensor: classification probabilities for each token.
         """
-        new_pooled_output: torch.Tensor = torch.Tensor()
+
+        new_pooled_output: torch.Tensor = torch.empty()
+
         if self.relcat_config.general.annotation_schema_tag_ids:
             annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
                                         range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
