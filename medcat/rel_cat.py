@@ -311,11 +311,11 @@ class RelCAT(PipeRunner):
                 model_config=model_config)
 
         if type(rel_cat.model) is ModernBertModel_RelationExtraction:
-            rel_cat.model.modernbert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+            rel_cat.model.modernbert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
         elif type(rel_cat.model) is LlamaModel_RelationExtraction:
-            rel_cat.model.llama_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+            rel_cat.model.llama_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
         else:
-            rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+            rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
 
         rel_cat.optimizer = None # type: ignore
         rel_cat.scheduler = None # type: ignore
