@@ -166,7 +166,7 @@ class RelData(Dataset):
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
     def _create_relation_validation(self, 
-                                    text: str | Doc,
+                                    text: Union[str, Doc],
                                     doc_id: str,
                                     tokenized_text_data: Dict[str, Any],
                                     ent1_start_char_pos: int,

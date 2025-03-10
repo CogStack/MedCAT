@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Union
 from medcat.config import MixingConfig, BaseModel, Optional
 
 
@@ -114,7 +114,7 @@ class Train(MixingConfig, BaseModel):
     batching_samples_per_class: list = []
     """Number of samples per class in each batch
     example for batch size 64: [6,6,6,8,8,8,6,8,8]"""
-    batching_minority_limit: List[int] | int = 0
+    batching_minority_limit: Union[List[int], int] = 0
     """Maximum number of samples the minority class can have.
     Since the minority class elements need to be repeated, this is used to facilitate that
     example: batching_samples_per_class - [6,6,6,8,8,8,6,8,8]
@@ -130,7 +130,7 @@ class Train(MixingConfig, BaseModel):
     max_grad_norm: float = 1.0
     shuffle_data: bool = True
     """Used only during training, if set the dataset will be shuffled before train/test split"""
-    class_weights: List[float] | None = None
+    class_weights: Union[List[float], None] = None
     enable_class_weights: bool = False
     score_average: str = "weighted"
     """What to use for averaging F1/P/R across labels"""
