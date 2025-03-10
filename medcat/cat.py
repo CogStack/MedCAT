@@ -40,6 +40,7 @@ from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
 from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
+from medcat.stats.mctexport import count_all_annotations, iter_anns
 from medcat.utils.filters import set_project_filters
 from medcat.utils.usage_monitoring import UsageMonitor
 
@@ -808,7 +809,8 @@ class CAT(object):
                                    retain_extra_cui_filter: bool = False,
                                    checkpoint: Optional[Checkpoint] = None,
                                    retain_filters: bool = False,
-                                   is_resumed: bool = False) -> Tuple:
+                                   is_resumed: bool = False,
+                                   train_meta_cats: bool = False) -> Tuple:
         """
         Run supervised training on a dataset from MedCATtrainer in JSON format.
 
@@ -825,7 +827,7 @@ class CAT(object):
                                          devalue_others, use_groups, never_terminate,
                                          train_from_false_positives, extra_cui_filter,
                                          retain_extra_cui_filter, checkpoint,
-                                         retain_filters, is_resumed)
+                                         retain_filters, is_resumed, train_meta_cats)
 
     def train_supervised_raw(self,
                              data: Dict[str, List[Dict[str, dict]]],
@@ -845,7 +847,8 @@ class CAT(object):
                              retain_extra_cui_filter: bool = False,
                              checkpoint: Optional[Checkpoint] = None,
                              retain_filters: bool = False,
-                             is_resumed: bool = False) -> Tuple:
+                             is_resumed: bool = False,
+                             train_meta_cats: bool = False) -> Tuple:
         """Train supervised based on the raw data provided.
 
         The raw data is expected in the following format:
@@ -922,6 +925,8 @@ class CAT(object):
                 a ValueError is raised. The merging is done in the first epoch.
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
+            train_meta_cats (bool):
+                If True, also trains the appropriate MetaCATs.
 
         Raises:
             ValueError: If attempting to retain filters with while training over multiple projects.
@@ -1081,6 +1086,21 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
+        if (train_meta_cats and
+                # NOTE if no annnotaitons, no point
+                count_all_annotations(data) > 0):  # type: ignore
+            # NOTE: if there
+            logger.info("Training MetaCATs within train_supervised_raw")
+            _, _, ann0 = next(iter_anns(data))  # type: ignore
+            for meta_cat in self._meta_cats:
+                # only consider meta-cats that have been defined for the category
+                if 'meta_anns' in ann0:
+                    ann_names = ann0['meta_anns'].keys()  # type: ignore
+                    # adapt to alternative names if applicable
+                    cat_name = meta_cat.config.general.get_applicable_category_name(ann_names)
+                    if cat_name in ann_names:
+                        logger.debug("Training MetaCAT %s", meta_cat.config.general.category_name)
+                        meta_cat.train_raw(data)
 
         # reset the state of filters
         self.config.linking.filters = orig_filters

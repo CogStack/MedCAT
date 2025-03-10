@@ -243,18 +243,13 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name present
-        category_name = g_config['category_name']
-        category_name_options = g_config['alternative_category_names']
-        if category_name not in data:
-            category_matching = [cat for cat in category_name_options if cat in data.keys()]
-            if len(category_matching) > 0:
-                logger.info("The category name provided in the config - '%s' is not present in the data. However, the corresponding name - '%s' from the category_name_mapping has been found. Updating the category name...",category_name,*category_matching)
-                g_config['category_name'] = category_matching[0]
-                category_name = g_config['category_name']
-            else:
-                raise Exception(
-                    "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}. Additionally, ensure the populate the 'alternative_category_names' attribute to accommodate for variations.".format(
-                        category_name, " | ".join(list(data.keys()))))
+        category_name = g_config.get_applicable_category_name(data)
+        if category_name is None:
+            raise Exception(
+                "The category name does not exist in this json file. You've provided '{}', "
+                "while the possible options are: {}. Additionally, ensure the populate the "
+                "'alternative_category_names' attribute to accommodate for variations.".format(
+                    category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
         if data_oversampled:
@@ -344,8 +339,8 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name there
-        category_name = g_config['category_name']
-        if category_name not in data:
+        category_name = g_config.get_applicable_category_name(data)
+        if category_name is None:
             raise Exception("The category name does not exist in this json file.")
 
         data = data[category_name]
