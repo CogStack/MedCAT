@@ -2,7 +2,7 @@ import torch
 import logging
 import os
 import pickle
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 import numpy as np
 import random
 
@@ -240,7 +240,7 @@ def put_blanks(relation_data: List, blanking_threshold: float = 0.5) -> List:
     return blanked_relation
 
 
-def create_tokenizer_pretrain(tokenizer: TokenizerWrapperBERT | TokenizerWrapperLlama, tokenizer_path: str):
+def create_tokenizer_pretrain(tokenizer: Union[TokenizerWrapperBERT, TokenizerWrapperLlama], tokenizer_path: str):
     """ 
         This method simply adds the default special tokens that we ecounter.
 
@@ -257,7 +257,7 @@ def create_tokenizer_pretrain(tokenizer: TokenizerWrapperBERT | TokenizerWrapper
 
 
 # Used for creating data sets for pretraining
-def tokenize(relations_dataset: Series, tokenizer: TokenizerWrapperBERT | TokenizerWrapperLlama, mask_probability: float = 0.5) -> Tuple:
+def tokenize(relations_dataset: Series, tokenizer: Union[TokenizerWrapperBERT, TokenizerWrapperLlama], mask_probability: float = 0.5) -> Tuple:
     (tokens, span_1_pos, span_2_pos), ent1_text, ent2_text, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = relations_dataset
 
     cls_token = tokenizer.hf_tokenizers.cls_token

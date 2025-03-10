@@ -20,7 +20,7 @@ from medcat.pipeline.pipe_runner import PipeRunner
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT, TokenizerWrapperLlama, TokenizerWrapperModernBERT
 from transformers.models.llama import LlamaConfig
 from spacy.tokens import Doc, Span
-from typing import Dict, Iterable, Iterator, List, cast
+from typing import Dict, Iterable, Iterator, List, Union, cast
 from transformers import AutoTokenizer
 from torch.utils.data import DataLoader, Sampler
 from torch.optim import AdamW
@@ -93,9 +93,9 @@ class RelCAT(PipeRunner):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, cdb: CDB, tokenizer: TokenizerWrapperBERT | TokenizerWrapperModernBERT | TokenizerWrapperLlama, config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
+    def __init__(self, cdb: CDB, tokenizer: Union[TokenizerWrapperBERT, TokenizerWrapperModernBERT, TokenizerWrapperLlama], config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
         self.config = config
-        self.tokenizer: TokenizerWrapperBERT | TokenizerWrapperModernBERT | TokenizerWrapperLlama = tokenizer
+        self.tokenizer: Union[TokenizerWrapperBERT, TokenizerWrapperModernBERT, TokenizerWrapperLlama] = tokenizer
         self.cdb = cdb
 
         logging.basicConfig(level=self.config.general.log_level)
@@ -105,8 +105,8 @@ class RelCAT(PipeRunner):
         self.device = torch.device(
             "cuda" if self.is_cuda_available and self.config.general.device != "cpu" else "cpu")
 
-        self.model_config: BertConfig | ModernBertConfig | LlamaConfig
-        self.model: BertModel_RelationExtraction | LlamaModel_RelationExtraction | ModernBertModel_RelationExtraction | nn.Module
+        self.model_config: Union[BertConfig, ModernBertConfig, LlamaConfig]
+        self.model: Union[BertModel_RelationExtraction, LlamaModel_RelationExtraction, ModernBertModel_RelationExtraction]
         self.task: str = task
         self.checkpoint_path: str = "./"
         self.optimizer: AdamW = None # type: ignore
