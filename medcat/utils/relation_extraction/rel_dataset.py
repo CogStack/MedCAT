@@ -1,7 +1,7 @@
 from ast import literal_eval
 from typing import Any, Iterable, List, Dict, Tuple, Union
 from torch.utils.data import Dataset
-from spacy.tokens import Doc
+from spacy.tokens import Doc, Span
 import logging
 import pandas
 import random
@@ -9,7 +9,6 @@ import torch
 import traceback
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
-from medcat.utils.meta_cat.data_utils import Span
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT, TokenizerWrapperLlama, TokenizerWrapperModernBERT
 
 
@@ -206,14 +205,14 @@ class RelData(Dataset):
             "label_id", "ent1_type", "ent2_type", "ent1_id", "ent2_id", "ent1_cui", "ent2_cui", "doc_id", "sents"]
         """
 
-        text_length = len(text)
+        text_length:int = len(text)
 
-        doc_token_length = len(tokenized_text_data["tokens"])
+        doc_token_length: int = len(tokenized_text_data["tokens"])
 
         tmp_doc_text = text
 
-        ent1_token = tmp_doc_text[ent1_start_char_pos: ent1_end_char_pos]
-        ent2_token = tmp_doc_text[ent2_start_char_pos: ent2_end_char_pos]
+        ent1_token: str | Span = tmp_doc_text[ent1_start_char_pos: ent1_end_char_pos]
+        ent2_token: str | Span = tmp_doc_text[ent2_start_char_pos: ent2_end_char_pos]
 
         if abs(ent2_start_char_pos - ent1_start_char_pos) <= self.config.general.window_size and \
              ent1_token != ent2_token:
@@ -250,12 +249,12 @@ class RelData(Dataset):
                 annotation_token_text = self.tokenizer.hf_tokenizers.convert_ids_to_tokens(
                                         self.config.general.annotation_schema_tag_ids)
 
-                tmp_doc_text = _pre_e1 + " " + \
-                                                annotation_token_text[0] + " " + \
-                                                str(ent1_token) + " " + \
-                                                annotation_token_text[1] + " " + _e1_s2 + " " + \
-                                                annotation_token_text[2] + " " + str(ent2_token) + " " + \
-                                                annotation_token_text[3] + " " + _e2_end
+                tmp_doc_text = str(_pre_e1) + " " + \
+                                annotation_token_text[0] + " " + \
+                                str(ent1_token) + " " + \
+                                annotation_token_text[1] + " " + str(_e1_s2) + " " + \
+                                annotation_token_text[2] + " " + str(ent2_token) + " " + \
+                                annotation_token_text[3] + " " + str(_e2_end)
 
                 ann_tag_token_len = len(annotation_token_text[0])
 
@@ -293,9 +292,9 @@ class RelData(Dataset):
                     assert ent2_token_start_pos
                     assert _ent1_token_end_pos
                     assert _ent2_token_end_pos
-                except Exception:
+                except Exception as exception:
                     self.log.error("document id : " + str(doc_id) + " failed to process relation")
-                    self.log.info(traceback.print_exc())
+                    self.log.info(exception)
                     return []
 
             if not self.config.general.annotation_schema_tag_ids:
@@ -494,9 +493,9 @@ class RelData(Dataset):
         output_relations = []
 
         for project in data["projects"]:
-            for doc_id, document in enumerate(project["documents"]):
-                doc_text = str(document["text"])
-                doc_id = str(document["id"])
+            for _doc_id, document in enumerate(project["documents"]):
+                doc_text: str = str(document["text"])
+                doc_id: str = str(document["id"])
 
                 if len(doc_text) > 0:
                     annotations = document["annotations"]

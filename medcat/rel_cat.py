@@ -197,7 +197,7 @@ class RelCAT(PipeRunner):
                 os.path.join(load_path, "config.json")))
             cls.log.info("Loaded config.json")
 
-        tokenizer = None
+        tokenizer = TokenizerWrapperBERT()
         tokenizer_path = os.path.join(load_path, config.general.tokenizer_name)
 
         if "bert" in config.general.tokenizer_name or "llama" in config.general.tokenizer_name:

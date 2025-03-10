@@ -276,7 +276,7 @@ class ModernBertModel_RelationExtraction(nn.Module):
         Returns:
             torch.Tensor: classification probabilities for each token.
         """
-        new_pooled_output = []
+        new_pooled_output: torch.Tensor = torch.Tensor()
         if self.relcat_config.general.annotation_schema_tag_ids:
             annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
                                         range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
@@ -289,7 +289,6 @@ class ModernBertModel_RelationExtraction(nn.Module):
 
             seq_tags = torch.stack(seq_tags, dim=0)
 
-            #new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
             new_pooled_output = torch.cat((seq_tags[0], seq_tags[1]), dim=1)  # no pooling
         else:
             e1e2_output = []
