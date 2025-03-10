@@ -2,16 +2,19 @@ import os
 import shutil
 import unittest
 import json
+import logging
 
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.rel_cat import RelCAT
 from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.rel_dataset import RelData
 
 from transformers.models.auto.tokenization_auto import AutoTokenizer
 
 import spacy
 from spacy.tokens import Span, Doc
+
 
 class RelCATTests(unittest.TestCase):
 
@@ -24,6 +27,7 @@ class RelCATTests(unittest.TestCase):
         config.train.nclasses = 3
         config.model.hidden_size= 256
         config.model.model_size = 2304
+        config.general.log_level = logging.DEBUG
 
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=config.general.model_name,
@@ -58,12 +62,36 @@ class RelCATTests(unittest.TestCase):
         cls.finished = False
         cls.tokenizer = tokenizer
 
+    def test_dataset_relation_parser(self) -> None:
+
+        samples = [
+            "The [s1]45-year-old male[e1] was diagnosed with [s2]hypertension[e2] during his routine check-up.",
+            "The patient’s [s1]chest pain[e1] was associated with [s2]shortness of breath[e2].",
+            "[s1]Blood pressure[e1] readings of [s2]160/90 mmHg[e2] indicated possible hypertension.",
+            "His elevated [s1]blood glucose[e1] level of [s2]220 mg/dL[e2] raised concerns about his diabetes management.",
+            "The doctor recommended a [s1]cardiac enzyme test[e1] to assess the risk of [s2]myocardial infarction[e2].",
+            "The patient’s [s1]ECG[e1] showed signs of [s2]ischemia[e2]",
+            "To manage his [s1]hypertension[e1], the patient was advised to [s2]reduce salt intake[e2].",
+            "[s1]Increased physical activity[e1][s2]type 2 diabetes[e2]."
+        ]
+
+        rel_dataset = RelData(cdb=self.rel_cat.cdb, config=self.config_rel_cat, tokenizer=self.tokenizer)
+
+        rels = []
+
+        for idx in range(len(samples)):
+            tkns = self.tokenizer(samples[idx])["tokens"]
+            ent1_ent2_tokens_start_pos = (tkns.index("[s1]"), tkns.index("[s2]"))
+            rels.append(rel_dataset.create_base_relations_from_doc(samples[idx], idx,
+                                                              ent1_ent2_tokens_start_pos=ent1_ent2_tokens_start_pos))
+
+        assert len(rels) == len(samples)
+
+
     def test_train_csv_no_tags(self) -> None:
         self.rel_cat.config.train.epochs = 2
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
         self.rel_cat.save(self.save_model_path)
-
-
 
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path)
@@ -75,7 +103,6 @@ class RelCATTests(unittest.TestCase):
         self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
-
 
 
     def test_train_predict(self) -> None:
@@ -102,6 +129,7 @@ class RelCATTests(unittest.TestCase):
         self.finished = True
 
         assert len(doc._.relations) > 0
+
 
     def tearDown(self) -> None:
         if self.finished:
