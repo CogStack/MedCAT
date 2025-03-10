@@ -311,11 +311,11 @@ class RelCAT(PipeRunner):
                 model_config=model_config)
 
         if type(rel_cat.model) is ModernBertModel_RelationExtraction:
-            rel_cat.model.modernbert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
+            rel_cat.model.modernbert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
         elif type(rel_cat.model) is LlamaModel_RelationExtraction:
-            rel_cat.model.llama_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
+            rel_cat.model.llama_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
         else:
-            rel_cat.model.bert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
+            rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 
         rel_cat.optimizer = None # type: ignore
         rel_cat.scheduler = None # type: ignore
@@ -404,18 +404,26 @@ class RelCAT(PipeRunner):
         # to use stratified batching
         if self.config.train['stratified_batching']:
             sampler = BalancedBatchSampler(train_rel_data, [i for i in range(self.config.train.nclasses)],
-                                           batch_size, self.config.train['batching_samples_per_class'],self.config.train['batching_minority_limit'])
+                                           batch_size,
+                                           self.config.train['batching_samples_per_class'],
+                                           self.config.train['batching_minority_limit'])
 
             train_dataloader = DataLoader(train_rel_data,num_workers=0, collate_fn=self.padding_seq,
                                           batch_sampler=sampler,pin_memory=self.config.general.pin_memory)
         else:
-            train_dataloader = DataLoader(train_rel_data, batch_size=batch_size, shuffle=self.config.train.shuffle_data,
-                                          num_workers=0, collate_fn=self.padding_seq,
+            train_dataloader = DataLoader(train_rel_data, batch_size=batch_size,
+                                          shuffle=self.config.train.shuffle_data,
+                                          num_workers=0,
+                                          collate_fn=self.padding_seq,
                                           pin_memory=self.config.general.pin_memory)
+
         test_dataset_size = len(test_rel_data)
         test_batch_size = test_dataset_size if test_dataset_size < self.config.train.batch_size else self.config.train.batch_size
-        test_dataloader = DataLoader(test_rel_data, batch_size=test_batch_size, shuffle=self.config.train.shuffle_data,
-                                     num_workers=0, collate_fn=self.padding_seq,
+        test_dataloader = DataLoader(test_rel_data,
+                                     batch_size=test_batch_size,
+                                     shuffle=self.config.train.shuffle_data,
+                                     num_workers=0,
+                                     collate_fn=self.padding_seq,
                                      pin_memory=self.config.general.pin_memory)
 
         if self.config.train.class_weights is not None and self.config.train.enable_class_weights:
