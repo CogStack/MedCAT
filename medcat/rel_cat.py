@@ -81,7 +81,7 @@ class RelCAT(PipeRunner):
             a BERT-style model. For now, only BERT models are supported.
 
         config (ConfigRelCAT):
-            the configuration for RelCAT. Param descriptions available in ConfigRelCAT docs.
+            the configuration for RelCAT. Param descriptions available in ConfigRelCAT class docs.
 
         task (str, optional): What task is this model supposed to handle. Defaults to "train"
         init_model (bool, optional): loads default model. Defaults to False.
@@ -304,11 +304,11 @@ class RelCAT(PipeRunner):
             cls.log.error("%s", str(exception))
             cls.log.error("%s", traceback.format_exc())
 
-            #cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
-            #rel_cat.model = BertModel_RelationExtraction(
-            #    pretrained_model_name_or_path="bert-base-uncased",
-            #    relcat_config=config,
-            #    model_config=model_config)
+            cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
+            rel_cat.model = BertModel_RelationExtraction(
+                pretrained_model_name_or_path="bert-base-uncased",
+                relcat_config=config,
+                model_config=model_config)
 
         if type(rel_cat.model) is ModernBertModel_RelationExtraction:
             rel_cat.model.modernbert_model.resize_token_embeddings((len(tokenizer.hf_tokenizers)))
@@ -396,7 +396,7 @@ class RelCAT(PipeRunner):
             train_rel_data.dataset, test_rel_data.dataset = self._create_test_train_datasets(
                 train_rel_data.create_relations_from_export(export_data), split_sets=True)
         else:
-            raise ValueError("NO DATA HAS BEEN PROVIDED (JSON/CSV/spacy_DOCS)")
+            raise ValueError("NO DATA HAS BEEN PROVIDED (MedCAT Trainer export JSON/CSV/spacy_DOCS)")
 
         train_dataset_size = len(train_rel_data)
         batch_size = train_dataset_size if train_dataset_size < self.config.train.batch_size else self.config.train.batch_size
@@ -422,7 +422,9 @@ class RelCAT(PipeRunner):
             criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(numpy.asarray(self.config.train.class_weights)).to(self.device))
         elif self.config.train.enable_class_weights:
             all_class_lbl_ids = [rec[5] for rec in train_rel_data.dataset["output_relations"]]
-            self.config.train.class_weights = compute_class_weight(class_weight="balanced", classes=numpy.unique(all_class_lbl_ids), y=all_class_lbl_ids).tolist()
+            self.config.train.class_weights = compute_class_weight(class_weight="balanced",
+                                                                   classes=numpy.unique(all_class_lbl_ids),
+                                                                   y=all_class_lbl_ids).tolist()
             criterion = nn.CrossEntropyLoss(weight=torch.FloatTensor(self.config.train.class_weights).to(self.device))
         else:
             criterion = nn.CrossEntropyLoss()
@@ -449,8 +451,7 @@ class RelCAT(PipeRunner):
             self.config.train.nclasses = train_rel_data.dataset["nclasses"]
             self.model.relcat_config.train.nclasses = self.config.train.nclasses
 
-        self.config.general.labels2idx.update(
-            train_rel_data.dataset["labels2idx"])
+        self.config.general.labels2idx.update(train_rel_data.dataset["labels2idx"])
         self.config.general.idx2labels = {
             int(v): k for k, v in self.config.general["labels2idx"].items()}
 
@@ -589,6 +590,7 @@ class RelCAT(PipeRunner):
         for label in unique_labels:
             stat_per_label[label] = {
                 "tp": 0, "fp": 0, "tn": 0, "fn": 0, "f1": 0.0, "acc": 0.0, "prec": 0.0, "recall": 0.0}
+
             for true_label_idx in range(len(true_labels)):
                 if true_labels[true_label_idx] == label:
                     if pred_labels[true_label_idx] == label:
@@ -739,9 +741,11 @@ class RelCAT(PipeRunner):
 
         for doc_id, doc in enumerate(stream, 0):
             predict_rel_dataset.dataset, _ = self._create_test_train_datasets(
-                predict_rel_dataset.create_base_relations_from_doc(doc, str(doc_id)), False)
+                data=predict_rel_dataset.create_base_relations_from_doc(doc, doc_id=str(doc_id)),
+                split_sets=False)
 
-            predict_dataloader = DataLoader(predict_rel_dataset, shuffle=False, batch_size=self.config.train.batch_size,
+            predict_dataloader = DataLoader(dataset=predict_rel_dataset, shuffle=False,
+                                            batch_size=self.config.train.batch_size,
                                             num_workers=0, collate_fn=self.padding_seq,
                                             pin_memory=self.config.general.pin_memory)
 
