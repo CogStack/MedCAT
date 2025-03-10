@@ -776,8 +776,7 @@ class RelCAT(PipeRunner):
                             pred_rel_logits, dim=0).max(0)
                         predicted_label_id = str(confidence[1].item())
 
-
-                        doc._.relations.append({"relation": self.config.general.idx2labels[predicted_label_id],
+                        doc._.relations.append({"relation": self.config.general.idx2labels[int(predicted_label_id)],
                                                 "label_id": predicted_label_id,
                                                 "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][
                                                     2],

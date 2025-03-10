@@ -53,8 +53,8 @@ class General(MixingConfig, BaseModel):
     annotation_schema_tag_ids: List = []
     """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
     copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce"""
-    labels2idx: Dict = {}
-    idx2labels: Dict = {}
+    labels2idx: Dict[str, int] = {}
+    idx2labels: Dict[int, str] = {}
     pin_memory: bool = True
     seed: int = 13
     """The seed for random number generation."""
