@@ -23,6 +23,7 @@ def split_list_train_test_by_class(data: List, sample_limit: int = -1, test_size
     Args:
         data (List): "output_relations": relation_instances, <-- see create_base_relations_from_doc/csv
                     for data columns
+        sample_limit (int, optional): limit the number of samples per class, useful for dataset balancing . Defaults to -1.
         test_size (float): Defaults to 0.2.
         shuffle (bool): shuffle data randomly. Defaults to True.
 

@@ -192,8 +192,8 @@ class RelData(Dataset):
             ent2_start_char_pos (int): ent2 start char pos
             ent1_end_char_pos (int): ent1 end char pos
             ent2_end_char_pos (int): ent2 end char pos
-            ent1_token_start_pos (int, optional): ent1_token_start_pos. Defaults to -1.
-            ent2_token_start_pos (int, optional): ent2_token_start_pos. Defaults to -1.
+            ent1_token_start_pos (int): ent1_token_start_pos. Defaults to -1.
+            ent2_token_start_pos (int): ent2_token_start_pos. Defaults to -1.
             ent1_token_end_pos (int, optional): ent1_token_end_pos. Defaults to -1.
             ent2_token_end_pos (int, optional): ent2_token_end_pos. Defaults to -1.
             is_spacy_doc (bool, optional): checks if doc is spacy docs. Defaults to False.

@@ -174,7 +174,7 @@ class ModernBertModel_RelationExtraction(nn.Module):
                     this can be a HF model i.e: "bert-base-uncased", if left empty, it is normally assumed that a model is loaded from 'model.dat'
                     using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.
             relcat_config (ConfigRelCAT): relcat config.
-            model_config (BertConfig): HF bert config for model.
+            model_config (ModernBertConfig): HF bert config for model.
         """
         super(ModernBertModel_RelationExtraction, self).__init__()
 
@@ -268,7 +268,6 @@ class ModernBertModel_RelationExtraction(nn.Module):
         """
 
         Args:
-            pooled_output (torch.Tensor): embedding of the CLS token
             sequence_output (torch.Tensor): hidden states/embeddings for each token in the input text
             input_ids (torch.Tensor): input token ids.
             e1_e2_start (torch.Tensor): annotation tags token position
