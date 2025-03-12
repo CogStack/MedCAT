@@ -194,10 +194,10 @@ class RelData(Dataset):
             ent2_end_char_pos (int): ent2 end char pos
             ent1_token_start_pos (int): ent1_token_start_pos. Defaults to -1.
             ent2_token_start_pos (int): ent2_token_start_pos. Defaults to -1.
-            ent1_token_end_pos (int, optional): ent1_token_end_pos. Defaults to -1.
-            ent2_token_end_pos (int, optional): ent2_token_end_pos. Defaults to -1.
-            is_spacy_doc (bool, optional): checks if doc is spacy docs. Defaults to False.
-            is_mct_export (bool, optional): chekcs if doc is a mct export. Defaults to False.
+            ent1_token_end_pos (int): ent1_token_end_pos. Defaults to -1.
+            ent2_token_end_pos (int): ent2_token_end_pos. Defaults to -1.
+            is_spacy_doc (bool): checks if doc is spacy docs. Defaults to False.
+            is_mct_export (bool): chekcs if doc is a mct export. Defaults to False.
 
         Returns:
             List: row containing rel data ["relation_token_span_ids", "ent1_ent2_start", "ent1", "ent2", "label",
