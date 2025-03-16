@@ -138,15 +138,8 @@ class RelCAT(PipeRunner):
         self.tokenizer.save(os.path.join(save_path))
 
         assert self.model is not None
-        if type(self.model) is BertModel_RelationExtraction:
-            self.model.bert_model.resize_token_embeddings(
-                self.tokenizer.get_size())
-        elif type(self.model) is ModernBertModel_RelationExtraction:
-            self.model.modernbert_model.resize_token_embeddings(
-                self.tokenizer.get_size())
-        elif type(self.model) is LlamaModel_RelationExtraction:
-            self.model.llama_model.resize_token_embeddings(
-                self.tokenizer.get_size())
+        self.model.hf_model.resize_token_embeddings(
+            self.tokenizer.get_size())
 
         assert self.model_config is not None
         self.model_config.vocab_size = self.tokenizer.get_size()
@@ -310,12 +303,7 @@ class RelCAT(PipeRunner):
                 relcat_config=config,
                 model_config=model_config)
 
-        if type(rel_cat.model) is ModernBertModel_RelationExtraction:
-            rel_cat.model.modernbert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
-        elif type(rel_cat.model) is LlamaModel_RelationExtraction:
-            rel_cat.model.llama_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
-        else:
-            rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
+        rel_cat.model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
 
         rel_cat.optimizer = None # type: ignore
         rel_cat.scheduler = None # type: ignore
@@ -782,9 +770,9 @@ class RelCAT(PipeRunner):
 
                         confidence = torch.softmax(
                             pred_rel_logits, dim=0).max(0)
-                        predicted_label_id = str(confidence[1].item())
+                        predicted_label_id = int(confidence[1].item())
 
-                        doc._.relations.append({"relation": self.config.general.idx2labels[int(predicted_label_id)],
+                        doc._.relations.append({"relation": self.config.general.idx2labels[predicted_label_id],
                                                 "label_id": predicted_label_id,
                                                 "ent1_text": predict_rel_dataset.dataset["output_relations"][rel_idx][
                                                     2],

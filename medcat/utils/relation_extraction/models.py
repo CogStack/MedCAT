@@ -33,12 +33,12 @@ class BertModel_RelationExtraction(nn.Module):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: BertConfig = model_config
 
-        self.bert_model: BertModel = BertModel(config=model_config)
+        self.hf_model: BertModel = BertModel(config=model_config)
 
         if pretrained_model_name_or_path != "":
-            self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+            self.hf_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
 
-        for param in self.bert_model.parameters():
+        for param in self.hf_model.parameters():
             if self.relcat_config.model.freeze_layers:
                 param.requires_grad = False
             else:
@@ -141,9 +141,9 @@ class BertModel_RelationExtraction(nn.Module):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.bert_model = self.bert_model.to(self.relcat_config.general.device)
+        self.hf_model = self.hf_model.to(self.relcat_config.general.device)
 
-        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
+        model_output = self.hf_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
                                        encoder_hidden_states=encoder_hidden_states,
                                        encoder_attention_mask=encoder_attention_mask)
@@ -181,12 +181,12 @@ class ModernBertModel_RelationExtraction(nn.Module):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: ModernBertConfig = model_config
 
-        self.modernbert_model: ModernBertModel = ModernBertModel(config=model_config)
+        self.hf_model: ModernBertModel = ModernBertModel(config=model_config)
 
         if pretrained_model_name_or_path != "":
-            self.modernbert_model = ModernBertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+            self.hf_model = ModernBertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
 
-        for param in self.modernbert_model.parameters():
+        for param in self.hf_model.parameters():
             if self.relcat_config.model.freeze_layers:
                 param.requires_grad = False
             else:
@@ -276,7 +276,7 @@ class ModernBertModel_RelationExtraction(nn.Module):
             torch.Tensor: classification probabilities for each token.
         """
 
-        new_pooled_output: torch.Tensor = torch.empty()
+        new_pooled_output: torch.Tensor = torch.empty((1, 1))
 
         if self.relcat_config.general.annotation_schema_tag_ids:
             annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
@@ -351,8 +351,8 @@ class ModernBertModel_RelationExtraction(nn.Module):
         input_ids = input_ids.to(self.relcat_config.general.device)
         attention_mask = attention_mask.to(self.relcat_config.general.device)
 
-        self.modernbert_model = self.modernbert_model.to(self.relcat_config.general.device)
-        model_output = self.modernbert_model(input_ids=input_ids, attention_mask=attention_mask)
+        self.hf_model = self.hf_model.to(self.relcat_config.general.device)
+        model_output = self.hf_model(input_ids=input_ids, attention_mask=attention_mask)
 
         # (batch_size, sequence_length, hidden_size)
         sequence_output = model_output.last_hidden_state
@@ -388,12 +388,12 @@ class LlamaModel_RelationExtraction(nn.Module):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config = model_config
 
-        self.llama_model: LlamaModel = LlamaModel(config=model_config)
+        self.hf_model: LlamaModel = LlamaModel(config=model_config)
 
         if pretrained_model_name_or_path != "":
-            self.llama_model = LlamaModel.from_pretrained(pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True)
+            self.hf_model = LlamaModel.from_pretrained(pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True)
 
-        for param in self.llama_model.parameters():
+        for param in self.hf_model.parameters():
             param.requires_grad = False
 
         self.drop_out = nn.Dropout(self.relcat_config.model.dropout)
@@ -497,9 +497,9 @@ class LlamaModel_RelationExtraction(nn.Module):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.llama_model = self.llama_model.to(self.relcat_config.general.device)
+        self.hf_model = self.hf_model.to(self.relcat_config.general.device)
 
-        model_output = self.llama_model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
+        model_output = self.hf_model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
 
         # (batch_size, sequence_length, hidden_size)
         sequence_output = model_output.last_hidden_state

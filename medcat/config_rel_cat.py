@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, List, Tuple, Union
+from typing import Any, Dict, List, Tuple, Union
 from medcat.config import MixingConfig, BaseModel, Optional
 
 
@@ -53,14 +53,33 @@ class General(MixingConfig, BaseModel):
     annotation_schema_tag_ids: List = []
     """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
     copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce"""
+
     labels2idx: Dict[str, int] = {}
     idx2labels: Dict[int, str] = {}
+
     pin_memory: bool = True
+    """If True the data loader will copy the tensors to the GPU pinned memory"""
+
     seed: int = 13
-    """The seed for random number generation."""
+    """The seed for random number generation.
+
+    NB! For these changes to take effect, the pipe would need to be recreated."""
     task: str = "train"
     """The task for RelCAT."""
-    language: str= "en"
+
+    language: str = "en"
+    """Used for Spacy lang setting"""
+
+    @classmethod
+    def convert_keys_to_int(cls, value):
+        if isinstance(value, dict):
+            return {int(k): v for k, v in value.items()}
+        return value
+
+    def __setattr__(self, key: str, value: Any):
+        if key == "idx2labels" and isinstance(value, dict):
+            value = self.convert_keys_to_int(value)  # Ensure conversion
+        super().__setattr__(key, value)
 
 
 class Model(MixingConfig, BaseModel):

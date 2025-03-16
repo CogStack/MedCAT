@@ -161,7 +161,7 @@ class RelData(Dataset):
 
         # replace/update label_id with actual detected label number
         for idx in range(len(output_relations)):
-            output_relations[idx][5] = labels2idx[output_relations[idx][4]]
+            output_relations[idx][5] = int(labels2idx[output_relations[idx][4]])
 
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
@@ -661,11 +661,14 @@ class RelData(Dataset):
 
         # replace label_id with actual detected label number
         for idx in range(len(output_relations)):
-            output_relations[idx][5] = labels2idx[output_relations[idx][4]]
+            output_relations[idx][5] = int(labels2idx[output_relations[idx][4]])
 
         self.log.info("MCT export dataset | nclasses: " +
                       str(nclasses) + " | idx2label: " + str(idx2label))
         self.log.info("Samples per class: ")
+
+        self.log.error(str(idx2label))
+
         for label_num in list(idx2label.keys()):
             sample_count = 0
             for output_relation in output_relations:
@@ -677,7 +680,7 @@ class RelData(Dataset):
         return {"output_relations": output_relations, "nclasses": nclasses, "labels2idx": labels2idx, "idx2label": idx2label}
 
     @classmethod
-    def get_labels(cls, relation_labels: List[str], config: ConfigRelCAT) -> Tuple[int, Dict[str, Any], Dict[int, Any]]:
+    def get_labels(cls, relation_labels: List[str], config: ConfigRelCAT) -> Tuple[int, Dict[str, int], Dict[int, str]]:
         """ This is used to update labels in config with unencountered classes/labels ( if any are encountered during training).
 
         Args:
@@ -685,12 +688,12 @@ class RelData(Dataset):
             config (ConfigRelCAT): config
 
         Returns:
-            Any: _description_
+            Tuple[int, Dict[str, int], Dict[int, str]]: label count, labesl2idx mapping, idx2labels mapping
         """
         curr_class_id = 0
 
-        config_labels2idx: Dict = config.general.labels2idx
-        config_idx2labels: Dict = config.general.idx2labels
+        config_labels2idx: Dict[str, int] = config.general.labels2idx
+        config_idx2labels: Dict[int, str] = config.general.idx2labels
 
         relation_labels = [relation_label.strip()
                            for relation_label in relation_labels]
@@ -699,8 +702,8 @@ class RelData(Dataset):
             if relation_label not in config_labels2idx.keys():
                 while curr_class_id in [int(label_idx) for label_idx in config_idx2labels.keys()]:
                     curr_class_id += 1
-                config_labels2idx[relation_label] = curr_class_id
-                config_idx2labels[curr_class_id] = relation_label
+                config_labels2idx[relation_label] = int(curr_class_id)
+                config_idx2labels[int(curr_class_id)] = relation_label
 
         return len(config_labels2idx.keys()), config_labels2idx, config_idx2labels,
 
