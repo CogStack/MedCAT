@@ -57,7 +57,7 @@ class RelCATTests(unittest.TestCase):
         cls.config_rel_cat: ConfigRelCAT = config
         cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config, init_model=True)
 
-        cls.rel_cat.model.bert_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+        cls.rel_cat.model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 
         cls.finished = False
         cls.tokenizer = tokenizer
@@ -100,7 +100,7 @@ class RelCATTests(unittest.TestCase):
         self.rel_cat.config.train.test_size = 0.1
         self.rel_cat.config.train.nclasses = 3
         self.rel_cat.model.relcat_config.train.nclasses = 3
-        self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
+        self.rel_cat.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
 
@@ -123,7 +123,7 @@ class RelCATTests(unittest.TestCase):
             entity._.cui = ann["cui"]
             doc._.ents.append(entity)
 
-        self.rel_cat.model.bert_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
+        self.rel_cat.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         doc = self.rel_cat(doc)
         self.finished = True
