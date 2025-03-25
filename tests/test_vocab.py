@@ -47,7 +47,8 @@ class VocabUnigramTableTests(unittest.TestCase):
     NUM_SAMPLES = 20 # NOTE: 3, 9, 18, and 27 at a time are regular due to context vector sizes
     NUM_TIMES = 200
     # based on the counts on vocab_data.txt and the one set in setUpClass
-    EXPECTED_FREQUENCIES = [0.62218692, 0.32422858, 0.0535845]
+    # EXPECTED_FREQUENCIES = [0.62218692, 0.32422858, 0.0535845]
+    EXPECTED_FREQUENCIES = [0.04875, 0.316, 0.61075, 0.0245]
     TOLERANCE = 0.001
 
     @classmethod
@@ -55,6 +56,8 @@ class VocabUnigramTableTests(unittest.TestCase):
         cls.vocab = Vocab()
         cls.vocab.add_words(cls.EXAMPLE_DATA_PATH)
         cls.vocab.add_word("test", cnt=1310, vec=[1.42, 1.44, 1.55])
+        cls.vocab.add_word("vectorless", cnt=1234, vec=None)
+        cls.vocab.add_word("withvector", cnt=321, vec=[1.3, 1.2, 0.8])
         cls.vocab.make_unigram_table(table_size=cls.UNIGRAM_TABLE_SIZE)
 
     def setUp(self):
@@ -67,13 +70,26 @@ class VocabUnigramTableTests(unittest.TestCase):
             got = cls.vocab.get_negative_samples(cls.NUM_SAMPLES)
             c += Counter(got)
         total = sum(c[i] for i in c)
-        got_freqs = [c[i]/total for i in range(len(cls.EXPECTED_FREQUENCIES))]
+        got_freqs = [c[i]/total for i in c]
         return got_freqs
 
     def assert_accurate_enough(self, got_freqs: list[float]):
         self.assertTrue(
             np.max(np.abs(np.array(got_freqs) - self.EXPECTED_FREQUENCIES)) < self.TOLERANCE
         )
+
+    def test_does_not_include_vectorless_indices(self, num_samples: int = 100):
+        inds = self.vocab.get_negative_samples(num_samples)
+        for index in inds:
+            with self.subTest(f"Index: {index}"):
+                # in the right list
+                self.assertIn(index, self.vocab.vec_index2word)
+                word = self.vocab.vec_index2word[index]
+                info = self.vocab.vocab[word]
+                # the info has vector
+                self.assertIn("vec", info)
+                # the vector is an array or a list
+                self.assertIsInstance(self.vocab.vec(word), (np.ndarray, list),)
 
     def test_negative_sampling(self):
         got_freqs = self._get_freqs()
