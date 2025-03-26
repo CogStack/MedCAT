@@ -43,12 +43,16 @@ class VocabUnigramTableTests(unittest.TestCase):
                                      "..", "examples", "vocab_data.txt")
     UNIGRAM_TABLE_SIZE = 10_000
     # found that this seed had the closest frequency at the sample size we're at
-    RANDOM_SEED = 4976
+    RANDOM_SEED = 32
     NUM_SAMPLES = 20 # NOTE: 3, 9, 18, and 27 at a time are regular due to context vector sizes
     NUM_TIMES = 200
-    # based on the counts on vocab_data.txt and the one set in setUpClass
-    # EXPECTED_FREQUENCIES = [0.62218692, 0.32422858, 0.0535845]
-    EXPECTED_FREQUENCIES = [0.04875, 0.316, 0.61075, 0.0245]
+    # based on the counts on vocab_data.txt and the ones set in setUpClass
+    # plus the power of 3/4
+    EXPECTED_FREQUENCIES = {
+        0: 0.61078822, 1: 0.3182886,
+        2: 0.05260281,
+        # NOTE: no 3 since that's got no vectors
+        4: 0.01832037}
     TOLERANCE = 0.001
 
     @classmethod
@@ -64,19 +68,29 @@ class VocabUnigramTableTests(unittest.TestCase):
         np.random.seed(self.RANDOM_SEED)
 
     @classmethod
-    def _get_freqs(cls) -> list[float]:
+    def _get_freqs(cls) -> dict[int, float]:
         c = Counter()
         for _ in range(cls.NUM_TIMES):
             got = cls.vocab.get_negative_samples(cls.NUM_SAMPLES)
             c += Counter(got)
-        total = sum(c[i] for i in c)
-        got_freqs = [c[i]/total for i in c]
+        total = c.total()
+        got_freqs = {index: val/total for index, val in c.items()}
         return got_freqs
 
-    def assert_accurate_enough(self, got_freqs: list[float]):
+    @classmethod
+    def _get_abs_max_diff(cls, dict1: dict[int, float],
+                          dict2: dict[int, float]):
+        assert dict1.keys() == dict2.keys()
+        vals1, vals2 = [], []
+        for index in dict1:
+            vals1.append(dict1[index])
+            vals2.append(dict2[index])
+        return np.max(np.abs(np.array(vals1) - np.array(vals2)))
+
+    def assert_accurate_enough(self, got_freqs: dict[int, float]):
+        self.assertEqual(got_freqs.keys(), self.EXPECTED_FREQUENCIES.keys())
         self.assertTrue(
-            np.max(np.abs(np.array(got_freqs) - self.EXPECTED_FREQUENCIES)) < self.TOLERANCE
-        )
+            self._get_abs_max_diff(self.EXPECTED_FREQUENCIES, got_freqs) < self.TOLERANCE)
 
     def test_does_not_include_vectorless_indices(self, num_samples: int = 100):
         inds = self.vocab.get_negative_samples(num_samples)
