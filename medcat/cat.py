@@ -210,8 +210,12 @@ class CAT(object):
         else:
             return json.dumps(card, indent=2, sort_keys=False)
 
-    def _versioning(self, force_rehash: bool = False):
+    def _versioning(self, force_rehash: bool = False,
+                    change_description: Optional[str] = None):
         # Check version info and do not allow without it
+        date_today = date.today().strftime("%d %B %Y")
+        if change_description is not None:
+            self.config.version.description += f"\n[{date_today}] {change_description}"
         if self.config.version.description == 'No description':
             logger.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
 
@@ -222,14 +226,17 @@ class CAT(object):
             if version.id is not None:
                 version.history.append(version['id'])
             version.id = m
-            version.last_modified = date.today().strftime("%d %B %Y")
+            version.last_modified = date_today
             version.cdb_info = self.cdb.make_stats()
             version.meta_cats = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version.medcat_version = __version__
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False,
-            cdb_format: str = 'dill') -> str:
+    def create_model_pack(self, save_dir_path: str,
+                          model_pack_name: str = DEFAULT_MODEL_PACK_NAME,
+                          force_rehash: bool = False,
+                          change_description: Optional[str] = None,
+                          cdb_format: str = 'dill') -> str:
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
@@ -240,6 +247,8 @@ class CAT(object):
                 The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
             force_rehash (bool):
                 Force recalculation of hash. Defaults to `False`.
+            change_description (Optional[str]):
+                The description of the change due to which a save is required. Defaults to None.
             cdb_format (str):
                 The format of the saved CDB in the model pack.
                 The available formats are:
@@ -254,7 +263,7 @@ class CAT(object):
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
         # Versioning
-        self._versioning(force_rehash)
+        self._versioning(force_rehash, change_description)
         model_pack_name += "_{}".format(self.config.version.id)
 
         logger.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
