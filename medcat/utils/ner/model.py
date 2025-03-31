@@ -47,7 +47,7 @@ class NerModel:
         """Evaluate the underlying transformers NER model.
 
         All the extra arguments are passed to the TransformersNER eval method.
-        
+
         Args:
             json_path (Union[str, list, None]): The JSON file path to read the training data from.
             train_nr (int): The number of the NER object in cat._addl_train to train. Defaults to 0.
