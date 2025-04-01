@@ -814,7 +814,9 @@ def prepare_from_json_chars(data: Dict,
     return out_data
 
 
-def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
+def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2,
+                       min_test_count: int = 10,
+                       max_test_fraction: float = 0.3) -> Tuple:
     """Make train set.
 
     This is a disaster.
@@ -823,6 +825,10 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
         data (Dict): The data.
         cdb (CDB): The concept database.
         test_size (float): The test size. Defaults to 0.2.
+        min_test_count (int): The minimum numer of examples of a concepts
+            for it to be considered for the test set. Defaults to 10.
+        max_test_fraction (float): The maximum fraction of a concept
+            in the test set. Defaults to 0.3
 
     Returns:
         Tuple: The train set, the test set, the test annotations, and the total annotations
@@ -912,14 +918,17 @@ def make_mc_train_test(data: Dict, cdb: CDB, test_size: float = 0.2) -> Tuple:
 
 
             # Did we get more than 30% of concepts for any CUI with >=10 cnt
-            is_test = True
-            for cui, v in _cnts.items():
-                if (v + test_cnts.get(cui, 0)) / cnts[cui] > 0.3:
-                    if cnts[cui] >= 10:
-                        # We only care for concepts if count >= 10, else they will be ignored
-                        #during the test phase (for all metrics and similar)
-                        is_test = False
-                        break
+            # NOTE: This implementation is true to the INTENT of the previous one
+            #       but the previous one would act quite a bit differently since
+            #       the logic was flawed. The previous implementation guaranteed
+            #       any document with only rare concepts (i.e ones with fewer than 10
+            #       examples across the entire dataset) would get a chance to be
+            #       included in the test set (as long as the test size wasn't met)
+            is_test = any(
+                cnts[cui] >= min_test_count and
+                (v + test_cnts.get(cui, 0)) / cnts[cui] < max_test_fraction
+                for cui, v in _cnts.items()
+            )
 
             # Add to test set
             if is_test and np.random.rand() < test_prob:
