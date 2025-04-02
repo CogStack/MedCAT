@@ -304,7 +304,7 @@ class TransformersNER(object):
         p = trainer.predict(encoded_dataset) # type: ignore
         df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer, dataset=encoded_dataset)
 
-        return df, examples
+        return df, examples, dataset
 
     def save(self, save_dir_path: str) -> None:
         """Save all components of this class to a file

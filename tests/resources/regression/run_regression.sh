@@ -14,6 +14,10 @@ echo "$output"
 model_path=$(echo "$output" | tail -n 1)
 # NOTE: this file should be tagged with the python version we're using
 
+# test the vocab to make sure it's all good
+python tests/resources/regression/test_vocab.py
+# TODO: test other things as well?
+
 # run the regression_checker with the captured file path
 # if any of the regression cases fail, this will return a non-zero exit status
 python -m medcat.utils.regression.regression_checker \
