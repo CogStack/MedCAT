@@ -1,5 +1,4 @@
 import os
-from abc import abstractmethod
 from transformers import PretrainedConfig
 from transformers import BertConfig
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
@@ -25,15 +24,12 @@ class TokenizerWrapperBERT(BaseTokenizerWrapper):
     name = 'bert-tokenizer'
     pretrained_model_name_or_path = "bert-base-uncased"
 
-    @abstractmethod
     def config_from_pretrained(self) -> PretrainedConfig:
         return BertConfig.from_pretrained(self.pretrained_model_name_or_path)
 
-    @abstractmethod
     def config_from_json_file(self, file_path: str) -> PretrainedConfig:
         return BertConfig.from_json_file(file_path)
 
-    @abstractmethod
     def model_from_pretrained(self, relcat_config: ConfigRelCAT, model_config: PretrainedConfig,
             pretrained_model_name_or_path: str = 'default') -> Base_RelationExtraction:
         if pretrained_model_name_or_path == 'default':

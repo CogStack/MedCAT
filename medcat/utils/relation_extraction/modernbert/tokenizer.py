@@ -1,5 +1,4 @@
 import os
-from abc import abstractmethod
 from transformers import PretrainedConfig
 from transformers import ModernBertConfig
 from transformers import PreTrainedTokenizerFast
@@ -25,15 +24,12 @@ class TokenizerWrapperModernBERT(BaseTokenizerWrapper):
     name = 'modern-bert-tokenizer'
     pretrained_model_name_or_path = "answerdotai/ModernBERT-base"
 
-    @abstractmethod
     def config_from_pretrained(self) -> PretrainedConfig:
         return ModernBertConfig.from_pretrained(self.pretrained_model_name_or_path)
 
-    @abstractmethod
     def config_from_json_file(self, file_path: str) -> PretrainedConfig:
         return ModernBertConfig.from_json_file(file_path)
 
-    @abstractmethod
     def model_from_pretrained(self, relcat_config: ConfigRelCAT, model_config: PretrainedConfig,
             pretrained_model_name_or_path: str = 'default') -> Base_RelationExtraction:
         if pretrained_model_name_or_path == 'default':

@@ -1,5 +1,4 @@
 import os
-from abc import abstractmethod
 from typing import Optional
 from transformers import PretrainedConfig
 from transformers.models.llama import LlamaConfig
@@ -26,15 +25,12 @@ class TokenizerWrapperLlama(BaseTokenizerWrapper):
     name = 'llama-tokenizer'
     pretrained_model_name_or_path = "meta-llama/Llama-3.1-8B"
 
-    @abstractmethod
     def config_from_pretrained(self) -> PretrainedConfig:
         pass # perhaps some doc string
 
-    @abstractmethod
     def config_from_json_file(self, file_path: str) -> PretrainedConfig:
         return LlamaConfig.from_json_file(file_path)
 
-    @abstractmethod
     def model_from_pretrained(self, relcat_config: ConfigRelCAT, model_config: PretrainedConfig,
             pretrained_model_name_or_path: str = 'default') -> Base_RelationExtraction:
         if pretrained_model_name_or_path == 'default':
