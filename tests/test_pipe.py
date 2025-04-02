@@ -13,7 +13,7 @@ from medcat.utils.normalizers import BasicSpellChecker, TokenNormalizer
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT as RelTokenizerWrapperBERT
+from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT as RelTokenizerWrapperBERT
 from transformers import AutoTokenizer
 
 
