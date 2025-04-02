@@ -8,7 +8,6 @@ import logging
 
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.models import Base_RelationExtraction
-from medcat.utils.relation_extraction.ml_utils import create_tokenizer_pretrain
 
 
 logger = logging.getLogger(__name__)
@@ -100,6 +99,8 @@ def load_tokenizer(tokenizer_path: str,
                                             max_seq_length=config.general.max_seq_length,
                                             add_special_tokens=config.general.tokenizer_special_tokens
                                             )
+        # import dynamically, only if needed
+        from medcat.utils.relation_extraction.ml_utils import create_tokenizer_pretrain
         return create_tokenizer_pretrain(tokenizer, tokenizer_path)
     else:
         logger.info("Attempted to load Tokenizer from path:" + tokenizer_path +
