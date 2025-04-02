@@ -1,5 +1,5 @@
 import logging
-from typing import Any, List, Optional, Tuple
+from typing import Any, List, Optional, Tuple, Union
 import torch
 from torch import nn
 from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
@@ -10,7 +10,12 @@ from transformers.models.llama import LlamaModel, LlamaConfig
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
 
 
-class BertModel_RelationExtraction(nn.Module):
+class Base_RelationExtraction(nn.Module):
+
+    hf_model: Union[BertModel, ModernBertModel, LlamaModel]
+
+
+class BertModel_RelationExtraction(Base_RelationExtraction):
     """ BertModel class for RelCAT
     """
 
@@ -158,7 +163,7 @@ class BertModel_RelationExtraction(nn.Module):
         return model_output, classification_logits.to(self.relcat_config.general.device)
 
 
-class ModernBertModel_RelationExtraction(nn.Module):
+class ModernBertModel_RelationExtraction(Base_RelationExtraction):
     """ ModernBertModel class for RelCAT
     """
 
@@ -364,7 +369,7 @@ class ModernBertModel_RelationExtraction(nn.Module):
 
 
 
-class LlamaModel_RelationExtraction(nn.Module):
+class LlamaModel_RelationExtraction(Base_RelationExtraction):
     """ LlamaModel class for RelCAT
     """
 
