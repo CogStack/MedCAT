@@ -9,7 +9,8 @@ import random
 from pandas.core.series import Series
 from medcat.config_rel_cat import ConfigRelCAT
 
-from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT, TokenizerWrapperLlama
+from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.llama.tokenizer import TokenizerWrapperLlama
 
 from torch import nn
 

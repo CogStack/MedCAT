@@ -8,7 +8,9 @@ import random
 import torch
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
-from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT, TokenizerWrapperLlama, TokenizerWrapperModernBERT
+from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.llama.tokenizer import TokenizerWrapperLlama
+from medcat.utils.relation_extraction.modernbert.tokenizer import TokenizerWrapperModernBERT
 
 
 class RelData(Dataset):
