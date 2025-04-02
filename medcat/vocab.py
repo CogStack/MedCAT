@@ -190,8 +190,19 @@ class Vocab(object):
                            "the creation of a massive array. So therefore, there "
                            "is no need to pass the `table_size` parameter anymore.")
         freqs = []
-        for word in self.vec_index2word.values():
+        # index list maps the slot in which a word index
+        # sits in vec_index2word to the actual index for said word
+        # e.g:
+        #    if we have words indexed 0, 1, and 2
+        #    but only 0, and 2 have corresponding vectors
+        #    then only 0 and 2 will occur in vec_index2word
+        #    and while 0 will be in the 0th position (as expected)
+        #    in the final probability list, 2 will be in 1st position
+        #    so we need to mark that conversion down
+        index_list = []
+        for word_index, word in self.vec_index2word.items():
             freqs.append(self[word])
+            index_list.append(word_index)
 
         # Power and normalize frequencies
         freqs = np.array(freqs) ** (3/4)
@@ -199,6 +210,8 @@ class Vocab(object):
 
         # Calculate cumulative probabilities
         self.cum_probs = np.cumsum(freqs)
+        # the mapping from vector index order to word indices
+        self._index_list = index_list
 
     def get_negative_samples(self, n: int = 6, ignore_punct_and_num: bool = False) -> List[int]:
         """Get N negative samples.
@@ -216,8 +229,11 @@ class Vocab(object):
         if len(self.cum_probs) == 0:
             self.make_unigram_table()
         random_vals = np.random.rand(n)
-        # NOTE: there's a change in numpy
-        inds = cast(List[int], np.searchsorted(self.cum_probs, random_vals).tolist())
+        # NOTE: These indices are in terms of the cum_probs array
+        #       which only has word data for words with vectors.
+        vec_slots = cast(List[int], np.searchsorted(self.cum_probs, random_vals).tolist())
+        # so we need to translate these back to word indices
+        inds = list(map(self._index_list.__getitem__, vec_slots))
 
         if ignore_punct_and_num:
             # Do not return anything that does not have letters in it
