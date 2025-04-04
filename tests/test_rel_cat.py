@@ -8,6 +8,7 @@ from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.rel_cat import RelCAT
 from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.bert.component import BertComponent
 from medcat.utils.relation_extraction.rel_dataset import RelData
 
 from transformers.models.auto.tokenization_auto import AutoTokenizer
@@ -32,6 +33,7 @@ class RelCATTests(unittest.TestCase):
         tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=config.general.model_name,
             config=config), add_special_tokens=True)
+        cls.base_comp = BertComponent(config.general.model_name, config, tokenizer=tokenizer)
 
         SPEC_TAGS = ["[s1]", "[e1]", "[s2]", "[e2]"]
 
@@ -55,7 +57,8 @@ class RelCATTests(unittest.TestCase):
             cls.mct_file_test = json.loads(f.read())["projects"][0]["documents"][1]
 
         cls.config_rel_cat: ConfigRelCAT = config
-        cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config, init_model=True)
+        cls.rel_cat: RelCAT = RelCAT(cdb, base_component=cls.base_comp,
+                                     tokenizer=tokenizer, config=config, init_model=True)
 
         cls.rel_cat.model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 

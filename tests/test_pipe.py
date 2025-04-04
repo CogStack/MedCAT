@@ -7,6 +7,7 @@ from medcat.config import Config
 from medcat.pipe import Pipe
 from medcat.meta_cat import MetaCAT
 from medcat.rel_cat import RelCAT
+from medcat.config_rel_cat import ConfigRelCAT
 from medcat.preprocessing.taggers import tag_skip_and_punct
 from medcat.preprocessing.tokenizers import spacy_split_all
 from medcat.utils.normalizers import BasicSpellChecker, TokenNormalizer
@@ -14,6 +15,7 @@ from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
 from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT as RelTokenizerWrapperBERT
+from medcat.utils.relation_extraction.bert.component import BertComponent
 from transformers import AutoTokenizer
 
 
@@ -42,10 +44,12 @@ class PipeTests(unittest.TestCase):
         cls.ner = NER(cls.cdb, cls.config)
         cls.linker = Linker(cls.cdb, cls.vocab, cls.config)
 
+        cls.config_rel_cat = ConfigRelCAT()
         _tokenizer = TokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
         _tokenizer_rel = RelTokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
+        cls.rel_cat_base_comp = BertComponent("bert-base-uncased", cls.config_rel_cat, tokenizer=_tokenizer_rel)
         cls.meta_cat = MetaCAT(tokenizer=_tokenizer)
-        cls.rel_cat = RelCAT(cls.cdb, tokenizer=_tokenizer_rel, init_model=True)
+        cls.rel_cat = RelCAT(cls.cdb, base_component=cls.rel_cat_base_comp, tokenizer=_tokenizer_rel, init_model=True)
 
         cls.text = "stop of CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)
@@ -160,6 +164,7 @@ class PipeTests(unittest.TestCase):
         self.assertEqual(PipeTests.text, docs[0].text)
         self.assertIsNone(docs[1])
         self.assertEqual(PipeTests.text, docs[2].text)
+
 
 def _error_handler(proc_name, proc, docs, e):
     print("Exception raised when when applying component {}".format(proc_name))

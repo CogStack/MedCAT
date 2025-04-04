@@ -17,7 +17,8 @@ from medcat.cdb import CDB
 from medcat.config import Config
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
-from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper, load_tokenizer
+from medcat.utils.relation_extraction.base_component import load_base_component, BaseComponent
+from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper
 from spacy.tokens import Doc, Span
 from typing import Dict, Iterable, Iterator, List, cast
 from torch.utils.data import DataLoader, Sampler
@@ -91,8 +92,13 @@ class RelCAT(PipeRunner):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, cdb: CDB, tokenizer: BaseTokenizerWrapper, config: ConfigRelCAT = ConfigRelCAT(), task="train", init_model=False):
+    def __init__(self, cdb: CDB,
+                 base_component: BaseComponent,
+                 tokenizer: BaseTokenizerWrapper,
+                 config: ConfigRelCAT = ConfigRelCAT(),
+                 task="train", init_model=False):
         self.config = config
+        self.base_component = base_component
         self.tokenizer: BaseTokenizerWrapper = tokenizer
         self.cdb = cdb
 
@@ -154,8 +160,8 @@ class RelCAT(PipeRunner):
 
         """ Used only for model initialisation.
         """
-        self.model_config = self.tokenizer.config_from_pretrained()
-        self.model = self.tokenizer.model_from_pretrained(relcat_config=self.config,
+        self.model_config = self.base_component.config_from_pretrained()
+        self.model = self.base_component.model_from_pretrained(relcat_config=self.config,
                                                           model_config=self.model_config)
 
     @classmethod
@@ -182,20 +188,22 @@ class RelCAT(PipeRunner):
         if "bert" in config.general.tokenizer_name or "llama" in config.general.tokenizer_name:
             tokenizer_path = load_path
 
-        tokenizer = load_tokenizer(tokenizer_path, config)
+        base_component = load_base_component(tokenizer_path, config)
+        tokenizer = base_component.tokenizer
 
         model_config_path = os.path.join(load_path, "model_config.json")
 
         if os.path.exists(model_config_path):
-            model_config = tokenizer.config_from_json_file(model_config_path)
+            model_config = base_component.config_from_json_file(model_config_path)
             cls.log.info("Loaded config from : " + model_config_path)
         else:
             cls.log.info("model_config.json not found, using default for the model")
-            model_config = tokenizer.config_from_pretrained()
+            model_config = base_component.config_from_pretrained()
 
         model_config.vocab_size = tokenizer.get_size()
 
         rel_cat = cls(cdb=cdb, config=config,
+                      base_component=base_component,
                       tokenizer=tokenizer,
                       task=config.general.task)
 
@@ -209,10 +217,11 @@ class RelCAT(PipeRunner):
 
             if os.path.exists(os.path.join(load_path, config.general.model_name)):
                 # NOTE: should it be the joined path? it wasn't previously
-                rel_cat.model = tokenizer.model_from_pretrained(relcat_config=config, model_config=model_config,
-                                                                pretrained_model_name_or_path=config.general.model_name)
+                rel_cat.model = base_component.model_from_pretrained(
+                    relcat_config=config, model_config=model_config,
+                    pretrained_model_name_or_path=config.general.model_name)
             else:
-                rel_cat.model = tokenizer.model_from_pretrained(
+                rel_cat.model = base_component.model_from_pretrained(
                     pretrained_model_name_or_path='',
                     relcat_config=config,
                     model_config=model_config)
@@ -228,7 +237,7 @@ class RelCAT(PipeRunner):
 
             cls.log.error("Failed to load specified HF model, defaulting to 'bert-base-uncased', loading...")
             # NOTE: this won't really work for Llama or ModernBert, I've got a feeling
-            rel_cat.model = tokenizer.model_from_pretrained(
+            rel_cat.model = base_component.model_from_pretrained(
                 pretrained_model_name_or_path="bert-base-uncased",
                 relcat_config=config,
                 model_config=model_config)

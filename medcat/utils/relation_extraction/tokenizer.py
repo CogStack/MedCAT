@@ -1,37 +1,21 @@
 import os
-from abc import ABC, abstractmethod
 from typing import Optional
-from transformers import PretrainedConfig
 from transformers import AutoTokenizer
 from transformers import PreTrainedTokenizerFast
 import logging
 
 from medcat.config_rel_cat import ConfigRelCAT
-from medcat.utils.relation_extraction.models import Base_RelationExtraction
 
 
 logger = logging.getLogger(__name__)
 
 
-class BaseTokenizerWrapper(PreTrainedTokenizerFast, ABC):
+class BaseTokenizerWrapper(PreTrainedTokenizerFast):
 
     def __init__(self, hf_tokenizers=None, max_seq_length: Optional[int] = None, add_special_tokens: Optional[bool] = False):
         self.hf_tokenizers = hf_tokenizers
         self.max_seq_length = max_seq_length
         self.add_special_tokens = add_special_tokens
-
-    @abstractmethod
-    def config_from_pretrained(self) -> PretrainedConfig:
-        pass # perhaps some doc string
-
-    @abstractmethod
-    def config_from_json_file(self, file_path: str) -> PretrainedConfig:
-        pass # perhaps some doc string
-
-    @abstractmethod
-    def model_from_pretrained(self, relcat_config: ConfigRelCAT, model_config: PretrainedConfig,
-            pretrained_model_name_or_path: str = 'default') -> Base_RelationExtraction:
-        pass # perhaps some doc string
 
     def get_size(self):
         return len(self.hf_tokenizers.vocab)
@@ -77,21 +61,9 @@ class BaseTokenizerWrapper(PreTrainedTokenizerFast, ABC):
         self.hf_tokenizers.save_pretrained(path)
 
 
-def load_tokenizer(tokenizer_path: str,
-                   config: ConfigRelCAT) -> BaseTokenizerWrapper:
-    if os.path.exists(tokenizer_path):
-        if "modern-bert-tokenizer" in config.general.tokenizer_name:
-            from medcat.utils.relation_extraction.modernbert.tokenizer import TokenizerWrapperModernBERT
-            tokenizer = TokenizerWrapperModernBERT.load(tokenizer_path)
-        elif "bert" in config.general.tokenizer_name:
-            from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT
-            tokenizer = TokenizerWrapperBERT.load(tokenizer_path)
-        elif "llama" in config.general.tokenizer_name:
-            from medcat.utils.relation_extraction.llama.tokenizer import TokenizerWrapperLlama
-            tokenizer = TokenizerWrapperLlama.load(tokenizer_path)
-        logger.info("Tokenizer loaded " + str(tokenizer.__class__.__name__) + " from:" + tokenizer_path)
-        return tokenizer
-    elif config.general.model_name:
+def load_default_tokenizer(tokenizer_path: str,
+                           config: ConfigRelCAT) -> BaseTokenizerWrapper:
+    if config.general.model_name:
         logger.info("Attempted to load Tokenizer from path:" + tokenizer_path +
                 ", but it doesn't exist, loading default toknizer from model_name config.general.model_name:" + config.general.model_name)
         from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT
