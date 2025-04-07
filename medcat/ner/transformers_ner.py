@@ -177,7 +177,7 @@ class TransformersNER(object):
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
-              trainer_callbacks: Optional[List[TrainerCallback]]=None) -> Tuple:
+              trainer_callbacks: Optional[List[Callable[[Trainer], TrainerCallback]]] = None) -> Tuple:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -189,7 +189,7 @@ class TransformersNER(object):
                 labels that did not exist in the old model.
             dataset: Defaults to None.
             meta_requirements: Defaults to None
-            trainer_callbacks (List[TrainerCallback]):
+            trainer_callbacks (List[Callable[[Trainer], TrainerCallback]]]):
                 A list of trainer callbacks for collecting metrics during the training at the client side. The
                 transformers Trainer object will be passed in when each callback is called.
 
