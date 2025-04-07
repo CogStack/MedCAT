@@ -193,6 +193,9 @@ class TransformersNER(object):
                 A list of trainer callbacks for collecting metrics during the training at the client side. The
                 transformers Trainer object will be passed in when each callback is called.
 
+        Raises:
+            ValueError: If something went wrong with model save path.
+
         Returns:
             Tuple: The dataframe, examples, and the dataset
         """
