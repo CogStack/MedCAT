@@ -9,7 +9,7 @@ import random
 from pandas.core.series import Series
 from medcat.config_rel_cat import ConfigRelCAT
 
-from medcat.preprocessing.tokenizers import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT
 from medcat.utils.relation_extraction.models import BertModel_RelationExtraction
 
 
