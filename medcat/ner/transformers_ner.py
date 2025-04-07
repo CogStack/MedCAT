@@ -255,7 +255,9 @@ class TransformersNER(object):
                 tokenizer=None)
         if trainer_callbacks:
             for callback in trainer_callbacks:
-                trainer.add_callback(callback(trainer))
+                # No idea why mypy isn't picking up the method.
+                # It most certainly does exist
+                trainer.add_callback(callback(trainer))  # type: ignore
 
         trainer.train() # type: ignore
 
