@@ -202,7 +202,8 @@ class BertModel_RelationExtraction(nn.Module):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.bert_model = self.bert_model.to(self.relcat_config.general.device)
+        # NOTE: no idea why, but mypy doesn't understand that there's an implicit `self` argument here...
+        self.bert_model = self.bert_model.to(device=self.relcat_config.general.device)  # type: ignore
 
         model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
