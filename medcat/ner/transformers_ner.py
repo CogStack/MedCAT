@@ -265,7 +265,11 @@ class TransformersNER(object):
         self.config.general.last_train_on = datetime.now().timestamp() # type: ignore
 
         # Save everything
-        self.save(save_dir_path=os.path.join(self.training_arguments.output_dir, 'final_model'))
+        output_dir = self.training_arguments.output_dir
+        if output_dir is None:
+            # NOTE: this shouldn't really happen, but we'll do this for type safety
+            raise ValueError("Output path should not be None!")
+        self.save(save_dir_path=os.path.join(output_dir, 'final_model'))
 
         # Run an eval step and return metrics
         p = trainer.predict(encoded_dataset['test']) # type: ignore
