@@ -70,7 +70,8 @@ class TransformersNER(object):
                 eval_accumulation_steps=1,
                 gradient_accumulation_steps=4, # We want to get to bs=4
                 do_eval=True,
-                evaluation_strategy='epoch', # type: ignore
+                # eval_strategy over evaluation_strategy since trf==4.46 (apperently)
+                eval_strategy='epoch', # type: ignore
                 logging_strategy='epoch', # type: ignore
                 save_strategy='epoch', # type: ignore
                 metric_for_best_model='eval_recall', # Can be changed if our preference is not recall but precision or f1
@@ -176,7 +177,7 @@ class TransformersNER(object):
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
-              trainer_callbacks: Optional[List[TrainerCallback]]=None) -> Tuple:
+              trainer_callbacks: Optional[List[Callable[[Trainer], TrainerCallback]]] = None) -> Tuple:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
 
@@ -188,9 +189,12 @@ class TransformersNER(object):
                 labels that did not exist in the old model.
             dataset: Defaults to None.
             meta_requirements: Defaults to None
-            trainer_callbacks (List[TrainerCallback]):
+            trainer_callbacks (List[Callable[[Trainer], TrainerCallback]]]):
                 A list of trainer callbacks for collecting metrics during the training at the client side. The
                 transformers Trainer object will be passed in when each callback is called.
+
+        Raises:
+            ValueError: If something went wrong with model save path.
 
         Returns:
             Tuple: The dataframe, examples, and the dataset
@@ -254,7 +258,9 @@ class TransformersNER(object):
                 tokenizer=None)
         if trainer_callbacks:
             for callback in trainer_callbacks:
-                trainer.add_callback(callback(trainer))
+                # No idea why mypy isn't picking up the method.
+                # It most certainly does exist
+                trainer.add_callback(callback(trainer))  # type: ignore
 
         trainer.train() # type: ignore
 
@@ -262,7 +268,11 @@ class TransformersNER(object):
         self.config.general.last_train_on = datetime.now().timestamp() # type: ignore
 
         # Save everything
-        self.save(save_dir_path=os.path.join(self.training_arguments.output_dir, 'final_model'))
+        output_dir = self.training_arguments.output_dir
+        if output_dir is None:
+            # NOTE: this shouldn't really happen, but we'll do this for type safety
+            raise ValueError("Output path should not be None!")
+        self.save(save_dir_path=os.path.join(output_dir, 'final_model'))
 
         # Run an eval step and return metrics
         p = trainer.predict(encoded_dataset['test']) # type: ignore
