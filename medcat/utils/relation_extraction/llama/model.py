@@ -6,10 +6,10 @@ from transformers.models.llama import LlamaModel, LlamaConfig
 
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
-from medcat.utils.relation_extraction.models import Base_RelationExtraction
+from medcat.utils.relation_extraction.models import BaseModel_RelationExtraction
 
 
-class LlamaModel_RelationExtraction(Base_RelationExtraction):
+class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
     """ LlamaModel class for RelCAT
     """
 

@@ -1,3 +1,4 @@
+import os
 import logging
 from typing import Any, Dict, List, Tuple, Union
 from medcat.config import MixingConfig, BaseModel, Optional
@@ -50,9 +51,15 @@ class General(MixingConfig, BaseModel):
     """Tokenizer.
 
     NB! For these changes to take effect, the pipe would need to be recreated."""
-    annotation_schema_tag_ids: List = []
+    annotation_schema_tag_ids: List = [30522, 30523, 30524, 30525, 30526, 30527, 30528, 30529, 30530]
     """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
     copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce"""
+
+    tokenizer_relation_annotation_special_tokens_tags: List[str] = ["[s1]", "[e1]", "[s2]", "[e2]", "[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"]
+
+    tokenizer_other_special_tokens: Dict[str, str] = {"pad_token": "[PAD]"}
+    """
+    The special tokens used by the tokenizer. The {PAD} is for Lllama tokenizer."""
 
     labels2idx: Dict[str, int] = {}
     idx2labels: Dict[int, str] = {}
@@ -170,3 +177,21 @@ class ConfigRelCAT(MixingConfig, BaseModel):
     class Config:
         extra = 'allow'
         validate_assignment = True
+
+    @classmethod
+    def load(cls, load_path: str = "./") -> "ConfigRelCAT":
+        """Load the config from a file.
+
+        Args:
+            load_path (str, optional): Path to RelCAT config. Defaults to "./".
+
+        Returns:
+            ConfigRelCAT: The loaded config.
+        """
+        config = cls()
+        if os.path.exists(load_path):
+            config = cast(ConfigRelCAT, ConfigRelCAT.load(
+                os.path.join(load_path, "config.json")))
+            logging.info("Loaded config.json")
+
+        return config

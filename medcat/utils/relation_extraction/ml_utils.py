@@ -2,15 +2,11 @@ import torch
 import logging
 import os
 import pickle
-from typing import Any, Dict, List, Tuple, Union
-import numpy as np
+from typing import Any, Dict, List, Tuple
 import random
 
-from pandas.core.series import Series
+from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper_RelationExtraction
 from medcat.config_rel_cat import ConfigRelCAT
-
-from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper
-from medcat.utils.relation_extraction.models import Base_RelationExtraction
 
 from torch import nn
 
@@ -102,7 +98,7 @@ def save_bin_file(file_name, data, path="./"):
         pickle.dump(data, f)
 
 
-def save_state(model: Base_RelationExtraction, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
+def save_state(model, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_scheduler.MultiStepLR, epoch:int = 1, best_f1:float = 0.0, path:str = "./", model_name: str = "BERT", task:str = "train", is_checkpoint=False, final_export=False) -> None:
     """ Used by RelCAT.save() and RelCAT.train()
         Saves the RelCAT model state.
         For checkpointing multiple files are created, best_f1, loss etc. score.
@@ -140,7 +136,7 @@ def save_state(model: Base_RelationExtraction, optimizer: torch.optim.AdamW, sch
         }, os.path.join(path, file_name))
 
 
-def load_state(model: Base_RelationExtraction, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, device: torch.device =torch.device("cpu"), config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
+def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
     """ Used by RelCAT.load() and RelCAT.train()
 
     Args:
@@ -157,6 +153,8 @@ def load_state(model: Base_RelationExtraction, optimizer, scheduler, path="./", 
     Returns:
         Tuple (int, int): last epoch and f1 score.
     """
+
+    device: torch.device =torch.device(config.general.device)
 
     model_name = model_name.replace("/", "_")
     logging.info("Attempting to load RelCAT model on device: " + str(device))
@@ -212,104 +210,21 @@ def load_results(path, model_name: str = "BERT", file_prefix: str = "train") -> 
     return data_dict["losses_per_epoch"], data_dict["accuracy_per_epoch"], data_dict["f1_per_epoch"]
 
 
-def put_blanks(relation_data: List, blanking_threshold: float = 0.5) -> List:
-    """
-    Args:
-        relation_data (List): tuple containing token (sentence_token_span , ent1 , ent2)
-                                Puts blanks randomly in the relation. Used for pre-training.
-        blanking_threshold (float): % threshold to blank token ids. Defaults to 0.5.
-
-    Returns:
-        List: data
-    """
-
-    blank_ent1 = np.random.uniform()
-    blank_ent2 = np.random.uniform()
-
-    blanked_relation = relation_data
-
-    sentence_token_span, ent1, ent2, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = (
-        *relation_data, )
-
-    if blank_ent1 >= blanking_threshold:
-        blanked_relation = [sentence_token_span, "[BLANK]", ent2, label, label_id,
-                            ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id]
-
-    if blank_ent2 >= blanking_threshold:
-        blanked_relation = [sentence_token_span, ent1, "[BLANK]", label, label_id,
-                            ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id]
-
-    return blanked_relation
-
-
-def create_tokenizer_pretrain(tokenizer: Union[BaseTokenizerWrapper], tokenizer_path: str):
+def create_tokenizer_pretrain(tokenizer: BaseTokenizerWrapper_RelationExtraction, relcat_config: ConfigRelCAT):
     """ 
         This method simply adds the default special tokens that we ecounter.
 
     Args:
-        tokenizer (BaseTokenizerWrapper): BERT/Llama tokenizer.
+        tokenizer (BaseTokenizerWrapper_RelationExtraction): BERT/Llama tokenizer.
         tokenizer_path (str): path where tokenizer is to be saved.
     """
 
-    tokenizer.hf_tokenizers.add_tokens(
-        ["[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"], special_tokens=True)
-    tokenizer.hf_tokenizers.add_tokens(
-        ["[s1]", "[e1]", "[s2]", "[e2]"], special_tokens=True)
-    tokenizer.save(tokenizer_path)
+    tokenizer.hf_tokenizers.add_tokens(relcat_config.general.tokenizer_relation_annotation_special_tokens_tags, special_tokens=True)
 
+    # used in llama tokenizer, may produce issues with other tokenizers
+    tokenizer.hf_tokenizers.add_special_tokens(relcat_config.general.tokenizer_other_special_tokens)
 
-# Used for creating data sets for pretraining
-def tokenize(relations_dataset: Series, tokenizer: Union[BaseTokenizerWrapper], mask_probability: float = 0.5) -> Tuple:
-    (tokens, span_1_pos, span_2_pos), ent1_text, ent2_text, label, label_id, ent1_types, ent2_types, ent1_id, ent2_id, ent1_cui, ent2_cui, doc_id = relations_dataset
-
-    cls_token = tokenizer.hf_tokenizers.cls_token
-    sep_token = tokenizer.hf_tokenizers.sep_token
-
-    tokens = [token.lower() for token in tokens if tokens != '[BLANK]']
-
-    forbidden_indices = [i for i in range(
-        span_1_pos[0], span_1_pos[1])] + [i for i in range(span_2_pos[0], span_2_pos[1])]
-
-    pool_indices = [i for i in range(
-        len(tokens)) if i not in forbidden_indices]
-
-    masked_indices = np.random.choice(pool_indices,
-                                      size=round(mask_probability *
-                                                 len(pool_indices)),
-                                      replace=False)
-
-    masked_for_pred = [token.lower() for idx, token in enumerate(
-        tokens) if (idx in masked_indices)]
-
-    tokens = [token if (idx not in masked_indices)
-              else tokenizer.hf_tokenizers.mask_token for idx, token in enumerate(tokens)]
-
-    if (ent1_text == "[BLANK]") and (ent2_text != "[BLANK]"):
-        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]", "[BLANK]", "[/ENT1]"] + \
-            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
-
-    elif (ent1_text == "[BLANK]") and (ent2_text == "[BLANK]"):
-        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]", "[BLANK]", "[/ENT1]"] + \
-            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]",
-                                                   "[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
-
-    elif (ent1_text != "[BLANK]") and (ent2_text == "[BLANK]"):
-        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
-            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]", "[BLANK]",
-                                                   "[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
-
-    elif (ent1_text != "[BLANK]") and (ent2_text != "[BLANK]"):
-        tokens = [cls_token] + tokens[:span_1_pos[0]] + ["[ENT1]"] + tokens[span_1_pos[0]:span_1_pos[1]] + ["[/ENT1]"] + \
-            tokens[span_1_pos[1]:span_2_pos[0]] + ["[ENT2]"] + tokens[span_2_pos[0]:span_2_pos[1]] + ["[/ENT2]"] + tokens[span_2_pos[1]:] + [sep_token]
-
-    ent1_ent2_start = ([i for i, e in enumerate(tokens) if e == "[ENT1]"][0], [
-                       i for i, e in enumerate(tokens) if e == "[ENT2]"][0])
-
-    token_ids = tokenizer.hf_tokenizers.convert_tokens_to_ids(tokens)
-    masked_for_pred = tokenizer.hf_tokenizers.convert_tokens_to_ids(
-        masked_for_pred)
-
-    return token_ids, masked_for_pred, ent1_ent2_start
+    return tokenizer
 
 
 def create_dense_layers(relcat_config: ConfigRelCAT):
