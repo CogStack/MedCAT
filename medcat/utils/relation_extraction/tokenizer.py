@@ -62,20 +62,20 @@ class BaseTokenizerWrapper_RelationExtraction(PreTrainedTokenizerFast, ABC):
         self.hf_tokenizers.save_pretrained(path)
 
     @classmethod
-    def load(cls, tokenizer_path: str = "", relcat_config: ConfigRelCAT = None) -> "BaseTokenizerWrapper_RelationExtraction":
+    def load(cls, tokenizer_path: str, relcat_config: ConfigRelCAT, **kwargs) -> "BaseTokenizerWrapper_RelationExtraction":
 
         tokenizer = BaseTokenizerWrapper_RelationExtraction()
 
         if os.path.exists(tokenizer_path):
             if "modern-bert" in relcat_config.general.tokenizer_name:
                 from medcat.utils.relation_extraction.modernbert.tokenizer import TokenizerWrapperModernBERT_RelationExtraction
-                tokenizer = TokenizerWrapperModernBERT_RelationExtraction.load(tokenizer_path)
+                tokenizer = TokenizerWrapperModernBERT_RelationExtraction.load(tokenizer_path, relcat_config=relcat_config, **kwargs)
             elif "bert" in relcat_config.general.tokenizer_name:
                 from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT_RelationExtraction
-                tokenizer = TokenizerWrapperBERT_RelationExtraction.load(tokenizer_path)
+                tokenizer = TokenizerWrapperBERT_RelationExtraction.load(tokenizer_path, relcat_config=relcat_config, **kwargs) 
             elif "llama" in relcat_config.general.tokenizer_name:
                 from medcat.utils.relation_extraction.llama.tokenizer import TokenizerWrapperLlama_RelationExtraction
-                tokenizer = TokenizerWrapperLlama_RelationExtraction.load(tokenizer_path)
+                tokenizer = TokenizerWrapperLlama_RelationExtraction.load(tokenizer_path, relcat_config=relcat_config, **kwargs) 
             logger.info("Tokenizer loaded " + str(tokenizer.__class__.__name__) + " from:" + tokenizer_path)
         elif relcat_config.general.model_name:
             logger.info("Attempted to load Tokenizer from path:" + tokenizer_path +

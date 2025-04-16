@@ -36,7 +36,18 @@ class BaseModelBluePrint_RelationExtraction(nn.Module):
         """
         super(BaseModelBluePrint_RelationExtraction, self).__init__()
 
-    def forward(self, input_ids: torch.Tensor, attention_mask: torch.Tensor, token_type_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> torch.Tensor:
+    def forward(self,
+            input_ids: Optional[torch.Tensor] = None,
+            attention_mask: Optional[torch.Tensor] = None,
+            token_type_ids: Optional[torch.Tensor] = None,
+            position_ids: Any = None,
+            head_mask: Any = None,
+            encoder_hidden_states: Any = None,
+            encoder_attention_mask: Any = None,
+            Q: Any = None,
+            e1_e2_start: Any = None,
+            pooled_output: Any = None) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+
         """ Forward pass for the model
 
         Args:
@@ -48,9 +59,9 @@ class BaseModelBluePrint_RelationExtraction(nn.Module):
         Returns:
             logits (torch.Tensor): logits for the relation classification task.
         """
-        pass
+        return None
 
-    def output2logits(self, pooled_output: torch.Tensor, sequence_output: torch.Tensor, input_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> torch.Tensor:
+    def output2logits(self, pooled_output: torch.Tensor, sequence_output: torch.Tensor, input_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> Optional[torch.Tensor]:
         """ Convert the output of the model to logits
 
         Args:
@@ -62,7 +73,7 @@ class BaseModelBluePrint_RelationExtraction(nn.Module):
         Returns:
             logits (torch.Tensor): logits for the relation classification task.
         """
-        pass
+        return None
 
 
 class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
@@ -76,7 +87,7 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[BertConfig, ModernBertConfig, LlamaConfig] = model_config
+        self.model_config: BaseConfig_RelationExtraction = model_config
         self.hf_model: Union[BertModel, ModernBertModel, LlamaModel] = PreTrainedModel(config=model_config)
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 

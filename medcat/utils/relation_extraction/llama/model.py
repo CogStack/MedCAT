@@ -28,7 +28,9 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
             model_config (LlamaConfig): HF bert config for model.
         """
 
-        super(LlamaModel_RelationExtraction, self).__init__()
+        super(LlamaModel_RelationExtraction, self).__init__(pretrained_model_name_or_path=pretrained_model_name_or_path,
+                                                          relcat_config=relcat_config,
+                                                          model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config = model_config
@@ -110,17 +112,16 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
 
 
     def forward(self,
-                input_ids: Optional[torch.Tensor] = None,
-                attention_mask: Optional[torch.Tensor] = None,
-                token_type_ids: Optional[torch.Tensor] = None,
-                output_hidden_states: Optional[bool] = True,
-                position_ids: Any = None,
-                head_mask: Any = None,
-                encoder_hidden_states: Any = None,
-                encoder_attention_mask: Any = None,
-                Q: Any = None,
-                e1_e2_start: Any = None,
-                pooled_output: Any = None) -> Tuple[torch.Tensor, torch.Tensor]:
+            input_ids: Optional[torch.Tensor] = None,
+            attention_mask: Optional[torch.Tensor] = None,
+            token_type_ids: Optional[torch.Tensor] = None,
+            position_ids: Any = None,
+            head_mask: Any = None,
+            encoder_hidden_states: Any = None,
+            encoder_attention_mask: Any = None,
+            Q: Any = None,
+            e1_e2_start: Any = None,
+            pooled_output: Any = None) -> Tuple[torch.Tensor, torch.Tensor]:
 
         if input_ids is not None:
             input_shape = input_ids.size()

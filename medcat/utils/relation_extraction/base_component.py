@@ -1,5 +1,6 @@
 import logging
 import os
+from typing import Optional
 
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
@@ -12,27 +13,31 @@ from transformers import PretrainedConfig
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
 
-from medcat.utils.relation_extraction.ml_utils import load_results, load_state, save_results, save_state, split_list_train_test_by_class
+from medcat.utils.relation_extraction.ml_utils import load_state, save_state
 
 logger = logging.getLogger(__name__)
 
 
 class BaseComponent_RelationExtraction():
-    def __init__(self, tokenizer: BaseTokenizerWrapper_RelationExtraction = None, model: BaseModel_RelationExtraction = None,
-                    model_config: BaseConfig_RelationExtraction = None, config: ConfigRelCAT = ConfigRelCAT(), task: str = "train", init_model: bool = False):
+    def __init__(self, tokenizer: BaseTokenizerWrapper_RelationExtraction = BaseTokenizerWrapper_RelationExtraction(),
+                  model:  BaseModel_RelationExtraction = None, # type: ignore
+                  model_config: BaseConfig_RelationExtraction = None, # type: ignore
+                  config: ConfigRelCAT = ConfigRelCAT(),
+                  task: str = "train",
+                  init_model: bool = False):
         """ Component that holds the model and everything for RelCAT.
 
         Args:
             init_model (bool, optional): Loads default BERT base model, tokenizer, model config. Defaults to False.
         """
 
-        self.model: BaseModel_RelationExtraction = model
-        self.tokenizer: BaseTokenizerWrapper_RelationExtraction = tokenizer
+        self.model: BaseModel_RelationExtraction = model # type: ignore
+        self.tokenizer: BaseTokenizerWrapper_RelationExtraction = tokenizer # type: ignore
         self.relcat_config: ConfigRelCAT = config
         self.model_config: PretrainedConfig = model_config
         self.optimizer: AdamW = None # type: ignore
         self.scheduler: MultiStepLR = None # type: ignore
-        self.task: str = None
+        self.task: str = task
         self.epoch: int = 0
         self.best_f1: float = 0.0
 

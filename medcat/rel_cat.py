@@ -356,11 +356,11 @@ class RelCAT(PipeRunner):
 
             self.log.info(
                 "======================== TRAIN SET TEST RESULTS ========================")
-            _ = self.evaluate_results(train_dataloader, self.pad_id)
+            _ = self.evaluate_results(train_dataloader, self.component.pad_id)
 
             self.log.info(
                 "======================== TEST SET TEST RESULTS ========================")
-            results = self.evaluate_results(test_dataloader, self.pad_id)
+            results = self.evaluate_results(test_dataloader, self.component.pad_id)
 
             f1_per_epoch.append(results['f1'])
 
@@ -550,7 +550,7 @@ class RelCAT(PipeRunner):
     def pipe(self, stream: Iterable[Doc], *args, **kwargs) -> Iterator[Doc]:
 
         predict_rel_dataset = RelData(
-            cdb=self.cdb, config=self.component.relcat_config, tokenizer=self.tokenizer)
+            cdb=self.cdb, config=self.component.relcat_config, tokenizer=self.component.tokenizer)
 
         self.component.model = self.component.model.to(self.device)  # type: ignore
 
@@ -561,7 +561,7 @@ class RelCAT(PipeRunner):
 
             predict_dataloader = DataLoader(dataset=predict_rel_dataset, shuffle=False,
                                             batch_size=self.component.relcat_config.train.batch_size,
-                                            num_workers=0, collate_fn=self.padding_seq,
+                                            num_workers=0, collate_fn=self.component.padding_seq,
                                             pin_memory=self.component.relcat_config.general.pin_memory)
 
             total_rel_found = len(predict_rel_dataset.dataset["output_relations"])
@@ -576,7 +576,7 @@ class RelCAT(PipeRunner):
                 with torch.no_grad():
                     token_ids, e1_e2_start, labels, _, _ = data
 
-                    attention_mask = (token_ids != self.pad_id).float().to(self.device)
+                    attention_mask = (token_ids != self.component.pad_id).float().to(self.device)
                     token_type_ids = torch.zeros(
                         token_ids.shape[0], token_ids.shape[1]).long().to(self.device)
 

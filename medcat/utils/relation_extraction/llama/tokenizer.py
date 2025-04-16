@@ -3,6 +3,7 @@ from typing import Optional
 from transformers import LlamaTokenizerFast
 import logging
 
+from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper_RelationExtraction
 
 logger = logging.getLogger(__name__)
@@ -50,14 +51,15 @@ class TokenizerWrapperLlama_RelationExtraction(BaseTokenizerWrapper_RelationExtr
                 "Unsuported input type, supported: text/list, but got: {}".format(type(text)))
 
     @classmethod
-    def load(cls, dir_path, **kwargs):
+    def load(cls, tokenizer_path: str, relcat_config: ConfigRelCAT, **kwargs) -> "TokenizerWrapperLlama_RelationExtraction":
         tokenizer = cls()
-        path = os.path.join(dir_path, cls.name)
+        path = os.path.join(tokenizer_path, cls.name)
 
-        if dir_path:
+        if tokenizer_path:
             tokenizer.hf_tokenizers = LlamaTokenizerFast.from_pretrained(
                 path, **kwargs)
         else:
+            relcat_config.general.model_name = cls.pretrained_model_name_or_path
             tokenizer.hf_tokenizers = LlamaTokenizerFast.from_pretrained(
-                path=cls.pretrained_model_name_or_path)
+                path=relcat_config.general.model_name)
         return tokenizer

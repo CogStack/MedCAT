@@ -2,6 +2,7 @@ import os
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 import logging
 
+from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper_RelationExtraction
 
 logger = logging.getLogger(__name__)
@@ -19,15 +20,15 @@ class TokenizerWrapperBERT_RelationExtraction(BaseTokenizerWrapper_RelationExtra
     pretrained_model_name_or_path = "bert-base-uncased"
 
     @classmethod
-    def load(cls, dir_path: str, **kwargs):
+    def load(cls, tokenizer_path: str, relcat_config: ConfigRelCAT, **kwargs) -> "TokenizerWrapperBERT_RelationExtraction":
         tokenizer = cls()
-        path = os.path.join(dir_path, cls.name)
+        path = os.path.join(tokenizer_path, cls.name)
 
-        if dir_path:
+        if tokenizer_path:
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
                 path, **kwargs)
         else:
+            relcat_config.general.model_name = cls.pretrained_model_name_or_path
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
-                path=cls.pretrained_model_name_or_path)
-
+                path=relcat_config.general.model_name)
         return tokenizer
