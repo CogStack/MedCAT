@@ -19,6 +19,9 @@ logger = logging.getLogger(__name__)
 
 
 class BaseComponent_RelationExtraction():
+
+    name = "base_component_rel"
+
     def __init__(self, tokenizer: BaseTokenizerWrapper_RelationExtraction = BaseTokenizerWrapper_RelationExtraction(),
                   model:  BaseModel_RelationExtraction = None, # type: ignore
                   model_config: BaseConfig_RelationExtraction = None, # type: ignore

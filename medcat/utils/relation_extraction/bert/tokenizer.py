@@ -9,6 +9,9 @@ logger = logging.getLogger(__name__)
 
 
 class TokenizerWrapperBERT_RelationExtraction(BaseTokenizerWrapper_RelationExtraction):
+
+    name = "tokenizer_wrapper_bert_rel"
+
     ''' Wrapper around a huggingface BERT tokenizer so that it works with the
     RelCAT models.
 

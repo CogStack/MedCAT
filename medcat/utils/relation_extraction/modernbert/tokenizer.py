@@ -16,7 +16,7 @@ class TokenizerWrapperModernBERT_RelationExtraction(BaseTokenizerWrapper_Relatio
         hf_tokenizers (`transformers.PreTrainedTokenizerFast`):
             A huggingface Fast tokenizer.
     '''
-    name = 'modern-bert-tokenizer'
+    name = "tokenizer_wrapper_modern_bert_rel"
     pretrained_model_name_or_path = "answerdotai/ModernBERT-base"
 
     @classmethod

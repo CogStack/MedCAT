@@ -13,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 class BaseTokenizerWrapper_RelationExtraction(PreTrainedTokenizerFast, ABC):
 
+    name = "base_tokenizer_wrapper_rel"
+
     def __init__(self, hf_tokenizers=None, max_seq_length: Optional[int] = None, add_special_tokens: Optional[bool] = False):
         self.hf_tokenizers = hf_tokenizers
         self.max_seq_length = max_seq_length

@@ -17,7 +17,7 @@ class TokenizerWrapperLlama_RelationExtraction(BaseTokenizerWrapper_RelationExtr
         hf_tokenizers (`transformers.LlamaTokenizerFast`):
             A huggingface Fast Llama.
     '''
-    name = 'llama-tokenizer'
+    name = "tokenizer_wrapper_llama_rel"
     pretrained_model_name_or_path = "meta-llama/Llama-3.1-8B"
 
     def __call__(self, text, truncation: Optional[bool] = True):
