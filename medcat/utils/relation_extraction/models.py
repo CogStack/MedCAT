@@ -2,13 +2,16 @@ import logging
 import torch
 from typing import Any, Optional, Tuple, Union
 from torch import nn
-from transformers.models.bert.modeling_bert import BertModel
-from transformers import ModernBertModel, ModernBertConfig, PretrainedConfig, PreTrainedModel
-from transformers.models.llama import LlamaModel, LlamaConfig
-from transformers.models.bert.configuration_bert import BertConfig
+from transformers import PretrainedConfig, PreTrainedModel
 
 from medcat.config_rel_cat import ConfigRelCAT
+from transformers.models.llama import LlamaModel
+from transformers import BertModel
+from transformers import ModernBertModel
 from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
+from medcat.utils.relation_extraction.bert.config import BertConfig_RelationExtraction
+from medcat.utils.relation_extraction.modernbert.config import ModernBertConfig_RelationExtraction
+from medcat.utils.relation_extraction.llama.config import LlamaConfig_RelationExtraction
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
 
 
@@ -24,7 +27,7 @@ class BaseModelBluePrint_RelationExtraction(nn.Module):
     fc2: nn.Linear
     fc3: nn.Linear
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: PretrainedConfig):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[PretrainedConfig, BaseConfig_RelationExtraction]):
         """ Class to hold the HF model + model_config
 
         Args:
@@ -81,17 +84,19 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
     name = "basemodel_relcat"
     log = logging.getLogger(__name__)
 
-    def __init__(self, relcat_config: ConfigRelCAT, model_config: PretrainedConfig, pretrained_model_name_or_path):
+    def __init__(self, relcat_config: ConfigRelCAT,
+                 model_config: BaseConfig_RelationExtraction,
+                 pretrained_model_name_or_path):
         super(BaseModel_RelationExtraction, self).__init__(pretrained_model_name_or_path=pretrained_model_name_or_path, 
                                                           relcat_config=relcat_config,
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: BaseConfig_RelationExtraction = model_config
-        self.hf_model: Union[BertModel, ModernBertModel, LlamaModel] = PreTrainedModel(config=model_config)
+        self.hf_model: Union[ModernBertModel, BertModel, LlamaModel, PreTrainedModel] = PreTrainedModel(config=model_config) # type: ignore
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        for param in self.hf_model.parameters():
+        for param in self.hf_model.parameters(): # type: ignore
             if self.relcat_config.model.freeze_layers:
                 param.requires_grad = False
             else:
@@ -136,12 +141,12 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.hf_model = self.hf_model.to(self.relcat_config.general.device)
+        self.hf_model = self.hf_model.to(self.relcat_config.general.device) # type: ignore
 
         model_output = self.hf_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
                                        encoder_hidden_states=encoder_hidden_states,
-                                       encoder_attention_mask=encoder_attention_mask)
+                                       encoder_attention_mask=encoder_attention_mask) # type: ignore
 
         # (batch_size, sequence_length, hidden_size)
         sequence_output = model_output[0]

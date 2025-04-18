@@ -1,12 +1,15 @@
 import logging
-from typing import Any, Optional, Tuple
+from typing import Any, Optional, Tuple, Union
 import torch
 from torch import nn
-from transformers.models.llama import LlamaModel, LlamaConfig
+import os
+from transformers.models.llama import LlamaModel
 
 from medcat.config_rel_cat import ConfigRelCAT
-from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
+from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
+from medcat.utils.relation_extraction.llama.config import LlamaConfig_RelationExtraction
 from medcat.utils.relation_extraction.models import BaseModel_RelationExtraction
+from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
 
 
 class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
@@ -17,7 +20,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: LlamaConfig):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction]):
         """ Class to hold the Llama model + model_config
 
         Args:
@@ -25,7 +28,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
                     this can be a HF model i.e: "bert-base-uncased", if left empty, it is normally assumed that a model is loaded from 'model.dat'
                     using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.            
             relcat_config (ConfigRelCAT): relcat config.
-            model_config (LlamaConfig): HF bert config for model.
+            model_config (Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction]): HF bert config for model.
         """
 
         super(LlamaModel_RelationExtraction, self).__init__(pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -33,9 +36,9 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config = model_config
+        self.model_config: Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction] = model_config
 
-        self.hf_model: LlamaModel = LlamaModel(config=model_config)
+        self.hf_model: LlamaModel = LlamaModel(config=model_config) # type: ignore
 
         if pretrained_model_name_or_path != "":
             self.hf_model = LlamaModel.from_pretrained(pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True)
@@ -143,7 +146,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        self.hf_model = self.hf_model.to(self.relcat_config.general.device)
+        self.hf_model = self.hf_model.to(self.relcat_config.general.device) # type: ignore
 
         model_output = self.hf_model(input_ids=input_ids, attention_mask=attention_mask, output_hidden_states=True)
 
@@ -158,6 +161,29 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
             pooled_output, sequence_output, input_ids, e1_e2_start)
 
         return model_output, classification_logits.to(self.relcat_config.general.device)
+
+    @classmethod
+    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction], **kwargs) -> "LlamaModel_RelationExtraction":
+
+        model = LlamaModel_RelationExtraction(pretrained_model_name_or_path=pretrained_model_name_or_path,
+                                             relcat_config=relcat_config,
+                                             model_config=model_config)
+
+        model_path = os.path.join(pretrained_model_name_or_path, "model.dat")
+
+        if os.path.exists(model_path):
+            model.load_state_dict(torch.load(model_path, map_location=relcat_config.general.device))
+            cls.log.info("Loaded model from file: " + model_path)
+        elif pretrained_model_name_or_path:
+            model.hf_model = LlamaModel.from_pretrained(
+                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True, **kwargs)
+            cls.log.info("Loaded model from pretrained: " + pretrained_model_name_or_path)
+        else:
+            model.hf_model = LlamaModel.from_pretrained(
+                pretrained_model_name_or_path=cls.pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True, **kwargs)
+            cls.log.info("Loaded model from pretrained: " + cls.pretrained_model_name_or_path)
+
+        return model
 
 
 class LlamaPooler(nn.Module):

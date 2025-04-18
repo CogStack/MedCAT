@@ -11,7 +11,7 @@ from medcat.config_rel_cat import ConfigRelCAT
 logger = logging.getLogger(__name__)
 
 
-class BaseTokenizerWrapper_RelationExtraction(PreTrainedTokenizerFast, ABC):
+class BaseTokenizerWrapper_RelationExtraction(PreTrainedTokenizerFast):
 
     name = "base_tokenizer_wrapper_rel"
 

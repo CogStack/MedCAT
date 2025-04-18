@@ -28,10 +28,8 @@ class TokenizerWrapperBERT_RelationExtraction(BaseTokenizerWrapper_RelationExtra
         path = os.path.join(tokenizer_path, cls.name)
 
         if tokenizer_path:
-            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
-                path, **kwargs)
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(pretrained_model_name_or_path=path, **kwargs)
         else:
             relcat_config.general.model_name = cls.pretrained_model_name_or_path
-            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(
-                path=relcat_config.general.model_name)
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name)
         return tokenizer

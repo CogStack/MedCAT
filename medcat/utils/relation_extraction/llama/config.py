@@ -20,13 +20,12 @@ class LlamaConfig_RelationExtraction(BaseConfig_RelationExtraction):
         model_config_path = os.path.join(pretrained_model_name_or_path, "model_config.json")
 
         if pretrained_model_name_or_path and os.path.exists(model_config_path):
-            model_config = LlamaConfig.from_json_file(model_config_path)
+            model_config.model_config = LlamaConfig.from_json_file(model_config_path)
             logger.info("Loaded config from file: " + model_config_path)
         else:
             relcat_config.general.model_name = cls.pretrained_model_name_or_path
-            model_config = LlamaConfig.from_pretrained(
+            model_config.model_config = LlamaConfig.from_pretrained(
                 pretrained_model_name_or_path=cls.pretrained_model_name_or_path, **kwargs)
             logger.info("Loaded config from pretrained: " + relcat_config.general.model_name)
-
 
         return model_config

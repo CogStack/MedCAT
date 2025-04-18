@@ -64,7 +64,7 @@ class BaseComponent_RelationExtraction():
                                                 model_config=self.model_config,
                                                 relcat_config=self.relcat_config)
 
-            self.model.hf_model.resize_token_embeddings(self.tokenizer.get_size())
+            self.model.hf_model.resize_token_embeddings(self.tokenizer.get_size()) # type: ignore
 
         self.pad_id = self.relcat_config.model.padding_idx
         self.padding_seq = Pad_Sequence(seq_pad_value=self.pad_id,
@@ -90,9 +90,8 @@ class BaseComponent_RelationExtraction():
         assert self.tokenizer is not None
         self.tokenizer.save(os.path.join(save_path))
 
-        assert self.model is not None
-        self.model.hf_model.resize_token_embeddings(
-            self.tokenizer.get_size())
+        assert self.model is not None and self.model.hf_model is not None
+        self.model.hf_model.resize_token_embeddings(self.tokenizer.get_size()) # type: ignore
 
         assert self.model_config is not None
         self.model_config.vocab_size = self.tokenizer.get_size()
@@ -126,7 +125,7 @@ class BaseComponent_RelationExtraction():
         tokenizer = BaseTokenizerWrapper_RelationExtraction.load(tokenizer_path=pretrained_model_name_or_path,
                                                                  relcat_config=relcat_config)
 
-        model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+        model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
 
         optimizer = None # type: ignore
         scheduler = None # type: ignore

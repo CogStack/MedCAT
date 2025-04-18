@@ -34,7 +34,7 @@ class BaseConfig_RelationExtraction(PretrainedConfig):
     def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, **kwargs) -> "BaseConfig_RelationExtraction":
 
         model_config_path = os.path.join(pretrained_model_name_or_path, "model_config.json")
-        model_config = PretrainedConfig()
+        model_config = BaseConfig_RelationExtraction(pretrained_model_name_or_path=pretrained_model_name_or_path, relcat_config=relcat_config, **kwargs)
 
         if os.path.exists(model_config_path):
             if "modern-bert" in relcat_config.general.tokenizer_name or \
@@ -51,8 +51,8 @@ class BaseConfig_RelationExtraction(PretrainedConfig):
                 model_config = LlamaConfig_RelationExtraction.load(model_config_path, **kwargs)
         else:
             if pretrained_model_name_or_path:
-                model_config = PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs)
+                model_config = (BaseConfig_RelationExtraction)(PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs))
             else:
-                model_config = PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs)
+                model_config = (BaseConfig_RelationExtraction)(PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs))
             logger.info("Loaded config from : " + model_config_path)
         return model_config
