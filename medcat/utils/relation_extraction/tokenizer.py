@@ -1,5 +1,4 @@
 import os
-from abc import ABC
 from typing import Optional
 from transformers.models.bert.tokenization_bert_fast import BertTokenizerFast
 from transformers import PreTrainedTokenizerFast

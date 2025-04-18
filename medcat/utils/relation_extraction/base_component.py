@@ -1,8 +1,6 @@
 import logging
 import os
-from typing import Optional
 
-from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.models import BaseModel_RelationExtraction
 from medcat.utils.relation_extraction.pad_seq import Pad_Sequence

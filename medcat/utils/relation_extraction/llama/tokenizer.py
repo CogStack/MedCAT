@@ -1,5 +1,4 @@
 import os
-from typing import Optional
 from transformers import LlamaTokenizerFast
 import logging
 

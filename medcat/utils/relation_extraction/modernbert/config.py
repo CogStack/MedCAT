@@ -3,7 +3,6 @@ import os
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
 from transformers import ModernBertConfig
-from transformers import PretrainedConfig
 
 logger = logging.getLogger(__name__)
 

@@ -9,9 +9,6 @@ from transformers.models.llama import LlamaModel
 from transformers import BertModel
 from transformers import ModernBertModel
 from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
-from medcat.utils.relation_extraction.bert.config import BertConfig_RelationExtraction
-from medcat.utils.relation_extraction.modernbert.config import ModernBertConfig_RelationExtraction
-from medcat.utils.relation_extraction.llama.config import LlamaConfig_RelationExtraction
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
 
 
