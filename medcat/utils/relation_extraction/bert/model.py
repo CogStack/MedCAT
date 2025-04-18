@@ -24,7 +24,7 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction | BertConfig_RelationExtraction]):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, BertConfig_RelationExtraction]):
         """ Class to hold the BERT model + model_config
 
         Args:
@@ -39,7 +39,7 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[BaseConfig_RelationExtraction | BertConfig_RelationExtraction] = model_config
+        self.model_config: Union[BaseConfig_RelationExtraction, BertConfig_RelationExtraction] = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
         self.hf_model: PreTrainedModel = PreTrainedModel(model_config) # type: ignore
@@ -56,7 +56,7 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
         self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction | BertConfig_RelationExtraction], **kwargs) -> "BertModel_RelationExtraction":
+    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, BertConfig_RelationExtraction], **kwargs) -> "BertModel_RelationExtraction":
 
         model = BertModel_RelationExtraction(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                              relcat_config=relcat_config,

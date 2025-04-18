@@ -20,7 +20,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction]):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction]):
         """ Class to hold the Llama model + model_config
 
         Args:
@@ -36,7 +36,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction] = model_config
+        self.model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction] = model_config
 
         self.hf_model: LlamaModel = LlamaModel(config=model_config) # type: ignore
 
@@ -163,7 +163,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
         return model_output, classification_logits.to(self.relcat_config.general.device)
 
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction], **kwargs) -> "LlamaModel_RelationExtraction":
+    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction], **kwargs) -> "LlamaModel_RelationExtraction":
 
         model = LlamaModel_RelationExtraction(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                              relcat_config=relcat_config,
