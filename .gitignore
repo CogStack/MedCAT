@@ -17,6 +17,7 @@ build/
 venv
 db.sqlite3
 .ipynb_checkpoints
+./install_requires.txt
 
 # vscode 
 .vscode
