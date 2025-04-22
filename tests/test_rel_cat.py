@@ -55,9 +55,10 @@ class RelCATTests(unittest.TestCase):
             cls.mct_file_test = json.loads(f.read())["projects"][0]["documents"][1]
 
         cls.config_rel_cat: ConfigRelCAT = config
-        cls.rel_cat: RelCAT = RelCAT(cdb, tokenizer=tokenizer, config=config, init_model=True)
+        cls.rel_cat: RelCAT = RelCAT(cdb, # tokenizer=tokenizer,
+                                     config=config, init_model=True,)
 
-        cls.rel_cat.model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+        cls.rel_cat.component.model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
 
         cls.finished = False
         cls.tokenizer = tokenizer
@@ -85,25 +86,24 @@ class RelCATTests(unittest.TestCase):
             rels.append(rel_dataset.create_base_relations_from_doc(samples[idx], idx,
                                                               ent1_ent2_tokens_start_pos=ent1_ent2_tokens_start_pos))
 
-        assert len(rels) == len(samples)
+        self.assertEqual(len(rels), len(samples))
 
 
     def test_train_csv_no_tags(self) -> None:
-        self.rel_cat.config.train.epochs = 2
+        self.rel_cat.component.relcat_config.train.epochs = 2
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
         self.rel_cat.save(self.save_model_path)
 
     def test_train_mctrainer(self) -> None:
         self.rel_cat = RelCAT.load(self.save_model_path)
-        self.rel_cat.config.general.create_addl_rels = True
-        self.rel_cat.config.general.addl_rels_max_sample_size = 10
-        self.rel_cat.config.train.test_size = 0.1
-        self.rel_cat.config.train.nclasses = 3
-        self.rel_cat.model.relcat_config.train.nclasses = 3
-        self.rel_cat.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
+        self.rel_cat.component.relcat_config.general.create_addl_rels = True
+        self.rel_cat.component.relcat_config.general.addl_rels_max_sample_size = 10
+        self.rel_cat.component.relcat_config.train.test_size = 0.1
+        self.rel_cat.component.relcat_config.train.nclasses = 3
+        self.rel_cat.component.model.relcat_config.train.nclasses = 3
+        self.rel_cat.component.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
-
 
     def test_train_predict(self) -> None:
         Span.set_extension('id', default=0, force=True)
@@ -123,12 +123,12 @@ class RelCATTests(unittest.TestCase):
             entity._.cui = ann["cui"]
             doc._.ents.append(entity)
 
-        self.rel_cat.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
+        self.rel_cat.component.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         doc = self.rel_cat(doc)
         self.finished = True
 
-        assert len(doc._.relations) > 0
+        self.assertGreater(len(doc._.relations), 0)
 
 
     def tearDown(self) -> None:
