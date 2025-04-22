@@ -29,7 +29,12 @@ class BaseComponent_RelationExtraction():
         """ Component that holds the model and everything for RelCAT.
 
         Args:
-            init_model (bool, optional): Loads default BERT base model, tokenizer, model config. Defaults to False.
+            tokenizer (BaseTokenizerWrapper_RelationExtraction): The base tokenizer for RelCAT.
+            model (BaseModel_RelationExtraction): The model wrapper.
+            model_config (BaseConfig_RelationExtraction): The model-specific config.
+            config (ConfigRelCAT): The RelCAT config.
+            task (str): The task - used for checkpointing.
+            init_model (bool): Loads default BERT base model, tokenizer, model config. Defaults to False.
         """
 
         self.model: BaseModel_RelationExtraction = model # type: ignore
