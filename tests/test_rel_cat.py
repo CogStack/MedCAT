@@ -7,7 +7,7 @@ import logging
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.rel_cat import RelCAT
-from medcat.utils.relation_extraction.bert.tokenizer import TokenizerWrapperBERT
+from medcat.utils.relation_extraction.bert.tokenizer import BaseTokenizerWrapper_RelationExtraction as TokenizerWrapperBERT
 from medcat.utils.relation_extraction.rel_dataset import RelData
 
 from transformers.models.auto.tokenization_auto import AutoTokenizer
