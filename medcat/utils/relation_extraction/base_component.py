@@ -111,7 +111,7 @@ class BaseComponent_RelationExtraction():
     def load(cls, pretrained_model_name_or_path: str = "./") -> "BaseComponent_RelationExtraction":
         """
         Args:
-            pretrained_model_name_or_path (str, optional): Path to RelCAT model. Defaults to "./".
+            pretrained_model_name_or_path (str): Path to RelCAT model. Defaults to "./".
 
         Returns:
             BaseComponent_RelationExtraction: component.
