@@ -1,5 +1,6 @@
 import os
 import logging
+from typing import cast
 from transformers import PretrainedConfig
 
 from medcat.config_rel_cat import ConfigRelCAT
@@ -51,8 +52,10 @@ class BaseConfig_RelationExtraction(PretrainedConfig):
                 model_config = LlamaConfig_RelationExtraction.load(model_config_path, **kwargs)
         else:
             if pretrained_model_name_or_path:
-                model_config = (BaseConfig_RelationExtraction)(PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs))
+                model_config = cast(BaseConfig_RelationExtraction,
+                                    PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs))
             else:
-                model_config = (BaseConfig_RelationExtraction)(PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs))
+                model_config = cast(BaseConfig_RelationExtraction,
+                                    PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs))
             logger.info("Loaded config from : " + model_config_path)
         return model_config
