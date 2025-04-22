@@ -16,7 +16,7 @@ from medcat.config import Config
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.pipeline.pipe_runner import PipeRunner
 from spacy.tokens import Doc, Span
-from typing import Dict, Iterable, Iterator, List, cast
+from typing import Dict, Iterable, Iterator, List
 from torch.utils.data import DataLoader, Sampler
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
@@ -301,7 +301,7 @@ class RelCAT(PipeRunner):
                     (token_ids.shape[0], token_ids.shape[1])).long().to(self.device)
 
                 labels = labels.to(self.device)
-                
+
                 model_output, classification_logits = self.component.model(
                     input_ids=token_ids,
                     token_type_ids=token_type_ids,
