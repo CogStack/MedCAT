@@ -147,7 +147,6 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
         model_name (str, optional): Defaults to "BERT".
         file_prefix (str, optional): Defaults to "train".
         load_best (bool, optional): Defaults to False.
-        device (torch.device, optional): Defaults to torch.device("cpu").
         config (ConfigRelCAT): Defaults to ConfigRelCAT().
 
     Returns:
@@ -210,13 +209,17 @@ def load_results(path, model_name: str = "BERT", file_prefix: str = "train") -> 
     return data_dict["losses_per_epoch"], data_dict["accuracy_per_epoch"], data_dict["f1_per_epoch"]
 
 
-def create_tokenizer_pretrain(tokenizer: BaseTokenizerWrapper_RelationExtraction, relcat_config: ConfigRelCAT):
+def create_tokenizer_pretrain(tokenizer: BaseTokenizerWrapper_RelationExtraction, relcat_config: ConfigRelCAT
+                              ) -> BaseTokenizerWrapper_RelationExtraction:
     """ 
         This method simply adds the default special tokens that we ecounter.
 
     Args:
         tokenizer (BaseTokenizerWrapper_RelationExtraction): BERT/Llama tokenizer.
-        tokenizer_path (str): path where tokenizer is to be saved.
+        relcat_config (ConfigRelCAT): The RelCAT config.
+
+    Returns:
+        BaseTokenizerWrapper_RelationExtraction: The same tokenizer.
     """
 
     tokenizer.hf_tokenizers.add_tokens(relcat_config.general.tokenizer_relation_annotation_special_tokens_tags, special_tokens=True)
