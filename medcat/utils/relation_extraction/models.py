@@ -47,17 +47,22 @@ class BaseModelBluePrint_RelationExtraction(nn.Module):
             Q: Any = None,
             e1_e2_start: Any = None,
             pooled_output: Any = None) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
-
-        """ Forward pass for the model
+        """Forward pass for the model
 
         Args:
-            input_ids (torch.Tensor): input token ids.
-            attention_mask (torch.Tensor): attention mask for the input ids.
-            token_type_ids (torch.Tensor): token type ids for the input ids.
-            e1_e2_start (torch.Tensor): start and end indices for the entities in the input ids.
+            input_ids (torch.Tensor): input token ids. Defaults to None.
+            attention_mask (torch.Tensor): attention mask for the input ids. Defaults to None.
+            token_type_ids (torch.Tensor): token type ids for the input ids. Defaults to None.
+            position_ids (Any): The position IDs. Defaults to None.
+            head_mask (Any): The head mask. Defaults to None.
+            encoder_hidden_states (Any): Encoder hidden states. Defaults to None.
+            encoder_attention_mask (Any): Encoder attention mask. Defaults to None.
+            Q (Any): Q. Defaults to None.
+            e1_e2_start (Any): start and end indices for the entities in the input ids. Defaults to None.
+            pooled_output (Any): The pooled output. Defaults to None.
 
         Returns:
-            logits (torch.Tensor): logits for the relation classification task.
+            Optional[Tuple[torch.Tensor, torch.Tensor]]: logits for the relation classification task.
         """
         return None
 
@@ -217,6 +222,10 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         Args:
             pretrained_model_name_or_path (str): path to load the model from.
             relcat_config (ConfigRelCAT): relcat config.
+            model_config (BaseConfig_RelationExtraction): The model-specific config.
+
+        returns:
+            BaseModel_RelationExtraction: The loaded model.
         """
 
         model = BaseModel_RelationExtraction(relcat_config=relcat_config, model_config=model_config, pretrained_model_name_or_path=pretrained_model_name_or_path)
