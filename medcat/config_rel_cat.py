@@ -183,7 +183,7 @@ class ConfigRelCAT(MixingConfig, BaseModel):
         """Load the config from a file.
 
         Args:
-            load_path (str, optional): Path to RelCAT config. Defaults to "./".
+            load_path (str): Path to RelCAT config. Defaults to "./".
 
         Returns:
             ConfigRelCAT: The loaded config.
