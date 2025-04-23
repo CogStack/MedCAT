@@ -176,11 +176,11 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
             cls.log.info("Loaded model from file: " + model_path)
         elif pretrained_model_name_or_path:
             model.hf_model = LlamaModel.from_pretrained(
-                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True, **kwargs)
+                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config.hf_model_config, ignore_mismatched_sizes=True, **kwargs)
             cls.log.info("Loaded model from pretrained: " + pretrained_model_name_or_path)
         else:
             model.hf_model = LlamaModel.from_pretrained(
-                pretrained_model_name_or_path=cls.pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True, **kwargs)
+                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config.hf_model_config, ignore_mismatched_sizes=True, **kwargs)
             cls.log.info("Loaded model from pretrained: " + cls.pretrained_model_name_or_path)
 
         return model

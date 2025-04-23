@@ -40,7 +40,7 @@ class BaseComponent_RelationExtraction():
         self.model: BaseModel_RelationExtraction = model # type: ignore
         self.tokenizer: BaseTokenizerWrapper_RelationExtraction = tokenizer # type: ignore
         self.relcat_config: ConfigRelCAT = config
-        self.model_config: PretrainedConfig = model_config
+        self.model_config: BaseConfig_RelationExtraction = model_config
         self.optimizer: AdamW = None # type: ignore
         self.scheduler: MultiStepLR = None # type: ignore
         self.task: str = task
@@ -61,7 +61,7 @@ class BaseComponent_RelationExtraction():
             self.tokenizer.hf_tokenizers.add_special_tokens(self.relcat_config.general.tokenizer_other_special_tokens)
             self.relcat_config.general.annotation_schema_tag_ids = self.tokenizer.hf_tokenizers.convert_tokens_to_ids(self.relcat_config.general.tokenizer_relation_annotation_special_tokens_tags)
             self.relcat_config.model.padding_idx = self.model_config.pad_token_id = self.tokenizer.get_pad_id()
-            self.model_config.vocab_size = self.tokenizer.get_size()
+            self.model_config.hf_model_config.vocab_size = self.tokenizer.get_size()
 
             self.model = BaseModel_RelationExtraction.load(pretrained_model_name_or_path=self.relcat_config.general.model_name,
                                                 model_config=self.model_config,

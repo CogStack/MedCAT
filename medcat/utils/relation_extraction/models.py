@@ -95,7 +95,7 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
 
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: BaseConfig_RelationExtraction = model_config
-        self.hf_model: Union[ModernBertModel, BertModel, LlamaModel, PreTrainedModel] = PreTrainedModel(config=model_config) # type: ignore
+        self.hf_model: Union[ModernBertModel, BertModel, LlamaModel, PreTrainedModel] = PreTrainedModel(config=model_config.hf_model_config) # type: ignore
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
         for param in self.hf_model.parameters(): # type: ignore
@@ -109,7 +109,7 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         # dense layers
         self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
 
-        self.log.info("RelCAT model config: " + str(self.model_config))
+        self.log.info("RelCAT model config: " + str(self.model_config.hf_model_config))
 
     def forward(self,
                 input_ids: Optional[torch.Tensor] = None,

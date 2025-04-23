@@ -40,7 +40,7 @@ class ModernBertModel_RelationExtraction(BaseModel_RelationExtraction):
         self.model_config: Union[BaseConfig_RelationExtraction, ModernBertConfig_RelationExtraction] = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.hf_model: Union[ModernBertModel, PreTrainedModel] = PreTrainedModel(config=model_config)
+        self.hf_model: Union[ModernBertModel, PreTrainedModel] = PreTrainedModel(config=model_config.hf_model_config)
 
         for param in self.hf_model.parameters(): # type: ignore
             if self.relcat_config.model.freeze_layers:
@@ -67,11 +67,11 @@ class ModernBertModel_RelationExtraction(BaseModel_RelationExtraction):
             cls.log.info("Loaded model from file: " + model_path)
         elif pretrained_model_name_or_path:
             model.hf_model = ModernBertModel.from_pretrained(
-                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True, **kwargs)
+                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config.hf_model_config, ignore_mismatched_sizes=True, **kwargs)
             cls.log.info("Loaded model from pretrained: " + pretrained_model_name_or_path)
         else:
             model.hf_model = ModernBertModel.from_pretrained(
-                pretrained_model_name_or_path=cls.pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True, **kwargs)
+                pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config.hf_model_config, ignore_mismatched_sizes=True, **kwargs)
             cls.log.info("Loaded model from pretrained: " + cls.pretrained_model_name_or_path)
 
         return model

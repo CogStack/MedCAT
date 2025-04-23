@@ -342,8 +342,6 @@ class RelData(Dataset):
             _ent2_start_tkn_id = self.config.general.annotation_schema_tag_ids[2]
             _ent2_end_tkn_id = self.config.general.annotation_schema_tag_ids[3]
 
-        print(_ent1_start_tkn_id, _ent1_end_tkn_id, _ent2_start_tkn_id, _ent2_end_tkn_id)
-
         relation_instances = []
 
         tokenized_text_data = None

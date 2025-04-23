@@ -17,17 +17,17 @@ class BaseConfig_RelationExtraction(PretrainedConfig):
         super().__init__(**kwargs)
         self.model_type = "relcat"
         self.pretrained_model_name_or_path = pretrained_model_name_or_path
-        self.model_config = kwargs.get("model_config", None)
+        self.hf_model_config: PretrainedConfig = kwargs.get("model_config", PretrainedConfig())
 
     def to_dict(self):
         output = super().to_dict()
         output["model_type"] = self.model_type
         output["pretrained_model_name_or_path"] = self.pretrained_model_name_or_path
-        output["model_config"] = self.model_config
+        output["model_config"] = self.hf_model_config
         return output
 
     def save(self, save_path: str):
-        self.model_config.to_json_file(
+        self.hf_model_config.to_json_file(
             os.path.join(save_path, "model_config.json"))
 
     @classmethod
@@ -51,8 +51,8 @@ class BaseConfig_RelationExtraction(PretrainedConfig):
                 model_config = LlamaConfig_RelationExtraction.load(model_config_path, **kwargs)
         else:
             if pretrained_model_name_or_path:
-                model_config = (BaseConfig_RelationExtraction)(PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs))
+                model_config.hf_model_config = PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs)
             else:
-                model_config = (BaseConfig_RelationExtraction)(PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs))
+                model_config.hf_model_config = PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs)
             logger.info("Loaded config from : " + model_config_path)
         return model_config
