@@ -136,7 +136,7 @@ def save_state(model, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_sc
         }, os.path.join(path, file_name))
 
 
-def load_state(model, optimizer, scheduler, path: str = "./", model_name:str = "BERT", file_prefix:str = "train", load_best: bool = False, relcat_config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
+def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, relcat_config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
     """ Used by RelCAT.load() and RelCAT.train()
 
     Args:
@@ -147,7 +147,7 @@ def load_state(model, optimizer, scheduler, path: str = "./", model_name:str = "
         model_name (str, optional): Defaults to "BERT".
         file_prefix (str, optional): Defaults to "train".
         load_best (bool, optional): Defaults to False.
-        config (ConfigRelCAT): Defaults to ConfigRelCAT().
+        relcat_config (ConfigRelCAT): Defaults to ConfigRelCAT().
 
     Returns:
         Tuple (int, int): last epoch and f1 score.
