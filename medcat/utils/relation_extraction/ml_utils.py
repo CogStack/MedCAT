@@ -288,9 +288,6 @@ def get_annotation_schema_tag(sequence_output: torch.Tensor, input_ids: torch.Te
             idx_end_1 = torch.cat((idx_end[1][:idx_remove], idx_end[1][idx_remove + 1:]))
             idx_end = (idx_end_0, idx_end_1) # type: ignore
 
-    print(input_ids)
-    print(idx_start)
-
     assert len(idx_start[0]) == input_ids.shape[0]
     assert len(idx_start[0]) == len(idx_end[0])
 

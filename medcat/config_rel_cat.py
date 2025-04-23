@@ -51,11 +51,16 @@ class General(MixingConfig, BaseModel):
     """Tokenizer.
 
     NB! For these changes to take effect, the pipe would need to be recreated."""
-    annotation_schema_tag_ids: List = [30522, 30523, 30524, 30525, 30526, 30527, 30528, 30529, 30530]
+    annotation_schema_tag_ids: List = [30522, 30523, 30524, 30525]
     """If a foreign non-MCAT trainer dataset is used, you can insert your own Rel entity token delimiters into the tokenizer, \
-    copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce"""
+    copy those token IDs here, and also resize your tokenizer embeddings and adjust the hidden_size of the model, this will depend on the number of tokens you introduce
+    for example: 30522 - [s1], 30523 - [e1], 30524 - [s2], 30525 - [e2], 30526 - [BLANK], 30527 - [ENT1], 30528 - [ENT2], 30529 - [/ENT1], 30530 - [/ENT2]
+    Please note that the tokenizer special tokens are supposed to be in pairs of two for example [s1] and [e1], [s2] and [e2], the [BLANK] is just an example placeholder token
+    If you have more than four tokens here then you need to make sure they are present in the text, 
+    otherwise the pipeline will throw an error in the get_annotation_schema_tag() function.
+    """
 
-    tokenizer_relation_annotation_special_tokens_tags: List[str] = ["[s1]", "[e1]", "[s2]", "[e2]", "[BLANK]", "[ENT1]", "[ENT2]", "[/ENT1]", "[/ENT2]"]
+    tokenizer_relation_annotation_special_tokens_tags: List[str] = ["[s1]", "[e1]", "[s2]", "[e2]"]
 
     tokenizer_other_special_tokens: Dict[str, str] = {"pad_token": "[PAD]"}
     """

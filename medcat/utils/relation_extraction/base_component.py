@@ -47,7 +47,6 @@ class BaseComponent_RelationExtraction():
         self.best_f1: float = 0.0
 
         if init_model:
-            self.relcat_config = ConfigRelCAT()
             self.model_config = BaseConfig_RelationExtraction.load(pretrained_model_name_or_path=self.relcat_config.general.model_name,
                                                                    relcat_config=self.relcat_config)
 
