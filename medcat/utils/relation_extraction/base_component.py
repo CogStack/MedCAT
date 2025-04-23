@@ -7,7 +7,6 @@ from medcat.utils.relation_extraction.pad_seq import Pad_Sequence
 from medcat.utils.relation_extraction.tokenizer import BaseTokenizerWrapper_RelationExtraction
 from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
 
-from transformers import PretrainedConfig
 from torch.optim import AdamW
 from torch.optim.lr_scheduler import MultiStepLR
 
