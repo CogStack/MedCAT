@@ -98,18 +98,25 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         self.hf_model: Union[ModernBertModel, BertModel, LlamaModel, PreTrainedModel] = PreTrainedModel(config=model_config.hf_model_config) # type: ignore
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
+        self._reinitialize_dense_and_frozen_layers(relcat_config=relcat_config)
+
+        self.log.info("RelCAT model config: " + str(self.model_config.hf_model_config))
+
+    def _reinitialize_dense_and_frozen_layers(self, relcat_config: ConfigRelCAT) -> None:
+        """ Reinitialize the dense layers of the model
+
+        Args:
+            relcat_config (ConfigRelCAT): relcat config.
+        """
+
+        self.drop_out = nn.Dropout(relcat_config.model.dropout)
+        self.fc1, self.fc2, self.fc3 = create_dense_layers(relcat_config)
+
         for param in self.hf_model.parameters(): # type: ignore
             if self.relcat_config.model.freeze_layers:
                 param.requires_grad = False
             else:
                 param.requires_grad = True
-
-        self.drop_out = nn.Dropout(self.relcat_config.model.dropout)
-
-        # dense layers
-        self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
-
-        self.log.info("RelCAT model config: " + str(self.model_config.hf_model_config))
 
     def forward(self,
                 input_ids: Optional[torch.Tensor] = None,
@@ -250,4 +257,7 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
                 cls.log.info("Loaded model from relcat_config: " + relcat_config.general.model_name)
 
         cls.log.info("Loaded " + str(model.__class__.__name__) + " from pretrained_model_name_or_path: " + pretrained_model_name_or_path)
+
+        model._reinitialize_dense_and_frozen_layers(relcat_config=relcat_config)
+
         return model

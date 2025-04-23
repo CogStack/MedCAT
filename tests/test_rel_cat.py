@@ -7,7 +7,7 @@ import logging
 from medcat.cdb import CDB
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.rel_cat import RelCAT
-from medcat.utils.relation_extraction.bert.tokenizer import BaseTokenizerWrapper_RelationExtraction as TokenizerWrapperBERT
+from medcat.utils.relation_extraction.bert.tokenizer import BaseTokenizerWrapper_RelationExtraction
 from medcat.utils.relation_extraction.rel_dataset import RelData
 
 from transformers.models.auto.tokenization_auto import AutoTokenizer
@@ -29,7 +29,7 @@ class RelCATTests(unittest.TestCase):
         config.model.model_size = 2304
         config.general.log_level = logging.DEBUG
 
-        tokenizer = TokenizerWrapperBERT(AutoTokenizer.from_pretrained(
+        tokenizer = BaseTokenizerWrapper_RelationExtraction(AutoTokenizer.from_pretrained(
             pretrained_model_name_or_path=config.general.model_name,
             config=config), add_special_tokens=True)
 
@@ -55,10 +55,10 @@ class RelCATTests(unittest.TestCase):
             cls.mct_file_test = json.loads(f.read())["projects"][0]["documents"][1]
 
         cls.config_rel_cat: ConfigRelCAT = config
-        cls.rel_cat: RelCAT = RelCAT(cdb, # tokenizer=tokenizer,
-                                     config=config, init_model=True,)
+        cls.rel_cat: RelCAT = RelCAT(cdb, config=config, init_model=True)
 
         cls.rel_cat.component.model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers))
+        cls.rel_cat.component.model_config.hf_model_config.vocab_size = tokenizer.get_size()
 
         cls.finished = False
         cls.tokenizer = tokenizer
@@ -88,7 +88,6 @@ class RelCATTests(unittest.TestCase):
 
         self.assertEqual(len(rels), len(samples))
 
-
     def test_train_csv_no_tags(self) -> None:
         self.rel_cat.component.relcat_config.train.epochs = 2
         self.rel_cat.train(train_csv_path=self.medcat_rels_csv_path_train, test_csv_path=self.medcat_rels_csv_path_test, checkpoint_path=self.tmp_dir)
@@ -100,8 +99,6 @@ class RelCATTests(unittest.TestCase):
         self.rel_cat.component.relcat_config.general.addl_rels_max_sample_size = 10
         self.rel_cat.component.relcat_config.train.test_size = 0.1
         self.rel_cat.component.relcat_config.train.nclasses = 3
-        self.rel_cat.component.model.relcat_config.train.nclasses = 3
-        self.rel_cat.component.model.hf_model.resize_token_embeddings(len(self.tokenizer.hf_tokenizers))
 
         self.rel_cat.train(export_data_path=self.medcat_export_with_rels_path, checkpoint_path=self.tmp_dir)
 

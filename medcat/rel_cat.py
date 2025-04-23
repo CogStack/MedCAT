@@ -126,8 +126,9 @@ class RelCAT(PipeRunner):
 
         device = torch.device("cuda" if torch.cuda.is_available() and component.relcat_config.general.device != "cpu" else "cpu")
 
-        rel_cat = RelCAT(cdb=cdb, config=component.relcat_config, task=component.task, init_model=False)
+        rel_cat = RelCAT(cdb=cdb, config=component.relcat_config, task=component.task)
         rel_cat.device = device
+        rel_cat.component = component
 
         return rel_cat
 
@@ -255,7 +256,7 @@ class RelCAT(PipeRunner):
                 gamma=self.component.relcat_config.train.multistep_lr_gamma) # type: ignore
 
         self.epoch, self.best_f1 = load_state(
-            self.component.model, self.component.optimizer, self.component.scheduler, load_best=False, path=checkpoint_path, config=self.component.relcat_config)
+            self.component.model, self.component.optimizer, self.component.scheduler, load_best=False, path=checkpoint_path, relcat_config=self.component.relcat_config)
 
         self.log.info("Starting training process...")
 

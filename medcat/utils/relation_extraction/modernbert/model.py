@@ -40,7 +40,7 @@ class ModernBertModel_RelationExtraction(BaseModel_RelationExtraction):
         self.model_config: Union[BaseConfig_RelationExtraction, ModernBertConfig_RelationExtraction] = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.hf_model: Union[ModernBertModel, PreTrainedModel] = PreTrainedModel(config=model_config.hf_model_config)
+        self.hf_model: Union[ModernBertModel, PreTrainedModel] = ModernBertModel(config=model_config.hf_model_config)
 
         for param in self.hf_model.parameters(): # type: ignore
             if self.relcat_config.model.freeze_layers:

@@ -105,7 +105,7 @@ def save_state(model, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_sc
         If you want to export the model after training set final_export=True and leave is_checkpoint=False.
 
     Args:
-        model (Base_RelationExtraction): BertModel_RelationExtraction | LlamaModel_RelationExtraction
+        model (BaseModel_RelationExtraction): BertModel_RelationExtraction | LlamaModel_RelationExtraction etc.
         optimizer (torch.optim.AdamW, optional): Defaults to None.
         scheduler (torch.optim.lr_scheduler.MultiStepLR, optional): Defaults to None.
         epoch (int): Defaults to None.
@@ -136,11 +136,11 @@ def save_state(model, optimizer: torch.optim.AdamW, scheduler: torch.optim.lr_sc
         }, os.path.join(path, file_name))
 
 
-def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_prefix="train", load_best=False, config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
+def load_state(model, optimizer, scheduler, path: str = "./", model_name:str = "BERT", file_prefix:str = "train", load_best: bool = False, relcat_config: ConfigRelCAT = ConfigRelCAT()) -> Tuple[int, int]:
     """ Used by RelCAT.load() and RelCAT.train()
 
     Args:
-        model (Base_RelationExtraction): BertModel_RelationExtraction | LlamaModel_RelationExtraction, it has to be initialized before calling this method via (Bert/Llama)Model_RelationExtraction(...)
+        model (BaseModel_RelationExtraction): BaseModel_RelationExtraction, it has to be initialized before calling this method via (Bert/Llama)Model_RelationExtraction(...)
         optimizer (_type_): optimizer
         scheduler (_type_): scheduler
         path (str, optional): Defaults to "./".
@@ -153,7 +153,7 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
         Tuple (int, int): last epoch and f1 score.
     """
 
-    device: torch.device =torch.device(config.general.device)
+    device: torch.device =torch.device(relcat_config.general.device)
 
     model_name = model_name.replace("/", "_")
     logging.info("Attempting to load RelCAT model on device: " + str(device))
@@ -178,13 +178,13 @@ def load_state(model, optimizer, scheduler, path="./", model_name="BERT", file_p
 
         if optimizer is None:
             parameters = filter(lambda p: p.requires_grad, model.parameters())
-            optimizer = torch.optim.AdamW(params=parameters, lr=config.train.lr, weight_decay=config.train.adam_weight_decay,
-                                betas=config.train.adam_betas, eps=config.train.adam_epsilon)
+            optimizer = torch.optim.AdamW(params=parameters, lr=relcat_config.train.lr, weight_decay=relcat_config.train.adam_weight_decay,
+                                betas=relcat_config.train.adam_betas, eps=relcat_config.train.adam_epsilon)
 
         if scheduler is None:
             scheduler = torch.optim.lr_scheduler.MultiStepLR(optimizer,
-                                                             milestones=config.train.multistep_milestones,
-                                                             gamma=config.train.multistep_lr_gamma)
+                                                             milestones=relcat_config.train.multistep_milestones,
+                                                             gamma=relcat_config.train.multistep_lr_gamma)
         optimizer.load_state_dict(checkpoint['optimizer'])
         scheduler.load_state_dict(checkpoint['scheduler'])
         logging.info("Loaded model and optimizer.")

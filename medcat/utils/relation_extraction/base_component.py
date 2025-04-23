@@ -95,11 +95,9 @@ class BaseComponent_RelationExtraction():
         self.model.hf_model.resize_token_embeddings(self.tokenizer.get_size()) # type: ignore
 
         assert self.model_config is not None
-        self.model_config.vocab_size = self.tokenizer.get_size()
-        self.model_config.pad_token_id = self.pad_id
-
-        self.model_config.to_json_file(
-            os.path.join(save_path, "model_config.json"))
+        self.model_config.hf_model_config.vocab_size = self.tokenizer.get_size()
+        self.model_config.hf_model_config.pad_token_id = self.pad_id
+        self.model_config.save(save_path)
 
         save_state(self.model, optimizer=self.optimizer, scheduler=self.scheduler, epoch=self.epoch, best_f1=self.best_f1,
                    path=save_path, model_name=self.relcat_config.general.model_name,
@@ -116,15 +114,16 @@ class BaseComponent_RelationExtraction():
         """
 
         relcat_config = ConfigRelCAT.load(load_path=pretrained_model_name_or_path)
+
         model_config = BaseConfig_RelationExtraction.load(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                                          relcat_config=relcat_config)
+
+        tokenizer = BaseTokenizerWrapper_RelationExtraction.load(tokenizer_path=pretrained_model_name_or_path,
+                                                                 relcat_config=relcat_config)
 
         model = BaseModel_RelationExtraction.load(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                                  model_config=model_config,
                                                  relcat_config=relcat_config)
-
-        tokenizer = BaseTokenizerWrapper_RelationExtraction.load(tokenizer_path=pretrained_model_name_or_path,
-                                                                 relcat_config=relcat_config)
 
         model.hf_model.resize_token_embeddings(len(tokenizer.hf_tokenizers)) # type: ignore
 
@@ -134,7 +133,7 @@ class BaseComponent_RelationExtraction():
         epoch, best_f1 = load_state(model, optimizer, scheduler, path=pretrained_model_name_or_path,
                                                     model_name=relcat_config.general.model_name,
                                                     file_prefix=relcat_config.general.task,
-                                                    config=relcat_config)
+                                                    relcat_config=relcat_config)
 
         component = cls(model=model, tokenizer=tokenizer, model_config=model_config, config=relcat_config)
         cls.epoch = epoch

@@ -17,11 +17,10 @@ class BertConfig_RelationExtraction(BaseConfig_RelationExtraction):
     @classmethod
     def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, **kwargs)  -> "BertConfig_RelationExtraction":
         model_config = cls(pretrained_model_name_or_path, **kwargs)
-        model_config_path = os.path.join(pretrained_model_name_or_path, "model_config.json")
 
-        if pretrained_model_name_or_path and os.path.exists(model_config_path):
-            model_config.hf_model_config = BertConfig.from_json_file(model_config_path)
-            logger.info("Loaded config from file: " + model_config_path)
+        if pretrained_model_name_or_path and os.path.exists(pretrained_model_name_or_path):
+            model_config.hf_model_config = BertConfig.from_json_file(pretrained_model_name_or_path)
+            logger.info("Loaded config from file: " + pretrained_model_name_or_path)
         else:
             relcat_config.general.model_name = cls.pretrained_model_name_or_path
             model_config.hf_model_config = BertConfig.from_pretrained(

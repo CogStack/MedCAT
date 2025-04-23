@@ -40,19 +40,20 @@ class BaseConfig_RelationExtraction(PretrainedConfig):
             if "modern-bert" in relcat_config.general.tokenizer_name or \
                "modern-bert" in relcat_config.general.model_name:
                 from medcat.utils.relation_extraction.modernbert.config import ModernBertConfig_RelationExtraction
-                model_config = ModernBertConfig_RelationExtraction.load(model_config_path, **kwargs)
+                model_config = ModernBertConfig_RelationExtraction.load(model_config_path, relcat_config=relcat_config, **kwargs)
             elif "bert" in relcat_config.general.tokenizer_name or \
                "bert" in relcat_config.general.model_name:
                 from medcat.utils.relation_extraction.bert.config import BertConfig_RelationExtraction
-                model_config = BertConfig_RelationExtraction.load(model_config_path, **kwargs)
+                model_config = BertConfig_RelationExtraction.load(model_config_path, relcat_config=relcat_config, **kwargs)
             elif "llama" in relcat_config.general.tokenizer_name or \
                "llama" in relcat_config.general.model_name:
                 from medcat.utils.relation_extraction.llama.config import LlamaConfig_RelationExtraction
-                model_config = LlamaConfig_RelationExtraction.load(model_config_path, **kwargs)
+                model_config = LlamaConfig_RelationExtraction.load(model_config_path, relcat_config=relcat_config, **kwargs)
         else:
             if pretrained_model_name_or_path:
                 model_config.hf_model_config = PretrainedConfig.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, **kwargs)
             else:
                 model_config.hf_model_config = PretrainedConfig.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, **kwargs)
             logger.info("Loaded config from : " + model_config_path)
+
         return model_config
