@@ -17,7 +17,6 @@ build/
 venv
 db.sqlite3
 .ipynb_checkpoints
-./install_requires.txt
 
 # vscode 
 .vscode
@@ -56,3 +55,4 @@ tests/model_creator/output/*
 docs/auto/
 docs/_build
 
+models/
