@@ -195,8 +195,9 @@ class ConfigRelCAT(MixingConfig, BaseModel):
         """
         config = cls()
         if os.path.exists(load_path):
-            config = cast(ConfigRelCAT, super().load(
-                os.path.join(load_path, "config.json")))
+            if "config.json" not in load_path:
+                load_path = os.path.join(load_path, "config.json")
+            config = cast(ConfigRelCAT, super().load(load_path))
             logging.info("Loaded config.json")
 
         return config
