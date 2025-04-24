@@ -1,174 +1,122 @@
 import logging
-from typing import Any, List, Optional, Tuple
 import torch
+from typing import Any, Optional, Tuple, Union
 from torch import nn
-from transformers.models.bert.modeling_bert import BertPreTrainingHeads, BertModel
-from transformers.models.bert.configuration_bert import BertConfig
+from transformers import PretrainedConfig, PreTrainedModel
+
 from medcat.config_rel_cat import ConfigRelCAT
+from transformers.models.llama import LlamaModel
+from transformers import BertModel
+from transformers import ModernBertModel
+from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
+from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
 
 
-class BertModel_RelationExtraction(nn.Module):
-    """ BertModel class for RelCAT
+class BaseModelBluePrint_RelationExtraction(nn.Module):
+    """ Base class for the RelCAT models
     """
 
-    name = "bertmodel_relcat"
+    hf_model: PreTrainedModel
+    relcat_config: ConfigRelCAT
+    model_config: PretrainedConfig
+    drop_out: nn.Dropout
+    fc1: nn.Linear
+    fc2: nn.Linear
+    fc3: nn.Linear
 
-    log = logging.getLogger(__name__)
-
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig):
-        """ Class to hold the BERT model + model_config
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[PretrainedConfig, BaseConfig_RelationExtraction]):
+        """ Class to hold the HF model + model_config
 
         Args:
             pretrained_model_name_or_path (str): path to load the model from,
                     this can be a HF model i.e: "bert-base-uncased", if left empty, it is normally assumed that a model is loaded from 'model.dat'
-                    using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.            
+                    using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.
             relcat_config (ConfigRelCAT): relcat config.
-            model_config (BertConfig): HF bert config for model.
+            model_config (PretrainedConfig): HF bert config for model.
         """
-        super(BertModel_RelationExtraction, self).__init__()
+        super(BaseModelBluePrint_RelationExtraction, self).__init__()
+
+    def forward(self,
+            input_ids: Optional[torch.Tensor] = None,
+            attention_mask: Optional[torch.Tensor] = None,
+            token_type_ids: Optional[torch.Tensor] = None,
+            position_ids: Any = None,
+            head_mask: Any = None,
+            encoder_hidden_states: Any = None,
+            encoder_attention_mask: Any = None,
+            Q: Any = None,
+            e1_e2_start: Any = None,
+            pooled_output: Any = None) -> Optional[Tuple[torch.Tensor, torch.Tensor]]:
+        """Forward pass for the model
+
+        Args:
+            input_ids (torch.Tensor): input token ids. Defaults to None.
+            attention_mask (torch.Tensor): attention mask for the input ids. Defaults to None.
+            token_type_ids (torch.Tensor): token type ids for the input ids. Defaults to None.
+            position_ids (Any): The position IDs. Defaults to None.
+            head_mask (Any): The head mask. Defaults to None.
+            encoder_hidden_states (Any): Encoder hidden states. Defaults to None.
+            encoder_attention_mask (Any): Encoder attention mask. Defaults to None.
+            Q (Any): Q. Defaults to None.
+            e1_e2_start (Any): start and end indices for the entities in the input ids. Defaults to None.
+            pooled_output (Any): The pooled output. Defaults to None.
+
+        Returns:
+            Optional[Tuple[torch.Tensor, torch.Tensor]]: logits for the relation classification task.
+        """
+        return None
+
+    def output2logits(self, pooled_output: torch.Tensor, sequence_output: torch.Tensor, input_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> Optional[torch.Tensor]:
+        """ Convert the output of the model to logits
+
+        Args:
+            pooled_output (torch.Tensor): output of the pooled layer.
+            sequence_output (torch.Tensor): output of the sequence layer.
+            input_ids (torch.Tensor): input token ids.
+            e1_e2_start (torch.Tensor): start and end indices for the entities in the input ids.
+
+        Returns:
+            logits (torch.Tensor): logits for the relation classification task.
+        """
+        return None
+
+
+class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
+
+    name = "basemodel_relcat"
+    log = logging.getLogger(__name__)
+
+    def __init__(self, relcat_config: ConfigRelCAT,
+                 model_config: BaseConfig_RelationExtraction,
+                 pretrained_model_name_or_path):
+        super(BaseModel_RelationExtraction, self).__init__(pretrained_model_name_or_path=pretrained_model_name_or_path, 
+                                                          relcat_config=relcat_config,
+                                                          model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: BertConfig = model_config
+        self.model_config: BaseConfig_RelationExtraction = model_config
+        self.hf_model: Union[ModernBertModel, BertModel, LlamaModel, PreTrainedModel] = PreTrainedModel(config=model_config.hf_model_config) # type: ignore
+        self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.bert_model:BertModel = BertModel(config=model_config)
+        self._reinitialize_dense_and_frozen_layers(relcat_config=relcat_config)
 
-        if pretrained_model_name_or_path != "":
-            self.bert_model = BertModel.from_pretrained(pretrained_model_name_or_path, config=model_config)
+        self.log.info("RelCAT model config: " + str(self.model_config.hf_model_config))
 
-        for param in self.bert_model.parameters():
-            param.requires_grad = False
-
-        self.drop_out = nn.Dropout(self.model_config.hidden_dropout_prob)
-
-        if self.relcat_config.general.task == "pretrain":
-            self.activation = nn.Tanh()
-            self.cls = BertPreTrainingHeads(self.model_config)
-
-        self.relu = nn.ReLU()
-
-        # dense layers
-        self.fc1 = nn.Linear(self.relcat_config.model.model_size, self.relcat_config.model.hidden_size)
-        self.fc2 = nn.Linear(self.relcat_config.model.hidden_size, int(self.relcat_config.model.hidden_size / 2))
-        self.fc3 = nn.Linear(int(self.relcat_config.model.hidden_size / 2), self.relcat_config.train.nclasses)
-
-        self.log.info("RelCAT BertConfig: " + str(self.model_config))
-
-    def get_annotation_schema_tag(self, sequence_output: torch.Tensor, input_ids: torch.Tensor, special_tag: List) -> torch.Tensor:
-        """ Gets to token sequences from the sequence_ouput for the specific token 
-            tag ids in self.relcat_config.general.annotation_schema_tag_ids.
+    def _reinitialize_dense_and_frozen_layers(self, relcat_config: ConfigRelCAT) -> None:
+        """ Reinitialize the dense layers of the model
 
         Args:
-            sequence_output (torch.Tensor): hidden states/embeddings for each token in the input text
-            input_ids (torch.Tensor): input token ids
-            special_tag (List): special annotation token id pairs
-
-        Returns:
-            torch.Tensor: new seq_tags
+            relcat_config (ConfigRelCAT): relcat config.
         """
 
-        idx_start = torch.where(input_ids == special_tag[0]) # returns: row ids, idx of token[0]/star token in row
-        idx_end = torch.where(input_ids == special_tag[1]) # returns: row ids, idx of token[1]/end token in row
+        self.drop_out = nn.Dropout(relcat_config.model.dropout)
+        self.fc1, self.fc2, self.fc3 = create_dense_layers(relcat_config)
 
-        seen = [] # List to store seen elements and their indices
-        duplicate_indices = []
-
-        for i in range(len(idx_start[0])):
-            if idx_start[0][i] in seen:
-                duplicate_indices.append(i)
+        for param in self.hf_model.parameters(): # type: ignore
+            if self.relcat_config.model.freeze_layers:
+                param.requires_grad = False
             else:
-                seen.append(idx_start[0][i])
-
-        if len(duplicate_indices) > 0:
-            self.log.info("Duplicate entities found, removing them...")
-            for idx_remove in duplicate_indices:
-                idx_start_0 = torch.cat((idx_start[0][:idx_remove], idx_start[0][idx_remove + 1:]))
-                idx_start_1 = torch.cat((idx_start[1][:idx_remove], idx_start[1][idx_remove + 1:]))
-                idx_start = (idx_start_0, idx_start_1) # type: ignore
-
-        seen = []
-        duplicate_indices = []
-
-        for i in range(len(idx_end[0])):
-            if idx_end[0][i] in seen:
-                duplicate_indices.append(i)
-            else:
-                seen.append(idx_end[0][i])
-
-        if len(duplicate_indices) > 0:
-            self.log.info("Duplicate entities found, removing them...")
-            for idx_remove in duplicate_indices:
-                idx_end_0 = torch.cat((idx_end[0][:idx_remove], idx_end[0][idx_remove + 1:]))
-                idx_end_1 = torch.cat((idx_end[1][:idx_remove], idx_end[1][idx_remove + 1:]))
-                idx_end = (idx_end_0, idx_end_1) # type: ignore
-
-        assert len(idx_start[0]) == input_ids.shape[0]
-        assert len(idx_start[0]) == len(idx_end[0])
-        sequence_output_entities = []
-
-        for i in range(len(idx_start[0])):
-            to_append = sequence_output[i, idx_start[1][i] + 1:idx_end[1][i], ]
-
-            # to_append = torch.sum(to_append, dim=0)
-            to_append, _ = torch.max(to_append, axis=0) # type: ignore
-
-            sequence_output_entities.append(to_append)
-        sequence_output_entities = torch.stack(sequence_output_entities)
-
-        return sequence_output_entities
-
-    def output2logits(self, pooled_output: torch.Tensor, sequence_output: torch.Tensor, input_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> torch.Tensor:
-        """
-
-        Args:
-            pooled_output (torch.Tensor): embedding of the CLS token
-            sequence_output (torch.Tensor): hidden states/embeddings for each token in the input text
-            input_ids (torch.Tensor): input token ids.
-            e1_e2_start (torch.Tensor): annotation tags token position
-
-        Returns:
-            torch.Tensor: classification probabilities for each token.
-        """
-
-        new_pooled_output = pooled_output
-
-        if self.relcat_config.general.annotation_schema_tag_ids:
-            annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
-                                        range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
-            seq_tags = []
-
-            # for each pair of tags (e1,s1) and (e2,s2)
-            for each_tags in annotation_schema_tag_ids_:
-                seq_tags.append(self.get_annotation_schema_tag(
-                    sequence_output, input_ids, each_tags))
-
-            seq_tags = torch.stack(seq_tags, dim=0)
-
-            new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
-        else:
-            e1e2_output = []
-            temp_e1 = []
-            temp_e2 = []
-
-            for i, seq in enumerate(sequence_output):
-                # e1e2 token sequences
-                temp_e1.append(seq[e1_e2_start[i][0]])
-                temp_e2.append(seq[e1_e2_start[i][1]])
-
-            e1e2_output.append(torch.stack(temp_e1, dim=0))
-            e1e2_output.append(torch.stack(temp_e2, dim=0))
-
-            new_pooled_output = torch.cat((pooled_output, *e1e2_output), dim=1)
-
-            del e1e2_output
-            del temp_e2
-            del temp_e1
-
-        x = self.drop_out(new_pooled_output)
-        x = self.fc1(x)
-        x = self.drop_out(x)
-        x = self.fc2(x)
-        classification_logits = self.fc3(x)
-        return classification_logits.to(self.relcat_config.general.device)
+                param.requires_grad = True
 
     def forward(self,
                 input_ids: Optional[torch.Tensor] = None,
@@ -202,13 +150,12 @@ class BertModel_RelationExtraction(nn.Module):
         encoder_attention_mask = encoder_attention_mask.to(
             self.relcat_config.general.device)
 
-        # NOTE: no idea why, but mypy doesn't understand that there's an implicit `self` argument here...
-        self.bert_model = self.bert_model.to(device=self.relcat_config.general.device)  # type: ignore
+        self.hf_model = self.hf_model.to(self.relcat_config.general.device) # type: ignore
 
-        model_output = self.bert_model(input_ids=input_ids, attention_mask=attention_mask,
+        model_output = self.hf_model(input_ids=input_ids, attention_mask=attention_mask,
                                        token_type_ids=token_type_ids,
                                        encoder_hidden_states=encoder_hidden_states,
-                                       encoder_attention_mask=encoder_attention_mask)
+                                       encoder_attention_mask=encoder_attention_mask) # type: ignore
 
         # (batch_size, sequence_length, hidden_size)
         sequence_output = model_output[0]
@@ -218,3 +165,99 @@ class BertModel_RelationExtraction(nn.Module):
             pooled_output, sequence_output, input_ids, e1_e2_start)
 
         return model_output, classification_logits.to(self.relcat_config.general.device)
+
+
+    def output2logits(self, pooled_output: torch.Tensor, sequence_output: torch.Tensor, input_ids: torch.Tensor, e1_e2_start: torch.Tensor) -> torch.Tensor:
+        """
+
+        Args:
+            pooled_output (torch.Tensor): embedding of the CLS token
+            sequence_output (torch.Tensor): hidden states/embeddings for each token in the input text
+            input_ids (torch.Tensor): input token ids.
+            e1_e2_start (torch.Tensor): annotation tags token position
+
+        Returns:
+            torch.Tensor: classification probabilities for each token.
+        """
+
+        new_pooled_output = pooled_output
+
+        if self.relcat_config.general.annotation_schema_tag_ids:
+            annotation_schema_tag_ids_ = [self.relcat_config.general.annotation_schema_tag_ids[i:i + 2] for i in
+                                        range(0, len(self.relcat_config.general.annotation_schema_tag_ids), 2)]
+            seq_tags = []
+
+            # for each pair of tags (e1,s1) and (e2,s2)
+            for each_tags in annotation_schema_tag_ids_:
+                seq_tags.append(get_annotation_schema_tag(
+                    sequence_output, input_ids, each_tags))
+
+            seq_tags = torch.stack(seq_tags, dim=0)
+
+            new_pooled_output = torch.cat((pooled_output, *seq_tags), dim=1)
+        else:
+            e1e2_output = []
+            temp_e1 = []
+            temp_e2 = []
+
+            for i, seq in enumerate(sequence_output):
+                # e1e2 token sequences
+                temp_e1.append(seq[e1_e2_start[i][0]])
+                temp_e2.append(seq[e1_e2_start[i][1]])
+
+            e1e2_output.append(torch.stack(temp_e1, dim=0))
+            e1e2_output.append(torch.stack(temp_e2, dim=0))
+
+            new_pooled_output = torch.cat((pooled_output, *e1e2_output), dim=1)
+
+            del e1e2_output
+            del temp_e2
+            del temp_e1
+
+        x = self.drop_out(new_pooled_output)
+        x = self.fc1(x)
+        x = self.drop_out(x)
+        x = self.fc2(x)
+        classification_logits = self.fc3(x)
+
+        return classification_logits.to(self.relcat_config.general.device)
+
+    @classmethod
+    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BaseConfig_RelationExtraction) -> "BaseModel_RelationExtraction":
+        """ Load the model from the given path
+
+        Args:
+            pretrained_model_name_or_path (str): path to load the model from.
+            relcat_config (ConfigRelCAT): relcat config.
+            model_config (BaseConfig_RelationExtraction): The model-specific config.
+
+        returns:
+            BaseModel_RelationExtraction: The loaded model.
+        """
+
+        model = BaseModel_RelationExtraction(relcat_config=relcat_config, model_config=model_config, pretrained_model_name_or_path=pretrained_model_name_or_path)
+
+        if "modern-bert" in relcat_config.general.tokenizer_name or \
+             "modern-bert" in relcat_config.general.model_name:
+            from medcat.utils.relation_extraction.modernbert.model import ModernBertModel_RelationExtraction
+            model = ModernBertModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config, model_config=model_config)
+        elif "bert" in relcat_config.general.tokenizer_name or \
+             "bert" in relcat_config.general.model_name:
+            from medcat.utils.relation_extraction.bert.model import BertModel_RelationExtraction
+            model = BertModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config, model_config=model_config)
+        elif "llama" in relcat_config.general.tokenizer_name or \
+             "llama" in relcat_config.general.model_name:
+            from medcat.utils.relation_extraction.llama.model import LlamaModel_RelationExtraction
+            model = LlamaModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config, model_config=model_config)
+        else:
+            if pretrained_model_name_or_path:
+                model.hf_model = PreTrainedModel.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config)
+            else:
+                model.hf_model = PreTrainedModel.from_pretrained(pretrained_model_name_or_path=relcat_config.general.model_name, config=model_config)
+                cls.log.info("Loaded model from relcat_config: " + relcat_config.general.model_name)
+
+        cls.log.info("Loaded " + str(model.__class__.__name__) + " from pretrained_model_name_or_path: " + pretrained_model_name_or_path)
+
+        model._reinitialize_dense_and_frozen_layers(relcat_config=relcat_config)
+
+        return model

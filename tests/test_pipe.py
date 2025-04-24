@@ -13,7 +13,8 @@ from medcat.utils.normalizers import BasicSpellChecker, TokenNormalizer
 from medcat.ner.vocab_based_ner import NER
 from medcat.linking.context_based_linker import Linker
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-from medcat.utils.relation_extraction.tokenizer import TokenizerWrapperBERT as RelTokenizerWrapperBERT
+from medcat.utils.relation_extraction.bert.tokenizer import (
+    BaseTokenizerWrapper_RelationExtraction as RelTokenizerWrapperBERT)
 from transformers import AutoTokenizer
 
 
@@ -43,9 +44,10 @@ class PipeTests(unittest.TestCase):
         cls.linker = Linker(cls.cdb, cls.vocab, cls.config)
 
         _tokenizer = TokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
-        _tokenizer_rel = RelTokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
+        # _tokenizer_rel = RelTokenizerWrapperBERT(hf_tokenizers=AutoTokenizer.from_pretrained("bert-base-uncased"))
         cls.meta_cat = MetaCAT(tokenizer=_tokenizer)
-        cls.rel_cat = RelCAT(cls.cdb, tokenizer=_tokenizer_rel, init_model=True)
+        cls.rel_cat = RelCAT(cls.cdb, # tokenizer=_tokenizer_rel,
+                             init_model=True)
 
         cls.text = "stop of CDB - I was running and then Movar Virus attacked and CDb"
         cls.undertest = Pipe(tokenizer=spacy_split_all, config=cls.config)

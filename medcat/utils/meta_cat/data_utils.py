@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple, Iterable, List
+from typing import Any, Dict, Optional, Tuple, Iterable, List, Union
 from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 import copy
 import logging
@@ -101,10 +101,10 @@ def prepare_from_json(data: Dict,
                                 ln = e_ind - s_ind
                                 tkns = tkns[:cpos] + tokenizer(replace_center)['input_ids'] + tkns[cpos + ln + 1:]
 
-                            # Backward compatibility if meta_anns is a list vs dict in the new approach
-                            meta_anns = []
+                            meta_anns: Union[Dict[Any, Any], List, Any] = []
+
                             if 'meta_anns' in ann:
-                                meta_anns = ann['meta_anns'].values() if isinstance(ann['meta_anns'],dict) else ann['meta_anns']
+                                meta_anns = ann['meta_anns'].values() if isinstance(ann['meta_anns'], dict) else ann['meta_anns']
 
                             # If the annotation is validated
                             for meta_ann in meta_anns:
