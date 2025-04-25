@@ -14,7 +14,8 @@ from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBase
 from sklearn.metrics import classification_report, precision_recall_fscore_support, confusion_matrix
 from sklearn.model_selection import train_test_split
 from sklearn.utils.class_weight import compute_class_weight
-from transformers import AdamW, get_linear_schedule_with_warmup
+from transformers import get_linear_schedule_with_warmup
+from torch.optim import AdamW
 
 
 import logging
@@ -329,12 +330,12 @@ def train_model(model: nn.Module, data: List, config: ConfigMetaCAT, save_dir_pa
         print_report(epoch, running_loss_test, all_logits_test, y=y_test, name='Test')
 
         _report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),
-                                        output_dict=True)
+                                        output_dict=True,zero_division=0)
         if not winner_report or _report[config.train['metric']['base']][config.train['metric']['score']] > \
                 winner_report['report'][config.train['metric']['base']][config.train['metric']['score']]:
 
             report = classification_report(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1),
-                                           output_dict=True)
+                                           output_dict=True,zero_division=0)
             cm = confusion_matrix(y_test, np.argmax(np.concatenate(all_logits_test, axis=0), axis=1), normalize='true')
             report_train = classification_report(y_train, np.argmax(np.concatenate(all_logits, axis=0), axis=1),
                                                  output_dict=True)

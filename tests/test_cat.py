@@ -383,6 +383,27 @@ class CATTests(unittest.TestCase):
             with self.subTest(f'CUI: {filtered_cui}'):
                 self.assertTrue(filtered_cui in self.undertest.config.linking.filters.cuis)
 
+    def _test_train_sup_with_meta_cat(self, train_meta_cats: bool):
+        # def side_effect(doc, *args, **kwargs):
+        #     raise ValueError()
+        #     # return doc
+        meta_cat = _get_meta_cat(self.meta_cat_dir)
+        cat = CAT(cdb=self.cdb, config=self.cdb.config, vocab=self.vocab, meta_cats=[meta_cat])
+        with patch.object(MetaCAT, "train_raw") as mock_train:
+            with patch.object(MetaCAT, "__call__", side_effect=lambda doc: doc):
+                cat.train_supervised_raw(get_fixed_meta_cat_data(), never_terminate=True,
+                                        train_meta_cats=train_meta_cats)
+        if train_meta_cats:
+            mock_train.assert_called()
+        else:
+            mock_train.assert_not_called()
+
+    def test_train_supervised_does_not_train_meta_cat_by_default(self):
+        self._test_train_sup_with_meta_cat(False)
+
+    def test_train_supervised_can_train_meta_cats(self):
+        self._test_train_sup_with_meta_cat(True)
+
     def test_train_supervised_no_leak_extra_cui_filters(self):
         self.test_train_supervised_does_not_retain_MCT_filters_default(extra_cui_filter={'C123', 'C111'})
 
@@ -799,6 +820,9 @@ class ModelWithZeroConfigsLoadTests(unittest.TestCase):
             CAT.load_model_pack(self.temp_dir.name)
 
 
+META_CAT_JSON_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "mct_export_for_meta_cat_test.json")
+
+
 def _get_meta_cat(meta_cat_dir):
     config = ConfigMetaCAT()
     config.general["category_name"] = "Status"
@@ -808,9 +832,29 @@ def _get_meta_cat(meta_cat_dir):
                        embeddings=None,
                        config=config)
     os.makedirs(meta_cat_dir, exist_ok=True)
-    json_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "resources", "mct_export_for_meta_cat_test.json")
+    json_path = META_CAT_JSON_PATH
     meta_cat.train_from_json(json_path, save_dir_path=meta_cat_dir)
     return meta_cat
+
+
+def get_fixed_meta_cat_data(path: str = META_CAT_JSON_PATH):
+    with open(path) as f:
+        data = json.load(f)
+    for proj_num, project in enumerate(data['projects']):
+        if 'name' not in project:
+            project['name'] = f"Proj_{proj_num}"
+        if 'cuis' not in project:
+            project['cuis'] = ''
+        if 'id' not in project:
+            project['id'] = f'P{proj_num}'
+        for doc in project['documents']:
+            if 'entities' in doc and 'annotations' not in doc:
+                ents = doc.pop("entities")
+                doc['annotations'] = list(ents.values())
+                for ann in doc['annotations']:
+                    if 'pretty_name' in ann and 'value' not in ann:
+                        ann['value'] = ann.pop('pretty_name')
+    return data
 
 
 class TestLoadingOldWeights(unittest.TestCase):

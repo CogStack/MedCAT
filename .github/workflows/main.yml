@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        python-version: [ '3.9', '3.10', '3.11' ]
+        python-version: [ '3.9', '3.10', '3.11', '3.12' ]
       max-parallel: 4
 
     steps:
@@ -76,7 +76,7 @@ jobs:
       github.ref == 'refs/heads/master' &&
       github.event_name == 'push' &&
       startsWith(github.ref, 'refs/tags') != true
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     concurrency: publish-to-test-pypi
     needs: [build]

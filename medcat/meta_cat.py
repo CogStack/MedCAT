@@ -95,8 +95,9 @@ class MetaCAT(PipeRunner):
             if not config.model.model_freeze_layers:
                 peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
                                          target_modules=["query", "value"], lora_dropout=0.2)
-
-                model = get_peft_model(model, peft_config)
+                # Not sure what changed between transformers 4.50.3 and 4.50.1 that made this
+                # fail for mypy. But as best as I Can tell, it still works just the same
+                model = get_peft_model(model, peft_config)  # type: ignore
                 # model.print_trainable_parameters()
 
             logger.info("BERT model used for classification")
@@ -243,10 +244,12 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name present
-        category_name = g_config['category_name']
-        if category_name not in data:
+        category_name = g_config.get_applicable_category_name(data)
+        if category_name is None:
             raise Exception(
-                "The category name does not exist in this json file. You've provided '{}', while the possible options are: {}".format(
+                "The category name does not exist in this json file. You've provided '{}', "
+                "while the possible options are: {}. Additionally, ensure the populate the "
+                "'alternative_category_names' attribute to accommodate for variations.".format(
                     category_name, " | ".join(list(data.keys()))))
 
         data = data[category_name]
@@ -258,27 +261,21 @@ class MetaCAT(PipeRunner):
         if not category_value2id:
             # Encode the category values
             full_data, data_undersampled, category_value2id = encode_category_values(data,
-                                                                                     category_undersample=self.config.model.category_undersample)
-            g_config['category_value2id'] = category_value2id
+                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
         else:
             # We already have everything, just get the data
             full_data, data_undersampled, category_value2id = encode_category_values(data,
                                                                                      existing_category_value2id=category_value2id,
-                                                                                     category_undersample=self.config.model.category_undersample)
-            g_config['category_value2id'] = category_value2id
-        # Make sure the config number of classes is the same as the one found in the data
-        if len(category_value2id) != self.config.model['nclasses']:
-            logger.warning(
-                "The number of classes set in the config is not the same as the one found in the data: %d vs %d",self.config.model['nclasses'], len(category_value2id))
-            logger.warning("Auto-setting the nclasses value in config and rebuilding the model.")
-            self.config.model['nclasses'] = len(category_value2id)
+                                                                                     category_undersample=self.config.model.category_undersample,alternative_class_names=g_config['alternative_class_names'])
+        g_config['category_value2id'] = category_value2id
+        self.config.model['nclasses'] = len(category_value2id)
 
         if self.config.model.phase_number == 2 and save_dir_path is not None:
             model_save_path = os.path.join(save_dir_path, 'model.dat')
             device = torch.device(g_config['device'])
             try:
                 self.model.load_state_dict(torch.load(model_save_path, map_location=device))
-                logger.info("Model state loaded from dict for 2 phase learning")
+                logger.info("Training model for Phase 2, with model dict loaded from disk")
 
             except FileNotFoundError:
                 raise FileNotFoundError(f"\nError: Model file not found at path: {model_save_path}\nPlease run phase 1 training and then run phase 2.")
@@ -295,6 +292,7 @@ class MetaCAT(PipeRunner):
             if not t_config['auto_save_model']:
                 logger.info("For phase 1, model state has to be saved. Saving model...")
                 t_config['auto_save_model'] = True
+            logger.info("Training model for Phase 1 now...")
 
         report = train_model(self.model, data=data, config=self.config, save_dir_path=save_dir_path)
 
@@ -342,8 +340,8 @@ class MetaCAT(PipeRunner):
                                  lowercase=g_config['lowercase'])
 
         # Check is the name there
-        category_name = g_config['category_name']
-        if category_name not in data:
+        category_name = g_config.get_applicable_category_name(data)
+        if category_name is None:
             raise Exception("The category name does not exist in this json file.")
 
         data = data[category_name]
@@ -415,7 +413,7 @@ class MetaCAT(PipeRunner):
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model['model_variant'])
+            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model.model_variant)
 
         # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)

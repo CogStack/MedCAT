@@ -193,8 +193,13 @@ class TokenizerWrapperBERT(TokenizerWrapperBase):
         try:
             tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(path, **kwargs)
         except Exception as e:
-            logging.warning("Could not load tokenizer from path due to error: {}. Loading from library for model variant: {}".format(e,model_variant))
-            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(model_variant)
+            # So that this is a string - it should be as it's only used in MetaCAT.load method
+            # with `config.model.model_variant` which is a `str` rathern than None
+            # NOTE: The reason the type in method signature is Optional[str] is because supertype defines it as such
+            variant = str(model_variant)
+            logging.warning("Could not load tokenizer from path due to error: %s. Loading from library for model variant: %s",
+                            e, variant)
+            tokenizer.hf_tokenizers = BertTokenizerFast.from_pretrained(variant)
 
         return tokenizer
 

@@ -40,6 +40,7 @@ from medcat.ner.transformers_ner import TransformersNER
 from medcat.utils.saving.serializer import SPECIALITY_NAMES, ONE2MANY
 from medcat.utils.saving.envsnapshot import get_environment_info, ENV_SNAPSHOT_FILE_NAME
 from medcat.stats.stats import get_stats
+from medcat.stats.mctexport import count_all_annotations, iter_anns
 from medcat.utils.filters import set_project_filters
 from medcat.utils.usage_monitoring import UsageMonitor
 
@@ -142,7 +143,7 @@ class CAT(object):
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general.category_name)
 
         for rel_cat in self._rel_cats:
-            self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))
+            self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.component.relcat_config.general["labels2idx"].keys())))
 
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length
@@ -209,8 +210,12 @@ class CAT(object):
         else:
             return json.dumps(card, indent=2, sort_keys=False)
 
-    def _versioning(self, force_rehash: bool = False):
+    def _versioning(self, force_rehash: bool = False,
+                    change_description: Optional[str] = None):
         # Check version info and do not allow without it
+        date_today = date.today().strftime("%d %B %Y")
+        if change_description is not None:
+            self.config.version.description += f"\n[{date_today}] {change_description}"
         if self.config.version.description == 'No description':
             logger.warning("Please consider populating the version information [description, performance, location, ontology] in cat.config.version")
 
@@ -221,14 +226,17 @@ class CAT(object):
             if version.id is not None:
                 version.history.append(version['id'])
             version.id = m
-            version.last_modified = date.today().strftime("%d %B %Y")
+            version.last_modified = date_today
             version.cdb_info = self.cdb.make_stats()
             version.meta_cats = [meta_cat.get_model_card(as_dict=True) for meta_cat in self._meta_cats]
             version.medcat_version = __version__
             logger.warning("Please consider updating [description, performance, location, ontology] in cat.config.version")
 
-    def create_model_pack(self, save_dir_path: str, model_pack_name: str = DEFAULT_MODEL_PACK_NAME, force_rehash: bool = False,
-            cdb_format: str = 'dill') -> str:
+    def create_model_pack(self, save_dir_path: str,
+                          model_pack_name: str = DEFAULT_MODEL_PACK_NAME,
+                          force_rehash: bool = False,
+                          change_description: Optional[str] = None,
+                          cdb_format: str = 'dill') -> str:
         """Will crete a .zip file containing all the models in the current running instance
         of MedCAT. This is not the most efficient way, for sure, but good enough for now.
 
@@ -239,6 +247,8 @@ class CAT(object):
                 The model pack name. Defaults to DEFAULT_MODEL_PACK_NAME.
             force_rehash (bool):
                 Force recalculation of hash. Defaults to `False`.
+            change_description (Optional[str]):
+                The description of the change due to which a save is required. Defaults to None.
             cdb_format (str):
                 The format of the saved CDB in the model pack.
                 The available formats are:
@@ -253,7 +263,7 @@ class CAT(object):
         # Spacy model always should be just the name, but during loading it can be reset to path
         self.config.general.spacy_model = os.path.basename(self.config.general.spacy_model)
         # Versioning
-        self._versioning(force_rehash)
+        self._versioning(force_rehash, change_description)
         model_pack_name += "_{}".format(self.config.version.id)
 
         logger.warning("This will save all models into a zip file, can take some time and require quite a bit of disk space.")
@@ -808,7 +818,8 @@ class CAT(object):
                                    retain_extra_cui_filter: bool = False,
                                    checkpoint: Optional[Checkpoint] = None,
                                    retain_filters: bool = False,
-                                   is_resumed: bool = False) -> Tuple:
+                                   is_resumed: bool = False,
+                                   train_meta_cats: bool = False) -> Tuple:
         """
         Run supervised training on a dataset from MedCATtrainer in JSON format.
 
@@ -825,7 +836,7 @@ class CAT(object):
                                          devalue_others, use_groups, never_terminate,
                                          train_from_false_positives, extra_cui_filter,
                                          retain_extra_cui_filter, checkpoint,
-                                         retain_filters, is_resumed)
+                                         retain_filters, is_resumed, train_meta_cats)
 
     def train_supervised_raw(self,
                              data: Dict[str, List[Dict[str, dict]]],
@@ -845,7 +856,8 @@ class CAT(object):
                              retain_extra_cui_filter: bool = False,
                              checkpoint: Optional[Checkpoint] = None,
                              retain_filters: bool = False,
-                             is_resumed: bool = False) -> Tuple:
+                             is_resumed: bool = False,
+                             train_meta_cats: bool = False) -> Tuple:
         """Train supervised based on the raw data provided.
 
         The raw data is expected in the following format:
@@ -922,6 +934,8 @@ class CAT(object):
                 a ValueError is raised. The merging is done in the first epoch.
             is_resumed (bool):
                 If True resume the previous training; If False, start a fresh new training.
+            train_meta_cats (bool):
+                If True, also trains the appropriate MetaCATs.
 
         Raises:
             ValueError: If attempting to retain filters with while training over multiple projects.
@@ -1081,6 +1095,21 @@ class CAT(object):
                                                                                use_overlaps=use_overlaps,
                                                                                use_groups=use_groups,
                                                                                extra_cui_filter=extra_cui_filter)
+        if (train_meta_cats and
+                # NOTE if no annnotaitons, no point
+                count_all_annotations(data) > 0):  # type: ignore
+            # NOTE: if there
+            logger.info("Training MetaCATs within train_supervised_raw")
+            _, _, ann0 = next(iter_anns(data))  # type: ignore
+            for meta_cat in self._meta_cats:
+                # only consider meta-cats that have been defined for the category
+                if 'meta_anns' in ann0:
+                    ann_names = ann0['meta_anns'].keys()  # type: ignore
+                    # adapt to alternative names if applicable
+                    cat_name = meta_cat.config.general.get_applicable_category_name(ann_names)
+                    if cat_name in ann_names:
+                        logger.debug("Training MetaCAT %s", meta_cat.config.general.category_name)
+                        meta_cat.train_raw(data)
 
         # reset the state of filters
         self.config.linking.filters = orig_filters
