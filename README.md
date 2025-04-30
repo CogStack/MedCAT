@@ -1,6 +1,6 @@
 # Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/master/media/cat-logo.png" width=45> oncept Annotation Tool
 
-**NB! MedCAT v2 will soon be released.**
+**NB! [MedCAT v2](https://github.com/CogStack/MedCAT2) will soon be released.**
 **MedCAT v1.16.0 will be the latest MedCAT v1 minor release.**
 **However, we will likely continue to support v1.16.x with patch releases for some time.**
 
