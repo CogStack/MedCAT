@@ -254,7 +254,7 @@ def umls_to_icd10cm(cdb, csv_path):
                     else:
                         cdb.cui2info[cui]["icd10"] = [icd10]
         except Exception as e:
-            logger.warn("Issue at %s", row["CUI"], exc_info=e)
+            logger.warning("Issue at %s", row["CUI"], exc_info=e)
 
 
 def umls_to_icd10_over_snomed(cdb, pickle_path):
@@ -320,7 +320,7 @@ def umls_to_icd10(cdb: CDB, csv_path: str):
                 else:
                     cdb.cui2info[cui]["icd10"] = [icd10]
         except Exception as e:
-            logger.warn("Issue at %s", row["CUI"], exc_info=e)
+            logger.warning("Issue at %s", row["CUI"], exc_info=e)
 
 
 def umls_to_snomed(cdb: CDB, pickle_path):
@@ -452,7 +452,7 @@ def add_names_icd10(csv_path, cat):
             name = row['name']
             cat.add_name(cui, name, is_pref_name=False, only_new=True)
         except Exception as e:
-            logger.warn("Issue at %s", row["CUI"], exc_info=e)
+            logger.warning("Issue at %s", row["CUI"], exc_info=e)
 
         if index % 1000 == 0:
             logger.info('index=%d', index)
@@ -472,7 +472,7 @@ def add_names_icd10cm(cdb, csv_path, cat):
                 if bl != len(cdb.cui2names.get(cui, [])):
                     logger.info("'%s' with cui '%s'", name, cui)
         except Exception as e:
-            logger.warn("Issue at %s", row["CUI"], exc_info=e)
+            logger.warning("Issue at %s", row["CUI"], exc_info=e)
             break
 
         if index % 1000 == 0:
