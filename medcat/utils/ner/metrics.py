@@ -1,3 +1,4 @@
+from typing import Dict, List
 from sklearn.metrics import classification_report
 import numpy as np
 import pandas as pd
@@ -5,12 +6,23 @@ from collections import defaultdict
 from scipy.special import softmax
 import logging
 
+from medcat.cdb import CDB
+
 
 logger = logging.getLogger(__name__)
 
 
 def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, merged_negative={0, 1, -100}, padding_label=-100, csize=15, subword_label=1,
             verbose=False):
+    """
+    Calculate metrics for a model's predictions, based off the tokenized output of a MedCATTrainer project.
+
+    Args:
+        p: The model's predictions.
+        return_df: Whether to return a DataFrame of metrics.
+        plus_recall: The recall to add to the model's predictions.
+        tokenizer: The tokenizer used to tokenize the texts.
+    """
     """TODO: This could be done better, for sure. But it works."""  # noqa
     predictions = np.array(p.predictions)
     predictions = softmax(predictions, axis=2)
@@ -117,3 +129,88 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
                 'precison_merged': np.average([x for x in df.p_merged.values if pd.notna(x)])}
     else:
         return df, examples
+
+
+def _anno_within_pred_list(label: Dict, preds: List[Dict]) -> bool:
+    """
+    Check if a label is within a list of predictions, 
+
+    Args:
+        label (Dict): an annotation likely from a MedCATTrainer project
+        preds (List[Dict]): a list of predictions likely from a cat.__call__
+
+    Returns:
+        bool: True if the label is within the list of predictions, False otherwise
+    """
+    return any(label['start'] >= p['start'] and label['end'] <= p['end'] for p in preds)
+
+
+def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[List[Dict]], texts: List[str], deid_cdb: CDB):
+    """
+    Evaluate predictions against sets of collected labels as collected and output from a MedCATTrainer project. 
+    Counts predictions as correct if the prediction fully encloses the label.
+    
+    Args:
+        true_annotations (List[List[Dict]]): Ground truth predictions by text
+        all_preds (List[List[Dict]]): Model predictions by text
+        texts (List[str]): Original list of texts
+        deid_cdb (CDB): Concept database
+
+    Returns:
+        Tuple[pd.DataFrame, Dict]: A tuple containing a DataFrame of evaluation metrics and a dictionary of missed annotations per CUI.
+    """
+    per_cui_recall = {}
+    per_cui_prec = {}
+    per_cui_recall_merged = {}
+    per_cui_anno_counts = {}
+    per_cui_annos_missed = defaultdict(list)
+    uniq_labels = set([p['cui'] for ap in true_annotations for p in ap])
+    
+    for cui in uniq_labels:
+        # annos in test set
+        anno_count = sum([len([p for p in cui_annos if p['cui'] == cui]) for cui_annos in true_annotations])
+        pred_counts = sum([len([p for p in d if p['cui'] == cui]) for d in all_preds])
+    
+        # print(anno_count)
+        # print(pred_counts)
+    
+        # print(f'pred_count: {pred_counts}, anno_count:{anno_count}')
+        per_cui_anno_counts[cui] = anno_count
+    
+        doc_annos_left, preds_left, doc_annos_left_any_cui = [], [], []
+        
+        for doc_preds, doc_labels, text in zip(all_preds, true_annotations, texts):
+            # num of annos that are not found - recall
+            cui_labels = [l for l in doc_labels if l['cui'] == cui]
+            cui_doc_preds = [p for p in doc_preds if p['cui'] == cui]
+            
+            labels_not_found = [label for label in cui_labels if not _anno_within_pred_list(label, cui_doc_preds)]
+            doc_annos_left.append(len(labels_not_found))
+    
+            # num of annos that are not found across any cui prediction - recall_merged
+            any_labels_not_found = [label for label in cui_labels if not _anno_within_pred_list(label, doc_preds)]
+            doc_annos_left_any_cui.append(len(any_labels_not_found))
+
+            per_cui_annos_missed[cui].append(any_labels_not_found)
+                
+            # num of preds that are incorrect - precision
+            preds_left.append(len([label for label in cui_doc_preds if not _anno_within_pred_list(label, cui_labels)]))
+    
+        if anno_count != 0 and pred_counts != 0:
+            per_cui_recall[cui] = (anno_count - sum(doc_annos_left)) / anno_count
+            per_cui_recall_merged[cui] = (anno_count - sum(doc_annos_left_any_cui)) / anno_count
+            per_cui_prec[cui] = (pred_counts - sum(preds_left))  / pred_counts
+        else:
+            per_cui_recall[cui] = 0
+            per_cui_recall_merged[cui] = 0
+            per_cui_prec[cui] = 0
+
+    res_df = pd.DataFrame({
+        'cui': per_cui_recall_merged.keys(),
+        'recall_merged': per_cui_recall_merged.values(),
+        'recall': per_cui_recall.values(),
+        'precision': per_cui_prec.values(),
+        'label_count': per_cui_anno_counts.values()}, index=[deid_cdb.cui2preferred_name[k] for k in per_cui_recall_merged])
+    
+    return res_df, per_cui_annos_missed
+
