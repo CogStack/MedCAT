@@ -64,14 +64,10 @@ class DeIdModel(NerModel):
         self.cat = cat
 
     def train(self, json_path: Union[str, list, None]=None, 
-              train_json_path: Union[str, list, None]=None, 
-              test_json_path: Union[str, list, None]=None, 
               *args, **kwargs) -> Tuple[Any, Any, Any]:
-        assert not all([json_path, train_json_path, test_json_path]), \
+        assert not all([json_path, kwargs.get('train_json_path'), kwargs.get('test_json_path')]), \
                 "Either json_path or train_json_path and test_json_path must be provided when no dataset is provided"
-        return super().train(json_path=json_path, 
-                             train_json_path=train_json_path, 
-                             test_json_path=test_json_path, *args, **kwargs)  # type: ignore
+        return super().train(json_path=json_path, *args, **kwargs)  # type: ignore
 
     def eval(self, json_path: Union[str, list, None],
               *args, **kwargs) -> Tuple[Any, Any, Any]:
@@ -237,7 +233,7 @@ def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
     return rule_matches_per_text
 
 
-def merge_preds(model_preds_by_text: List[Dict], rule_matches_per_text: List[Dict], accept_preds=True):
+def merge_preds(model_preds_by_text: List[List[Dict]], rule_matches_per_text: List[List[Dict]], accept_preds=True):
     """
     Merge predictions from rule based and deID model predictions for further evaluation
 
