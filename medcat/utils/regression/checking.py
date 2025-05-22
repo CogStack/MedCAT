@@ -228,7 +228,7 @@ def get_ontology_and_version(model_card: dict) -> Tuple[str, str]:
         else:
             raise KeyError(f"Unknown source ontology: {ont_list}")
     except KeyError as key_err:
-        logger.warn(
+        logger.warning(
             "Didn't find the expected source ontology from the model card!", exc_info=key_err)
         return UNKNOWN_METADATA, UNKNOWN_METADATA
     # find ontology
@@ -452,7 +452,7 @@ class RegressionSuite:
             add_case = RegressionCase.from_dict(case_name, details)
             cases.append(add_case)
         if 'meta' not in in_dict:
-            logger.warn("Loading regression suite without any meta data")
+            logger.warning("Loading regression suite without any meta data")
             metadata = MetaData.unknown()
         else:
             metadata = MetaData.parse_obj(in_dict['meta'])

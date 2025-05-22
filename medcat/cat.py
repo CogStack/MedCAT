@@ -143,7 +143,7 @@ class CAT(object):
             self.pipe.add_meta_cat(meta_cat, meta_cat.config.general.category_name)
 
         for rel_cat in self._rel_cats:
-            self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.config.general["labels2idx"].keys())))
+            self.pipe.add_rel_cat(rel_cat, "_".join(list(rel_cat.component.relcat_config.general["labels2idx"].keys())))
 
         # Set max document length
         self.pipe.spacy_nlp.max_length = config.preprocessing.max_document_length

@@ -3,7 +3,7 @@
 'gensim>=4.3.0,<5.0.0'  # 5.3.0 is first to support 3.11; avoid major version bump
 'spacy>=3.6.0,<4.0.0'  # avoid major bump
 'scipy>=1.9.2,<1.14.0'  # 1.9.2 is first to support 3.11; 1.14.0 does not support 3.9
-'transformers>=4.34.0,<5.0.0'  # avoid major version bump
+'transformers>=4.48.1,<5.0.0'  # avoid major version bump
 'accelerate>=0.23.0' # required by Trainer class in de-id
 'torch>=2.4.0,<3.0.0' # 2.4.0 is first to support 3.12; avoid major 3.0.0 for now
 'tqdm>=4.27'

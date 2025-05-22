@@ -95,8 +95,9 @@ class MetaCAT(PipeRunner):
             if not config.model.model_freeze_layers:
                 peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
                                          target_modules=["query", "value"], lora_dropout=0.2)
-
-                model = get_peft_model(model, peft_config)
+                # Not sure what changed between transformers 4.50.3 and 4.50.1 that made this
+                # fail for mypy. But as best as I Can tell, it still works just the same
+                model = get_peft_model(model, peft_config)  # type: ignore
                 # model.print_trainable_parameters()
 
             logger.info("BERT model used for classification")
@@ -412,7 +413,7 @@ class MetaCAT(PipeRunner):
             tokenizer = TokenizerWrapperBPE.load(save_dir_path)
         elif config.general['tokenizer_name'] == 'bert-tokenizer':
             from medcat.tokenizers.meta_cat_tokenizers import TokenizerWrapperBERT
-            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model['model_variant'])
+            tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model.model_variant)
 
         # Create meta_cat
         meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)

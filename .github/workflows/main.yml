@@ -76,7 +76,7 @@ jobs:
       github.ref == 'refs/heads/master' &&
       github.event_name == 'push' &&
       startsWith(github.ref, 'refs/tags') != true
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     concurrency: publish-to-test-pypi
     needs: [build]
