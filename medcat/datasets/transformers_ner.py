@@ -71,6 +71,12 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
                     "filepaths": self.config.data_files['train'],
                 },
             ),
+            datasets.SplitGenerator(
+                name=datasets.Split.TEST,
+                gen_kwargs={
+                    "filepaths": self.config.data_files['test'],
+                },
+            ),
         ]
 
     def _generate_examples(self, filepaths): # noqa
