@@ -178,7 +178,7 @@ class TransformersNER(object):
               dataset=None,
               meta_requirements=None,
               train_json_path: str=None,
-              test_json_path: str=None) -> Tuple:
+              test_json_path: str=None,
               trainer_callbacks: Optional[List[Callable[[Trainer], TrainerCallback]]] = None) -> Tuple:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
