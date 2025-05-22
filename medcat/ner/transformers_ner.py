@@ -549,28 +549,3 @@ class TransformersNER(object):
 def func_has_kwarg(func: Callable, keyword: str):
     sig = inspect.signature(func)
     return keyword in sig.parameters
-
-
-if __name__ == "__main__":
-    import json
-    from copy import copy
-    from medcat.utils.ner.deid import DeIdModel
-
-    mct_export = json.load(open('/Users/k1897038/Downloads/MedCAT_Export_With_Text_2025-03-28_18_49_30.json'))
-
-    train_set = {'projects': [copy(mct_export['projects'][0])]}
-    train_set['projects'][0]['documents'] = mct_export['projects'][0]['documents'][0:8]
-
-    test_set = {'projects': [copy(mct_export['projects'][0])]}
-    test_set['projects'][0]['documents'] = mct_export['projects'][0]['documents'][8:]
-
-    json.dump(train_set, open('train_set.json', 'w'))
-    json.dump(test_set, open('test_set.json', 'w'))
-    
-    train_json_path = 'train_set.json'
-    test_json_path = 'test_set.json'
-    deid_model_path = '/Users/k1897038/Documents/cogstack_docs/medcat_models/medcat_deid_model_691c3f6a6e5400e7.zip'
-    deid_cat = DeIdModel.load_model_pack(deid_model_path) 
-    deid_cat.train(ignore_extra_labels=True, train_json_path=train_json_path, test_json_path=test_json_path)
-
-
