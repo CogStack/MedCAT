@@ -69,7 +69,6 @@ class DeIdModel(NerModel):
               *args, **kwargs) -> Tuple[Any, Any, Any]:
         assert not all([json_path, train_json_path, test_json_path]), \
                 "Either json_path or train_json_path and test_json_path must be provided when no dataset is provided"
-
         return super().train(json_path=json_path, 
                              train_json_path=train_json_path, 
                              test_json_path=test_json_path, *args, **kwargs)  # type: ignore

@@ -177,8 +177,8 @@ class TransformersNER(object):
               ignore_extra_labels=False,
               dataset=None,
               meta_requirements=None,
-              train_json_path: str=None,
-              test_json_path: str=None,
+              train_json_path: Union[str, list, None]=None,
+              test_json_path: Union[str, list, None]=None,
               trainer_callbacks: Optional[List[Callable[[Trainer], TrainerCallback]]] = None) -> Tuple:
         """Train or continue training a model give a json_path containing a MedCATtrainer export. It will
         continue training if an existing model is loaded or start new training if the model is blank/new.
@@ -571,5 +571,6 @@ if __name__ == "__main__":
     test_json_path = 'test_set.json'
     deid_model_path = '/Users/k1897038/Documents/cogstack_docs/medcat_models/medcat_deid_model_691c3f6a6e5400e7.zip'
     deid_cat = DeIdModel.load_model_pack(deid_model_path) 
-    deid_cat.train(train_json_path=train_json_path, test_json_path=test_json_path)
+    deid_cat.train(ignore_extra_labels=True, train_json_path=train_json_path, test_json_path=test_json_path)
+
 

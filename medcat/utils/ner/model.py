@@ -26,6 +26,8 @@ class NerModel:
         self.cat = cat
 
     def train(self, json_path: Union[str, list, None], train_nr: int = 0,
+              train_json_path: Union[str, list, None]=None,
+              test_json_path: Union[str, list, None]=None,
               *args, **kwargs) -> Tuple[Any, Any, Any]:
         """Train the underlying transformers NER model.
 
@@ -40,7 +42,7 @@ class NerModel:
         Returns:
             Tuple[Any, Any, Any]: df, examples, dataset
         """
-        return self.cat._addl_ner[train_nr].train(json_path, *args, **kwargs)
+        return self.cat._addl_ner[train_nr].train(json_path, train_json_path=train_json_path, test_json_path=test_json_path, *args, **kwargs)
 
     def eval(self, json_path: Union[str, list, None], train_nr: int = 0,
               *args, **kwargs) -> Tuple[Any, Any, Any]:
