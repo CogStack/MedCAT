@@ -246,7 +246,9 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         elif "bert" in relcat_config.general.tokenizer_name or \
              "bert" in relcat_config.general.model_name:
             from medcat.utils.relation_extraction.bert.model import BertModel_RelationExtraction
-            model = BertModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config, model_config=model_config)
+            from medcat.utils.relation_extraction.bert.config import BertConfig_RelationExtraction
+            model = BertModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config,
+                                                      model_config=cast(BertConfig_RelationExtraction, model_config))
         elif "llama" in relcat_config.general.tokenizer_name or \
              "llama" in relcat_config.general.model_name:
             from medcat.utils.relation_extraction.llama.model import LlamaModel_RelationExtraction
