@@ -29,6 +29,8 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
         subword_label: The subword label.
         verbose: Whether to print the metrics.
 
+    Returns:
+        Dict: A dictionary of metrics.
     """
     """TODO: This could be done better, for sure. But it works."""  # noqa
     predictions = np.array(p.predictions)

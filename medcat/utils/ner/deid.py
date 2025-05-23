@@ -195,6 +195,11 @@ def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT) -> Lis
 
     Uses a cat DeID model for pretty name mapping.
 
+    Args:
+        rules (List[Tuple[str, str]]): List of tuples of pattern and cui
+        texts (List[str]): List of texts to match rules on
+        cat (CAT): The CAT instance
+
     Examples:
         >>> rules = [
             ('(123) 456-7890', '134'),
