@@ -41,7 +41,7 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
         self.model_config = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.hf_model: Union[BertModel, PreTrainedModel] = BertModel(model_config.hf_model_config) # type: ignore
+        self.hf_model: Union[BertModel, PreTrainedModel] = BertModel(model_config.hf_model_config)
 
         for param in self.hf_model.parameters(): # type: ignore
             if self.relcat_config.model.freeze_layers:
