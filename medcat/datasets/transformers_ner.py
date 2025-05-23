@@ -64,20 +64,27 @@ class TransformersDatasetNER(datasets.GeneratorBasedBuilder):
 
     def _split_generators(self, dl_manager): # noqa
         """Returns SplitGenerators.""" # noqa
-        return [
+        splits = [
             datasets.SplitGenerator(
                 name=datasets.Split.TRAIN,
                 gen_kwargs={
                     "filepaths": self.config.data_files['train'],
                 },
             ),
-            datasets.SplitGenerator(
-                name=datasets.Split.TEST,
-                gen_kwargs={
-                    "filepaths": self.config.data_files['test'],
-                },
-            ),
         ]
+
+        # Only add test split if test data files are provided
+        if 'test' in self.config.data_files:
+            splits.append(
+                datasets.SplitGenerator(
+                    name=datasets.Split.TEST,
+                    gen_kwargs={
+                        "filepaths": self.config.data_files['test'],
+                    },
+                )
+            )
+
+        return splits
 
     def _generate_examples(self, filepaths): # noqa
         cnt = 0
