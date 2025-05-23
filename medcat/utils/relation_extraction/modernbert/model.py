@@ -9,7 +9,6 @@ from medcat.config_rel_cat import ConfigRelCAT
 from transformers import PreTrainedModel
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers
 from medcat.utils.relation_extraction.models import BaseModel_RelationExtraction
-from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
 from medcat.utils.relation_extraction.modernbert.config import ModernBertConfig_RelationExtraction
 
 
@@ -37,7 +36,7 @@ class ModernBertModel_RelationExtraction(BaseModel_RelationExtraction):
                                                     model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[BaseConfig_RelationExtraction, ModernBertConfig_RelationExtraction] = model_config
+        self.model_config = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
         self.hf_model: Union[ModernBertModel, PreTrainedModel] = ModernBertModel(config=model_config.hf_model_config)

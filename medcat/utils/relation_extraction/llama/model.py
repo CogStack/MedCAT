@@ -1,12 +1,11 @@
 import logging
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Tuple
 import torch
 from torch import nn
 import os
 from transformers.models.llama import LlamaModel
 
 from medcat.config_rel_cat import ConfigRelCAT
-from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
 from medcat.utils.relation_extraction.llama.config import LlamaConfig_RelationExtraction
 from medcat.utils.relation_extraction.models import BaseModel_RelationExtraction
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers, get_annotation_schema_tag
@@ -36,7 +35,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction] = model_config
+        self.model_config = model_config
 
         self.hf_model: LlamaModel = LlamaModel(config=model_config.hf_model_config)
 
