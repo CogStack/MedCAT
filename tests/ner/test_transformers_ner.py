@@ -34,9 +34,11 @@ class TransformerNERTest(unittest.TestCase):
 
     def test_train(self):
         tracker = unittest.mock.Mock()
+
         class _DummyCallback(TrainerCallback):
             def __init__(self, trainer) -> None:
                 self._trainer = trainer
+
             def on_epoch_end(self, *args, **kwargs) -> None:
                 tracker.call()
 
@@ -49,13 +51,32 @@ class TransformerNERTest(unittest.TestCase):
         assert dataset["test"].num_rows == 12
         self.assertEqual(tracker.call.call_count, 2)
 
+    def test_train_with_test_file(self):
+        tracker = unittest.mock.Mock()
+
+        class _DummyCallback(TrainerCallback):
+            def __init__(self, trainer) -> None:
+                self._trainer = trainer
+
+            def on_epoch_end(self, *args, **kwargs) -> None:
+                tracker.call()
+
+        train_data = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "resources", "deid_train_data.json")
+        test_data = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "resources", "deid_test_data.json")
+        self.undertest.training_arguments.num_train_epochs = 1
+        df, examples, dataset = self.undertest.train(train_json_path=train_data, test_json_path=test_data, trainer_callbacks=[_DummyCallback])
+        assert "fp" in examples
+        assert "fn" in examples
+        assert dataset["train"].num_rows == 60
+        self.assertEqual(tracker.call.call_count, 1)
+
     def test_expand_model_with_concepts(self):
         original_num_labels = self.undertest.model.num_labels
-        original_out_features  = self.undertest.model.classifier.out_features
+        original_out_features = self.undertest.model.classifier.out_features
         original_label_map_size = len(self.undertest.tokenizer.label_map)
         cui2preferred_name = {
-            "concept_1" : "Preferred Name 1",
-            "concept_2" : "Preferred Name 2",
+            "concept_1": "Preferred Name 1",
+            "concept_2": "Preferred Name 2",
         }
 
         self.undertest.expand_model_with_concepts(cui2preferred_name)
