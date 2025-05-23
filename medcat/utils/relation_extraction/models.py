@@ -250,7 +250,9 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         elif "llama" in relcat_config.general.tokenizer_name or \
              "llama" in relcat_config.general.model_name:
             from medcat.utils.relation_extraction.llama.model import LlamaModel_RelationExtraction
-            model = LlamaModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config, model_config=model_config)
+            from medcat.utils.relation_extraction.llama.config import LlamaConfig_RelationExtraction
+            model = LlamaModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config,
+                                                       model_config=cast(LlamaConfig_RelationExtraction, model_config))
         else:
             if pretrained_model_name_or_path:
                 model.hf_model = PreTrainedModel.from_pretrained(pretrained_model_name_or_path=pretrained_model_name_or_path, config=model_config)

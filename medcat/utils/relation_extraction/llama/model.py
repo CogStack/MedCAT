@@ -20,7 +20,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction]):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: LlamaConfig_RelationExtraction):
         """ Class to hold the Llama model + model_config
 
         Args:
@@ -28,7 +28,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
                     this can be a HF model i.e: "bert-base-uncased", if left empty, it is normally assumed that a model is loaded from 'model.dat'
                     using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.            
             relcat_config (ConfigRelCAT): relcat config.
-            model_config (Union[BaseConfig_RelationExtraction | LlamaConfig_RelationExtraction]): HF bert config for model.
+            model_config (LlamaConfig_RelationExtraction): HF bert config for model.
         """
 
         super(LlamaModel_RelationExtraction, self).__init__(pretrained_model_name_or_path=pretrained_model_name_or_path,
@@ -38,7 +38,7 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
         self.relcat_config: ConfigRelCAT = relcat_config
         self.model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction] = model_config
 
-        self.hf_model: LlamaModel = LlamaModel(config=model_config) # type: ignore
+        self.hf_model: LlamaModel = LlamaModel(config=model_config.hf_model_config)
 
         if pretrained_model_name_or_path != "":
             self.hf_model = LlamaModel.from_pretrained(pretrained_model_name_or_path, config=model_config, ignore_mismatched_sizes=True)
@@ -162,8 +162,10 @@ class LlamaModel_RelationExtraction(BaseModel_RelationExtraction):
 
         return model_output, classification_logits.to(self.relcat_config.general.device)
 
+    # NOTEL ignoring type due to the type of model_config not matching base class exactly (subclass)
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, LlamaConfig_RelationExtraction], **kwargs) -> "LlamaModel_RelationExtraction":
+    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT,  # type: ignore
+             model_config: LlamaConfig_RelationExtraction, **kwargs) -> "LlamaModel_RelationExtraction":
 
         model = LlamaModel_RelationExtraction(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                              relcat_config=relcat_config,
