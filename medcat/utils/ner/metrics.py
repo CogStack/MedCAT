@@ -22,6 +22,13 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
         return_df: Whether to return a DataFrame of metrics.
         plus_recall: The recall to add to the model's predictions.
         tokenizer: The tokenizer used to tokenize the texts.
+        dataset: The dataset used to train the model.
+        merged_negative: The negative labels to merge.
+        padding_label: The padding label.
+        csize: The size of the context window.
+        subword_label: The subword label.
+        verbose: Whether to print the metrics.
+
     """
     """TODO: This could be done better, for sure. But it works."""  # noqa
     predictions = np.array(p.predictions)

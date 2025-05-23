@@ -190,7 +190,7 @@ class DeIdModel(NerModel):
         return ""
 
 
-def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
+def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT) -> List[List[Dict]]:
     """Match a set of rules - pat / cui combos as post processing labels.
 
     Uses a cat DeID model for pretty name mapping.
@@ -210,6 +210,9 @@ def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
             'My phone number is 1234567890',
         ]
         >>> matches = match_rules(rules, texts, cat)
+
+    Returns:
+        List[List[Dict]]: List of lists of predictions from `match_rules`
     """
     # Iterate through each text and pattern combination
     rule_matches_per_text = []
@@ -235,7 +238,7 @@ def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
 
 def merge_preds(model_preds_by_text: List[List[Dict]],
                 rule_matches_per_text: List[List[Dict]],
-                accept_preds: bool = True):
+                accept_preds: bool = True) -> List[List[Dict]]:
     """Merge predictions from rule based and deID model predictions.
 
     Args:
@@ -267,6 +270,9 @@ def merge_preds(model_preds_by_text: List[List[Dict]],
             ]
         ]
         >>> merged_preds = merge_preds(model_preds_by_text, rule_matches_by_text)
+
+    Returns:
+        List[List[Dict]]: List of lists of predictions from `merge_preds`
     """
     all_preds = []
     if accept_preds:
