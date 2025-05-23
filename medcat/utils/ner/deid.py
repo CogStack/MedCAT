@@ -249,7 +249,7 @@ def merge_preds(model_preds_by_text: List[List[Dict]],
     Args:
         model_preds_by_text (List[Dict]): list of predictions from
             `cat.get_entities()`, then `[list(m['entities'].values()) for m in model_preds]`
-        rule_matches_by_text (List[Dict]): list of predictions from output of
+        rule_matches_per_text (List[Dict]): list of predictions from output of
             running `match_rules`
         accept_preds (bool): uses the predicted label from the model,
             model_preds_by_text, over the rule matches if they overlap.
