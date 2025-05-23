@@ -1,6 +1,6 @@
 import logging
 import torch
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Optional, Tuple, Union, cast
 from torch import nn
 from transformers import PretrainedConfig, PreTrainedModel
 
@@ -240,7 +240,9 @@ class BaseModel_RelationExtraction(BaseModelBluePrint_RelationExtraction):
         if "modern-bert" in relcat_config.general.tokenizer_name or \
              "modern-bert" in relcat_config.general.model_name:
             from medcat.utils.relation_extraction.modernbert.model import ModernBertModel_RelationExtraction
-            model = ModernBertModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config, model_config=model_config)
+            from medcat.utils.relation_extraction.modernbert.config import ModernBertConfig_RelationExtraction
+            model = ModernBertModel_RelationExtraction.load(pretrained_model_name_or_path, relcat_config=relcat_config,
+                                                            model_config=cast(ModernBertConfig_RelationExtraction, model_config))
         elif "bert" in relcat_config.general.tokenizer_name or \
              "bert" in relcat_config.general.model_name:
             from medcat.utils.relation_extraction.bert.model import BertModel_RelationExtraction
