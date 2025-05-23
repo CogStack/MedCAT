@@ -116,7 +116,7 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
     for key in _cr:
         cui = ilabel_map[key]
         p_merged = tp_all / (tp_all + fp_all) if (tp_all + fp_all) > 0 else 0
-        data.append([cui, tokenizer.cui2name.get(cui, cui), _cr[key]['precision'], 
+        data.append([cui, tokenizer.cui2name.get(cui, cui), _cr[key]['precision'],
                      _cr[key]['recall'], _cr[key]['f1-score'], _cr[key]['support'], _cr[key]['r_merged'], p_merged])
 
     df = pd.DataFrame(data[1:], columns=data[0])
@@ -133,7 +133,7 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
 
 def _anno_within_pred_list(label: Dict, preds: List[Dict]) -> bool:
     """
-    Check if a label is within a list of predictions, 
+    Check if a label is within a list of predictions,
 
     Args:
         label (Dict): an annotation likely from a MedCATTrainer project
@@ -147,9 +147,9 @@ def _anno_within_pred_list(label: Dict, preds: List[Dict]) -> bool:
 
 def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[List[Dict]], texts: List[str], deid_cdb: CDB):
     """
-    Evaluate predictions against sets of collected labels as collected and output from a MedCATTrainer project. 
+    Evaluate predictions against sets of collected labels as collected and output from a MedCATTrainer project.
     Counts predictions as correct if the prediction fully encloses the label.
-    
+
     Args:
         true_annotations (List[List[Dict]]): Ground truth predictions by text
         all_preds (List[List[Dict]]): Model predictions by text
@@ -165,37 +165,37 @@ def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[Lis
     per_cui_anno_counts = {}
     per_cui_annos_missed = defaultdict(list)
     uniq_labels = set([p['cui'] for ap in true_annotations for p in ap])
-    
+
     for cui in uniq_labels:
         # annos in test set
         anno_count = sum([len([p for p in cui_annos if p['cui'] == cui]) for cui_annos in true_annotations])
         pred_counts = sum([len([p for p in d if p['cui'] == cui]) for d in all_preds])
-    
+
         # print(anno_count)
         # print(pred_counts)
-    
+
         # print(f'pred_count: {pred_counts}, anno_count:{anno_count}')
         per_cui_anno_counts[cui] = anno_count
-    
+
         doc_annos_left, preds_left, doc_annos_left_any_cui = [], [], []
-        
+
         for doc_preds, doc_labels, text in zip(all_preds, true_annotations, texts):
             # num of annos that are not found - recall
-            cui_labels = [l for l in doc_labels if l['cui'] == cui]
-            cui_doc_preds = [p for p in doc_preds if p['cui'] == cui]
-            
+            cui_labels = [label for label in doc_labels if label['cui'] == cui]
+            cui_doc_preds = [pred for pred in doc_preds if pred['cui'] == cui]
+
             labels_not_found = [label for label in cui_labels if not _anno_within_pred_list(label, cui_doc_preds)]
             doc_annos_left.append(len(labels_not_found))
-    
+
             # num of annos that are not found across any cui prediction - recall_merged
             any_labels_not_found = [label for label in cui_labels if not _anno_within_pred_list(label, doc_preds)]
             doc_annos_left_any_cui.append(len(any_labels_not_found))
 
             per_cui_annos_missed[cui].append(any_labels_not_found)
-                
+
             # num of preds that are incorrect - precision
             preds_left.append(len([label for label in cui_doc_preds if not _anno_within_pred_list(label, cui_labels)]))
-    
+
         if anno_count != 0 and pred_counts != 0:
             per_cui_recall[cui] = (anno_count - sum(doc_annos_left)) / anno_count
             per_cui_recall_merged[cui] = (anno_count - sum(doc_annos_left_any_cui)) / anno_count
@@ -211,6 +211,5 @@ def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[Lis
         'recall': per_cui_recall.values(),
         'precision': per_cui_prec.values(),
         'label_count': per_cui_anno_counts.values()}, index=[deid_cdb.cui2preferred_name[k] for k in per_cui_recall_merged])
-    
-    return res_df, per_cui_annos_missed
 
+    return res_df, per_cui_annos_missed

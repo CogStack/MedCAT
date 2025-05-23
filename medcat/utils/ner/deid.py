@@ -63,7 +63,7 @@ class DeIdModel(NerModel):
     def __init__(self, cat: CAT) -> None:
         self.cat = cat
 
-    def train(self, json_path: Union[str, list, None]=None, 
+    def train(self, json_path: Union[str, list, None] = None,
               *args, **kwargs) -> Tuple[Any, Any, Any]:
         assert not all([json_path, kwargs.get('train_json_path'), kwargs.get('test_json_path')]), \
                 "Either json_path or train_json_path and test_json_path must be provided when no dataset is provided"
@@ -149,7 +149,8 @@ class DeIdModel(NerModel):
         return out
 
     @classmethod
-    def load_model_pack(cls, model_pack_path: str, config: Optional[Dict] = None) -> 'DeIdModel':
+    def load_model_pack(cls, model_pack_path: str,
+                       config: Optional[Dict] = None) -> 'DeIdModel':
         """Load DeId model from model pack.
 
         The method first loads the CAT instance.
@@ -167,7 +168,7 @@ class DeIdModel(NerModel):
         Returns:
             DeIdModel: The resulting DeI model.
         """
-        ner_model = NerModel.load_model_pack(model_pack_path,config=config)
+        ner_model = NerModel.load_model_pack(model_pack_path, config=config)
         cat = ner_model.cat
         if not cls._is_deid_model(cat):
             raise ValueError(
@@ -190,25 +191,25 @@ class DeIdModel(NerModel):
 
 
 def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
-    """
-    Match a set of rules - pat / cui combos as post processing labels, uses
-    a cat DeID model forp pretty name mapping
+    """Match a set of rules - pat / cui combos as post processing labels.
+
+    Uses a cat DeID model for pretty name mapping.
 
     Examples:
-    >>> rules = [
-        ('(123) 456-7890', '134'),
-        ('1234567890', '134'),
-        ('123.456.7890', '134'),
-        ('1234567890', '134'),
-        ('1234567890', '134'),
-    ]
-    >>> texts = [
-        'My phone number is (123) 456-7890',
-        'My phone number is 1234567890',
-        'My phone number is 123.456.7890',
-        'My phone number is 1234567890',
-    ]
-    >>> matches = match_rules(rules, texts, cat)
+        >>> rules = [
+            ('(123) 456-7890', '134'),
+            ('1234567890', '134'),
+            ('123.456.7890', '134'),
+            ('1234567890', '134'),
+            ('1234567890', '134'),
+        ]
+        >>> texts = [
+            'My phone number is (123) 456-7890',
+            'My phone number is 1234567890',
+            'My phone number is 123.456.7890',
+            'My phone number is 1234567890',
+        ]
+        >>> matches = match_rules(rules, texts, cat)
     """
     # Iterate through each text and pattern combination
     rule_matches_per_text = []
@@ -217,7 +218,6 @@ def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
         for pattern, concept in rules:
             # Find all matches of current pattern in current text
             text_matches = re.finditer(pattern, text, flags=re.M)
-            
             # Add each match with its pattern and text info
             for match in text_matches:
                 matches_in_text.append({
@@ -233,31 +233,40 @@ def match_rules(rules: List[Tuple[str, str]], texts: List[str], cat: CAT):
     return rule_matches_per_text
 
 
-def merge_preds(model_preds_by_text: List[List[Dict]], rule_matches_per_text: List[List[Dict]], accept_preds=True):
-    """
-    Merge predictions from rule based and deID model predictions for further evaluation
+def merge_preds(model_preds_by_text: List[List[Dict]],
+                rule_matches_per_text: List[List[Dict]],
+                accept_preds: bool = True):
+    """Merge predictions from rule based and deID model predictions.
 
-    Args:   
-        model_preds_by_text (List[Dict]): list of predictions from `cat.get_entities()`, then `[list(m['entities'].values()) for m in model_preds]`
-        rule_matches_by_text (List[Dict]): list of predictions from output of running `match_rules`
-        accept_preds (bool): uses the predicted label from the model, model_preds_by_text, over the rule matches if they overlap. Defaults to using model preds over rules. 
+    Args:
+        model_preds_by_text (List[Dict]): list of predictions from
+            `cat.get_entities()`, then `[list(m['entities'].values()) for m in model_preds]`
+        rule_matches_by_text (List[Dict]): list of predictions from output of
+            running `match_rules`
+        accept_preds (bool): uses the predicted label from the model,
+            model_preds_by_text, over the rule matches if they overlap.
+            Defaults to using model preds over rules.
 
     Examples:
-    >>> # a list of lists of predictions from `cat.get_entities()`
-    >>> model_preds_by_text = [ 
-        [
-            {'cui': '134', 'start': 10, 'end': 20, 'acc': 1.0, 'pretty_name': 'Phone Number'},
-            {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0, 'pretty_name': 'Phone Number'}
+        >>> # a list of lists of predictions from `cat.get_entities()`
+        >>> model_preds_by_text = [
+            [
+                {'cui': '134', 'start': 10, 'end': 20, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'},
+                {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'}
+            ]
         ]
-    ]
-    >>> # a list of lists of predictions from `match_rules`
-    >>> rule_matches_by_text = [
-        [
-            {'cui': '134', 'start': 10, 'end': 20, 'acc': 1.0, 'pretty_name': 'Phone Number'},
-            {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0, 'pretty_name': 'Phone Number'}
+        >>> # a list of lists of predictions from `match_rules`
+        >>> rule_matches_by_text = [
+            [
+                {'cui': '134', 'start': 10, 'end': 20, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'},
+                {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0,
+                 'pretty_name': 'Phone Number'}
+            ]
         ]
-    ]
-    >>> merged_preds = merge_preds(model_preds_by_text, rule_matches_by_text)
+        >>> merged_preds = merge_preds(model_preds_by_text, rule_matches_by_text)
     """
     all_preds = []
     if accept_preds:
@@ -266,28 +275,25 @@ def merge_preds(model_preds_by_text: List[List[Dict]], rule_matches_per_text: Li
     else:
         labels1 = rule_matches_per_text
         labels2 = model_preds_by_text
-    
     for matches_text1, matches_text2 in zip(labels1, labels2):
         # Function to check if two spans overlap
         def has_overlap(span1, span2):
-            return not (span1['end'] <= span2['start'] or span2['end'] <= span1['start'])
-        
+            return not (span1['end'] <= span2['start'] or
+                       span2['end'] <= span1['start'])
+
         # Mark model predictions that overlap with rule matches
-        
         to_remove = set()
         for text_match1 in matches_text1:
             for i, text_match2 in enumerate(matches_text2):
                 if has_overlap(text_match1, text_match2):
                     to_remove.add(i)
-        
+
         # Keep only non-overlapping model predictions
-        matches_text2 = [text_match for i, text_match in enumerate(matches_text2) if i not in to_remove]
-    
+        matches_text2 = [text_match for i, text_match in
+                        enumerate(matches_text2) if i not in to_remove]
+
         # merge preds and sort on start
         merged_preds = matches_text1 + matches_text2
         merged_preds.sort(key=lambda x: x['start'])
         all_preds.append(merged_preds)
     return all_preds
-
-
-

@@ -213,7 +213,7 @@ class TransformersNER(object):
                 train_json_path = self._prepare_dataset(train_json_path, ignore_extra_labels=ignore_extra_labels,
                                                 meta_requirements=meta_requirements, file_name='data_train.json')
                 test_json_path = self._prepare_dataset(test_json_path, ignore_extra_labels=ignore_extra_labels,
-                                                meta_requirements=meta_requirements, file_name='data_test.json')  
+                                                meta_requirements=meta_requirements, file_name='data_test.json')
 
             # NOTE: The following is for backwards comppatibility
             #       in datasets==2.20.0 `trust_remote_code=True` must be explicitly
@@ -225,7 +225,7 @@ class TransformersNER(object):
                 ds_load_dataset = partial(datasets.load_dataset, trust_remote_code=True)
             else:
                 ds_load_dataset = datasets.load_dataset
-            
+
             if json_path:
                 dataset = ds_load_dataset(os.path.abspath(transformers_ner.__file__),
                                         data_files={'train': json_path}, # type: ignore
@@ -235,8 +235,8 @@ class TransformersNER(object):
                 # does the document splitting into max_seq_len
                 dataset = dataset.train_test_split(test_size=self.config.general['test_size']) # type: ignore
             elif train_json_path and test_json_path:
-                dataset = ds_load_dataset(os.path.abspath(transformers_ner.__file__), 
-                                          data_files={'train': train_json_path, 'test': test_json_path}, # type: ignore 
+                dataset = ds_load_dataset(os.path.abspath(transformers_ner.__file__),
+                                          data_files={'train': train_json_path, 'test': test_json_path}, # type: ignore
                                           cache_dir='/tmp/')
             else:
                 raise ValueError("Either json_path or train_json_path and test_json_path must be provided when no dataset is provided")
@@ -248,8 +248,8 @@ class TransformersNER(object):
         if self.model.num_labels != len(self.tokenizer.label_map):
             logger.warning("The dataset contains labels we've not seen before, model is being reinitialized")
             logger.warning("Model: {} vs Dataset: {}".format(self.model.num_labels, len(self.tokenizer.label_map)))
-            self.model = AutoModelForTokenClassification.from_pretrained(self.config.general['model_name'], 
-                                                                         num_labels=len(self.tokenizer.label_map), 
+            self.model = AutoModelForTokenClassification.from_pretrained(self.config.general['model_name'],
+                                                                         num_labels=len(self.tokenizer.label_map),
                                                                          ignore_mismatched_sizes=True)
             self.tokenizer.cui2name = {k:self.cdb.get_name(k) for k in self.tokenizer.label_map.keys()}
 
@@ -290,7 +290,6 @@ class TransformersNER(object):
             # NOTE: this shouldn't really happen, but we'll do this for type safety
             raise ValueError("Output path should not be None!")
         self.save(save_dir_path=os.path.join(output_dir, 'final_model'))
-
         # Run an eval step and return metrics
         p = trainer.predict(encoded_dataset['test']) # type: ignore
         df, examples = metrics(p, return_df=True, tokenizer=self.tokenizer, dataset=encoded_dataset['test'])
