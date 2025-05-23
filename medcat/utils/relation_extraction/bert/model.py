@@ -12,7 +12,6 @@ from transformers.models.bert.modeling_bert import BertModel
 from medcat.config_rel_cat import ConfigRelCAT
 from medcat.utils.relation_extraction.ml_utils import create_dense_layers
 from medcat.utils.relation_extraction.models import BaseModel_RelationExtraction
-from medcat.utils.relation_extraction.config import BaseConfig_RelationExtraction
 from medcat.utils.relation_extraction.bert.config import BertConfig_RelationExtraction
 
 
@@ -24,7 +23,7 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
 
     log = logging.getLogger(__name__)
 
-    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, BertConfig_RelationExtraction]):
+    def __init__(self, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: BertConfig_RelationExtraction):
         """ Class to hold the BERT model + model_config
 
         Args:
@@ -32,17 +31,17 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
                     this can be a HF model i.e: "bert-base-uncased", if left empty, it is normally assumed that a model is loaded from 'model.dat'
                     using the RelCAT.load() method. So if you are initializing/training a model from scratch be sure to base it on some model.            
             relcat_config (ConfigRelCAT): relcat config.
-            model_config (Union[BaseConfig_RelationExtraction | BertConfig_RelationExtraction]): HF bert config for model.
+            model_config (BertConfig_RelationExtraction): HF bert config for model.
         """
         super(BertModel_RelationExtraction, self).__init__(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                                           relcat_config=relcat_config,
                                                           model_config=model_config)
 
         self.relcat_config: ConfigRelCAT = relcat_config
-        self.model_config: Union[BaseConfig_RelationExtraction, BertConfig_RelationExtraction] = model_config
+        self.model_config = model_config
         self.pretrained_model_name_or_path: str = pretrained_model_name_or_path
 
-        self.hf_model: Union[BertModel, PreTrainedModel] = BertModel(model_config.hf_model_config) # type: ignore
+        self.hf_model: Union[BertModel, PreTrainedModel] = BertModel(model_config.hf_model_config)
 
         for param in self.hf_model.parameters(): # type: ignore
             if self.relcat_config.model.freeze_layers:
@@ -55,8 +54,10 @@ class BertModel_RelationExtraction(BaseModel_RelationExtraction):
         # dense layers
         self.fc1, self.fc2, self.fc3 = create_dense_layers(self.relcat_config)
 
+    # NOTEL ignoring type due to the type of model_config not matching base class exactly (subclass)
     @classmethod
-    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT, model_config: Union[BaseConfig_RelationExtraction, BertConfig_RelationExtraction], **kwargs) -> "BertModel_RelationExtraction":
+    def load(cls, pretrained_model_name_or_path: str, relcat_config: ConfigRelCAT,  # type: ignore
+             model_config: BertConfig_RelationExtraction, **kwargs) -> "BertModel_RelationExtraction":
 
         model = BertModel_RelationExtraction(pretrained_model_name_or_path=pretrained_model_name_or_path,
                                              relcat_config=relcat_config,
