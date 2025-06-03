@@ -6,8 +6,6 @@ from collections import defaultdict
 from scipy.special import softmax
 import logging
 
-from medcat.cdb import CDB
-
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,7 @@ def metrics(p, return_df=False, plus_recall=0, tokenizer=None, dataset=None, mer
     Returns:
         Dict: A dictionary of metrics.
     """
-    """TODO: This could be done better, for sure. But it works."""  # noqa
+
     predictions = np.array(p.predictions)
     predictions = softmax(predictions, axis=2)
     examples = None
@@ -154,7 +152,7 @@ def _anno_within_pred_list(label: Dict, preds: List[Dict]) -> bool:
     return any(label['start'] >= p['start'] and label['end'] <= p['end'] for p in preds)
 
 
-def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[List[Dict]], texts: List[str], deid_cdb: CDB):
+def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[List[Dict]], texts: List[str], cui2preferred_name: Dict[str, str]):
     """
     Evaluate predictions against sets of collected labels as collected and output from a MedCATTrainer project.
     Counts predictions as correct if the prediction fully encloses the label.
@@ -163,7 +161,7 @@ def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[Lis
         true_annotations (List[List[Dict]]): Ground truth predictions by text
         all_preds (List[List[Dict]]): Model predictions by text
         texts (List[str]): Original list of texts
-        deid_cdb (CDB): Concept database
+        cui2preferred_name (Dict[str, str]): Dictionary of CUI to preferred name, likely to be cat.cdb.cui2preferred_name.
 
     Returns:
         Tuple[pd.DataFrame, Dict]: A tuple containing a DataFrame of evaluation metrics and a dictionary of missed annotations per CUI.
@@ -219,6 +217,6 @@ def evaluate_predictions(true_annotations: List[List[Dict]], all_preds: List[Lis
         'recall_merged': per_cui_recall_merged.values(),
         'recall': per_cui_recall.values(),
         'precision': per_cui_prec.values(),
-        'label_count': per_cui_anno_counts.values()}, index=[deid_cdb.cui2preferred_name[k] for k in per_cui_recall_merged])
+        'label_count': per_cui_anno_counts.values()}, index=[cui2preferred_name[k] for k in per_cui_recall_merged])
 
     return res_df, per_cui_annos_missed
