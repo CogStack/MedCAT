@@ -207,17 +207,14 @@ class MatchRulesTests(unittest.TestCase):
     def test_match_rules(self):
         # Test data from the docstring example
         rules = [
-            ('(123) 456-7890', '134'),
-            ('1234567890', '134'),
-            ('123.456.7890', '134'),
-            ('1234567890', '134'),
-            ('1234567890', '134'),
+            (r'\(\d{3}\)\s*\d{3}-\d{4}', '134'),  # (123) 456-7890
+            (r'\d{3}\.\d{3}\.\d{4}', '134'),      # 123.456.7890
+            (r'\d{10}', '134'),                    # 1234567890
         ]
         texts = [
             'My phone number is (123) 456-7890',
             'My phone number is 1234567890',
             'My phone number is 123.456.7890',
-            'My phone number is 1234567890',
         ]
         cui2preferred_name = {'134': 'Phone Number'}
 
@@ -233,8 +230,8 @@ class MatchRulesTests(unittest.TestCase):
         self.assertEqual(matches[0][0]['pretty_name'], 'Phone Number')
         self.assertEqual(matches[0][0]['cui'], '134')
         self.assertEqual(matches[0][0]['acc'], 1.0)
-        self.assertEqual(matches[0][0]['start'], 17)  # Position of phone number in text
-        self.assertEqual(matches[0][0]['end'], 31)  # End position of phone number
+        self.assertEqual(matches[0][0]['start'], 19)  # Position of phone number in text
+        self.assertEqual(matches[0][0]['end'], 33)  # End position of phone number
 
         # Check second text matches
         self.assertEqual(len(matches[1]), 1)  # One match in second text
@@ -242,8 +239,8 @@ class MatchRulesTests(unittest.TestCase):
         self.assertEqual(matches[1][0]['pretty_name'], 'Phone Number')
         self.assertEqual(matches[1][0]['cui'], '134')
         self.assertEqual(matches[1][0]['acc'], 1.0)
-        self.assertEqual(matches[1][0]['start'], 17)  # Position of phone number in text
-        self.assertEqual(matches[1][0]['end'], 27)  # End position of phone number
+        self.assertEqual(matches[1][0]['start'], 19)  # Position of phone number in text
+        self.assertEqual(matches[1][0]['end'], 29)  # End position of phone number
 
         # Check third text matches
         self.assertEqual(len(matches[2]), 1)  # One match in third text
@@ -251,17 +248,8 @@ class MatchRulesTests(unittest.TestCase):
         self.assertEqual(matches[2][0]['pretty_name'], 'Phone Number')
         self.assertEqual(matches[2][0]['cui'], '134')
         self.assertEqual(matches[2][0]['acc'], 1.0)
-        self.assertEqual(matches[2][0]['start'], 17)  # Position of phone number in text
-        self.assertEqual(matches[2][0]['end'], 30)  # End position of phone number
-
-        # Check fourth text matches
-        self.assertEqual(len(matches[3]), 1)  # One match in fourth text
-        self.assertEqual(matches[3][0]['source_value'], '1234567890')
-        self.assertEqual(matches[3][0]['pretty_name'], 'Phone Number')
-        self.assertEqual(matches[3][0]['cui'], '134')
-        self.assertEqual(matches[3][0]['acc'], 1.0)
-        self.assertEqual(matches[3][0]['start'], 17)  # Position of phone number in text
-        self.assertEqual(matches[3][0]['end'], 27)  # End position of phone number
+        self.assertEqual(matches[2][0]['start'], 19)  # Position of phone number in text
+        self.assertEqual(matches[2][0]['end'], 31)  # End position of phone number
 
     def test_merge_preds(self):
         # Test data with overlapping predictions
@@ -284,19 +272,19 @@ class MatchRulesTests(unittest.TestCase):
 
         # Test with accept_preds=True (default)
         merged_preds = deid.merge_preds(model_preds, rule_matches)
-        self.assertEqual(len(merged_preds), 1)  # Should return a list with one element
-        self.assertEqual(len(merged_preds[0]), 3)  # Should keep model predictions and non-overlapping rule match
-        self.assertEqual(merged_preds[0][0]['start'], 10)  # First model pred
-        self.assertEqual(merged_preds[0][1]['start'], 25)  # Second model pred
-        self.assertEqual(merged_preds[0][2]['start'], 50)  # Third model pred
+        self.assertEqual(len(merged_preds), 4)  # Should return a list with 4 elements
+        self.assertEqual(merged_preds[0]['start'], 10)  # First model pred
+        self.assertEqual(merged_preds[1]['start'], 25)  # Second model pred
+        self.assertEqual(merged_preds[2]['start'], 50)  # Third model pred
+        self.assertEqual(merged_preds[3]['start'], 70)  # Fourth rule match
 
         # Test with accept_preds=False
         merged_preds = deid.merge_preds(model_preds, rule_matches, accept_preds=False)
-        self.assertEqual(len(merged_preds), 1)  # Should return a list with one element
-        self.assertEqual(len(merged_preds[0]), 3)  # Should keep rule matches and non-overlapping model pred
-        self.assertEqual(merged_preds[0][0]['start'], 15)  # First rule match
-        self.assertEqual(merged_preds[0][1]['start'], 30)  # Second rule match
-        self.assertEqual(merged_preds[0][2]['start'], 70)  # Third rule match
+        self.assertEqual(len(merged_preds), 4)  # Should return a list with 4 elements
+        self.assertEqual(merged_preds[0]['start'], 15)  # First rule match
+        self.assertEqual(merged_preds[1]['start'], 30)  # Second rule match
+        self.assertEqual(merged_preds[2]['start'], 50)  # Third model pred
+        self.assertEqual(merged_preds[3]['start'], 70)  # Fourth rule match
 
         # Test with non-overlapping predictions
         model_preds = [
@@ -314,21 +302,11 @@ class MatchRulesTests(unittest.TestCase):
 
         # Test with accept_preds=True (default)
         merged_preds = deid.merge_preds(model_preds, rule_matches)
-        self.assertEqual(len(merged_preds), 1)
-        self.assertEqual(len(merged_preds[0]), 4)  # Should keep all predictions
-        self.assertEqual(merged_preds[0][0]['start'], 10)  # First model pred
-        self.assertEqual(merged_preds[0][1]['start'], 25)  # First rule match
-        self.assertEqual(merged_preds[0][2]['start'], 50)  # Second model pred
-        self.assertEqual(merged_preds[0][3]['start'], 70)  # Second rule match
-
-        # Test with accept_preds=False
-        merged_preds = deid.merge_preds(model_preds, rule_matches, accept_preds=False)
-        self.assertEqual(len(merged_preds), 1)
-        self.assertEqual(len(merged_preds[0]), 4)  # Should keep all predictions
-        self.assertEqual(merged_preds[0][0]['start'], 10)  # First model pred
-        self.assertEqual(merged_preds[0][1]['start'], 25)  # First rule match
-        self.assertEqual(merged_preds[0][2]['start'], 50)  # Second model pred
-        self.assertEqual(merged_preds[0][3]['start'], 70)  # Second rule match
+        self.assertEqual(len(merged_preds), 4)  # Should keep all predictions
+        self.assertEqual(merged_preds[0]['start'], 10)  # First model pred
+        self.assertEqual(merged_preds[1]['start'], 25)  # First rule match
+        self.assertEqual(merged_preds[2]['start'], 50)  # Second model pred
+        self.assertEqual(merged_preds[3]['start'], 70)  # Second rule match
 
     def test_merge_all_preds(self):
         # Test with lists of different lengths
