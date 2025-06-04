@@ -41,6 +41,7 @@ class DeIDmodelCreationTests(unittest.TestCase):
         deid_model = deid.DeIdModel.create(ner)
         self.assertIsNotNone(deid_model)
 
+
 def _add_model(cls):
     cdb = make_or_update_cdb(TRAIN_DATA)
     config = transformers_ner.ConfigTransformersNER()
@@ -98,13 +99,14 @@ class DeIDModelTests(unittest.TestCase):
         self.assertTrue("CONCEPT" in self.deid_model.cat._addl_ner[0].tokenizer.label_map)
         self.assertTrue("CONCEPT" in self.deid_model.cat._addl_ner[0].tokenizer.cui2name)
 
+
 input_text = '''
-James Joyce 
-7 Eccles Street, 
+James Joyce
+7 Eccles Street,
 Dublin
 CC: Memory difficulty.
 
-HX: Mr James is a 64 y/o RHM, had difficulty remembering names, phone numbers and events for 12 months prior to presentation, on 2/28/95. He had visited London recently and had had no professional or social faux pas or mishaps due to his memory. J.J. could not tell whether his problem was becoming worse, so he brought himself to the Neurology clinic on his own referral. 
+HX: Mr James is a 64 y/o RHM, had difficulty remembering names, phone numbers and events for 12 months prior to presentation, on 2/28/95. He had visited London recently and had had no professional or social faux pas or mishaps due to his memory. J.J. could not tell whether his problem was becoming worse, so he brought himself to the Neurology clinic on his own referral.
 
 FHX: Both parents (Mary and John) experienced memory problems in their ninth decades, but not earlier. 5 siblings have had no memory trouble. There are no neurological illnesses in his family.
 
@@ -146,6 +148,7 @@ class DeIDModelWorks(unittest.TestCase):
         self.assertNotIn("[HOSPITAL]", anon_text)
         # self.assertNotIn("Dublin", anon_text)
         self.assertNotIn("7 Eccles Street", anon_text)
+
 
 class DeIDModelMultiprocessingWorks(unittest.TestCase):
     processes = 2
@@ -198,3 +201,170 @@ class DeIDModelMultiprocessingWorks(unittest.TestCase):
         for tid, new_text in enumerate(processed):
             with self.subTest(str(tid)):
                 self.assertTextHasBeenDeIded(new_text, redacted=True)
+
+
+class MatchRulesTests(unittest.TestCase):
+    def test_match_rules(self):
+        # Test data from the docstring example
+        rules = [
+            (r'\(\d{3}\)\s*\d{3}-\d{4}', '134'),  # (123) 456-7890
+            (r'\d{3}\.\d{3}\.\d{4}', '134'),      # 123.456.7890
+            (r'\d{10}', '134'),                    # 1234567890
+        ]
+        texts = [
+            'My phone number is (123) 456-7890',
+            'My phone number is 1234567890',
+            'My phone number is 123.456.7890',
+        ]
+        cui2preferred_name = {'134': 'Phone Number'}
+
+        # Get matches
+        matches = deid.match_rules(rules, texts, cui2preferred_name)
+
+        # Verify results
+        self.assertEqual(len(matches), len(texts))  # One list of matches per text
+
+        # Check first text matches
+        self.assertEqual(len(matches[0]), 1)  # One match in first text
+        self.assertEqual(matches[0][0]['source_value'], '(123) 456-7890')
+        self.assertEqual(matches[0][0]['pretty_name'], 'Phone Number')
+        self.assertEqual(matches[0][0]['cui'], '134')
+        self.assertEqual(matches[0][0]['acc'], 1.0)
+        self.assertEqual(matches[0][0]['start'], 19)  # Position of phone number in text
+        self.assertEqual(matches[0][0]['end'], 33)  # End position of phone number
+
+        # Check second text matches
+        self.assertEqual(len(matches[1]), 1)  # One match in second text
+        self.assertEqual(matches[1][0]['source_value'], '1234567890')
+        self.assertEqual(matches[1][0]['pretty_name'], 'Phone Number')
+        self.assertEqual(matches[1][0]['cui'], '134')
+        self.assertEqual(matches[1][0]['acc'], 1.0)
+        self.assertEqual(matches[1][0]['start'], 19)  # Position of phone number in text
+        self.assertEqual(matches[1][0]['end'], 29)  # End position of phone number
+
+        # Check third text matches
+        self.assertEqual(len(matches[2]), 1)  # One match in third text
+        self.assertEqual(matches[2][0]['source_value'], '123.456.7890')
+        self.assertEqual(matches[2][0]['pretty_name'], 'Phone Number')
+        self.assertEqual(matches[2][0]['cui'], '134')
+        self.assertEqual(matches[2][0]['acc'], 1.0)
+        self.assertEqual(matches[2][0]['start'], 19)  # Position of phone number in text
+        self.assertEqual(matches[2][0]['end'], 31)  # End position of phone number
+
+    def test_merge_preds(self):
+        # Test data with overlapping predictions
+        model_preds = [
+            {'cui': '134', 'start': 10, 'end': 20, 'acc': 0.9,
+             'pretty_name': 'Phone Number'},
+            {'cui': '134', 'start': 25, 'end': 35, 'acc': 0.8,
+             'pretty_name': 'Phone Number'},
+            {'cui': '134', 'start': 50, 'end': 60, 'acc': 0.9,  # Non-overlapping model pred
+             'pretty_name': 'Phone Number'}
+        ]
+        rule_matches = [
+            {'cui': '134', 'start': 15, 'end': 25, 'acc': 1.0,  # Overlaps with first model pred
+             'pretty_name': 'Phone Number'},
+            {'cui': '134', 'start': 30, 'end': 40, 'acc': 1.0,  # Overlaps with second model pred
+             'pretty_name': 'Phone Number'},
+            {'cui': '134', 'start': 70, 'end': 80, 'acc': 1.0,  # Non-overlapping rule match
+             'pretty_name': 'Phone Number'}
+        ]
+
+        # Test with accept_preds=True (default)
+        merged_preds = deid.merge_preds(model_preds, rule_matches)
+        self.assertEqual(len(merged_preds), 4)  # Should return a list with 4 elements
+        self.assertEqual(merged_preds[0]['start'], 10)  # First model pred
+        self.assertEqual(merged_preds[1]['start'], 25)  # Second model pred
+        self.assertEqual(merged_preds[2]['start'], 50)  # Third model pred
+        self.assertEqual(merged_preds[3]['start'], 70)  # Fourth rule match
+
+        # Test with accept_preds=False
+        merged_preds = deid.merge_preds(model_preds, rule_matches, accept_preds=False)
+        self.assertEqual(len(merged_preds), 4)  # Should return a list with 4 elements
+        self.assertEqual(merged_preds[0]['start'], 15)  # First rule match
+        self.assertEqual(merged_preds[1]['start'], 30)  # Second rule match
+        self.assertEqual(merged_preds[2]['start'], 50)  # Third model pred
+        self.assertEqual(merged_preds[3]['start'], 70)  # Fourth rule match
+
+        # Test with non-overlapping predictions
+        model_preds = [
+            {'cui': '134', 'start': 10, 'end': 20, 'acc': 0.9,
+             'pretty_name': 'Phone Number'},
+            {'cui': '134', 'start': 50, 'end': 60, 'acc': 0.9,  # Additional non-overlapping model pred
+             'pretty_name': 'Phone Number'}
+        ]
+        rule_matches = [
+            {'cui': '134', 'start': 25, 'end': 35, 'acc': 1.0,
+             'pretty_name': 'Phone Number'},
+            {'cui': '134', 'start': 70, 'end': 80, 'acc': 1.0,  # Additional non-overlapping rule match
+             'pretty_name': 'Phone Number'}
+        ]
+
+        # Test with accept_preds=True (default)
+        merged_preds = deid.merge_preds(model_preds, rule_matches)
+        self.assertEqual(len(merged_preds), 4)  # Should keep all predictions
+        self.assertEqual(merged_preds[0]['start'], 10)  # First model pred
+        self.assertEqual(merged_preds[1]['start'], 25)  # First rule match
+        self.assertEqual(merged_preds[2]['start'], 50)  # Second model pred
+        self.assertEqual(merged_preds[3]['start'], 70)  # Second rule match
+
+    def test_merge_all_preds(self):
+        # Test with lists of different lengths
+        model_preds_by_text = [
+            [{'cui': '134', 'start': 10, 'end': 20, 'acc': 0.9, 'pretty_name': 'Phone Number'}],
+            [{'cui': '134', 'start': 25, 'end': 35, 'acc': 0.8, 'pretty_name': 'Phone Number'}]
+        ]
+        rule_matches_per_text = [
+            [{'cui': '134', 'start': 15, 'end': 25, 'acc': 1.0, 'pretty_name': 'Phone Number'}]
+        ]
+
+        # Test that it raises ValueError for different lengths
+        with self.assertRaises(AssertionError) as context:
+            deid.merge_all_preds(model_preds_by_text, rule_matches_per_text)
+        self.assertIn("must have the same length", str(context.exception))
+
+        # Test with consistent lengths
+        model_preds_by_text = [
+            [{'cui': '134', 'start': 10, 'end': 20, 'acc': 0.9, 'pretty_name': 'Phone Number'}],
+            [{'cui': '134', 'start': 25, 'end': 35, 'acc': 0.8, 'pretty_name': 'Phone Number'}]
+        ]
+        rule_matches_per_text = [
+            [{'cui': '134', 'start': 15, 'end': 25, 'acc': 1.0, 'pretty_name': 'Phone Number'}],
+            [{'cui': '134', 'start': 30, 'end': 40, 'acc': 1.0, 'pretty_name': 'Phone Number'}]
+        ]
+
+        # Test with accept_preds=True (default)
+        merged_preds = deid.merge_all_preds(model_preds_by_text, rule_matches_per_text)
+        self.assertEqual(len(merged_preds), 2)  # Two texts
+        self.assertEqual(len(merged_preds[0]), 1)  # First text has one model pred
+        self.assertEqual(len(merged_preds[1]), 1)  # Second text has one model pred
+        self.assertEqual(merged_preds[0][0]['start'], 10)  # First text model pred
+        self.assertEqual(merged_preds[1][0]['start'], 25)  # Second text model pred
+
+        # Test with accept_preds=False
+        merged_preds = deid.merge_all_preds(model_preds_by_text, rule_matches_per_text, accept_preds=False)
+        self.assertEqual(len(merged_preds), 2)  # Two texts
+        self.assertEqual(len(merged_preds[0]), 1)  # First text has one rule match
+        self.assertEqual(len(merged_preds[1]), 1)  # Second text has one rule match
+        self.assertEqual(merged_preds[0][0]['start'], 15)  # First text rule match
+        self.assertEqual(merged_preds[1][0]['start'], 30)  # Second text rule match
+
+        # Test with non-overlapping predictions
+        model_preds_by_text = [
+            [{'cui': '134', 'start': 10, 'end': 20, 'acc': 0.9, 'pretty_name': 'Phone Number'}],
+            [{'cui': '134', 'start': 25, 'end': 35, 'acc': 0.8, 'pretty_name': 'Phone Number'}]
+        ]
+        rule_matches_per_text = [
+            [{'cui': '134', 'start': 30, 'end': 40, 'acc': 1.0, 'pretty_name': 'Phone Number'}],
+            [{'cui': '134', 'start': 50, 'end': 60, 'acc': 1.0, 'pretty_name': 'Phone Number'}]
+        ]
+
+        # Test with accept_preds=True (default)
+        merged_preds = deid.merge_all_preds(model_preds_by_text, rule_matches_per_text)
+        self.assertEqual(len(merged_preds), 2)  # Two texts
+        self.assertEqual(len(merged_preds[0]), 2)  # First text has both preds
+        self.assertEqual(len(merged_preds[1]), 2)  # Second text has both preds
+        self.assertEqual(merged_preds[0][0]['start'], 10)  # First text model pred
+        self.assertEqual(merged_preds[0][1]['start'], 30)  # First text rule match
+        self.assertEqual(merged_preds[1][0]['start'], 25)  # Second text model pred
+        self.assertEqual(merged_preds[1][1]['start'], 50)  # Second text rule match
