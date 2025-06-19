@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class CDBMaker(object):
-    """Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/master/examples/<example> it creates a CDB or
+    """Given a CSV as shown in https://github.com/CogStack/MedCAT/tree/main/examples/<example> it creates a CDB or
     updates an existing one.
 
     Args:
