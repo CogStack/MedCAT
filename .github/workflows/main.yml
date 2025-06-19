@@ -2,9 +2,9 @@ name: build
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
 
 jobs:
   build:
@@ -62,7 +62,7 @@ jobs:
             });
             core.setOutput('latest_version', latestRelease.data.tag_name);
       - name: Make sure there's no deprecated methods that should be removed.
-        # only run this for master -> production PR. I.e just before doing a release.
+        # only run this for main -> production PR. I.e just before doing a release.
         if: github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.ref == 'production'
         env:
           VERSION: ${{ steps.get_latest_release.outputs.latest_version }}
@@ -73,7 +73,7 @@ jobs:
 
     if: |
       github.repository == 'CogStack/MedCAT' &&
-      github.ref == 'refs/heads/master' &&
+      github.ref == 'refs/heads/main' &&
       github.event_name == 'push' &&
       startsWith(github.ref, 'refs/tags') != true
     runs-on: ubuntu-24.04
@@ -82,10 +82,10 @@ jobs:
     needs: [build]
 
     steps:
-      - name: Checkout master
+      - name: Checkout main
         uses: actions/checkout@v4
         with:
-          ref: 'master'
+          ref: 'main'
           fetch-depth: 0
 
       - name: Set up Python 3.9
