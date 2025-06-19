@@ -1,10 +1,10 @@
-# Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/master/media/cat-logo.png" width=45> oncept Annotation Tool
+# Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/main/media/cat-logo.png" width=45> oncept Annotation Tool
 
 **NB! [MedCAT v2](https://github.com/CogStack/MedCAT2) will soon be released.**
 **MedCAT v1.16.0 will be the latest MedCAT v1 minor release.**
 **However, we will likely continue to support v1.16.x with patch releases for some time.**
 
-[![Build Status](https://github.com/CogStack/MedCAT/actions/workflows/main.yml/badge.svg?branch=master)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amaster)
+[![Build Status](https://github.com/CogStack/MedCAT/actions/workflows/main.yml/badge.svg?branch=main)](https://github.com/CogStack/MedCAT/actions/workflows/main.yml?query=branch%3Amain)
 [![Documentation Status](https://readthedocs.org/projects/medcat/badge/?version=latest)](https://medcat.readthedocs.io/en/latest/?badge=latest)
 [![Latest release](https://img.shields.io/github/v/release/CogStack/MedCAT)](https://github.com/CogStack/MedCAT/releases/latest)
 [![pypi Version](https://img.shields.io/pypi/v/medcat.svg?style=flat-square&logo=pypi&logoColor=white)](https://pypi.org/project/medcat/)
