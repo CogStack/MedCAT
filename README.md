@@ -40,7 +40,7 @@ To download any of these models, please [follow this link](https://uts.nlm.nih.g
   branch and will still be supported until 1. July 2021
   (with respect to potential bug fixes), after it will still be available but not updated anymore.
 - **Paper**: [What’s in a Summary? Laying the Groundwork for Advances in Hospital-Course Summarization](https://www.aclweb.org/anthology/2021.naacl-main.382.pdf)
-- ([more...](https://github.com/CogStack/MedCAT/blob/master/media/news.md))
+- ([more...](https://github.com/CogStack/MedCAT/blob/main/media/news.md))
 
 ## Installation
 To install the latest version of MedCAT run the following command:
