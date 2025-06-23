@@ -54,7 +54,7 @@ To install the latest version of MedCAT without torch GPU support run the follow
 pip install medcat --extra-index-url https://download.pytorch.org/whl/cpu/
 ```
 ## Demo
-A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
+A demo application is available at [MedCAT](https://medcat.sites.er.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
 PS: This link can take a long time to load the first time around. The machine spins up as needed and spins down when inactive.
 
 ## Tutorials
