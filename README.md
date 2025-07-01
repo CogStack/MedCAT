@@ -1,3 +1,21 @@
+# ⚠️ This Project Has Moved Repository
+
+
+<div align="center">
+
+[![Project Moved](https://img.shields.io/badge/🚀-Project%20Moved-brightgreen)](https://github.com/CogStack/cogstack-nlp)
+
+👉 Please visit the new repository here:  
+**[https://github.com/CogStack/cogstack-nlp](https://github.com/CogStack/cogstack-nlp)**
+
+[<img src="https://avatars.githubusercontent.com/u/28688163" width="45" />](https://github.com/CogStack/cogstack-nlp)
+
+</div>
+
+---
+
+<br>
+
 # Medical  <img src="https://raw.githubusercontent.com/CogStack/MedCAT/main/media/cat-logo.png" width=45> oncept Annotation Tool
 
 **NB! [MedCAT v2](https://github.com/CogStack/MedCAT2) will soon be released.**
