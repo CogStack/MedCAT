@@ -11,12 +11,12 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
 
 **Discussion Forum [here](https://discourse.cogstack.org/)**
 
-**Available Models (requires UMLS license) [here](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback)**
+**Available Models (requires UMLS license) [here](https://uts.nlm.nih.gov/uts/login?service=https://medcat.sites.er.kcl.ac.uk/auth-callback) (or [this link for API key based download](https://medcat.sites.er.kcl.ac.uk/auth-callback-api))**
 
 ## News
 - **Paper** [A New Public Corpus for Clinical Section Identification: MedSecId](https://aclanthology.org/2022.coling-1.326.pdf)
 - **New Release** \[5. October 2022\]**: Logging changes, and various small updates. [Full changelog](https://github.com/CogStack/MedCAT/compare/v1.3.0...v1.4.0)
-- **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
+- **New Downloader \[15. March 2022\]**: You can now [download](https://uts.nlm.nih.gov/uts/login?service=https://medcat.sites.er.kcl.ac.uk/auth-callback) (or [API key download](https://medcat.sites.er.kcl.ac.uk/auth-callback-api)) the latest SNOMED-CT and UMLS model packs via UMLS user authentication.
 - **New Feature and Tutorial \[7. December 2021\]**: [Exploring Electronic Health Records with MedCAT and Neo4j](https://towardsdatascience.com/exploring-electronic-health-records-with-medcat-and-neo4j-f376c03d8eef)
 - **New Minor Release \[20. October 2021\]** Introducing model packs, new faster multiprocessing for large datasets (100M+ documents) and improved MetaCAT.
 - **New Release \[1. August 2021\]**: Upgraded MedCAT to use spaCy v3, new scispaCy models have to be downloaded - all old CDBs (compatble with MedCAT v1) will work without any changes.
@@ -27,7 +27,7 @@ MedCAT can be used to extract information from Electronic Health Records (EHRs) 
   (with respect to potential bug fixes), after it will still be available but not updated anymore.
 
 ## Demo
-A demo application is available at [MedCAT](https://medcat.rosalind.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
+A demo application is available at [MedCAT](https://medcat.sites.er.kcl.ac.uk). This was trained on MIMIC-III and all of SNOMED-CT.
 
 ## Tutorials
 A guide on how to use MedCAT is available at [MedCAT Tutorials](https://github.com/CogStack/MedCATtutorials). Read more about MedCAT on [Towards Data Science](https://towardsdatascience.com/medcat-introduction-analyzing-electronic-health-records-e1c420afa13a).
@@ -116,7 +116,7 @@ python medcat/utils/model_creator.py tests/model_creator/config_example.yml
 
 ## Models
 ### SNOMED-CT and UMLS
-If you have access to UMLS or SNOMED-CT, you can download the pre-built CDB and Vocab for those databases by signing in and filling out [the online form](https://uts.nlm.nih.gov/uts/login?service=https://medcat.rosalind.kcl.ac.uk/auth-callback). This link first requires you to authenticate your ontology access via the NIH portal.
+If you have access to UMLS or SNOMED-CT, you can download the pre-built CDB and Vocab for those databases by signing in and filling out [the online form](https://uts.nlm.nih.gov/uts/login?service=https://medcat.sites.er.kcl.ac.uk/auth-callback) (or [this link for API key based download](https://medcat.sites.er.kcl.ac.uk/auth-callback-api)). This link first requires you to authenticate your ontology access via the NIH portal.
 
 ### MedMentions
 A basic trained model is made public. It contains ~ 35K concepts available in `MedMentions`. This was compiled from MedMentions and does not have any data from [NLM](https://www.nlm.nih.gov/research/umls/) as that data is not publicaly available.
