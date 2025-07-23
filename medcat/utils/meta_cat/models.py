@@ -87,16 +87,30 @@ class LSTM(nn.Module):
 class BertForMetaAnnotation(nn.Module):
     _keys_to_ignore_on_load_unexpected: List[str] = [r"pooler"]  # type: ignore
 
-    def __init__(self, config):
+    def __init__(self, config, save_dir_path = None):
         super(BertForMetaAnnotation, self).__init__()
-        _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,num_hidden_layers=config.model['num_layers'])
+        if save_dir_path:
+            try:
+                _bertconfig = AutoConfig.from_pretrained(save_dir_path + "/bert_config.json",
+                                                     num_hidden_layers=config.model['num_layers'])
+            except:
+                _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,
+                                                         num_hidden_layers=config.model['num_layers'])
+        else:
+            _bertconfig = AutoConfig.from_pretrained(config.model.model_variant,num_hidden_layers=config.model['num_layers'])
+
         if config.model['input_size'] != _bertconfig.hidden_size:
             logger.warning("Input size for %s model should be %d, provided input size is %d. Input size changed to %d",config.model.model_variant,_bertconfig.hidden_size,config.model['input_size'],_bertconfig.hidden_size)
 
-        bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
+        if config.model['load_bert_pretrained_weights']:
+            bert = BertModel.from_pretrained(config.model.model_variant, config=_bertconfig)
+        else:
+            bert = BertModel(_bertconfig)
+
         self.config = config
         self.config.use_return_dict = False
         self.bert = bert
+        self.bert_config = _bertconfig
         self.num_labels = config.model["nclasses"]
         for param in self.bert.parameters():
             param.requires_grad = not config.model.model_freeze_layers
