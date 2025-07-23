@@ -382,8 +382,9 @@ class MetaCAT(PipeRunner):
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         torch.save(self.model.state_dict(), model_save_path)
 
-        model_config_save_path = os.path.join(save_dir_path, 'bert_config.json')
-        self.model.bert_config.to_json_file(model_config_save_path)
+        if self.config.model.model_name == 'bert':
+            model_config_save_path = os.path.join(save_dir_path, 'bert_config.json')
+            self.model.bert_config.to_json_file(model_config_save_path)
         # This is everything we need to save from the class, we do not
         # save the class itself.
 
