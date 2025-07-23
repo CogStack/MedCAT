@@ -2,7 +2,7 @@ import torch
 from collections import OrderedDict
 from typing import Optional, Any, List, Iterable
 from torch import nn, Tensor
-from transformers import BertModel, AutoConfig
+from transformers import BertModel, AutoConfig, BertConfig
 from medcat.meta_cat import ConfigMetaCAT
 import logging
 logger = logging.getLogger(__name__)
@@ -110,7 +110,7 @@ class BertForMetaAnnotation(nn.Module):
         self.config = config
         self.config.use_return_dict = False
         self.bert = bert
-        self.bert_config: AutoConfig = _bertconfig
+        self.bert_config: BertConfig = _bertconfig
         self.num_labels = config.model["nclasses"]
         for param in self.bert.parameters():
             param.requires_grad = not config.model.model_freeze_layers
