@@ -110,7 +110,7 @@ class BertForMetaAnnotation(nn.Module):
         self.config = config
         self.config.use_return_dict = False
         self.bert = bert
-        self.bert_config = _bertconfig
+        self.bert_config: AutoConfig = _bertconfig
         self.num_labels = config.model["nclasses"]
         for param in self.bert.parameters():
             param.requires_grad = not config.model.model_freeze_layers
