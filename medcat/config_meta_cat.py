@@ -133,6 +133,12 @@ class Model(MixingConfig, BaseModel):
 
     NB! For these changes to take effect, the pipe would need to be recreated.
     """
+    load_bert_pretrained_weights: bool = False
+    """
+    Applicable only when using BERT:
+    Determines if the pretrained weights for BERT are loaded
+    This should be True if you don't plan on using the model pack weights"""
+
     num_layers: int = 2
     """Number of layers in the model (both LSTM and BERT)
 
@@ -164,7 +170,9 @@ class Model(MixingConfig, BaseModel):
 
     Paper reference - https://ieeexplore.ieee.org/document/7533053"""
     category_undersample: str = ''
-    """When using 2 phase learning, this category is used to undersample the data"""
+    """When using 2 phase learning, this category is used to undersample the data
+    The number of samples in the category sets the upper limit for all categories"""
+
     model_architecture_config: Dict = {'fc2': True, 'fc3': False,'lr_scheduler': True}
     """Specifies the architecture for BERT model.
 

@@ -51,11 +51,13 @@ class MetaCAT(PipeRunner):
     def __init__(self,
                  tokenizer: Optional[TokenizerWrapperBase] = None,
                  embeddings: Optional[Union[Tensor, numpy.ndarray]] = None,
-                 config: Optional[ConfigMetaCAT] = None) -> None:
+                 config: Optional[ConfigMetaCAT] = None,
+                 save_dir_path: Optional[str] = None) -> None:
         if config is None:
             config = ConfigMetaCAT()
         self.config = config
         set_all_seeds(config.general['seed'])
+        self.save_dir_path = save_dir_path
 
         if tokenizer is not None:
             # Set it in the config
@@ -90,7 +92,7 @@ class MetaCAT(PipeRunner):
 
         elif config.model['model_name'] == 'bert':
             from medcat.utils.meta_cat.models import BertForMetaAnnotation
-            model = BertForMetaAnnotation(config)
+            model = BertForMetaAnnotation(config,self.save_dir_path)
 
             if not config.model.model_freeze_layers:
                 peft_config = LoraConfig(task_type=TaskType.SEQ_CLS, inference_mode=False, r=8, lora_alpha=16,
@@ -380,6 +382,9 @@ class MetaCAT(PipeRunner):
         model_save_path = os.path.join(save_dir_path, 'model.dat')
         torch.save(self.model.state_dict(), model_save_path)
 
+        if self.config.model.model_name == 'bert':
+            model_config_save_path = os.path.join(save_dir_path, 'bert_config.json')
+            self.model.bert_config.to_json_file(model_config_save_path) # type: ignore
         # This is everything we need to save from the class, we do not
         # save the class itself.
 
@@ -416,7 +421,7 @@ class MetaCAT(PipeRunner):
             tokenizer = TokenizerWrapperBERT.load(save_dir_path, config.model.model_variant)
 
         # Create meta_cat
-        meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config)
+        meta_cat = cls(tokenizer=tokenizer, embeddings=None, config=config,save_dir_path=save_dir_path)
 
         # Load the model
         model_save_path = os.path.join(save_dir_path, 'model.dat')
