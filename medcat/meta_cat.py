@@ -384,7 +384,7 @@ class MetaCAT(PipeRunner):
 
         if self.config.model.model_name == 'bert':
             model_config_save_path = os.path.join(save_dir_path, 'bert_config.json')
-            self.model.bert_config.to_json_file(model_config_save_path)
+            self.model.bert_config.to_json_file(model_config_save_path) # type: ignore
         # This is everything we need to save from the class, we do not
         # save the class itself.
 
